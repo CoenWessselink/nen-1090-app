@@ -1,405 +1,251 @@
 /*
-  NEN1090 Phase 3 – Auth Client (frontend)
+  NEN1090 Auth Client (frontend) — Pages-proof (Cloudflare Pages + Functions proxy)
 
-  Purpose:
-  - Keep the existing static UI (no rebuild) but add REAL login against the Phase 3 backend.
-  - Store tokens in localStorage so the UI can call protected endpoints later.
-
-  Notes:
-  - This file is intentionally dependency-free (vanilla JS).
-  - Data modules (projects/welds/etc.) are still local/SSOT for now; Phase 3 first milestone is auth + DB connectivity.
+  - Default API base: "/api"  (dus via Pages proxy)
+  - Tokens in localStorage (access + refresh)
+  - apiFetch voegt automatisch Authorization: Bearer <access> toe
 */
 
 (function () {
-  // Ensure a global API base is available on ALL pages (including /layers/*).
-  // This prevents any legacy fallback from silently using localhost.
-  try {
-    window.__API_BASE_URL__ = window.__API_BASE_URL__
-      || localStorage.getItem('API_BASE_URL')
-      || localStorage.getItem('nen1090.api.baseUrl')
-      || 'https://api.nen1090.nl';
-  } catch (_) {
-    window.__API_BASE_URL__ = window.__API_BASE_URL__ || 'https://api.nen1090.nl';
-  }
+  "use strict";
 
+  // ---------- Config / storage keys ----------
   const LS_KEYS = {
-    baseUrl: 'nen1090.api.baseUrl',
-    tenant: 'nen1090.auth.tenant',
-    email: 'nen1090.auth.email',
-    access: 'nen1090.auth.access',
-    refresh: 'nen1090.auth.refresh',
+    baseUrl: "nen1090.api.baseUrl",     // optional override (no trailing slash)
+    tenant: "nen1090.auth.tenant",
+    email: "nen1090.auth.email",
+    access: "nen1090.auth.access",
+    refresh: "nen1090.auth.refresh",
   };
 
-  function getUserEmail() {
-    return localStorage.getItem(LS_KEYS.email) || '';
+  function _safeGet(key) {
+    try { return localStorage.getItem(key) || ""; } catch (_) { return ""; }
+  }
+  function _safeSet(key, val) {
+    try { localStorage.setItem(key, val); } catch (_) {}
+  }
+  function _safeRemove(key) {
+    try { localStorage.removeItem(key); } catch (_) {}
   }
 
-  function setUserEmail(email) {
-    const clean = (email || '').trim();
-    if (clean) localStorage.setItem(LS_KEYS.email, clean);
+  function _trimSlashEnd(s) {
+    return (s || "").replace(/\/+$/, "");
   }
 
+  // ---------- API base resolution ----------
+  // Priority:
+  // 1) window.__API_BASE_URL__  (set by config.js or other bootstrap)
+  // 2) localStorage overrides
+  // 3) default "/api" (Pages proxy)
   function getBaseUrl() {
-    return (localStorage.getItem(LS_KEYS.baseUrl) || localStorage.getItem('API_BASE_URL') || window.__API_BASE_URL__ || 'https://api.nen1090.nl').replace(/\/$/, '');
+    const fromWindow = (typeof window !== "undefined" && window.__API_BASE_URL__) ? String(window.__API_BASE_URL__) : "";
+    const fromLS = _safeGet("API_BASE_URL") || _safeGet(LS_KEYS.baseUrl);
+    const base = _trimSlashEnd(fromWindow || fromLS || "/api");
+    return base || "/api";
   }
 
   function setBaseUrl(url) {
-    const clean = (url || '').trim().replace(/\/$/, '');
-    if (clean) localStorage.setItem(LS_KEYS.baseUrl, clean);
+    const clean = _trimSlashEnd(String(url || "").trim());
+    if (!clean) return;
+    _safeSet(LS_KEYS.baseUrl, clean);
+    try { window.__API_BASE_URL__ = clean; } catch (_) {}
   }
 
+  // Ensure global base is set (important for pages like /layers/*)
+  try {
+    window.__API_BASE_URL__ = window.__API_BASE_URL__ || getBaseUrl();
+  } catch (_) {}
+
+  // ---------- Tenant ----------
   function getTenant() {
-    return localStorage.getItem(LS_KEYS.tenant) || 'demo';
+    return _safeGet(LS_KEYS.tenant) || "demo";
   }
-
   function setTenant(t) {
-    const clean = (t || '').trim();
-    if (clean) localStorage.setItem(LS_KEYS.tenant, clean);
+    const clean = String(t || "").trim();
+    if (clean) _safeSet(LS_KEYS.tenant, clean);
   }
 
+  // ---------- Tokens ----------
   function getAccessToken() {
-    return localStorage.getItem(LS_KEYS.access) || '';
+    // Some legacy scripts may use "auth_token"
+    return _safeGet(LS_KEYS.access) || _safeGet("auth_token") || "";
   }
-
   function getRefreshToken() {
-    return localStorage.getItem(LS_KEYS.refresh) || '';
+    return _safeGet(LS_KEYS.refresh) || "";
   }
 
   function setTokens(access, refresh) {
     if (access) {
-      localStorage.setItem(LS_KEYS.access, access);
-      // Backwards-compat / convenience key (some scripts/checks expect this)
-      localStorage.setItem('auth_token', access);
+      _safeSet(LS_KEYS.access, access);
+      _safeSet("auth_token", access); // backwards compat
     }
-    if (refresh) localStorage.setItem(LS_KEYS.refresh, refresh);
+    if (refresh) _safeSet(LS_KEYS.refresh, refresh);
   }
 
   function clearTokens() {
-    localStorage.removeItem(LS_KEYS.access);
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem(LS_KEYS.refresh);
-    localStorage.removeItem(LS_KEYS.email);
+    _safeRemove(LS_KEYS.access);
+    _safeRemove("auth_token");
+    _safeRemove(LS_KEYS.refresh);
+    _safeRemove(LS_KEYS.email);
   }
 
-  function _jwtExpMs(token) {
-    try {
-      const parts = token.split('.');
-      if (parts.length !== 3) return null;
-      const payload = JSON.parse(atob(parts[1].replace(/-/g,'+').replace(/_/g,'/')));
-      if (!payload || !payload.exp) return null;
-      return payload.exp * 1000;
-    } catch {
-      return null;
+  // ---------- Helpers ----------
+  function buildUrl(path) {
+    const base = getBaseUrl(); // like "/api" or "https://...."
+    const p = String(path || "");
+    if (!p) return base;
+    if (p.startsWith("http://") || p.startsWith("https://")) return p;
+    if (p.startsWith("/")) return base + p;
+    return base + "/" + p;
+  }
+
+  async function _readJsonOrText(resp) {
+    const ct = (resp.headers.get("content-type") || "").toLowerCase();
+    if (ct.includes("application/json")) {
+      try { return await resp.json(); } catch (_) { return null; }
     }
+    try { return await resp.text(); } catch (_) { return null; }
   }
 
-  function isLoggedIn() {
-    const t = getAccessToken();
-    if (!t) return false;
-    const exp = _jwtExpMs(t);
-    if (!exp) return true;
-    return Date.now() < (exp - 30_000);
-  }
+  // Core fetch wrapper
+  async function apiFetch(path, opts) {
+    const o = opts || {};
+    const headers = new Headers(o.headers || {});
+    headers.set("Accept", headers.get("Accept") || "application/json");
 
-  async function _refreshAccessToken() {
-    const refresh_token = getRefreshToken();
-    if (!refresh_token) throw new Error('No refresh token');
-    const base = getBaseUrl();
-    const url = base + '/api/v1/auth/refresh';
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refresh_token })
+    // Attach bearer if we have it
+    const token = getAccessToken();
+    if (token && !headers.get("Authorization")) {
+      headers.set("Authorization", "Bearer " + token);
+    }
+
+    // Default JSON body handling
+    let body = o.body;
+    if (body && typeof body === "object" && !(body instanceof FormData) && !(body instanceof Blob)) {
+      headers.set("Content-Type", headers.get("Content-Type") || "application/json");
+      body = JSON.stringify(body);
+    }
+
+    const url = buildUrl(path);
+    const resp = await fetch(url, {
+      method: o.method || "GET",
+      headers,
+      body,
+      credentials: "same-origin", // safe default (cookie not required, but ok)
     });
-    const text = await res.text().catch(()=> '');
-    let data;
-    try { data = text ? JSON.parse(text) : null; } catch { data = { detail: text || null }; }
-    if (!res.ok) {
-      try { clearTokens(); } catch {}
-      const err = new Error((data && data.detail) ? (Array.isArray(data.detail) ? data.detail.join(' ') : String(data.detail)) : (`HTTP ${res.status}`));
-      err.status = res.status;
-      err.data = data;
-      throw err;
+
+    return resp;
+  }
+
+  // ---------- Auth endpoints ----------
+  // Expected endpoints (based on your earlier tests):
+  // - POST /api/v1/auth/login
+  // - POST /api/v1/auth/logout (optional)
+  // - GET  /api/v1/auth/me
+  // Some backends may return {access_token, refresh_token} or {access, refresh}.
+
+  function _extractTokens(payload) {
+    if (!payload || typeof payload !== "object") return { access: "", refresh: "" };
+    const access =
+      payload.access_token ||
+      payload.accessToken ||
+      payload.access ||
+      payload.token ||
+      "";
+    const refresh =
+      payload.refresh_token ||
+      payload.refreshToken ||
+      payload.refresh ||
+      "";
+    return { access: String(access || ""), refresh: String(refresh || "") };
+  }
+
+  async function login(email, password, tenant) {
+    const t = tenant || getTenant();
+    if (tenant) setTenant(tenant);
+
+    const payload = {
+      email: String(email || "").trim(),
+      password: String(password || ""),
+      tenant: String(t || "demo"),
+    };
+
+    // Try /api/v1/auth/login first (your current stack)
+    const resp = await apiFetch("/v1/auth/login", { method: "POST", body: payload });
+
+    const data = await _readJsonOrText(resp);
+    if (!resp.ok) {
+      const msg = (data && data.detail) ? data.detail : (typeof data === "string" ? data : "Login failed");
+      throw new Error(msg);
     }
-    if (!data || !data.access_token) {
-      try { clearTokens(); } catch {}
-      throw new Error('Refresh failed (no access_token)');
-    }
-    setTokens(data.access_token, data.refresh_token || refresh_token);
-    return data;
-  }
 
-  async function apiFetch(path, options = {}) {
-    const base = getBaseUrl();
-    const url = base + path;
-    // internal flag to avoid infinite refresh loops
-    const _retry = !!options._retry;
-    const safeOptions = Object.assign({}, options);
-    delete safeOptions._retry;
+    const toks = _extractTokens(data);
+    if (toks.access) setTokens(toks.access, toks.refresh);
+    _safeSet(LS_KEYS.email, payload.email);
 
-    const headers = Object.assign({ 'Content-Type': 'application/json' }, safeOptions.headers || {});
-
-    const token = getAccessToken();
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-
-    let res;
-    try {
-      res = await fetch(url, Object.assign({}, safeOptions, { headers }));
-    } catch (e) {
-      // When the backend isn't running (ERR_CONNECTION_REFUSED), don't crash the UI.
-      const err = new Error('API_OFFLINE');
-      err.code = 'API_OFFLINE';
-      err.cause = e;
-      throw err;
-    }
-
-    const text = await res.text();
-    let data;
-    try { data = text ? JSON.parse(text) : null; } catch { data = text; }
-    if (!res.ok) {
-      try {
-        const d = (data && data.detail) ? data.detail : null;
-        const detailStr = d ? (typeof d === "string" ? d : JSON.stringify(d)) : "";
-        const readonly = (res.status === 403) && ((typeof d === "object" && d && (d.code === "TENANT_READONLY")) || (/read-?only/i.test(detailStr)));
-        if (readonly) {
-          localStorage.setItem("TENANT_READONLY", "1");
-          try { if (typeof d === "object" && d && d.reasons) { localStorage.setItem("TENANT_READONLY_REASONS", JSON.stringify(d.reasons)); } } catch {}
-          window.dispatchEvent(new CustomEvent("tenant:readonly", { detail: { status: res.status, detail: d || detailStr } }));
-        }
-      } catch {}
-      // Auto-refresh once on 401 when a refresh token exists.
-      // Fixes: access token expired between page loads -> "Invalid token".
-      if (res.status === 401 && !_retry && !String(path).includes('/api/v1/auth/login') && !String(path).includes('/api/v1/auth/refresh') && getRefreshToken()) {
-        await _refreshAccessToken();
-        return apiFetch(path, Object.assign({}, options, { _retry: true }));
-      }
-
-      // If token is stale/invalid, reset client auth to avoid endless 401 loops.
-      if (res.status === 401 && !String(path).includes('/api/v1/auth/login') && !String(path).includes('/api/v1/auth/refresh')) {
-        try { clearTokens(); } catch (_) {}
-      }
-      const err = new Error((data && data.detail) ? JSON.stringify(data.detail) : (`HTTP ${res.status}`));
-      err.status = res.status;
-      err.data = data;
-      throw err;
-    }
-    return data;
-  }
-
-  function _decodeJwtPayload(token) {
-    try {
-      const parts = (token || '').split('.');
-      if (parts.length < 2) return null;
-      const b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-      const json = decodeURIComponent(atob(b64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
-      return JSON.parse(json);
-    } catch {
-      return null;
-    }
-  }
-
-  function getTenantId() {
-    const tok = getAccessToken();
-    const p = _decodeJwtPayload(tok);
-    return (p && (p.tenant_id || p.tenantId)) ? (p.tenant_id || p.tenantId) : '';
-  }
-
-  async function apiFetchForm(path, formData, options = {}) {
-    const base = getBaseUrl();
-    const url = base + path;
-    const headers = Object.assign({}, options.headers || {});
-    const token = getAccessToken();
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-    // Let the browser set Content-Type incl boundary
-    const res = await fetch(url, Object.assign({}, options, { method: options.method || 'POST', headers, body: formData }));
-    const text = await res.text();
-    let data;
-    try { data = text ? JSON.parse(text) : null; } catch { data = text; }
-    if (!res.ok) {
-      const err = new Error((data && data.detail) ? JSON.stringify(data.detail) : (`HTTP ${res.status}`));
-      err.status = res.status;
-      err.data = data;
-      throw err;
-    }
-    return data;
-  }
-
-  async function apiFetchBlob(path) {
-    const base = getBaseUrl();
-    const url = base + path;
-    const headers = {};
-    const token = getAccessToken();
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-    const res = await fetch(url, { method: 'GET', headers });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const blob = await res.blob();
-    return { blob, filename: (res.headers.get('content-disposition')||'') };
-  }
-
-  async function health() {
-    // Use the stable infra endpoint.
-    // /api/v1/health may be protected/unstable during deploys and is not needed for UI.
-    return await apiFetch('/health', { method: 'GET' });
-  }
-
-  async function login({ email, password, tenant }) {
-    const body = { email, password, tenant };
-    const data = await apiFetch('/api/v1/auth/login', { method: 'POST', body: JSON.stringify(body) });
-    setTokens(data.access_token, data.refresh_token);
-    setTenant(tenant);
-    setUserEmail(email);
-    return data;
-  }
-
-  async function me() {
-    // Avoid spamming 401 when starting the UI without tokens.
-    const access_token = getAccessToken();
-    const refresh_token = getRefreshToken();
-    if (!access_token && !refresh_token) return null;
-
-    const data = await apiFetch('/api/v1/auth/me', { method: 'GET' });
-    if (data && data.email) setUserEmail(data.email);
-    return data;
-  }
-
-  async function tenantStatus() {
-    return apiFetch('/api/v1/tenant/status', { method: 'GET' });
-  }
-
-
-  async function refresh() {
-    const refresh_token = getRefreshToken();
-    if (!refresh_token) throw new Error('No refresh token');
-    const data = await apiFetch('/api/v1/auth/refresh', { method: 'POST', body: JSON.stringify({ refresh_token }) });
-    setTokens(data.access_token, data.refresh_token);
-    return data;
+    return { ok: true, data };
   }
 
   async function logout() {
-    const refresh_token = getRefreshToken();
+    // Try to call backend logout, but always clear local tokens
     try {
-      if (refresh_token) {
-        await apiFetch('/api/v1/auth/logout', { method: 'POST', body: JSON.stringify({ refresh_token }) });
-      }
-    } finally {
-      clearTokens();
-    }
+      await apiFetch("/v1/auth/logout", { method: "POST" });
+    } catch (_) {}
+    clearTokens();
+    return { ok: true };
   }
 
-  window.Auth = {
+  async function me() {
+    const resp = await apiFetch("/v1/auth/me", { method: "GET" });
+    const data = await _readJsonOrText(resp);
+    if (!resp.ok) {
+      const msg = (data && data.detail) ? data.detail : (typeof data === "string" ? data : "Not logged in");
+      const err = new Error(msg);
+      err.status = resp.status;
+      throw err;
+    }
+    return data;
+  }
+
+  // ---------- UI helpers (optional) ----------
+  function isLoggedIn() {
+    return !!getAccessToken();
+  }
+
+  // Expose globally so other scripts can call it
+  window.NEN1090Auth = {
+    // base url
     getBaseUrl,
     setBaseUrl,
+
+    // tenant
     getTenant,
     setTenant,
-    getUserEmail,
-    isLoggedIn,
+
+    // tokens
     getAccessToken,
     getRefreshToken,
+    setTokens,
     clearTokens,
-    health,
+
+    // api wrapper
+    apiFetch,
+
+    // auth
     login,
-    me,
-    tenantStatus,
-    refresh,
     logout,
-    // Projects API (Phase 3.1)
-    projects: {
-      list: () => apiFetch('/api/v1/projects', { method: 'GET' }),
-      create: (payload) => apiFetch('/api/v1/projects', { method: 'POST', body: JSON.stringify(payload) }),
-      update: (id, payload) => apiFetch(`/api/v1/projects/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
-      patch: (id, payload) => apiFetch(`/api/v1/projects/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
-      remove: (id) => apiFetch(`/api/v1/projects/${id}`, { method: 'DELETE' }),
-      seedDemo: () => apiFetch('/api/v1/projects/seed_demo', { method: 'POST' }),
-      clearAll: () => apiFetch('/api/v1/projects', { method: 'DELETE' }),
-    },
-    // Welds API (Phase 3.2)
-    welds: {
-      list: (projectId) => apiFetch(`/api/v1/projects/${projectId}/welds`, { method: 'GET' }),
-      create: (projectId, payload) => apiFetch(`/api/v1/projects/${projectId}/welds`, { method: 'POST', body: JSON.stringify(payload) }),
-      update: (projectId, weldId, payload) => apiFetch(`/api/v1/projects/${projectId}/welds/${weldId}`, { method: 'PATCH', body: JSON.stringify(payload) }),
-      remove: (projectId, weldId) => apiFetch(`/api/v1/projects/${projectId}/welds/${weldId}`, { method: 'DELETE' }),
-      seedDemo: () => apiFetch('/api/v1/welds/seed_demo', { method: 'POST' }),
-      clearAll: () => apiFetch('/api/v1/welds', { method: 'DELETE' }),
-    },
+    me,
 
-    // Inspections API (Phase 3.3)
-    inspections: {
-      getForWeld: (weldUuid) => apiFetch(`/api/v1/welds/${weldUuid}/inspection`, { method: 'GET' }),
-      createForWeld: (weldUuid, payload) => apiFetch(`/api/v1/welds/${weldUuid}/inspection`, { method: 'POST', body: JSON.stringify(payload) }),
-      upsertForWeld: (weldUuid, payload) => apiFetch(`/api/v1/welds/${weldUuid}/inspection`, { method: 'PUT', body: JSON.stringify(payload) }),
-      updateById: (inspectionId, payload) => apiFetch(`/api/v1/inspections/${inspectionId}`, { method: 'PUT', body: JSON.stringify(payload) }),
-      resetToNormForWeld: (weldUuid, payload) => apiFetch(`/api/v1/welds/${weldUuid}/inspection/reset-to-norm`, { method: 'POST', body: JSON.stringify(payload||{}) }),
-    },
-
-    // Settings masterdata (WPS/WPQR, Materialen, Lassers)
-    settings: {
-      wps: {
-        list: () => apiFetch('/api/v1/settings/wps', { method: 'GET' }),
-        create: (payload) => apiFetch('/api/v1/settings/wps', { method: 'POST', body: JSON.stringify(payload) }),
-        patch: (id, payload) => apiFetch(`/api/v1/settings/wps/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
-        remove: (id) => apiFetch(`/api/v1/settings/wps/${id}`, { method: 'DELETE' }),
-      },
-      materials: {
-        list: () => apiFetch('/api/v1/settings/materials', { method: 'GET' }),
-        create: (payload) => apiFetch('/api/v1/settings/materials', { method: 'POST', body: JSON.stringify(payload) }),
-        patch: (id, payload) => apiFetch(`/api/v1/settings/materials/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
-        remove: (id) => apiFetch(`/api/v1/settings/materials/${id}`, { method: 'DELETE' }),
-      },
-      welders: {
-        list: () => apiFetch('/api/v1/settings/welders', { method: 'GET' }),
-        create: (payload) => apiFetch('/api/v1/settings/welders', { method: 'POST', body: JSON.stringify(payload) }),
-        patch: (id, payload) => apiFetch(`/api/v1/settings/welders/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
-        remove: (id) => apiFetch(`/api/v1/settings/welders/${id}`, { method: 'DELETE' }),
-      },
-    },
-
-    // Phase 1: EXC templates + bulk add from settings
-    phase1: {
-      listInspectionTemplates: (exc) => apiFetch(`/api/v1/settings/inspection-templates${exc ? `?exc=${encodeURIComponent(exc)}` : ''}`, { method: 'GET' }),
-      createInspectionTemplate: (payload) => apiFetch(`/api/v1/settings/inspection-templates`, { method: 'POST', body: JSON.stringify(payload) }),
-      patchInspectionTemplate: (id, payload) => apiFetch(`/api/v1/settings/inspection-templates/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
-      applyInspectionTemplate: (projectId, payload) => apiFetch(`/api/v1/projects/${projectId}/apply-inspection-template`, { method: 'POST', body: JSON.stringify(payload) }),
-
-      addAllWps: (projectId) => apiFetch(`/api/v1/projects/${projectId}/add-all-wps`, { method: 'POST' }),
-      addAllMaterials: (projectId) => apiFetch(`/api/v1/projects/${projectId}/add-all-materials`, { method: 'POST' }),
-      addAllWelders: (projectId) => apiFetch(`/api/v1/projects/${projectId}/add-all-welders`, { method: 'POST' }),
-      addAllLascontrole: (projectId) => apiFetch(`/api/v1/projects/${projectId}/add-all-lascontrole`, { method: 'POST' }),
-
-      selectedWps: (projectId) => apiFetch(`/api/v1/projects/${projectId}/selected/wps`, { method: 'GET' }),
-      selectedMaterials: (projectId) => apiFetch(`/api/v1/projects/${projectId}/selected/materials`, { method: 'GET' }),
-      selectedWelders: (projectId) => apiFetch(`/api/v1/projects/${projectId}/selected/welders`, { method: 'GET' }),
-    },
-
-    // Phase 2: Attachments (uniform)
-    attachments: {
-      tenantId: () => getTenantId(),
-      upload: ({ files, scope_type, scope_id, kind, meta, valid_until }) => {
-        const fd = new FormData();
-        (files || []).forEach(f => fd.append('files', f));
-        fd.append('scope_type', scope_type);
-        fd.append('scope_id', scope_id);
-        fd.append('kind', kind || 'other');
-        if (meta) fd.append('meta', typeof meta === 'string' ? meta : JSON.stringify(meta));
-        if (valid_until) fd.append('valid_until', valid_until);
-        return apiFetchForm('/api/v1/attachments/upload', fd, { method: 'POST' });
-      },
-      list: ({ scope_type, scope_id, kind }) => {
-        const qs = new URLSearchParams();
-        if (scope_type) qs.set('scope_type', scope_type);
-        if (scope_id) qs.set('scope_id', scope_id);
-        if (kind) qs.set('kind', kind);
-        return apiFetch(`/api/v1/attachments?${qs.toString()}`, { method: 'GET' });
-      },
-      remove: (id) => apiFetch(`/api/v1/attachments/${id}`, { method: 'DELETE' }),
-      downloadBlob: (id) => apiFetchBlob(`/api/v1/attachments/${id}/download`),
-    },
-
-    // Phase 3: Lascontrole bulk approve
-    phase3: {
-      approveAllLascontrole: (projectId, payload) => apiFetch(`/api/v1/projects/${projectId}/lascontrole/approve_all`, { method: 'POST', body: JSON.stringify(payload) }),
-    },
-
-    // low-level helper (kept private-ish but useful for debugging)
-    _apiFetch: apiFetch,
+    // state
+    isLoggedIn,
   };
+
+  // Small console hint for debugging
+  try {
+    // Only log once
+    if (!window.__NEN1090_AUTH_READY__) {
+      window.__NEN1090_AUTH_READY__ = true;
+      console.log("[NEN1090Auth] ready. API_BASE =", getBaseUrl());
+    }
+  } catch (_) {}
 })();
