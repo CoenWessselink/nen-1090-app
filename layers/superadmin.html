@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="../css/theme.css" />
+  <title>Klantbeheer</title>
+</head>
+<body data-title="Klantbeheer (Superadmin)">
+  <div class="panel-head">
+    <div class="panel-tools">
+      <input class="input" id="q" placeholder="Zoek tenant" />
+      <button class="btn" id="btnRefresh">Vernieuwen</button>
+      <button class="btn" id="btnNewTenant">Nieuwe tenant</button>
+      <button class="btn" id="btnExportCsv">Export CSV</button>
+    </div>
+    <div class="kbd">Dubbelklik tenant → 360° • Alleen zichtbaar voor role: platform_admin</div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Tenant</th>
+          <th>Status</th>
+          <th>Actief</th>
+          <th>Trial tot</th>
+          <th>Geldig tot</th>
+          <th>Seats</th>
+          <th>Users</th>
+          <th>Billing</th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+
+  <div class="footerbar">
+    <div id="count">0 tenants</div>
+    <div class="pagination">
+      <button class="pagebtn" disabled>‹</button>
+      <span>1</span>
+      <button class="pagebtn" disabled>›</button>
+    </div>
+  </div>
+
+  <script src="../js/core/store.js"></script>
+  <script src="../js/core/ui.js"></script>
+  <script src="../js/core/auth_client.js"></script>
+  <script src="../js/core/shell.js"></script>
+  <script src="../js/core/apps_menu.js"></script>
+  <script src="../js/superadmin.js"></script>
+  <script>
+    Shell.mount();
+  </script>
+</body>
+</html>

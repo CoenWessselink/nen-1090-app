@@ -1,0 +1,1027 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="../css/theme.css" />
+  <title>Instellingen</title>
+</head>
+<body data-title="Instellingen">
+  <div class="panel-head">
+    <div class="panel-tools">
+      <button class="btn" id="btnApps">Apps</button>
+      <input class="input" id="q" placeholder="Zoek in instellingen" />
+    </div>
+    <div class="kbd">Tabs volgens prompt (Bedrijf/Werknemers/Certificaten/Keuzelijsten)</div>
+  </div>
+
+  <div class="tabs" id="tabs"></div>
+
+  <div class="tiles" id="content"></div>
+
+  <script src="../js/core/store.js"></script>
+  <script src="../js/core/permissions.js"></script>
+  <script src="../js/core/ui.js"></script>
+  <script src="../js/core/apps_menu.js"></script>
+  <script src="../js/core/export.js"></script>
+  <script src="../js/core/auth_client.js"></script>
+  <script src="../js/core/shell.js"></script>
+
+  <script>
+    Shell.mount();
+
+    const TABDEF = [
+      {k:"bedrijf", label:"Bedrijf"},
+      {k:"werknemers", label:"Werknemers"},
+      {k:"certificaten", label:"Certificaten"},
+      {k:"keuzelijsten", label:"Keuzelijsten"}
+    ];
+
+    function getTab(){
+      const st = window.CWS.getState();
+      return st.ui.view.instellingenTab || "bedrijf";
+    }
+    function setTab(k){
+      const st = window.CWS.getState();
+      st.ui.view.instellingenTab = k;
+      window.CWS.setState(st);
+      render();
+    }
+
+    function renderTabs(){
+      const wrap = document.getElementById("tabs");
+      const active = getTab();
+      wrap.innerHTML = TABDEF.map(t=>(
+        '<div class="tab '+(t.k===active?'active':'')+'" data-k="'+t.k+'">'+UI.esc(t.label)+'</div>'
+      )).join("");
+      wrap.onclick = (e)=>{
+        const el = e.target.closest(".tab");
+        if(!el) return;
+        setTab(el.getAttribute("data-k"));
+      };
+    }
+
+    function tableWrap(html){
+      return '<div class="table-wrap">'+html+'</div>';
+    }
+
+    function viewBedrijf(st, q){
+      const c = st.settings.company || {name:"",address:"",email:"",phone:""};
+      const match = (c.name+" "+c.address+" "+c.email+" "+c.phone).toLowerCase().includes(q);
+      if(q && !match) return '<div class="tiles"><div class="card">Geen resultaten.</div></div>';
+
+      const html = `
+
+        <div class="card" style="margin-bottom:12px">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap">
+            <div>
+              <div style="font-weight:800">API & Omgeving</div>
+              <div class="smallmuted">Stel de API Base URL in voor deze browser (localStorage). Voor productie bv. https://api.nen1090.nl</div>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap">
+              <input class="input" id="apiBaseUrl" style="min-width:320px" placeholder="https://api.nen1090.nl" />
+              <button class="btn" id="btnSaveApiBaseUrl">Opslaan</button>
+              <button class="btn" id="btnResetApiBaseUrl">Reset</button>
+              <button class="btn" id="btnTestApiBaseUrl">Test verbinding</button>
+              <span class="smallmuted" id="apiTestResult" style="margin-left:8px"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel-head">
+          <div class="panel-tools">
+            <button class="btn" id="btnEditCompany">Bewerk</button>
+          </div>
+          <div class="kbd">Dubbelklik op de rij om te bewerken.</div>
+        </div>
+        ${tableWrap(`
+          <table>
+            <thead><tr><th>Naam</th><th>Adres</th><th>Email</th><th>Telefoon</th><th>Actie</th></tr></thead>
+            <tbody id="companyRows">
+              <tr data-id="company">
+                <td>${UI.esc(c.name)}</td>
+                <td>${UI.esc(c.address)}</td>
+                <td>${UI.esc(c.email)}</td>
+                <td>${UI.esc(c.phone)}</td>
+                <td><button class="smallbtn" data-act="edit">Edit</button></td>
+              </tr>
+            </tbody>
+          </table>
+        `)}
+
+        <div class="card" style="margin-top:12px">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:12px">
+            <div>
+              <div style="font-weight:800">Bedrijfscertificaten</div>
+              <div class="smallmuted">Upload meerdere documenten, beheer en verwijder. Scope = company, kind = certificate.</div>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center">
+              <select class="input" id="companyCertType" style="min-width:190px">
+                <option value="EN1090">EN1090</option>
+                <option value="ISO3834">ISO3834</option>
+                <option value="IWT/IWE">IWT/IWE</option>
+                <option value="ISO9606">ISO9606</option>
+                <option value="Overig" selected>Overig</option>
+              </select>
+              <input class="input" type="file" id="companyCertFiles" multiple />
+              <button class="btn" id="btnUploadCompanyCerts">Upload certificaten</button>
+            </div>
+          </div>
+          <div class="table-wrap" style="margin-top:10px">
+            <table>
+              <thead>
+                <tr>
+                  <th>Bestandsnaam</th>
+                  <th>Type</th>
+                  <th>Geldig tot</th>
+                  <th>Upload datum</th>
+                  <th>Acties</th>
+                </tr>
+              </thead>
+              <tbody id="companyCertRows">
+                <tr><td colspan="5" class="smallmuted">Nog geen certificaten (of niet ingelogd).</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+      return html;
+    }
+
+    function viewWerknemers(st, q){
+      const ids = (st.settings.workers?.order||[]);
+      const list = ids.map(id=>st.settings.workers.byId[id]).filter(Boolean)
+        .filter(w=>!q || ((w.id+" "+w.naam+" "+w.rol).toLowerCase().includes(q)));
+
+      const rows = list.map(w=>`
+        <tr data-id="${UI.esc(w.id)}">
+          <td>${UI.esc(w.id)}</td>
+          <td>${UI.esc(w.naam||"")}</td>
+          <td>${UI.esc(w.rol||"")}</td>
+          <td>${UI.esc(w.geldigTot||"")}</td>
+          <td><button class="smallbtn" data-act="edit">Edit</button> <button class="smallbtn" data-act="del">Verwijderen</button></td>
+        </tr>
+      `).join("") || '<tr><td colspan="5" class="smallmuted">Geen werknemers.</td></tr>';
+
+      return `
+        <div class="panel-head">
+          <div class="panel-tools">
+            <button class="btn" id="btnNewWorker">Nieuw</button>
+            <button class="btn" id="btnWorkerCols">Kolommen</button>
+          </div>
+          <div class="kbd">Dubbelklik op een werknemer om te bewerken.</div>
+        </div>
+        ${tableWrap(`
+          <table>
+            <thead><tr id="workerHead"></tr></thead>
+            <tbody id="workerRows">${rows}</tbody>
+          </table>
+        `)}
+      `;
+    }
+
+    function viewCertificaten(st, q){
+      const list = Object.values(st.certs?.byId||{}).filter(Boolean)
+        .filter(c=>!q || ((c.id+" "+(c.name||"")+" "+(c.type||"")+" "+(c.ref||"")).toLowerCase().includes(q)));
+
+      const rows = list.map(c=>`
+        <tr data-id="${UI.esc(c.id)}">
+          <td>${UI.esc(c.type||"")}</td>
+          <td>${UI.esc(c.id)}</td>
+          <td>${UI.esc(c.name||"")}</td>
+          <td>${UI.esc(c.ref||"")}</td>
+          <td>${UI.esc(c.validTo||"")}</td>
+          <td><button class="smallbtn" data-act="edit">Edit</button> <button class="smallbtn" data-act="del">Verwijderen</button></td>
+        </tr>
+      `).join("") || '<tr><td colspan="6" class="smallmuted">Geen certificaten.</td></tr>';
+
+      return `
+        <div class="panel-head">
+          <div class="panel-tools">
+            <button class="btn" id="btnNewCert">Nieuw</button>
+            <button class="btn" id="btnCertCols">Kolommen</button>
+          </div>
+          <div class="kbd">Dubbelklik op een certificaat om te bewerken.</div>
+        </div>
+        ${tableWrap(`
+          <table>
+            <thead><tr id="certHead"></tr></thead>
+            <tbody id="settingsCertRows">${rows}</tbody>
+          </table>
+        `)}
+      `;
+    }
+
+    function listCard(title, key, values){
+      const rows = (values||[]).map((v, i)=>`<tr data-id="${i}"><td>${UI.esc(v)}</td><td><button class="smallbtn" data-act="edit">Edit</button> <button class="smallbtn" data-act="del">Verwijderen</button></td></tr>`).join("")
+        || '<tr><td colspan="2" class="smallmuted">Leeg.</td></tr>';
+      return `
+        <div class="card">
+          <div class="panel-head" style="margin:-10px -10px 10px -10px;">
+            <div class="panel-tools">
+              <span class="pillmini">${UI.esc(title)}</span>
+              <button class="btn" data-list-new="${UI.esc(key)}">Nieuw</button>
+            </div>
+            <div class="kbd">Dubbelklik op een rij om te bewerken.</div>
+          </div>
+          ${tableWrap(`
+            <table>
+              <thead><tr><th>Waarde</th><th>Actie</th></tr></thead>
+              <tbody data-list-body="${UI.esc(key)}">${rows}</tbody>
+            </table>
+          `)}
+        </div>
+      `;
+    }
+
+    function viewKeuzelijsten(st, q){
+      const lists = st.settings.lists || {};
+      // filter cards by q
+      const cards = [
+        ["Lasprocessen (ISO 4063)","processes", lists.processes||[]],
+        ["NDO-methoden","ndoMethods", lists.ndoMethods||[]],
+        ["Materialen","materials", lists.materials||[]],
+        ["Toevoegmaterialen","fillerMaterials", lists.fillerMaterials||[]],
+      ].filter(([t,k,arr])=>{
+        if(!q) return true;
+        const s = (t+" "+(arr||[]).join(" ")).toLowerCase();
+        return s.includes(q);
+      }).map(([t,k,arr])=>listCard(t,k,arr)).join("");
+
+      return `<div class="tiles"><div class="tilegrid">${cards || '<div class="card">Geen resultaten.</div>'}</div></div>`;
+    }
+
+    function render(){
+      renderTabs();
+      const st = window.CWS.getState();
+      const tab = getTab();
+      const q = (document.getElementById("q").value||"").toLowerCase().trim();
+
+      let html = "";
+      if(tab==="bedrijf") html = viewBedrijf(st, q);
+      if(tab==="werknemers") html = viewWerknemers(st, q);
+      if(tab==="certificaten") html = viewCertificaten(st, q);
+      if(tab==="keuzelijsten") html = viewKeuzelijsten(st, q);
+
+      document.getElementById("content").innerHTML = html;
+
+      bind(tab);
+    }
+
+    function getColsCfg(stateKey, cols){
+      const st = window.CWS.getState();
+      st.ui.view = st.ui.view || {};
+      const cfg = st.ui.view[stateKey] || { order: cols.map(c=>c.key), hidden: [] };
+      const order = (cfg.order||[]).filter(k=>cols.some(c=>c.key===k));
+      cols.forEach(c=>{ if(!order.includes(c.key)) order.push(c.key); });
+      const hidden = new Set(cfg.hidden||[]);
+      const visible = order.filter(k=>!hidden.has(k));
+      return {order, hidden, visible};
+    }
+
+    function renderDynTable(headEl, bodyEl, stateKey, cols, items, rowIdFn){
+      const cfg = getColsCfg(stateKey, cols);
+      headEl.innerHTML = cfg.visible.map(k=>`<th data-k="${UI.esc(k)}" draggable="true">${UI.esc(cols.find(c=>c.key===k).label)}</th>`).join("");
+      bodyEl.innerHTML = items.length ? items.map(it=>{
+        const id = rowIdFn(it);
+        return `<tr data-id="${UI.esc(id)}">` + cfg.visible.map(k=>{
+          const col = cols.find(c=>c.key===k);
+          return `<td>${col ? col.cell(it) : ""}</td>`;
+        }).join("") + `</tr>`;
+      }).join("") : `<tr><td colspan="${cfg.visible.length||1}" class="smallmuted">Geen items.</td></tr>`;
+
+      let drag=null;
+      headEl.ondragstart = (e)=>{ const th=e.target.closest("th[data-k]"); if(!th) return; drag=th; e.dataTransfer.effectAllowed="move"; };
+      headEl.ondragover = (e)=>{ e.preventDefault(); const th=e.target.closest("th[data-k]"); if(!th||!drag||th===drag) return;
+        const rect=th.getBoundingClientRect(); const before=(e.clientX-rect.left)<rect.width/2;
+        headEl.insertBefore(drag, before?th:th.nextSibling);
+      };
+      headEl.ondrop = (e)=>{ e.preventDefault(); if(!drag) return;
+        const newOrder=[...headEl.querySelectorAll("th[data-k]")].map(x=>x.getAttribute("data-k"));
+        const st2=window.CWS.getState(); st2.ui.view=st2.ui.view||{};
+        const old=st2.ui.view[stateKey]||{order:cols.map(c=>c.key),hidden:[]};
+        const hidden=old.hidden||[];
+        st2.ui.view[stateKey]={order:[...newOrder, ...hidden.filter(k=>!newOrder.includes(k))], hidden};
+        window.CWS.setState(st2); drag=null; render();
+      };
+    }
+
+    function bind(tab){
+      const st = window.CWS.getState();
+
+      
+      if(tab==="bedrijf"){
+        // ----- Phase 9: API Base URL (per browser) -----
+        const apiInp = document.getElementById("apiBaseUrl");
+        const btnSaveApi = document.getElementById("btnSaveApiBaseUrl");
+        const btnResetApi = document.getElementById("btnResetApiBaseUrl");
+        if(apiInp){
+          const cur = (localStorage.getItem("nen1090.api.baseUrl") || localStorage.getItem("API_BASE_URL") || window.__API_BASE_URL__ || "https://api.nen1090.nl").replace(/\/$/, "");
+          apiInp.value = cur;
+        }
+        if(btnSaveApi){
+          btnSaveApi.onclick = ()=>{
+            const v = (apiInp?.value || "").trim().replace(/\/$/, "");
+            if(!v){ UI.toast("Geen URL ingevuld."); return; }
+            localStorage.setItem("nen1090.api.baseUrl", v);
+            localStorage.setItem("API_BASE_URL", v);
+            UI.toast("API Base URL opgeslagen.");
+          };
+        }
+        if(btnResetApi){
+          btnResetApi.onclick = ()=>{
+            localStorage.removeItem("nen1090.api.baseUrl");
+            localStorage.removeItem("API_BASE_URL");
+            UI.toast("API Base URL gereset.");
+            if(apiInp) apiInp.value = (window.__API_BASE_URL__ || "https://api.nen1090.nl").replace(/\/$/, "");
+          };
+        }
+
+        const open = ()=>{
+          const c = (window.CWS.getState().settings.company||{});
+          UI.modalForm({
+            title:"Bedrijf bewerken",
+            submitLabel:"Opslaan",
+            values:c,
+            fields:[
+              {key:"name", label:"Naam"},
+              {key:"address", label:"Adres", type:"textarea", rows:3},
+              {key:"email", label:"Email"},
+              {key:"phone", label:"Telefoon"}
+            ],
+            onSubmit:(v)=>{
+              window.CWS.updateCompany(v);
+              UI.toast("Opgeslagen.");
+              render();
+            }
+          });
+        };
+        document.getElementById("btnEditCompany").onclick = open;
+
+        // ----- Phase 2: Company certificates (attachments) -----
+        const certRows = document.getElementById('companyCertRows');
+        const btnUpload = document.getElementById('btnUploadCompanyCerts');
+        const inpFiles = document.getElementById('companyCertFiles');
+        const selType = document.getElementById('companyCertType');
+
+        async function refreshCompanyCerts(){
+          if(!certRows) return;
+          try{
+            const tid = (window.Auth && window.Auth.attachments && window.Auth.attachments.tenantId) ? window.Auth.attachments.tenantId() : '';
+            if(!tid){
+              certRows.innerHTML = '<tr><td colspan="5" class="smallmuted">Niet ingelogd (geen tenant_id). Log in om certificaten te beheren.</td></tr>';
+              return;
+            }
+            const items = await window.Auth.attachments.list({scope_type:'company', scope_id:tid, kind:'certificate'});
+            if(!items || !items.length){
+              certRows.innerHTML = '<tr><td colspan="5" class="smallmuted">Nog geen certificaten.</td></tr>';
+              return;
+            }
+            certRows.innerHTML = items.map(a=>{
+              const meta = (()=>{ try{return a.meta||{};}catch{return {};}})();
+              const ctype = meta.certificate_type || meta.type || '';
+              return `
+                <tr data-id="${UI.esc(a.id)}">
+                  <td>${UI.esc(a.filename||'')}</td>
+                  <td>${UI.esc(ctype||'')}</td>
+                  <td>${UI.esc(a.valid_until||'')}</td>
+                  <td>${UI.esc((a.uploaded_at||'').replace('T',' ').replace('Z',''))}</td>
+                  <td>
+                    <button class="smallbtn" data-act="dl">Download</button>
+                    <button class="smallbtn" data-act="del">Verwijderen</button>
+                  </td>
+                </tr>
+              `;
+            }).join('');
+          }catch(err){
+            certRows.innerHTML = '<tr><td colspan="5" class="smallmuted">Kon certificaten niet laden.</td></tr>';
+            console.warn('attachments list failed', err);
+          }
+        }
+
+        if(btnUpload){
+          btnUpload.onclick = async ()=>{
+            try{
+              const files = Array.from((inpFiles && inpFiles.files) ? inpFiles.files : []);
+              if(!files.length){ UI.toast('Kies eerst één of meerdere bestanden.'); return; }
+              const tid = window.Auth.attachments.tenantId();
+              const certType = (selType && selType.value) ? selType.value : 'Overig';
+              btnUpload.disabled = true;
+              const res = await window.Auth.attachments.upload({
+                files,
+                scope_type:'company',
+                scope_id:tid,
+                kind:'certificate',
+                meta:{certificate_type: certType}
+              });
+              if(inpFiles) inpFiles.value = '';
+              UI.toast(`Geüpload: ${(res && res.length) ? res.length : 0}`);
+              await refreshCompanyCerts();
+            }catch(err){
+              UI.toast('Upload mislukt.');
+              console.warn('upload failed', err);
+            }finally{
+              btnUpload.disabled = false;
+            }
+          };
+        }
+
+        if(certRows){
+          certRows.onclick = async (e)=>{
+            const tr = e.target.closest('tr[data-id]');
+            if(!tr) return;
+            const id = tr.getAttribute('data-id');
+            const act = (e.target.closest('button')||{}).getAttribute('data-act');
+            if(act==='del'){
+              if(!confirm('Certificaat verwijderen?')) return;
+              try{ await window.Auth.attachments.remove(id); UI.toast('Verwijderd.'); await refreshCompanyCerts(); }
+              catch(err){ UI.toast('Verwijderen mislukt.'); console.warn(err); }
+            }
+            if(act==='dl'){
+              try{
+                const blob = await window.Auth.attachments.downloadBlob(id);
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'certificaat';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                setTimeout(()=>URL.revokeObjectURL(url), 2000);
+              }catch(err){ UI.toast('Download mislukt.'); console.warn(err); }
+            }
+          };
+          refreshCompanyCerts();
+        }
+        const body = document.getElementById("companyRows");
+        if(body){
+          UI.bindRowDblClick(body, ()=>open());
+          body.onclick = (e)=>{
+            const btn = e.target.closest("button[data-act='edit']");
+            if(btn) open();
+          };
+        }
+      }
+
+      if(tab==="werknemers"){
+        const body = document.getElementById("workerRows");
+        const head = document.getElementById("workerHead");
+        const st0 = window.CWS.getState();
+        const ids = (st0.settings.workers?.order||[]);
+        const q = (document.getElementById("q").value||"").toLowerCase().trim();
+        const items = ids.map(id=>st0.settings.workers.byId[id]).filter(Boolean).filter(w=>!q || ((w.id+" "+w.naam+" "+w.rol+" "+(w.email||"")).toLowerCase().includes(q)));
+        const WCOLS = [
+          {key:"id", label:"ID", cell:(w)=>UI.esc(w.id)},
+          {key:"naam", label:"Naam", cell:(w)=>UI.esc(w.naam||"")},
+          {key:"rol", label:"Rol", cell:(w)=>UI.esc(w.rol||"")},
+          {key:"telefoon", label:"Telefoon", cell:(w)=>UI.esc(w.telefoon||"")},
+          {key:"email", label:"Email", cell:(w)=>UI.esc(w.email||"")},
+          {key:"adres", label:"Adres", cell:(w)=>UI.esc(w.adres||"")},
+          {key:"postcode", label:"Postcode", cell:(w)=>UI.esc(w.postcode||"")},
+          {key:"woonplaats", label:"Woonplaats", cell:(w)=>UI.esc(w.woonplaats||"")},
+          // kwalificatie-samenvatting (volgens 'Summary of Welding Qualification' layout)
+          {key:"certificaten", label:"Certificaten (#)", cell:(w)=>{
+            const st = window.CWS.getState();
+            const cs = Object.values(st.certs?.byId||{}).filter(c=>c && c.type==="lassers" && (c.welderId===w.id));
+            return UI.esc(String(cs.length));
+          }},
+          {key:"certificateNo", label:"Certificate No.", cell:(w)=>{
+            const st = window.CWS.getState();
+            const cs = Object.values(st.certs?.byId||{}).filter(c=>c && c.type==="lassers" && (c.welderId===w.id));
+            return UI.esc(cs.map(c=>c.certificateNo||c.id).slice(0,2).join(", ") + (cs.length>2?" …":""));
+          }},
+          {key:"weldingProcess", label:"Welding process", cell:(w)=>{
+            const st = window.CWS.getState();
+            const cs = Object.values(st.certs?.byId||{}).filter(c=>c && c.type==="lassers" && (c.welderId===w.id));
+            const u = [...new Set(cs.map(c=>c.weldingProcess).filter(Boolean))];
+            return UI.esc(u.join(", "));
+          }},
+          {key:"typeOfWeld", label:"Type of weld", cell:(w)=>{
+            const st = window.CWS.getState();
+            const cs = Object.values(st.certs?.byId||{}).filter(c=>c && c.type==="lassers" && (c.welderId===w.id));
+            const u = [...new Set(cs.map(c=>c.typeOfWeld).filter(Boolean))];
+            return UI.esc(u.join(", "));
+          }},
+          {key:"baseMetal", label:"Base metal", cell:(w)=>{
+            const st = window.CWS.getState();
+            const cs = Object.values(st.certs?.byId||{}).filter(c=>c && c.type==="lassers" && (c.welderId===w.id));
+            const u = [...new Set(cs.map(c=>c.baseMetal).filter(Boolean))];
+            return UI.esc(u.join(", "));
+          }},
+          {key:"fillerMaterial", label:"Filler material", cell:(w)=>{
+            const st = window.CWS.getState();
+            const cs = Object.values(st.certs?.byId||{}).filter(c=>c && c.type==="lassers" && (c.welderId===w.id));
+            const u = [...new Set(cs.map(c=>c.fillerMaterial).filter(Boolean))];
+            return UI.esc(u.join(", "));
+          }},
+          {key:"weldingPositions", label:"Welding positions", cell:(w)=>{
+            const st = window.CWS.getState();
+            const cs = Object.values(st.certs?.byId||{}).filter(c=>c && c.type==="lassers" && (c.welderId===w.id));
+            const u = [...new Set(cs.map(c=>c.weldingPositions).filter(Boolean))];
+            return UI.esc(u.join(", "));
+          }},
+          {key:"thicknessRange", label:"Range material thickness", cell:(w)=>{
+            const st = window.CWS.getState();
+            const cs = Object.values(st.certs?.byId||{}).filter(c=>c && c.type==="lassers" && (c.welderId===w.id));
+            const u = [...new Set(cs.map(c=>c.thicknessRange).filter(Boolean))];
+            return UI.esc(u.join(", "));
+          }},
+          {key:"diameterRange", label:"Range outside pipe diameter", cell:(w)=>{
+            const st = window.CWS.getState();
+            const cs = Object.values(st.certs?.byId||{}).filter(c=>c && c.type==="lassers" && (c.welderId===w.id));
+            const u = [...new Set(cs.map(c=>c.diameterRange).filter(Boolean))];
+            return UI.esc(u.join(", "));
+          }},
+          {key:"certValidTo", label:"Valid until (cert)", cell:(w)=>{
+            const st = window.CWS.getState();
+            const cs = Object.values(st.certs?.byId||{}).filter(c=>c && c.type==="lassers" && (c.welderId===w.id));
+            const dates = cs.map(c=>c.validTo).filter(Boolean).sort();
+            return UI.esc(dates.length ? dates[dates.length-1] : "");
+          }},
+          {key:"actie", label:"Actie", cell:()=>'<button class="smallbtn" data-act="edit">Edit</button> <button class="smallbtn" data-act="del">Verwijderen</button>'}
+        ];
+        if(head && body) renderDynTable(head, body, "settingsWorkersCols", WCOLS, items, (x)=>x.id);
+
+        const open = (id, isNew=false)=>{
+          const st2 = window.CWS.getState();
+          let w0 = st2.settings.workers.byId[id];
+          if(!w0){
+            if(!isNew) return;
+            w0 = { id: id, naam:'', rol:'Lasser', email:'', telefoon:'', adres:'', postcode:'', woonplaats:'', geldigTot:'', certPdfName:'', certPdfMime:'', certPdfDataUrl:'' };
+          }
+          const certsAll = Object.values(st2.certs?.byId||{}).filter(c=>c && c.type==="lassers" && c.welderId===w0.id);
+          const wc = certsAll.length ? certsAll[0] : {};
+          UI.openModal({
+            title:(isNew ? "Nieuwe werknemer" : "Werknemer bewerken"),
+            saveLabel:"Opslaan",
+            bodyHtml: `
+              <div style="display:grid; grid-template-columns:220px 1fr; gap:10px; align-items:center; margin:8px 0;">
+                <div class="smallmuted" style="font-weight:800">ID</div>
+                <div><input class="input" id="mf_id" value="${UI.esc(w0.id)}" ${isNew ? "" : "readonly"}></div>
+              </div>
+              <div style="display:grid; grid-template-columns:220px 1fr; gap:10px; align-items:center; margin:8px 0;">
+                <div class="smallmuted" style="font-weight:800">Naam</div>
+                <div><input class="input" id="mf_naam" value="${UI.esc(w0.naam||"")}"></div>
+              </div>
+              <div style="display:grid; grid-template-columns:220px 1fr; gap:10px; align-items:center; margin:8px 0;">
+                <div class="smallmuted" style="font-weight:800">Rol</div>
+                <div>
+                  <select class="input" id="mf_rol">
+                    ${["Lasser","Inspector","Admin","Viewer"].map(x=>`<option ${String(x)===String(w0.rol)?'selected':''} value="${UI.esc(x)}">${UI.esc(x)}</option>`).join("")}
+                  </select>
+                </div>
+              </div>
+              <div style="display:grid; grid-template-columns:220px 1fr; gap:10px; align-items:center; margin:8px 0;">
+                <div class="smallmuted" style="font-weight:800">Email</div>
+                <div><input class="input" id="mf_email" value="${UI.esc(w0.email||"")}"></div>
+              </div>
+
+              <div style="display:grid; grid-template-columns:220px 1fr; gap:10px; align-items:center; margin:8px 0;">
+                <div class="smallmuted" style="font-weight:800">Telefoon</div>
+                <div><input class="input" id="mf_telefoon" value="${UI.esc(w0.telefoon||"")}"></div>
+              </div>
+              <div style="display:grid; grid-template-columns:220px 1fr; gap:10px; align-items:center; margin:8px 0;">
+                <div class="smallmuted" style="font-weight:800">Adres</div>
+                <div><input class="input" id="mf_adres" value="${UI.esc(w0.adres||"")}"></div>
+              </div>
+              <div style="display:grid; grid-template-columns:220px 1fr; gap:10px; align-items:center; margin:8px 0;">
+                <div class="smallmuted" style="font-weight:800">Postcode</div>
+                <div><input class="input" id="mf_postcode" value="${UI.esc(w0.postcode||"")}"></div>
+              </div>
+              <div style="display:grid; grid-template-columns:220px 1fr; gap:10px; align-items:center; margin:8px 0;">
+                <div class="smallmuted" style="font-weight:800">Woonplaats</div>
+                <div><input class="input" id="mf_woonplaats" value="${UI.esc(w0.woonplaats||"")}"></div>
+              </div>
+
+              <div style="display:grid; grid-template-columns:220px 1fr; gap:10px; align-items:center; margin:8px 0;">
+                <div class="smallmuted" style="font-weight:800">Geldig tot</div>
+                <div><input class="input" id="mf_geldigTot" placeholder="YYYY-MM-DD" value="${UI.esc(w0.geldigTot||"")}"></div>
+              </div>
+
+
+              <div style="margin:14px 0 10px 0; padding-top:10px; border-top:1px solid rgba(148,163,184,0.35)">
+                <div style="font-weight:900; margin-bottom:8px;">Laskwalificatie (samenvatting)</div>
+                <div class="smallmuted" style="margin-bottom:10px;">
+                  Velden worden opgeslagen in het gekoppelde certificaat (type: lassers) via <code>welderId</code>.
+                </div>
+
+                <div style="display:grid; grid-template-columns:220px 1fr; gap:10px; align-items:center; margin:8px 0;">
+                  <div class="smallmuted" style="font-weight:800">Certificate No.</div>
+                  <div><input class="input" id="mf_certificateNo" value="${UI.esc((wc && wc.certificateNo)||"")}"></div>
+                </div>
+
+                <div style="display:grid; grid-template-columns:220px 1fr; gap:10px; align-items:center; margin:8px 0;">
+                  <div class="smallmuted" style="font-weight:800">Welding process</div>
+                  <div><input class="input" id="mf_weldingProcess" value="${UI.esc(wc.weldingProcess||"")}"></div>
+                </div>
+
+                <div style="display:grid; grid-template-columns:220px 1fr; gap:10px; align-items:center; margin:8px 0;">
+                  <div class="smallmuted" style="font-weight:800">Type of weld</div>
+                  <div><input class="input" id="mf_typeOfWeld" value="${UI.esc(wc.typeOfWeld||"")}"></div>
+                </div>
+
+                <div style="display:grid; grid-template-columns:220px 1fr; gap:10px; align-items:center; margin:8px 0;">
+                  <div class="smallmuted" style="font-weight:800">Base metal</div>
+                  <div><input class="input" id="mf_baseMetal" value="${UI.esc(wc.baseMetal||"")}"></div>
+                </div>
+
+                <div style="display:grid; grid-template-columns:220px 1fr; gap:10px; align-items:center; margin:8px 0;">
+                  <div class="smallmuted" style="font-weight:800">Filler material</div>
+                  <div><input class="input" id="mf_fillerMaterial" value="${UI.esc(wc.fillerMaterial||"")}"></div>
+                </div>
+
+                <div style="display:grid; grid-template-columns:220px 1fr; gap:10px; align-items:center; margin:8px 0;">
+                  <div class="smallmuted" style="font-weight:800">Welding positions</div>
+                  <div><input class="input" id="mf_weldingPositions" value="${UI.esc(wc.weldingPositions||"")}"></div>
+                </div>
+
+                <div style="display:grid; grid-template-columns:220px 1fr; gap:10px; align-items:center; margin:8px 0;">
+                  <div class="smallmuted" style="font-weight:800">Range material thickness</div>
+                  <div><input class="input" id="mf_thicknessRange" value="${UI.esc(wc.thicknessRange||"")}"></div>
+                </div>
+
+                <div style="display:grid; grid-template-columns:220px 1fr; gap:10px; align-items:center; margin:8px 0;">
+                  <div class="smallmuted" style="font-weight:800">Range outside pipe diameter</div>
+                  <div><input class="input" id="mf_diameterRange" value="${UI.esc(wc.diameterRange||"")}"></div>
+                </div>
+
+                <div style="display:grid; grid-template-columns:220px 1fr; gap:10px; align-items:center; margin:8px 0;">
+                  <div class="smallmuted" style="font-weight:800">Valid until (cert)</div>
+                  <div><input class="input" id="mf_certValidTo" placeholder="YYYY-MM-DD" value="${UI.esc(wc.validTo||"")}"></div>
+                </div>
+
+                <div style="display:flex; gap:10px; align-items:center; margin-top:10px;">
+                  <button class="btn" id="mf_openCerts">Open certificaten</button>
+                  <span class="smallmuted">${wc ? "Gekoppeld certificaat: "+UI.esc(wc.id||"") : "Nog geen gekoppeld certificaat."}</span>
+                </div>
+              </div>
+
+              <div style="display:grid; grid-template-columns:220px 1fr; gap:10px; align-items:start; margin:8px 0;">
+                <div class="smallmuted" style="font-weight:800">Certificaat (PDF)</div>
+                <div>
+                  <input class="input" style="padding:10px" id="mf_certFile" type="file" accept="application/pdf">
+                  <div class="smallmuted" style="margin-top:6px">
+                    ${w0.certPdfName ? `Huidig: <strong>${UI.esc(w0.certPdfName)}</strong> • <a id="lnkCert" href="${UI.esc(w0.certPdfDataUrl||"#")}" download="${UI.esc(w0.certPdfName)}">Download</a> • <button class="smallbtn" id="btnRemoveCert" style="margin-left:8px;">Verwijder</button>` : "Geen PDF gekoppeld."}
+                  </div>
+                </div>
+              </div>
+            `,
+            onAfterOpen: ()=>{
+              const btn = document.getElementById('mf_openCerts');
+              if(btn){
+                btn.onclick = ()=>{
+                  // switch to Certificaten tab in Instellingen and filter by welderId
+                  const st3 = window.CWS.getState();
+                  st3.ui.settingsTab = 'certificaten';
+                  st3.ui.view = st3.ui.view || {};
+                  st3.ui.view.certFilterWelderId = w0.id;
+                  window.CWS.setState(st3);
+                  render();
+                  UI.toast('Certificaten geopend.');
+                };
+              }
+            },
+            onSave: async ({close})=>{
+              const patch = {
+                id: document.getElementById("mf_id").value,
+                naam: document.getElementById("mf_naam").value,
+                rol: document.getElementById("mf_rol").value,
+                email: document.getElementById("mf_email").value,
+                telefoon: document.getElementById("mf_telefoon").value,
+                adres: document.getElementById("mf_adres").value,
+                postcode: document.getElementById("mf_postcode").value,
+                woonplaats: document.getElementById("mf_woonplaats").value,
+                geldigTot: document.getElementById("mf_geldigTot").value
+              };
+
+              const fileEl = document.getElementById("mf_certFile");
+              const f = fileEl && fileEl.files && fileEl.files[0];
+              if(f){
+                const dataUrl = await fileToDataUrl(f);
+                patch.certPdfName = f.name;
+                patch.certPdfMime = f.type || "application/pdf";
+                patch.certPdfDataUrl = dataUrl;
+              }
+
+              // handle remove button
+              // (button exists only when there is a current pdf)
+              const rm = document.getElementById("btnRemoveCert");
+              if(rm){
+                rm.onclick = ()=>{
+                  patch.certPdfName = "";
+                  patch.certPdfMime = "";
+                  patch.certPdfDataUrl = "";
+    
+              // Upsert gekoppeld lasser-certificaat (type=lassers, welderId)
+              const certPatch = {
+                certificateNo: document.getElementById("mf_certificateNo")?.value || "",
+                weldingProcess: document.getElementById("mf_weldingProcess")?.value || "",
+                typeOfWeld: document.getElementById("mf_typeOfWeld")?.value || "",
+                baseMetal: document.getElementById("mf_baseMetal")?.value || "",
+                fillerMaterial: document.getElementById("mf_fillerMaterial")?.value || "",
+                weldingPositions: document.getElementById("mf_weldingPositions")?.value || "",
+                thicknessRange: document.getElementById("mf_thicknessRange")?.value || "",
+                diameterRange: document.getElementById("mf_diameterRange")?.value || "",
+                validTo: document.getElementById("mf_certValidTo")?.value || ""
+              };
+              const hasAny = Object.values(certPatch).some(v=>String(v||"").trim());
+              if(hasAny){
+                const finalId = (document.getElementById("mf_id")?.value || w0.id);
+                const stx = window.CWS.getState();
+                const existing = Object.values(stx.certs?.byId||{}).filter(c=>c && c.type==="lassers" && c.welderId===finalId);
+                let cid = existing.length ? existing[0].id : ("C-"+finalId+"-001");
+                const baseCert = existing.length ? existing[0] : { id: cid, type:"lassers", name: w0.naam||"", ref:"ISO 9606-1", welderId:finalId };
+                const upsert = window.CWS.upsertCert || window.CWS.upsertCertificate || window.CWS.upsertCertificaat || window.CWS.upsertCertifikaat;
+                if(upsert){ upsert({ ...baseCert, ...certPatch, name: baseCert.name || (w0.naam||"") }); }
+              }
+
+              window.CWS.upsertWorker({...w0, ...patch, id: patch.id || w0.id});
+                  UI.toast("Certificaat verwijderd.");
+                  render();
+                };
+              }
+
+
+              // Upsert gekoppeld lasser-certificaat (type=lassers, welderId)
+              const certPatch = {
+                certificateNo: document.getElementById("mf_certificateNo")?.value || "",
+                weldingProcess: document.getElementById("mf_weldingProcess")?.value || "",
+                typeOfWeld: document.getElementById("mf_typeOfWeld")?.value || "",
+                baseMetal: document.getElementById("mf_baseMetal")?.value || "",
+                fillerMaterial: document.getElementById("mf_fillerMaterial")?.value || "",
+                weldingPositions: document.getElementById("mf_weldingPositions")?.value || "",
+                thicknessRange: document.getElementById("mf_thicknessRange")?.value || "",
+                diameterRange: document.getElementById("mf_diameterRange")?.value || "",
+                validTo: document.getElementById("mf_certValidTo")?.value || ""
+              };
+              const hasAny = Object.values(certPatch).some(v=>String(v||"").trim());
+              if(hasAny){
+                const finalId = (document.getElementById("mf_id")?.value || w0.id);
+                const stx = window.CWS.getState();
+                const existing = Object.values(stx.certs?.byId||{}).filter(c=>c && c.type==="lassers" && c.welderId===finalId);
+                let cid = existing.length ? existing[0].id : ("C-"+finalId+"-001");
+                const baseCert = existing.length ? existing[0] : { id: cid, type:"lassers", name: w0.naam||"", ref:"ISO 9606-1", welderId:finalId };
+                const upsert = window.CWS.upsertCert || window.CWS.upsertCertificate || window.CWS.upsertCertificaat || window.CWS.upsertCertifikaat;
+                if(upsert){ upsert({ ...baseCert, ...certPatch, name: baseCert.name || (w0.naam||"") }); }
+              }
+
+              window.CWS.upsertWorker({...w0, ...patch, id: patch.id || w0.id});
+              UI.toast("Opgeslagen.");
+              // success
+              close();
+              render();
+            
+            }
+          });        };
+        if(body){
+          UI.bindRowDblClick(body, (id)=>open(id));
+          body.oncontextmenu = (e)=>{
+            const tr = e.target.closest("tr[data-id]");
+            if(!tr) return;
+            e.preventDefault();
+            const id = tr.getAttribute("data-id");
+            UI.showContextMenu([
+              {label:"Bewerk", onClick: ()=>open(id)},
+              {separator:true},
+              {label:"Verwijder", onClick: ()=>{
+                if(confirm("Werknemer verwijderen?")){ window.CWS.removeWorker(id); UI.toast("Verwijderd."); render(); }
+              }}
+            ], e.clientX, e.clientY);
+          };
+          body.onclick = (e)=>{
+            const tr = e.target.closest("tr[data-id]"); if(!tr) return;
+            const id = tr.getAttribute("data-id");
+            const act = e.target.getAttribute("data-act");
+            if(act==="edit") open(id);
+            if(act==="del"){
+              if(confirm("Werknemer verwijderen?")){
+                window.CWS.removeWorker(id);
+                UI.toast("Verwijderd.");
+                render();
+              }
+            }
+          };
+        }
+        document.getElementById("btnWorkerCols").onclick = ()=>UI.columnManager({title:"Kolommen (Werknemers)", columns: WCOLS.filter(c=>c.key!=="actie"), stateKey:"settingsWorkersCols", onApply: ()=>render()});
+
+        document.getElementById("btnNewWorker").onclick = ()=>{
+          const st = window.CWS.getState();
+          let nid = "WKR-" + String(Math.floor(100 + Math.random()*900));
+          while(st.settings.workers.byId[nid]){
+            nid = "WKR-" + String(Math.floor(100 + Math.random()*900));
+          }
+          open(nid, true);
+        }
+          open(nid, true);
+        }
+
+      if(tab==="certificaten"){
+        const body = document.getElementById("settingsCertRows");
+        const head = document.getElementById("certHead");
+        const st0 = window.CWS.getState();
+        const q = (document.getElementById("q").value||"").toLowerCase().trim();
+        const items = Object.values(st0.certs?.byId||{}).filter(Boolean).filter(c=>!q || ((c.id+" "+(c.name||"")+" "+(c.type||"")+" "+(c.ref||"")).toLowerCase().includes(q)));
+        const CCOLS = [
+          {key:"type", label:"Type", cell:(c)=>UI.esc(c.type||"")},
+          {key:"id", label:"ID", cell:(c)=>UI.esc(c.id)},
+          {key:"name", label:"Naam", cell:(c)=>UI.esc(c.name||"")},
+          {key:"ref", label:"Ref", cell:(c)=>UI.esc(c.ref||"")},
+          {key:"validTo", label:"Geldig tot", cell:(c)=>UI.esc(c.validTo||"")},
+          {key:"actie", label:"Actie", cell:()=>'<button class="smallbtn" data-act="edit">Edit</button> <button class="smallbtn" data-act="del">Verwijderen</button>'}
+        ];
+        if(head && body) renderDynTable(head, body, "settingsCertCols", CCOLS, items, (x)=>x.id);
+
+        const open = (id, isNew=false)=>{
+          const st2 = window.CWS.getState();
+          const c0 = st2.certs.byId[id];
+          if(!c0) return;
+          UI.modalForm({
+            title:"Certificaat bewerken",
+            submitLabel:"Opslaan",
+            values:c0,
+            fields:[
+              {key:"id", label:"ID", readonly:true},
+              {key:"type", label:"Type", type:"select", options:["lassers","lascoordinator","bedrijf"]},
+              {key:"name", label:"Naam"},
+              {key:"ref", label:"Referentie"},
+              {key:"validTo", label:"Valid until (YYYY-MM-DD)"},
+              // Lasser-kwalificatie velden (volgens 'Summary of Welding Qualification')
+              {key:"welderId", label:"Welder (werknemer-ID)"},
+              {key:"certificateNo", label:"Certificate No."},
+              {key:"weldingProcess", label:"Welding process"},
+              {key:"typeOfWeld", label:"Type of weld"},
+              {key:"baseMetal", label:"Base metal"},
+              {key:"fillerMaterial", label:"Filler material"},
+              {key:"weldingPositions", label:"Welding positions"},
+              {key:"thicknessRange", label:"Range material thickness"},
+              {key:"diameterRange", label:"Range outside pipe diameter"}
+            ],
+            onSubmit:(v)=>{
+              window.CWS.upsertCert({...c0, ...v});
+              UI.toast("Opgeslagen.");
+              render();
+            }
+          });
+        };
+        if(body){
+          UI.bindRowDblClick(body, (id)=>open(id));
+          body.oncontextmenu = (e)=>{
+            const tr = e.target.closest("tr[data-id]");
+            if(!tr) return;
+            e.preventDefault();
+            const id = tr.getAttribute("data-id");
+            UI.showContextMenu([
+              {label:"Bewerk", onClick: ()=>open(id)},
+              {separator:true},
+              {label:"Verwijder", onClick: ()=>{
+                if(confirm("Werknemer verwijderen?")){ window.CWS.removeWorker(id); UI.toast("Verwijderd."); render(); }
+              }}
+            ], e.clientX, e.clientY);
+          };
+          body.onclick = (e)=>{
+            const tr = e.target.closest("tr[data-id]"); if(!tr) return;
+            const id = tr.getAttribute("data-id");
+            const act = e.target.getAttribute("data-act");
+            if(act==="edit") open(id);
+            if(act==="del"){
+              if(confirm("Certificaat verwijderen?")){
+                window.CWS.removeCert(id);
+                UI.toast("Verwijderd.");
+                render();
+              }
+            }
+          };
+        }
+        document.getElementById("btnCertCols").onclick = ()=>UI.columnManager({title:"Kolommen (Certificaten)", columns: CCOLS.filter(c=>c.key!=="actie"), stateKey:"settingsCertCols", onApply: ()=>render()});
+
+        document.getElementById("btnNewCert").onclick = ()=>{
+          UI.modalForm({
+            title:"Nieuw certificaat",
+            submitLabel:"Aanmaken",
+            values:{id:"C-", type:"lassers", name:"", ref:"", validTo:""},
+            fields:[
+              {key:"id", label:"Cert-ID"},
+              {key:"type", label:"Type", type:"select", options:["lassers","lascoordinator","bedrijf"]},
+              {key:"name", label:"Naam"},
+              {key:"ref", label:"Referentie"},
+              {key:"validTo", label:"Geldig tot (YYYY-MM-DD)"}
+            ],
+            onSubmit:(v)=>{
+              const id = (v.id||"").trim();
+              if(!id){ UI.toast("ID verplicht."); return false; }
+              if(window.CWS.getState().certs.byId[id]){ UI.toast("ID bestaat al."); return false; }
+              window.CWS.upsertCert({...v, id});
+              UI.toast("Aangemaakt.");
+              render();
+            }
+          });
+        };
+      }
+
+      if(tab==="keuzelijsten"){
+        // new item buttons
+        document.querySelectorAll("[data-list-new]").forEach(btn=>{
+          btn.onclick = ()=>{
+            const key = btn.getAttribute("data-list-new");
+            UI.modalForm({
+              title:"Nieuw item",
+              submitLabel:"Toevoegen",
+              values:{value:""},
+              fields:[{key:"value", label:"Waarde"}],
+              onSubmit:(v)=>{
+                const val = (v.value||"").trim();
+                if(!val){ UI.toast("Waarde verplicht."); return false; }
+                const st2 = window.CWS.getState();
+                const arr = (st2.settings.lists[key]||[]).slice();
+                arr.push(val);
+                window.CWS.updateList(key, arr);
+                UI.toast("Toegevoegd.");
+                render();
+              }
+            });
+          };
+        });
+
+        document.querySelectorAll("tbody[data-list-body]").forEach(body=>{
+          const key = body.getAttribute("data-list-body");
+          UI.bindRowDblClick(body, (idx)=>openEditListItem(key, Number(idx)));
+          body.oncontextmenu = (e)=>{
+            const tr = e.target.closest("tr[data-id]");
+            if(!tr) return;
+            e.preventDefault();
+            const idx = Number(tr.getAttribute("data-id"));
+            UI.showContextMenu([
+              {label:"Bewerk", onClick: ()=>openEditListItem(key, idx)},
+              {separator:true},
+              {label:"Verwijder", onClick: ()=>{
+                if(confirm("Item verwijderen?")){
+                  const st2 = window.CWS.getState();
+                  const arr = (st2.settings.lists[key]||[]).slice();
+                  arr.splice(idx,1);
+                  window.CWS.updateList(key, arr);
+                  UI.toast("Verwijderd.");
+                  render();
+                }
+              }}
+            ], e.clientX, e.clientY);
+          };
+          body.onclick = (e)=>{
+            const tr = e.target.closest("tr[data-id]"); if(!tr) return;
+            const idx = Number(tr.getAttribute("data-id"));
+            const act = e.target.getAttribute("data-act");
+            if(act==="edit") openEditListItem(key, idx);
+            if(act==="del"){
+              if(confirm("Item verwijderen?")){
+                const st2 = window.CWS.getState();
+                const arr = (st2.settings.lists[key]||[]).slice();
+                arr.splice(idx,1);
+                window.CWS.updateList(key, arr);
+                UI.toast("Verwijderd.");
+                render();
+              }
+            }
+          };
+        });
+      }
+    }
+
+    function fileToDataUrl(file){
+      return new Promise((resolve,reject)=>{
+        const r = new FileReader();
+        r.onload = ()=>resolve(String(r.result||""));
+        r.onerror = ()=>reject(r.error||new Error("File read failed"));
+        r.readAsDataURL(file);
+      });
+    }
+
+    function openEditListItem(key, idx){
+      const st = window.CWS.getState();
+      const arr = (st.settings.lists[key]||[]);
+      const cur = arr[idx];
+      if(cur===undefined) return;
+      UI.modalForm({
+        title:"Item bewerken",
+        submitLabel:"Opslaan",
+        values:{value:cur},
+        fields:[{key:"value", label:"Waarde"}],
+        onSubmit:(v)=>{
+          const val = (v.value||"").trim();
+          if(!val){ UI.toast("Waarde verplicht."); return false; }
+          const st2 = window.CWS.getState();
+          const a2 = (st2.settings.lists[key]||[]).slice();
+          a2[idx] = val;
+          window.CWS.updateList(key, a2);
+          UI.toast("Opgeslagen.");
+          render();
+        }
+      });
+    }
+
+    document.getElementById("btnApps").addEventListener("click", ()=>AppsMenu.show());
+    document.getElementById("q").addEventListener("input", render);
+
+    window.addEventListener('cws_project_changed', ()=>{ /* instellingen is project-onafhankelijk */ });
+    render();
+  </script>
+</body>
+</html>
