@@ -1,0 +1,31 @@
+name: Playwright App Checks
+
+on:
+  workflow_dispatch:
+
+jobs:
+  playwright:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: |
+          if [ -f package.json ]; then
+            npm ci
+          fi
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+        continue-on-error: true
+
+      - name: Run Playwright
+        run: npx playwright test
+        continue-on-error: true

@@ -2,14 +2,17 @@
 <html lang="nl">
 <head>
   <!-- Backend base URL (NEN1090 API). Overschrijfbaar via localStorage.API_BASE_URL of window.__API_BASE_URL__. -->
-  <script>window.__API_BASE_URL__ = window.__API_BASE_URL__ || localStorage.getItem("API_BASE_URL") || "https://api.nen1090.nl";</script>
+  <script>window.__API_BASE_URL__ = window.__API_BASE_URL__ || localStorage.getItem("API_BASE_URL") || "/api";</script>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>NEN1090 Lascontrole – Start</title>
   <link rel="stylesheet" href="css/theme.css" />
+<link rel="manifest" href="/manifest.webmanifest" />
+<meta name="theme-color" content="#0c1830" />
+<link rel="apple-touch-icon" href="/icons/icon-192.png" />
 </head>
 <body data-title="Start">
-  <div class="dash" style="margin-top:70px">
+  <div class="dash" >
     <div class="dash-grid">
       <div class="card">
         <h3>Start</h3>
@@ -32,6 +35,7 @@
   <script src="js/core/apps_menu.js"></script>
   <script src="js/core/export.js"></script>
   <script src="js/core/auth_client.js"></script>
+  <script src="js/core/pwa.js"></script>
   <script src="js/core/shell.js"></script>
 
   <script>

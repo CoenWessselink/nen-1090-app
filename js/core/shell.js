@@ -299,7 +299,7 @@ async function syncProjectsIntoStore(){
     
     function openApiConfigModal(){
       try{
-        const cur = (window.Auth && window.Auth.getBaseUrl && window.Auth.getBaseUrl()) || localStorage.getItem('nen1090.api.baseUrl') || localStorage.getItem('API_BASE_URL') || window.__API_BASE_URL__ || 'https://api.nen1090.nl';
+        const cur = (window.Auth && window.Auth.getBaseUrl && window.Auth.getBaseUrl()) || localStorage.getItem('nen1090.api.baseUrl') || localStorage.getItem('API_BASE_URL') || window.__API_BASE_URL__ || '/api';
         UI.modalForm({
           title: 'API instellingen',
           submitLabel: 'Opslaan',

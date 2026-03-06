@@ -1,0 +1,21 @@
+name: Smoke Test App
+
+on:
+  workflow_run:
+    workflows: ["Deploy App to Cloudflare Pages"]
+    types: [completed]
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check start page
+        run: curl -fL "${{ vars.APP_URL }}/start.html" || exit 1
+
+      - name: Check projecten page
+        run: curl -fL "${{ vars.APP_URL }}/layers/projecten.html" || exit 1
+
+      - name: Check health through proxy
+        run: curl -fL "${{ vars.APP_URL }}/api/health" || exit 1

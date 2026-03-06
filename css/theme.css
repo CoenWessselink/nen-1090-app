@@ -1049,3 +1049,24 @@ tbody tr:hover{background:var(--hover)}
 
 .pillbtn{cursor:pointer;border:none}
 .pillbtn:active{transform:translateY(0)}
+
+
+/* --- Mobile + fixed header support (SSOT patch) --- */
+body{ padding-top: var(--headerH,70px); }
+@media (max-width: 720px){
+  .headerbar{ height:auto; padding:10px 10px 12px; }
+  .headerbar .left, .headerbar .right{ position:static; display:flex; flex-wrap:wrap; justify-content:center; gap:8px; }
+  .headerbar #moduleTitle{ width:100%; margin:4px 0 2px; font-size:22px; }
+  .headerbar .btn, .headerbar .pill{ font-size:12px; padding:7px 10px; }
+  .panel{ margin:10px; }
+  .panel-head{ flex-wrap:wrap; align-items:flex-start; }
+  .panel-head h1{ width:100%; font-size:18px; margin:0; }
+  .panel-tools{ width:100%; }
+  .panel-tools input[type='text'], .panel-tools input[type='search']{ flex:1 1 100%; min-width:0; }
+  .tabs{ overflow-x:auto; -webkit-overflow-scrolling:touch; white-space:nowrap; }
+  .tabs::-webkit-scrollbar{ display:none; }
+  .table-wrap{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .table{ min-width:760px; }
+  .footerbar{ flex-wrap:wrap; gap:8px; }
+  .footerbar .pagination{ width:100%; justify-content:center; margin-left:0; }
+}

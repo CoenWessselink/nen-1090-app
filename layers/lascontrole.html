@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="../css/theme.css" />
   <title>Lascontrole</title>
+<link rel="manifest" href="/manifest.webmanifest" />
+<meta name="theme-color" content="#0c1830" />
+<link rel="apple-touch-icon" href="/icons/icon-192.png" />
 </head>
 <body data-title="Lascontrole (NEN 1090)">
   <div class="panel-head">
@@ -29,13 +32,64 @@
   <script src="../js/core/apps_menu.js"></script>
   <script src="../js/core/export.js"></script>
   <script src="../js/core/zip.js"></script>
+  <script src="../js/core/offline_queue.js"></script>
   <script src="../js/core/auth_client.js"></script>
   <script src="../js/vendor/pdf-lib.min.js"></script>
+  <script src="../js/core/pwa.js"></script>
   <script src="../js/core/shell.js"></script>
   
 
   <script>
     Shell.mount();
+
+    // ===== Offline-first: queue critical writes when offline (Lascontrole) =====
+    (function initOfflineQueue(){
+      try{
+        if(!window.OfflineQueue || !window.Auth || !window.Auth.inspections) return;
+
+        const origUpsert = window.Auth.inspections.upsertForWeld;
+        const origReset = window.Auth.inspections.resetToNormForWeld;
+
+        window.Auth.inspections.upsertForWeld = async function(weldUuid, payload){
+          try{
+            return await origUpsert(weldUuid, payload);
+          }catch(e){
+            if(window.OfflineQueue.isOfflineError(e)){
+              await window.OfflineQueue.enqueue('inspection_upsert', { weldUuid, payload });
+              try{ UI.toast('Offline opgeslagen: inspectie wordt automatisch gesynchroniseerd.'); }catch(_){ }
+              return { offline:true };
+            }
+            throw e;
+          }
+        };
+
+        window.Auth.inspections.resetToNormForWeld = async function(weldUuid, payload){
+          try{
+            return await origReset(weldUuid, payload || {});
+          }catch(e){
+            if(window.OfflineQueue.isOfflineError(e)){
+              await window.OfflineQueue.enqueue('inspection_reset_to_norm', { weldUuid, payload: payload || {} });
+              try{ UI.toast('Offline opgeslagen: reset wordt automatisch gesynchroniseerd.'); }catch(_){ }
+              return { offline:true };
+            }
+            throw e;
+          }
+        };
+
+        async function flushNow(){
+          try{
+            const res = await window.OfflineQueue.flush();
+            if(res && res.ok && (res.done||0) > 0){
+              try{ UI.toast(`Gesynchroniseerd: ${res.done} offline acties`); }catch(_){ }
+            }
+          }catch(_){ }
+        }
+
+        window.addEventListener('online', flushNow);
+        // also try shortly after page load
+        setTimeout(flushNow, 2500);
+      }catch(_){ }
+    })();
 
     // ===== Phase 1: Bulk add (project) =====
     function getActiveProjectId(){
@@ -914,7 +968,9 @@ return `
             <span class="pillmini">Project: <strong>${UI.esc(p.nummer)}</strong></span>
             <select class="input" id="docWeld" style="min-width:220px">${options}</select>
             <input class="input" type="file" id="docFile" multiple />
+            <input class="input" type="file" id="photoFile" accept="image/*" capture="environment" multiple style="display:none" />
             <button class="btn" id="docAdd">Upload</button>
+            <button class="btn" id="photoAdd" title="Maak/Upload direct lasfoto (camera)">📷 Foto</button>
             <button class="btn" id="docCols">Kolommen</button>
           </div>
           <div class="kbd">Drag & drop op tabelgebied (fase later) • Opslag: localStorage (dataURL)</div>
@@ -2201,6 +2257,8 @@ const saveInspBtn = document.getElementById("btnSaveInspection");
 
       const add = document.getElementById("docAdd");
       const input = document.getElementById("docFile");
+      const photoAdd = document.getElementById("photoAdd");
+      const photoInput = document.getElementById("photoFile");
       const weldSel = document.getElementById("docWeld");
       const drop = document.getElementById("docDrop");
 
@@ -2243,6 +2301,21 @@ const saveInspBtn = document.getElementById("btnSaveInspection");
           if(!files || !files.length){ UI.toast("Kies bestand(en)."); return; }
           await handleFiles(Array.from(files));
           input.value = "";
+        });
+      }
+
+      // Mobile: direct camera/photo upload (adds as document/photo)
+      if(photoAdd && photoInput){
+        photoAdd.addEventListener('click', ()=>{
+          if(__ro){ UI.toast('Alleen-lezen'); return; }
+          photoInput.click();
+        });
+        photoInput.addEventListener('change', async ()=>{
+          const files = photoInput.files;
+          if(files && files.length){
+            await handleFiles(Array.from(files));
+          }
+          photoInput.value = '';
         });
       }
 

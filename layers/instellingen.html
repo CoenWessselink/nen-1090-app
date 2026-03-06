@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="../css/theme.css" />
   <title>Instellingen</title>
+<link rel="manifest" href="/manifest.webmanifest" />
+<meta name="theme-color" content="#0c1830" />
+<link rel="apple-touch-icon" href="/icons/icon-192.png" />
 </head>
 <body data-title="Instellingen">
   <div class="panel-head">
@@ -25,6 +28,7 @@
   <script src="../js/core/apps_menu.js"></script>
   <script src="../js/core/export.js"></script>
   <script src="../js/core/auth_client.js"></script>
+  <script src="../js/core/pwa.js"></script>
   <script src="../js/core/shell.js"></script>
 
   <script>
@@ -76,10 +80,10 @@
           <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap">
             <div>
               <div style="font-weight:800">API & Omgeving</div>
-              <div class="smallmuted">Stel de API Base URL in voor deze browser (localStorage). Voor productie bv. https://api.nen1090.nl</div>
+              <div class="smallmuted">Stel de API Base URL in voor deze browser (localStorage). Default voor Pages is <b>/api</b> (same‑origin proxy). Voor directe backend kun je bv. https://api.nen1090.nl gebruiken.</div>
             </div>
             <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap">
-              <input class="input" id="apiBaseUrl" style="min-width:320px" placeholder="https://api.nen1090.nl" />
+              <input class="input" id="apiBaseUrl" style="min-width:320px" placeholder="/api" />
               <button class="btn" id="btnSaveApiBaseUrl">Opslaan</button>
               <button class="btn" id="btnResetApiBaseUrl">Reset</button>
               <button class="btn" id="btnTestApiBaseUrl">Test verbinding</button>
@@ -316,7 +320,7 @@
         const btnSaveApi = document.getElementById("btnSaveApiBaseUrl");
         const btnResetApi = document.getElementById("btnResetApiBaseUrl");
         if(apiInp){
-          const cur = (localStorage.getItem("nen1090.api.baseUrl") || localStorage.getItem("API_BASE_URL") || window.__API_BASE_URL__ || "https://api.nen1090.nl").replace(/\/$/, "");
+          const cur = (localStorage.getItem("nen1090.api.baseUrl") || localStorage.getItem("API_BASE_URL") || window.__API_BASE_URL__ || "/api").replace(/\/$/, "");
           apiInp.value = cur;
         }
         if(btnSaveApi){
@@ -333,7 +337,7 @@
             localStorage.removeItem("nen1090.api.baseUrl");
             localStorage.removeItem("API_BASE_URL");
             UI.toast("API Base URL gereset.");
-            if(apiInp) apiInp.value = (window.__API_BASE_URL__ || "https://api.nen1090.nl").replace(/\/$/, "");
+            if(apiInp) apiInp.value = (window.__API_BASE_URL__ || "/api").replace(/\/$/, "");
           };
         }
 
