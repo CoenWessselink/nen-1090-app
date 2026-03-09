@@ -3,2134 +3,512 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="stylesheet" href="../css/theme.css" />
   <title>Projecten</title>
-<link rel="manifest" href="/manifest.webmanifest" />
-<meta name="theme-color" content="#0c1830" />
-<link rel="apple-touch-icon" href="/icons/icon-192.png" />
+  <link rel="stylesheet" href="../theme.css" />
+  <style>
+    .page-wrap{padding:18px 18px 28px;}
+    .toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:12px;flex-wrap:wrap;}
+    .toolbar-left,.toolbar-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+    .search{min-width:220px;max-width:320px;width:100%;}
+    .small-muted{font-size:12px;color:#64748b;}
+    .empty-row td{color:#64748b;}
+    .actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+    .badge-status{display:inline-flex;align-items:center;justify-content:center;padding:6px 12px;border-radius:999px;font-size:12px;font-weight:700;color:#fff;min-width:96px;}
+    .badge-status.in-controle{background:#2563eb;}
+    .badge-status.conform{background:#16a34a;}
+    .badge-status.afgekeurd{background:#dc2626;}
+    .badge-status.locked{background:#111827;}
+    .status-filters{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 14px;}
+    .status-filters .btn.active{box-shadow:inset 0 0 0 1px rgba(15,23,42,.14);font-weight:700;}
+    .table-wrap{overflow:auto;}
+    .info-line{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:8px;font-size:12px;color:#64748b;}
+    .hidden{display:none !important;}
+  </style>
 </head>
 <body data-title="Projecten">
-  <div class="panel-head">
-    <div class="panel-tools">
-      <input class="input" id="q" placeholder="Zoek project (fuzzy)" />
-      <button class="btn" id="btnNew">Nieuw</button>
-      <button class="btn" id="btnExport">Export</button>
-      <button class="btn" id="btnCols">Kolommen</button>
-    </div>
-    <div class="kbd">Dubbelklik rij → bewerken • Rechtsklik rij → menu</div>
-  </div>
+  <main class="page-wrap">
+    <section class="card pad">
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <input id="projectSearch" class="input search" type="search" placeholder="Zoek project (fuzzy)" />
+          <button id="btnNieuw" class="btn">Nieuw</button>
+          <button id="btnExport" class="btn">Export</button>
+          <button id="btnKolommen" class="btn">Kolommen</button>
+        </div>
+        <div class="toolbar-right small-muted">
+          Dubbelklik rij → bewerken • Rechtsklik rij → menu
+        </div>
+      </div>
 
-  <div class="tabs" id="tabs"></div>
+      <div class="status-filters">
+        <button class="btn active" data-filter="all">Alle projecten</button>
+        <button class="btn" data-filter="in_controle">In controle</button>
+        <button class="btn" data-filter="conform">Conform</button>
+        <button class="btn" data-filter="afgekeurd">Afgekeurd</button>
+        <button class="btn" data-filter="locked">Locked</button>
+      </div>
 
-  <div class="table-wrap">
-    <table>
-      <thead>
-        <tr id="theadRow"></tr>
-      </thead>
-      <tbody id="rows"></tbody>
-    </table>
-  </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Projectnummer</th>
+              <th>Projectnaam</th>
+              <th>Opdrachtgever</th>
+              <th>Executieklasse</th>
+              <th>Acceptatieklasse</th>
+              <th>Status</th>
+              <th>Laatst gewijzigd</th>
+              <th>Actie</th>
+            </tr>
+          </thead>
+          <tbody id="projectsTbody">
+            <tr class="empty-row"><td colspan="8">Projecten worden geladen…</td></tr>
+          </tbody>
+        </table>
+      </div>
 
-  <div class="footerbar">
-    <div id="count">0 projecten</div>
-    <div class="pagination">
-      <button class="pagebtn" disabled>‹</button>
-      <span>1</span>
-      <button class="pagebtn" disabled>›</button>
-    </div>
-  </div>
+      <div class="info-line">
+        <div id="projectsCount">0 projecten</div>
+        <div>
+          <button class="btn" type="button" disabled aria-label="Vorige pagina">‹</button>
+          <span style="padding:0 8px;">1</span>
+          <button class="btn" type="button" disabled aria-label="Volgende pagina">›</button>
+        </div>
+      </div>
+    </section>
+  </main>
 
-  <script src="../js/core/store.js"></script>
-  <script src="../js/core/permissions.js"></script>
-  <script src="../js/core/ui.js"></script>
-  <script src="../js/core/apps_menu.js"></script>
-  <script src="../js/core/export.js"></script>
-  <script src="../js/core/auth_client.js"></script>
-  <script src="../js/core/pwa.js"></script>
+  <script src="../bootstrap.js"></script>
   <script src="../js/core/shell.js"></script>
-  
-
   <script>
-    Shell.mount();
-
-    // =====================
-    // Phase 3.1: Projects from backend API (JWT)
-    // We keep the local CWS store as UI cache, but sync projects from/to the backend.
-    // =====================
-
-    function isLoggedIn(){
-      try{ return !!(window.Auth && (window.Auth.getAccessToken?.() || localStorage.getItem('nen1090.auth.access') || localStorage.getItem('auth_token'))); }catch(_){ return false; }
-    }
-
-    function apiToLocal(p){
-      return {
-        id: p.id,
-        nummer: p.code || '',
-        naam: p.name || '',
-        opdrachtgever: p.client_name || '',
-        exc: p.execution_class || '',
-        acceptatieklasse: p.acceptance_class || '',
-        status: p.status || 'in_controle',
-        locked: !!p.locked,
-        laatstGewijzigd: (p.updated_at || p.created_at || '').toString()
-      };
-    }
-
-    function localToApi(v){
-      return {
-        code: (v.nummer||'').trim(),
-        name: v.naam || '',
-        client_name: v.opdrachtgever || '',
-        execution_class: v.exc || 'EXC2',
-        acceptance_class: v.acceptatieklasse || 'B',
-        status: v.status || 'in_controle',
-        locked: !!v.locked
-      };
-    }
-
-    async function syncProjectsFromApi(){
-      if(!isLoggedIn()) return false;
-      try{
-        const list = await window.Auth.projects.list();
-        const st = window.CWS.getState();
-        st.projects.byId = {};
-        st.projects.order = [];
-        (list||[]).forEach(p=>{
-          const lp = apiToLocal(p);
-          st.projects.byId[lp.id] = lp;
-          st.projects.order.push(lp.id);
-        });
-        if(!st.ui.activeProjectId && st.projects.order.length) st.ui.activeProjectId = st.projects.order[0];
-        window.CWS.setState(st);
-        return true;
-      }catch(e){
-        console.error(e);
-        UI.toast('API projecten laden mislukt.');
-        return false;
-      }
-    }
-
-    const TABDEF = [
-      {k:"alle", label:"Alle projecten"},
-      {k:"in_controle", label:"In controle"},
-      {k:"conform", label:"Conform"},
-      {k:"afgekeurd", label:"Afgekeurd"},
-      {k:"locked", label:"Locked"}
-    ];
-
-    function statusBadge(st){
-      const map = {
-        'Concept':'badge badge-gray',
-        'In controle':'badge badge-blue',
-        'Goedgekeurd':'badge badge-green',
-        'Gesloten':'badge badge-dark',
-        "in_controle": ["In controle", "var(--st-ingepland)"],
-        "conform": ["Conform", "var(--st-uitvoering)"],
-        "afgekeurd": ["Afgekeurd", "var(--st-teplannen)"],
-        "locked": ["Locked", "#111827"]
-      };
-      const m = map[st] || ["Open", "var(--st-ingepland)"];
-      return '<span class="badge" style="background:'+m[1]+'">'+UI.esc(m[0])+'</span>';
-    }
-
-    function fuzzy(hay, q){
-      hay = (hay||"").toLowerCase();
-      q = (q||"").toLowerCase().trim();
-      if(!q) return true;
-      // simple token contains
-      return q.split(/\s+/).every(t=>hay.includes(t));
-    }
-
-    function getTab(){
-      const st = window.CWS.getState();
-      return st.ui.view.projectenTab || "alle";
-    }
-    function setTab(k){
-      const st = window.CWS.getState();
-      st.ui.view.projectenTab = k;
-      window.CWS.setState(st);
-    render();
-    }
-
-    function renderTabs(){
-      const wrap = document.getElementById("tabs");
-      const active = getTab();
-      wrap.innerHTML = TABDEF.map(t=>(
-        '<div class="tab '+(t.k===active?'active':'')+'" data-k="'+t.k+'">'+UI.esc(t.label)+'</div>'
-      )).join("");
-      wrap.onclick = (e)=>{
-        const el = e.target.closest(".tab");
-        if(!el) return;
-        setTab(el.getAttribute("data-k"));
-      };
-    }
-
-    function filteredProjects(){
-      const st = window.CWS.getState();
-      const tab = getTab();
-      const q = document.getElementById("q").value;
-      const ids = st.projects.order.slice();
-      return ids
-        .map(id=>st.projects.byId[id])
-        .filter(p=>{
-          if(!p) return false;
-          if(tab==="alle"){}
-          else if(tab==="locked") { if(!p.locked && p.status!=="locked") return false; }
-          else { if(p.status!==tab) return false; }
-          const hay = [p.nummer,p.naam,p.opdrachtgever,p.exc,p.acceptatieklasse,p.status].join(" ");
-          return fuzzy(hay, q);
-        });
-    }
-
-    const COLS = [
-      {key:"nummer", label:"Projectnummer", cell:(p)=>UI.esc(p.nummer)},
-      {key:"naam", label:"Projectnaam", cell:(p)=>UI.esc(p.naam)},
-      {key:"opdrachtgever", label:"Opdrachtgever", cell:(p)=>UI.esc(p.opdrachtgever)},
-      {key:"exc", label:"Executieklasse", cell:(p)=>UI.esc(p.exc)},
-      {key:"acceptatieklasse", label:"Acceptatieklasse", cell:(p)=>UI.esc(p.acceptatieklasse)},
-      {key:"status", label:"Status", cell:(p)=>statusBadge(p.status)},
-      {key:"laatstGewijzigd", label:"Laatst gewijzigd", cell:(p)=>UI.esc((p.laatstGewijzigd||"").replace("T"," ").slice(0,16))},
-      {key:"actie", label:"Actie", cell:(p)=>{
-        const dis = p.locked ? "disabled" : "";
-        const title = p.locked ? "title=\"Locked project\"" : "";
-        return `<button class="smallbtn" data-act="edit" ${dis} ${title}>Edit</button> <button class="smallbtn" data-act="del" ${dis} ${title}>Verwijderen</button>`;
-      }}
-    ];
-
-    function getColCfg(){
-      const st = window.CWS.getState();
-      st.ui.view = st.ui.view || {};
-      const cfg = st.ui.view.projectenCols || { order: COLS.map(c=>c.key), hidden: [] };
-      const order = (cfg.order||[]).filter(k=>COLS.some(c=>c.key===k));
-      COLS.forEach(c=>{ if(!order.includes(c.key)) order.push(c.key); });
-      const hidden = new Set(cfg.hidden||[]);
-      const visible = order.filter(k=>!hidden.has(k));
-      return {order, hidden, visible};
-    }
-
-    function renderHeader(){
-      const cfg = getColCfg();
-      document.getElementById("theadRow").innerHTML =
-        cfg.visible.map(k=>`<th data-k="${UI.esc(k)}" draggable="true">${UI.esc(COLS.find(c=>c.key===k).label)}</th>`).join("");
-    }
-
-    function applyHeaderDrag(){
-      const tr = document.getElementById("theadRow");
-      let dragTh=null;
-      tr.addEventListener("dragstart",(e)=>{
-        const th = e.target.closest("th[data-k]");
-        if(!th) return;
-        dragTh = th;
-        e.dataTransfer.effectAllowed="move";
-      });
-      tr.addEventListener("dragover",(e)=>{
-        e.preventDefault();
-        const th = e.target.closest("th[data-k]");
-        if(!th || !dragTh || th===dragTh) return;
-        const rect = th.getBoundingClientRect();
-        const before = (e.clientX - rect.left) < rect.width/2;
-        tr.insertBefore(dragTh, before ? th : th.nextSibling);
-      });
-      tr.addEventListener("drop",(e)=>{
-        e.preventDefault();
-        if(!dragTh) return;
-        const newOrder = [...tr.querySelectorAll("th[data-k]")].map(x=>x.getAttribute("data-k"));
-        const st = window.CWS.getState();
-        st.ui.view = st.ui.view || {};
-        const cfg = st.ui.view.projectenCols || {order: COLS.map(c=>c.key), hidden: []};
-        // keep hidden cols appended
-        const hidden = cfg.hidden||[];
-        const full = [...newOrder, ...hidden.filter(k=>!newOrder.includes(k))];
-        st.ui.view.projectenCols = { order: full, hidden };
-        window.CWS.setState(st);
-        dragTh=null;
-        render();
-      });
-    }
-
-    function render(){
-      
-      renderTabs();
-      if(!window.__projHeadDrag){ applyHeaderDrag(); window.__projHeadDrag=true; }
-
-      const rows = document.getElementById("rows");
-      const list = filteredProjects();
-      document.getElementById("count").textContent = list.length + " projecten";
-
-      renderHeader();
-      const cfg = getColCfg();
-      rows.innerHTML = list.map(p=>(
-        '<tr data-id="'+UI.esc(p.id)+'">' +
-        cfg.visible.map(k=>{
-          const col = COLS.find(c=>c.key===k);
-          return '<td>'+ (col ? col.cell(p) : '') +'</td>';
-        }).join('') +
-        '</tr>'
-      )).join("");
-
-      rows.ondblclick = (e)=>{
-        const tr = e.target.closest("tr");
-        if(!tr) return;
-        const st2 = window.CWS.getState(); st2.ui.activeProjectId = tr.getAttribute('data-id'); window.CWS.setState(st2);
-      editProject(tr.getAttribute("data-id"));
-      };
-      // single click always opens edit popup
-    rows.addEventListener("click",(e)=>{
-      const tr = e.target.closest("tr[data-id]");
-      if(!tr) return;
-      if(e.target.closest("button")) return;
-      editProject(tr.getAttribute("data-id"));
-    });
-
-    rows.oncontextmenu = (e)=>{
-        const tr = e.target.closest("tr");
-        if(!tr) return;
-        e.preventDefault();
-        // simple context actions via confirm/toast
-        UI.toast("Contextmenu: Bewerk / Dupliceer / Verwijder (stub)");
-      };
-      rows.onclick = (e)=>{
-        const btn = e.target.closest("button");
-        if(!btn) return;
-        const tr = e.target.closest("tr");
-        const id = tr?.getAttribute("data-id");
-        const act = btn.getAttribute("data-act");
-        if(act==="edit") editProject(id);
-        if(act==="del") deleteProject(id);
-      };
-    }
-
-    function editProject(id){
-      const st = window.CWS.getState();
-      const p0 = st.projects.byId[id];
-      if(!p0){ UI.toast("Project niet gevonden."); return; }
-
-      const ro = !window.CWS.canEditProject(p0);
-      const statuses = ["in_controle","conform","afgekeurd","locked"];
-      const cur = p0.status || "in_controle";
-
-      UI.modalForm({
-        title: "Project bewerken",
-        submitLabel: ro ? "Sluiten" : "Opslaan",
-        values: {
-          nummer: p0.nummer||p0.id,
-          naam: p0.naam||"",
-          opdrachtgever: p0.opdrachtgever||"",
-          exc: p0.exc||"EXC2",
-          acceptatieklasse: p0.acceptatieklasse||"B",
-          status: cur
-        },
-        fields: [
-          {key:"nummer", label:"Projectnummer", readonly:true},
-          {key:"naam", label:"Projectnaam", readonly: ro},
-          {key:"opdrachtgever", label:"Opdrachtgever", readonly: ro},
-          {key:"exc", label:"EXC", type:"select", options:["EXC1","EXC2","EXC3","EXC4"], readonly: ro},
-          {key:"acceptatieklasse", label:"Acceptatieklasse", type:"select", options:["B","C","D"], readonly: ro},
-          {key:"status", label:"Status", type:"select", options: statuses, readonly: ro}
-        ],
-        onSubmit: async (v)=>{
-          if(ro) return true;
-          try{
-            const st2 = window.CWS.getState();
-            const curP = st2.projects.byId[id];
-            const oldExc = (curP.exc||"...").toString();
-
-            // API-backed when logged in
-            if(isLoggedIn()){
-              const payload = localToApi({ ...curP, ...v, nummer: curP.nummer || v.nummer || curP.id });
-              const saved = await window.Auth.projects.update(id, payload);
-              window.CWS.upsertProject(apiToLocal(saved));
-              UI.toast("Project opgeslagen (API).");
-              // Phase 1: EXC changed? offer apply template
-              const newExc = (v.exc || saved.execution_class || oldExc || "").toString();
-              if(oldExc && newExc && oldExc !== newExc && window.Auth.phase1){
-                try{
-                  const tpls = await window.Auth.phase1.listInspectionTemplates(newExc);
-                  const tpl = (tpls||[]).find(t=>t.is_default) || (tpls||[])[0];
-                  if(!tpl){
-                    UI.toast(`EXC gewijzigd naar ${newExc}. Geen inspectie-template gevonden.`);
-                  }else{
-                    const isAdmin = (window.Permissions && window.Permissions.canAdmin && window.Permissions.canAdmin());
-                    const rid = "exc_apply_mode";
-                    UI.openModal({
-                      title: `EXC gewijzigd naar ${newExc}`,
-                      saveLabel: "Uitvoeren",
-                      bodyHtml: `
-                        <div style="display:grid; gap:10px;">
-                          <div>Wil je het bijbehorende inspectie-template toepassen?</div>
-                          <div class="smallmuted">Template: <b>${UI.esc(tpl.name||newExc)}</b> (v${UI.esc(tpl.version||1)})</div>
-                          <label style="display:flex; gap:8px; align-items:center;"><input type="radio" name="${rid}" value="merge" checked> Toepassen (aanrader) — ontbrekende checks toevoegen</label>
-                          <label style="display:flex; gap:8px; align-items:center;"><input type="radio" name="${rid}" value="skip"> Niet toepassen</label>
-                          ${isAdmin ? `<label style="display:flex; gap:8px; align-items:center;"><input type="radio" name="${rid}" value="replace"> Vervangen (overschrijven) — admin</label>` : ``}
-                          <div class="smallmuted">Merge is veilig (geen dataverlies). Replace is alleen voor admins.</div>
-                        </div>
-                      `,
-                      onSave: async ({close})=>{
-                        const sel = document.querySelector(`input[name='${rid}']:checked`)?.value || "merge";
-                        if(sel === "skip"){ close(); return; }
-                        const res = await window.Auth.phase1.applyInspectionTemplate(id, { template_id: tpl.id, mode: sel });
-                        close();
-                        UI.toast(`Template toegepast (${sel}). Checks +${res?.checks_added||0}`);
-                      }
-                    });
-                  }
-                }catch(e){ console.error(e); }
-              }
-              render();
-              return true;
-            }
-
-            // Offline/local fallback
-            window.CWS.upsertProject({
-              id,
-              nummer: curP.nummer||curP.id,
-              naam: v.naam||"",
-              opdrachtgever: v.opdrachtgever||"",
-              exc: v.exc||"EXC2",
-              acceptatieklasse: v.acceptatieklasse||"B",
-              status: v.status || curP.status || "in_controle",
-              locked: !!curP.locked
-            });
-            UI.toast("Project opgeslagen.");
-            render();
-            return true;
-          }catch(e){
-            console.error(e);
-            UI.toast(String(e.message||e));
-            return false;
-          }
-        }
-      });
-    }
-
-    async function deleteProject(id){
-      const st = window.CWS.getState();
-      const p = st.projects.byId[id];
-      if(p && !window.CWS.canEditProject(p)){ UI.toast('Project is locked (read-only).'); return; }
-      const ok = confirm("Project verwijderen?");
-      if(!ok) return;
-      try{
-        if(isLoggedIn()){
-          await window.Auth.projects.remove(id);
-        }
-      }catch(e){ console.error(e); }
-      const done = window.CWS.removeProject(id);
-      UI.toast(done ? "Verwijderd." : "Niet gevonden.");
-      render();
-    }
-
-    document.getElementById("q").addEventListener("input", render);
-    document.getElementById("btnNew").addEventListener("click", ()=>{
-      const st = window.CWS.getState();
-      if(st.ui.role==='Viewer'){ UI.toast('Viewer kan niet wijzigen.'); return; }
-
-      UI.modalForm({
-        title: "Nieuw project",
-        submitLabel: "Aanmaken",
-        values: {nummer:"P-", naam:"", opdrachtgever:"", exc:"EXC2", acceptatieklasse:"B", status:"in_controle"},
-        fields: [
-          {key:"nummer", label:"Projectnummer"},
-          {key:"naam", label:"Projectnaam"},
-          {key:"opdrachtgever", label:"Opdrachtgever"},
-          {key:"exc", label:"EXC", type:"select", options:["EXC1","EXC2","EXC3","EXC4"]},
-          {key:"acceptatieklasse", label:"Acceptatieklasse", type:"select", options:["B","C","D"]},
-          {key:"status", label:"Status", type:"select", options:["in_controle","conform","afgekeurd","locked"]}
-        ],
-        onSubmit: async (v)=>{
-          if(!v.nummer || !v.nummer.trim()){ UI.toast("Projectnummer verplicht."); return false; }
-          try{
-            if(isLoggedIn()){
-              const saved = await window.Auth.projects.create(localToApi(v));
-              window.CWS.upsertProject(apiToLocal(saved));
-              UI.toast("Project aangemaakt (API).");
-              render();
-              return true;
-            }
-          }catch(e){ console.error(e); UI.toast("API aanmaken mislukt."); return false; }
-
-          // Offline/local fallback
-          const p = { id: v.nummer.trim(), nummer:v.nummer.trim(), naam:v.naam||"", opdrachtgever:v.opdrachtgever||"", exc:v.exc||"EXC2", acceptatieklasse:v.acceptatieklasse||"B", status:v.status||"in_controle", locked:false };
-          window.CWS.upsertProject(p);
-          UI.toast("Project aangemaakt.");
-          render();
-          return true;
-        }
-      });
-    });
-
-    // =====================
-    // Phase 5: Project wizard (guided creation)
-    // NOTE: Wizard wordt aangeroepen via Hoofdmenu (AppsMenu) en niet meer als knop in de pagina.
-    // Hash: #wizard-nieuw-project
-    // =====================
-    function openProjectWizard(){
-      const st = window.CWS.getState();
-      if(st.ui.role==='Viewer'){ UI.toast('Viewer kan niet wijzigen.'); return; }
-
-      const defaults = (st.ui && st.ui.defaults) ? st.ui.defaults : {};
-      const wiz = {
-        idx: 0,
-        project: {
-          nummer: 'P-',
-          naam: '',
-          opdrachtgever: '',
-          exc: defaults.default_exc || 'EXC2',
-          acceptatieklasse: 'B',
-          status: 'in_controle'
-        },
-        applyTemplateMode: 'merge',
-        bulkAdd: { wps:true, materials:true, welders:true },
-        created: { id:'', api:false },
-        isAdmin: false,
-        adminChecked: false,
-        welds: [],
-        weldsLoaded: false
+    (function(){
+      const state = {
+        allProjects: [],
+        filteredProjects: [],
+        filter: 'all',
+        search: ''
       };
 
-      const steps = [
-        {
-          title: 'Project — basisgegevens',
-          render: ()=>`
-            <div class="card">
-              <div class="smallmuted" style="font-weight:800; margin-bottom:8px">Vul de projectgegevens in en klik Volgende.</div>
-              <div style="display:grid; grid-template-columns:220px 1fr; gap:10px; align-items:center; margin:8px 0;">
-                <div class="smallmuted" style="font-weight:800">Projectnummer</div>
-                <input class="input" id="wiz_p_nummer" value="${UI.esc(wiz.project.nummer)}" />
-              </div>
-              <div style="display:grid; grid-template-columns:220px 1fr; gap:10px; align-items:center; margin:8px 0;">
-                <div class="smallmuted" style="font-weight:800">Projectnaam</div>
-                <input class="input" id="wiz_p_naam" value="${UI.esc(wiz.project.naam)}" />
-              </div>
-              <div style="display:grid; grid-template-columns:220px 1fr; gap:10px; align-items:center; margin:8px 0;">
-                <div class="smallmuted" style="font-weight:800">Opdrachtgever</div>
-                <input class="input" id="wiz_p_client" value="${UI.esc(wiz.project.opdrachtgever)}" />
-              </div>
-              <div class="smallmuted" style="margin-top:8px">Tip: je kunt altijd opslaan als concept en later hervatten.</div>
-            </div>
-          `,
-          apply: ()=>{
-            wiz.project.nummer = document.getElementById('wiz_p_nummer').value;
-            wiz.project.naam = document.getElementById('wiz_p_naam').value;
-            wiz.project.opdrachtgever = document.getElementById('wiz_p_client').value;
-          }
-        },
-        {
-          title: 'Stap 2 — Lassen toevoegen',
-          render: ()=>`
-            <div class="card">
-              <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px; flex-wrap:wrap">
-                <div>
-                  <div style="font-weight:900">Lassenlijst</div>
-                  <div class="smallmuted">Voeg lassen toe. Dit wordt opgeslagen op projectniveau.</div>
-                </div>
-                <div style="display:flex; gap:8px; flex-wrap:wrap">
-                  <button class="btn primary" id="wiz_weld_new">Nieuwe las</button>
-                  <button class="btn" id="wiz_weld_bulk">Bulk toevoegen</button>
-                </div>
-              </div>
-
-              <div id="wiz_weld_warn" class="pillmini" style="margin-top:10px; display:none; background:#fff7d6; border-color:#f0d18a">⚠️ Geen lassen toegevoegd</div>
-
-              <div style="margin-top:10px; overflow:auto; border:1px solid var(--line); border-radius:12px">
-                <table class="table" style="min-width:980px; margin:0">
-                  <thead>
-                    <tr>
-                      <th style="width:140px">Lasnr</th>
-                      <th style="width:120px">Proces</th>
-                      <th style="width:220px">Locatie</th>
-                      <th style="width:160px">Materiaal</th>
-                      <th style="width:120px">Dikte</th>
-                      <th>Lassers/ploeg</th>
-                      <th style="width:160px">Acties</th>
-                    </tr>
-                  </thead>
-                  <tbody id="wiz_weld_rows">
-                    <tr><td colspan="7" class="smallmuted" style="padding:12px">Laden…</td></tr>
-                  </tbody>
-                </table>
-              </div>
-
-              <div class="smallmuted" style="margin-top:8px">
-                Tip: dubbelklik op een rij om te bewerken. Geen harde validatie; wel waarschuwing bij 0 lassen.
-              </div>
-            </div>
-          `
-        },
-        {
-          title: 'Stap 3 — Lasplan (WPS/WPQR)',
-          render: ()=>`
-            <div class="card">
-              <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px; flex-wrap:wrap">
-                <div>
-                  <div style="font-weight:900">Lasplan koppelen</div>
-                  <div class="smallmuted">Koppel WPS/WPQR/WPQ aan dit project. “Alles toevoegen” is idempotent.</div>
-                </div>
-                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap">
-                  <button class="btn" id="wiz_wps_add_all">➕ Alles toevoegen</button>
-                  <button class="btn" id="wiz_wps_add_manual">✍️ Handmatig toevoegen</button>
-                  <button class="btn" id="wiz_wps_refresh">↻ Verversen</button>
-                </div>
-              </div>
-
-              <div id="wiz_wps_warn" class="pillmini" style="margin-top:10px; display:none">⚠️ Nog geen WPS/WPQR gekoppeld.</div>
-
-              <div style="overflow:auto; border:1px solid #e6edf7; border-radius:10px; margin-top:10px;">
-                <table class="table" style="min-width:900px">
-                  <thead>
-                    <tr>
-                      <th style="width:180px">Code</th>
-                      <th>Omschrijving</th>
-                      <th style="width:180px">Documentnr.</th>
-                      <th style="width:120px">Versie</th>
-                      <th style="width:120px">Actie</th>
-                    </tr>
-                  </thead>
-                  <tbody id="wiz_wps_rows">
-                    <tr><td colspan="5" class="smallmuted">Laden...</td></tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          `
-        },
-        {
-          title: 'Stap 4 — NDO plan',
-          render: ()=>`
-            <div class="card">
-              <div style="font-weight:900">NDO plan</div>
-              <div class="smallmuted">Leg vast of NDO vereist is, welke methode en welke omvang (% of aantallen). (Soft warning)</div>
-
-              <div style="display:grid; grid-template-columns:220px 1fr; gap:10px; align-items:center; margin-top:10px">
-                <div class="smallmuted" style="font-weight:800">NDO vereist</div>
-                <label style="display:flex; gap:8px; align-items:center">
-                  <input type="checkbox" id="wiz_ndo_required" />
-                  <span>Ja, NDO plan is vereist</span>
-                </label>
-
-                <div class="smallmuted" style="font-weight:800">Methode</div>
-                <select class="input" id="wiz_ndo_method">
-                  <option value="">— kies —</option>
-                  <option value="VT">VT</option>
-                  <option value="MT">MT</option>
-                  <option value="PT">PT</option>
-                  <option value="UT">UT</option>
-                  <option value="RT">RT</option>
-                </select>
-
-                <div class="smallmuted" style="font-weight:800">Omvang</div>
-                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap">
-                  <input class="input" id="wiz_ndo_percent" placeholder="% (bijv. 10)" style="width:120px" />
-                  <span class="smallmuted">of</span>
-                  <input class="input" id="wiz_ndo_count" placeholder="Aantal (bijv. 5)" style="width:140px" />
-                </div>
-
-                <div class="smallmuted" style="font-weight:800">Opmerking</div>
-                <textarea class="input" id="wiz_ndo_note" rows="3" placeholder="Opmerking / norm / toelichting"></textarea>
-              </div>
-
-              <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:12px">
-                <button class="btn" id="wiz_ndo_save">Opslaan</button>
-              </div>
-
-              <div id="wiz_ndo_warn" class="pillmini" style="margin-top:10px; display:none">
-                ⚠️ NDO vereist, maar methode/omvang ontbreekt.
-              </div>
-            </div>
-          `
-        },
-        {
-          title: 'Stap 5 — Materialen',
-          render: ()=>`
-            <div class="card">
-              <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px; flex-wrap:wrap">
-                <div>
-                  <div style="font-weight:900">Materialen koppelen</div>
-                  <div class="smallmuted">Voeg materialen toe aan dit project. “Alles toevoegen” is idempotent.</div>
-                </div>
-                <div style="display:flex; gap:8px; flex-wrap:wrap">
-                  <button class="btn" id="wiz_mat_add_all">➕ Alles toevoegen</button>
-                  <button class="btn" id="wiz_mat_add_manual">✍️ Handmatig toevoegen</button>
-                  <button class="btn" id="wiz_mat_refresh">↻ Verversen</button>
-                </div>
-              </div>
-
-              <div id="wiz_mat_warn" class="pillmini" style="margin-top:10px; display:none">⚠️ Nog geen materialen gekoppeld.</div>
-
-              <div style="overflow:auto; border:1px solid #e6edf7; border-radius:10px; margin-top:10px;">
-                <table class="table" style="min-width:900px">
-                  <thead>
-                    <tr>
-                      <th style="width:160px">Code</th>
-                      <th>Omschrijving</th>
-                      <th style="width:160px">Norm</th>
-                      <th style="width:160px">Cert</th>
-                      <th style="width:120px">Actie</th>
-                    </tr>
-                  </thead>
-                  <tbody id="wiz_mat_rows">
-                    <tr><td colspan="5" class="smallmuted">Laden...</td></tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          `
-        },
-        {
-          title: 'Stap 6 — Lassers',
-          render: ()=>`
-            <div class="card">
-              <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px; flex-wrap:wrap">
-                <div>
-                  <div style="font-weight:900">Lassers koppelen</div>
-                  <div class="smallmuted">Voeg lassers toe aan dit project. “Alles toevoegen” is idempotent.</div>
-                </div>
-                <div style="display:flex; gap:8px; flex-wrap:wrap">
-                  <button class="btn" id="wiz_wel_add_all">➕ Alles toevoegen</button>
-                  <button class="btn" id="wiz_wel_add_manual">✍️ Handmatig toevoegen</button>
-                  <button class="btn" id="wiz_wel_refresh">↻ Verversen</button>
-                </div>
-              </div>
-
-              <div id="wiz_wel_warn" class="pillmini" style="margin-top:10px; display:none">⚠️ Nog geen lassers gekoppeld.</div>
-
-              <div style="overflow:auto; border:1px solid #e6edf7; border-radius:10px; margin-top:10px;">
-                <table class="table" style="min-width:900px">
-                  <thead>
-                    <tr>
-                      <th style="width:160px">Code</th>
-                      <th>Naam</th>
-                      <th style="width:220px">Proces(sen)</th>
-                      <th style="width:220px">Certificaten</th>
-                      <th style="width:120px">Actie</th>
-                    </tr>
-                  </thead>
-                  <tbody id="wiz_wel_rows">
-                    <tr><td colspan="5" class="smallmuted">Laden...</td></tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          `
-        },
-        {
-          title: 'Stap 7 — Documenten',
-          render: ()=>`
-            <div class="card">
-              <div style="font-weight:900">Documenten uploaden</div>
-              <div class="smallmuted">Upload meerdere documenten. Je kunt ze ook weer verwijderen.</div>
-
-              <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:10px">
-                <select class="input" id="wiz_doc_kind" style="width:240px">
-                  <option value="constructeur">Constructeur</option>
-                  <option value="wps_wpqr">WPS/WPQR</option>
-                  <option value="materiaalcert">Materiaalcertificaten</option>
-                  <option value="foto">Foto</option>
-                  <option value="overig">Overig</option>
-                </select>
-                <input type="file" id="wiz_doc_files" multiple />
-                <button class="btn" id="wiz_doc_upload">Upload</button>
-                <button class="btn" id="wiz_doc_refresh">↻ Verversen</button>
-              </div>
-
-              <div id="wiz_doc_warn" class="pillmini" style="margin-top:10px; display:none">⚠️ Nog geen documenten toegevoegd.</div>
-
-              <div style="overflow:auto; border:1px solid #e6edf7; border-radius:10px; margin-top:10px;">
-                <table class="table" style="min-width:900px">
-                  <thead>
-                    <tr>
-                      <th style="width:200px">Type</th>
-                      <th>Bestand</th>
-                      <th style="width:120px">Grootte</th>
-                      <th style="width:180px">Toegevoegd</th>
-                      <th style="width:120px">Actie</th>
-                    </tr>
-                  </thead>
-                  <tbody id="wiz_doc_rows">
-                    <tr><td colspan="5" class="smallmuted">Laden...</td></tr>
-                  </tbody>
-                </table>
-              </div>
-
-              <div class="smallmuted" style="margin-top:8px">Tip: als API-upload niet beschikbaar is, worden documenten als “concept” bewaard in de wizard.</div>
-            </div>
-          `
-        },
-        {
-          title: 'Stap 8 — Checklist & conform',
-          render: ()=>`
-            <div class="card">
-              <div style="display:flex; justify-content:space-between; gap:10px; align-items:flex-start; flex-wrap:wrap">
-                <div>
-                  <div style="font-weight:900">Checklist & conform</div>
-                  <div class="smallmuted">Klik op een regel om details te wijzigen. Bulk-acties zijn beschikbaar.</div>
-                </div>
-                <div style="display:flex; gap:8px; flex-wrap:wrap">
-                  <button class="btn" id="wiz_chk_all_off">Alles afvinken</button>
-                  <button class="btn" id="wiz_chk_all_on">Alles goedkeuren</button>
-                  <button class="btn" id="wiz_chk_reset">Reset norm</button>
-                </div>
-              </div>
-
-              <div style="overflow:auto; border:1px solid #e6edf7; border-radius:10px; margin-top:10px;">
-                <table class="table" style="min-width:1000px">
-                  <thead>
-                    <tr>
-                      <th style="width:180px">Groep</th>
-                      <th>Controlepunt</th>
-                      <th style="width:140px">Van toepassing</th>
-                      <th style="width:140px">Goedgekeurd</th>
-                      <th style="width:240px">Opmerking</th>
-                    </tr>
-                  </thead>
-                  <tbody id="wiz_chk_rows">
-                    <tr><td colspan="5" class="smallmuted">Laden...</td></tr>
-                  </tbody>
-                </table>
-              </div>
-
-              <div id="wiz_chk_warn" class="pillmini" style="margin-top:10px; display:none">
-                ⚠️ Niet alles is conform (of niet van toepassing).
-              </div>
-            </div>
-          `
-        },
-        {
-          title: 'Stap 9 — Rapportage & afronden',
-          render: ()=>`
-            <div class="card">
-              <div style="font-weight:900">Overzicht</div>
-              <div class="smallmuted">Controleer de samenvatting en rond af.</div>
-
-              <div class="card" style="margin-top:10px; background:#f7fbff">
-                <div id="wiz_rep_summary" class="smallmuted">Laden...</div>
-              </div>
-
-              <div style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap">
-                <button class="btn" id="wiz_rep_download">Download rapport (JSON)</button>
-                <button class="btn" id="wiz_rep_print">Print</button>
-                <button class="btn primary" id="wiz_rep_go_las">Ga naar Lascontroles</button>
-              </div>
-            </div>
-          `
-        }
-      ];
-
-      // =====================
-      // Step 2 (Lassen) – volledig (Optie B)
-      // =====================
-      function _coerceWeldPayload(v){
-        const out = {
-          weld_no: (v.weld_no || '').trim(),
-          process: (v.process || '').trim() || null,
-          location: (v.location || '').trim() || null,
-          material: (v.material || '').trim() || null,
-          thickness: (v.thickness || '').trim() || null,
-          welders: (v.welders || '').trim() || null,
-          notes: (v.notes || '').trim() || null,
-        };
-        return out;
+      function esc(v){
+        return String(v ?? '')
+          .replaceAll('&','&amp;')
+          .replaceAll('<','&lt;')
+          .replaceAll('>','&gt;')
+          .replaceAll('"','&quot;')
+          .replaceAll("'", '&#039;');
       }
 
-      function _nextWeldNo(){
-        // Try to auto-increment patterns like W-1 / W-001 / 1 etc.
-        const list = wiz.welds || [];
-        let best = null;
-        list.forEach(w=>{
-          const s = String(w.weld_no||'').trim();
-          const m = s.match(/^(.*?)(\d+)$/);
-          if(!m) return;
-          const prefix = m[1] || '';
-          const n = parseInt(m[2], 10);
-          if(isNaN(n)) return;
-          const pad = m[2].length;
-          if(!best || n > best.n){
-            best = { prefix, n, pad };
-          }
-        });
-        if(best){
-          const nn = best.n + 1;
-          const num = String(nn).padStart(best.pad, '0');
-          return `${best.prefix}${num}`;
-        }
-        return 'W-1';
+      function getToken(){
+        return localStorage.getItem('nen1090.auth.access') || localStorage.getItem('auth_token') || '';
       }
 
-      function _renderWeldRows(){
-        const tbody = document.getElementById('wiz_weld_rows');
-        if(!tbody) return;
-        const rows = (wiz.welds || []);
-        if(!rows.length){
-          tbody.innerHTML = `<tr><td colspan="7" class="smallmuted" style="padding:12px">Nog geen lassen. Klik <b>Nieuwe las</b> of <b>Bulk toevoegen</b>.</td></tr>`;
+      function getApiBaseUrl(){
+        const base = localStorage.getItem('nen1090.api.baseUrl') || localStorage.getItem('API_BASE_URL') || '';
+        return String(base || '').replace(/\/+$/,'');
+      }
+
+      async function apiFetch(path, options){
+        const token = getToken();
+        const baseUrl = getApiBaseUrl();
+        if(!baseUrl){
+          throw new Error('API Base URL ontbreekt. Stel deze in via Instellingen of set_api.');
+        }
+        const headers = new Headers((options && options.headers) || {});
+        headers.set('Accept', 'application/json');
+        if(token){
+          headers.set('Authorization', 'Bearer ' + token);
+        }
+        if(options && options.body && !headers.has('Content-Type')){
+          headers.set('Content-Type', 'application/json');
+        }
+        const res = await fetch(baseUrl + path, Object.assign({}, options || {}, { headers }));
+        let json = null;
+        let text = '';
+        const ct = res.headers.get('content-type') || '';
+        if(ct.includes('application/json')){
+          json = await res.json().catch(()=>null);
         } else {
-          tbody.innerHTML = rows.map(w=>`
-            <tr data-weld-id="${UI.esc(String(w.id||''))}">
-              <td><b>${UI.esc(w.weld_no||'')}</b></td>
-              <td>${UI.esc(w.process||'')}</td>
-              <td>${UI.esc(w.location||'')}</td>
-              <td>${UI.esc(w.material||'')}</td>
-              <td>${UI.esc(w.thickness||'')}</td>
-              <td>${UI.esc(w.welders||'')}</td>
-              <td>
-                <button class="btn xs" data-act="dup">Dupliceer</button>
-                <button class="btn xs danger" data-act="del">Verwijder</button>
-              </td>
-            </tr>
-          `).join('');
+          text = await res.text().catch(()=>'');
         }
-        const warn = document.getElementById('wiz_weld_warn');
-        if(warn) warn.style.display = rows.length ? 'none' : 'inline-flex';
+        if(!res.ok){
+          const detail = (json && (json.detail || json.message)) || text || ('HTTP ' + res.status);
+          const err = new Error(detail);
+          err.status = res.status;
+          err.payload = json;
+          throw err;
+        }
+        return json;
       }
 
-      async function _loadWelds(projectId){
+      function formatDate(v){
+        if(!v) return '';
+        const d = new Date(v);
+        if(Number.isNaN(d.getTime())) return String(v);
+        const yy = d.getFullYear();
+        const mm = String(d.getMonth()+1).padStart(2,'0');
+        const dd = String(d.getDate()).padStart(2,'0');
+        const hh = String(d.getHours()).padStart(2,'0');
+        const mi = String(d.getMinutes()).padStart(2,'0');
+        return `${yy}-${mm}-${dd} ${hh}:${mi}`;
+      }
+
+      function mapStatusLabel(v){
+        const s = String(v || '').toLowerCase();
+        if(s === 'in_controle') return 'In controle';
+        if(s === 'conform') return 'Conform';
+        if(s === 'afgekeurd') return 'Afgekeurd';
+        if(s === 'locked') return 'Locked';
+        return v || '';
+      }
+
+      function mapStatusClass(v){
+        const s = String(v || '').toLowerCase();
+        if(s === 'in_controle') return 'in-controle';
+        if(s === 'conform') return 'conform';
+        if(s === 'afgekeurd') return 'afgekeurd';
+        if(s === 'locked') return 'locked';
+        return 'in-controle';
+      }
+
+      function toFrontendProject(project){
+        return {
+          id: project.id,
+          nummer: project.code || '',
+          naam: project.name || '',
+          opdrachtgever: project.client_name || '',
+          executieklasse: project.execution_class || '',
+          acceptatieklasse: project.acceptance_class || '',
+          status: project.locked ? 'locked' : (project.status || 'in_controle'),
+          locked: !!project.locked,
+          laatstGewijzigd: project.updated_at || project.created_at || ''
+        };
+      }
+
+      function syncProjectsIntoCwsStore(projects){
         try{
-          if(isLoggedIn()){
-            const list = await window.Auth.welds.list(projectId);
-            wiz.welds = Array.isArray(list) ? list : [];
-            wiz.weldsLoaded = true;
-            _renderWeldRows();
-            return wiz.welds;
+          if(!window.CWS || !window.CWS.getState || !window.CWS.setState) return;
+          const st = window.CWS.getState();
+          const oldActiveId = st.ui.activeProjectId || '';
+          const oldActiveCode = oldActiveId && st.projects.byId[oldActiveId] ? st.projects.byId[oldActiveId].nummer : '';
+          st.projects.byId = {};
+          st.projects.order = [];
+          projects.forEach((p)=>{
+            st.projects.byId[p.id] = {
+              id: p.id,
+              nummer: p.nummer,
+              naam: p.naam,
+              opdrachtgever: p.opdrachtgever,
+              exc: p.executieklasse,
+              acceptatieklasse: p.acceptatieklasse,
+              status: p.status,
+              locked: p.locked,
+              laatstGewijzigd: p.laatstGewijzigd
+            };
+            st.projects.order.push(p.id);
+          });
+          if(oldActiveCode){
+            const match = st.projects.order.find((id)=> (st.projects.byId[id]?.nummer || '') === oldActiveCode);
+            if(match) st.ui.activeProjectId = match;
           }
-        }catch(e){
-          console.error(e);
-          UI.toast('Lassen laden mislukt.');
+          if(!st.ui.activeProjectId && st.projects.order.length){
+            st.ui.activeProjectId = st.projects.order[0];
+          }
+          window.CWS.setState(st);
+          try{ window.dispatchEvent(new Event('cws_projects_changed')); }catch(_){ }
+        }catch(err){
+          console.error('Sync CWS store mislukt:', err);
         }
-        wiz.welds = wiz.welds || [];
-        wiz.weldsLoaded = true;
-        _renderWeldRows();
-        return wiz.welds;
       }
 
-      function _openWeldForm({ title, initial, onSave }){
-        const v = Object.assign({
-          weld_no: _nextWeldNo(),
-          process: '',
-          location: '',
-          material: '',
-          thickness: '',
-          welders: ''
-        }, initial || {});
-        const html = `
-          <div class="card">
-            <div class="smallmuted" style="font-weight:800; margin-bottom:8px">Vul de lasgegevens in.</div>
-            <div style="display:grid; grid-template-columns:180px 1fr; gap:10px; align-items:center; margin:8px 0;">
-              <div class="smallmuted" style="font-weight:800">Lasnummer</div>
-              <input class="input" id="wf_weld_no" value="${UI.esc(v.weld_no||'')}" />
-            </div>
-            <div style="display:grid; grid-template-columns:180px 1fr; gap:10px; align-items:center; margin:8px 0;">
-              <div class="smallmuted" style="font-weight:800">Proces</div>
-              <input class="input" id="wf_process" placeholder="MAG / TIG / ..." value="${UI.esc(v.process||'')}" />
-            </div>
-            <div style="display:grid; grid-template-columns:180px 1fr; gap:10px; align-items:center; margin:8px 0;">
-              <div class="smallmuted" style="font-weight:800">Locatie</div>
-              <input class="input" id="wf_location" value="${UI.esc(v.location||'')}" />
-            </div>
-            <div style="display:grid; grid-template-columns:180px 1fr; gap:10px; align-items:center; margin:8px 0;">
-              <div class="smallmuted" style="font-weight:800">Materiaal</div>
-              <input class="input" id="wf_material" value="${UI.esc(v.material||'')}" />
-            </div>
-            <div style="display:grid; grid-template-columns:180px 1fr; gap:10px; align-items:center; margin:8px 0;">
-              <div class="smallmuted" style="font-weight:800">Dikte</div>
-              <input class="input" id="wf_thickness" placeholder="bijv. 8mm" value="${UI.esc(v.thickness||'')}" />
-            </div>
-            <div style="display:grid; grid-template-columns:180px 1fr; gap:10px; align-items:center; margin:8px 0;">
-              <div class="smallmuted" style="font-weight:800">Lassers/ploeg</div>
-              <input class="input" id="wf_welders" value="${UI.esc(v.welders||'')}" />
-            </div>
-          </div>
-        `;
-        const m = UI.openModal({
-          title: title || 'Las',
-          saveLabel: 'Opslaan',
-          bodyHtml: html,
-          onSave: async ({ close })=>{
-            const payload = _coerceWeldPayload({
-              weld_no: document.getElementById('wf_weld_no').value,
-              process: document.getElementById('wf_process').value,
-              location: document.getElementById('wf_location').value,
-              material: document.getElementById('wf_material').value,
-              thickness: document.getElementById('wf_thickness').value,
-              welders: document.getElementById('wf_welders').value,
-            });
-            if(!payload.weld_no){ UI.toast('Lasnummer is verplicht.'); return false; }
-            try{
-              await onSave(payload);
-              close();
-              return true;
-            }catch(e){
-              console.error(e);
-              UI.toast('Opslaan las mislukt.');
-              return false;
-            }
-          }
+      function getVisibleProjects(){
+        const q = state.search.trim().toLowerCase();
+        return state.allProjects.filter((p)=>{
+          if(state.filter === 'locked' && !p.locked) return false;
+          if(state.filter !== 'all' && state.filter !== 'locked' && p.status !== state.filter) return false;
+          if(!q) return true;
+          const hay = [p.nummer, p.naam, p.opdrachtgever, p.executieklasse, p.acceptatieklasse, p.status].join(' ').toLowerCase();
+          return hay.includes(q);
         });
-        // focus first input
-        setTimeout(()=>{ try{ document.getElementById('wf_weld_no')?.focus(); }catch(_){ } }, 0);
-        return m;
       }
 
-      function _openBulkAdd(projectId){
-        const html = `
-          <div class="card">
-            <div style="font-weight:900">Bulk toevoegen</div>
-            <div class="smallmuted" style="margin-top:6px">Plak regels (CSV/TSV). Kolommen: <b>Lasnr; Proces; Locatie; Materiaal; Dikte; Lassers</b>.</div>
-            <textarea class="input" id="wiz_bulk_txt" style="height:180px; margin-top:10px" placeholder="W-1;MAG;Werkplaats;S235;8mm;Ploeg A\nW-2;TIG;Montage;RVS;3mm;Jan"></textarea>
-            <div id="wiz_bulk_preview" class="smallmuted" style="margin-top:8px">0 regels</div>
-          </div>
-        `;
-        const m = UI.openModal({
-          title: 'Bulk lassen toevoegen',
-          saveLabel: 'Toevoegen',
-          bodyHtml: html,
-          onSave: async ({ close })=>{
-            const raw = (document.getElementById('wiz_bulk_txt').value || '').trim();
-            if(!raw){ UI.toast('Geen data geplakt.'); return false; }
-            const lines = raw.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
-            const items = lines.map(line=>{
-              const parts = line.split(/[;\t,]/).map(x=>x.trim());
-              return _coerceWeldPayload({
-                weld_no: parts[0] || '',
-                process: parts[1] || '',
-                location: parts[2] || '',
-                material: parts[3] || '',
-                thickness: parts[4] || '',
-                welders: parts[5] || ''
-              });
-            }).filter(x=>x.weld_no);
-            if(!items.length){ UI.toast('Geen geldige regels (Lasnr ontbreekt).'); return false; }
+      function render(){
+        const tbody = document.getElementById('projectsTbody');
+        const countEl = document.getElementById('projectsCount');
+        state.filteredProjects = getVisibleProjects();
+        countEl.textContent = `${state.filteredProjects.length} projecten`;
 
-            // Create sequentially (avoids spikes, stable)
-            try{
-              if(isLoggedIn()){
-                for(const it of items){
-                  await window.Auth.welds.create(projectId, it);
-                }
-                await _loadWelds(projectId);
-              } else {
-                wiz.welds = (wiz.welds || []).concat(items.map(it=>Object.assign({ id: crypto.randomUUID ? crypto.randomUUID() : (Date.now()+Math.random()) }, it)));
-                _renderWeldRows();
-              }
-              UI.toast(`${items.length} lassen toegevoegd.`);
-              close();
-              return true;
-            }catch(e){
-              console.error(e);
-              UI.toast('Bulk toevoegen mislukt.');
-              return false;
-            }
-          }
-        });
-
-        const txtEl = document.getElementById('wiz_bulk_txt');
-        const prevEl = document.getElementById('wiz_bulk_preview');
-        if(txtEl && prevEl){
-          const upd = ()=>{
-            const raw = (txtEl.value || '').trim();
-            const n = raw ? raw.split(/\r?\n/).map(x=>x.trim()).filter(Boolean).length : 0;
-            prevEl.textContent = `${n} regels`;
-          };
-          txtEl.oninput = upd;
-          upd();
-        }
-        return m;
-      }
-
-      async function mountWeldsStep(){
-        // Ensure we have a project_id (UUID) for API welds
-        const created = await ensureCreated();
-        const projectId = created.id;
-
-        // Load list once (or refresh after changes)
-        await _loadWelds(projectId);
-
-        const btnNew = document.getElementById('wiz_weld_new');
-        const btnBulk = document.getElementById('wiz_weld_bulk');
-        if(btnNew){
-          btnNew.onclick = async ()=>{
-            _openWeldForm({
-              title: 'Nieuwe las',
-              initial: { weld_no: _nextWeldNo() },
-              onSave: async (payload)=>{
-                if(isLoggedIn()){
-                  await window.Auth.welds.create(projectId, payload);
-                  await _loadWelds(projectId);
-                } else {
-                  wiz.welds = (wiz.welds || []).concat([Object.assign({ id: crypto.randomUUID ? crypto.randomUUID() : (Date.now()+Math.random()) }, payload)]);
-                  _renderWeldRows();
-                }
-              }
-            });
-          };
-        }
-        if(btnBulk){
-          btnBulk.onclick = ()=>_openBulkAdd(projectId);
+        if(!state.filteredProjects.length){
+          tbody.innerHTML = '<tr class="empty-row"><td colspan="8">0 projecten</td></tr>';
+          return;
         }
 
-        // Row actions
-        const tbody = document.getElementById('wiz_weld_rows');
-        if(tbody){
-          tbody.onclick = async (ev)=>{
-            const btn = ev.target && ev.target.closest ? ev.target.closest('button[data-act]') : null;
-            if(!btn) return;
-            const tr = btn.closest('tr[data-weld-id]');
-            const weldId = tr ? tr.getAttribute('data-weld-id') : '';
-            const act = btn.getAttribute('data-act');
-            const w = (wiz.welds || []).find(x=>String(x.id)===String(weldId));
-            if(!w) return;
-
-            if(act==='dup'){
-              const copy = Object.assign({}, w);
-              delete copy.id;
-              copy.weld_no = _nextWeldNo();
-              if(isLoggedIn()){
-                await window.Auth.welds.create(projectId, _coerceWeldPayload(copy));
-                await _loadWelds(projectId);
-              } else {
-                wiz.welds = (wiz.welds || []).concat([Object.assign({ id: crypto.randomUUID ? crypto.randomUUID() : (Date.now()+Math.random()) }, _coerceWeldPayload(copy))]);
-                _renderWeldRows();
-              }
-            }
-            if(act==='del'){
-              const ok = window.confirm('Las verwijderen?');
-              if(!ok) return;
-              if(isLoggedIn()){
-                await window.Auth.welds.remove(projectId, weldId);
-                await _loadWelds(projectId);
-              } else {
-                wiz.welds = (wiz.welds || []).filter(x=>String(x.id)!==String(weldId));
-                _renderWeldRows();
-              }
-            }
-          };
-
-          tbody.ondblclick = async (ev)=>{
-            const tr = ev.target && ev.target.closest ? ev.target.closest('tr[data-weld-id]') : null;
-            if(!tr) return;
-            const weldId = tr.getAttribute('data-weld-id');
-            const w = (wiz.welds || []).find(x=>String(x.id)===String(weldId));
-            if(!w) return;
-            _openWeldForm({
-              title: 'Las bewerken',
-              initial: w,
-              onSave: async (payload)=>{
-                if(isLoggedIn()){
-                  await window.Auth.welds.update(projectId, weldId, payload);
-                  await _loadWelds(projectId);
-                } else {
-                  wiz.welds = (wiz.welds || []).map(x=>String(x.id)===String(weldId) ? Object.assign({}, x, payload) : x);
-                  _renderWeldRows();
-                }
-              }
-            });
-          };
-        }
-      }
-
-      function body(){
-        const pnum = (wiz.project.nummer||'').trim();
-        const pnaam = (wiz.project.naam||'').trim();
-        const ptitle = (pnum||'Nieuw project') + (pnaam?(' — '+pnaam):'');
-        const pclient = (wiz.project.opdrachtgever||'').trim();
-        const exc = wiz.project.exc || '';
-        const acc = wiz.project.acceptatieklasse || '';
-        const status = wiz.project.status || 'in_controle';
-
-        return `
-          <div class="card" style="padding:10px; margin-bottom:10px" data-testid="wizard-header">
-            <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:space-between">
-              <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center">
-                <span class="pillmini" id="wizBadgeProject"><b>${UI.esc(ptitle)}</b></span>
-                <span class="pillmini" id="wizBadgeClient">${pclient?('Opdrachtgever: '+UI.esc(pclient)):'Opdrachtgever: —'}</span>
-                <span class="pillmini" id="wizBadgeExc">${exc?('EXC: '+UI.esc(exc)):'EXC: —'}</span>
-                <span class="pillmini" id="wizBadgeAcc">${acc?('Acceptatie: '+UI.esc(acc)):'Acceptatie: —'}</span>
-                <span class="pillmini" id="wizBadgeStatus">Status: ${UI.esc(status)}</span>
+        tbody.innerHTML = state.filteredProjects.map((p)=>`
+          <tr data-project-id="${esc(p.id)}">
+            <td>${esc(p.nummer)}</td>
+            <td>${esc(p.naam)}</td>
+            <td>${esc(p.opdrachtgever)}</td>
+            <td>${esc(p.executieklasse)}</td>
+            <td>${esc(p.acceptatieklasse)}</td>
+            <td><span class="badge-status ${esc(mapStatusClass(p.status))}">${esc(mapStatusLabel(p.status))}</span></td>
+            <td>${esc(formatDate(p.laatstGewijzigd))}</td>
+            <td>
+              <div class="actions">
+                <button class="btn btn-edit" data-action="edit" data-id="${esc(p.id)}">Edit</button>
+                <button class="btn btn-delete" data-action="delete" data-id="${esc(p.id)}">Verwijderen</button>
               </div>
-              <div class="pillmini" id="wizBadgeStep">Stap ${wiz.idx+1} / ${steps.length}</div>
-            </div>
-          </div>
-
-          <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px">
-            <div class="smallmuted" style="font-weight:800">${UI.esc(steps[wiz.idx].title)}</div>
-          </div>
-
-          <div data-testid="wizard-step-${wiz.idx+1}">
-            ${steps[wiz.idx].render()}
-          </div>
-
-          <div class="footerbar" style="justify-content:space-between; margin-top:12px">
-            <button class="btn" id="wizBack" data-testid="wizard-prev" ${wiz.idx===0?'disabled':''}>Terug</button>
-            <div style="display:flex; gap:10px">
-              <button class="btn" id="wizSaveDraft" data-testid="wizard-save-draft">Opslaan concept</button>
-              <button class="btn" id="wizNext" data-testid="wizard-next">${wiz.idx===steps.length-1?'Voltooien':'Volgende'}</button>
-            </div>
-          </div>
-        `;
+            </td>
+          </tr>
+        `).join('');
       }
 
-      const modal = UI.openModal({ title:'Nieuw project wizard', saveLabel:'Sluiten', bodyHtml: body(), onSave: ({close})=>close() });
-
-      // --- Wizard polish (Phase 5.1): admin detect + template preview + validations
-      async function ensureAdminChecked(){
-        if(wiz.adminChecked) return wiz.isAdmin;
-        wiz.adminChecked = true;
-        if(!isLoggedIn()) { wiz.isAdmin = false; return false; }
-        try{
-          const me = await window.Auth.me();
-          wiz.isAdmin = !!(me && (me.is_tenant_admin || me.is_platform_admin || me.role==='Admin'));
-          return wiz.isAdmin;
-        }catch(_){ wiz.isAdmin = false; return false; }
-      }
-
-      function tplStats(items){
-        const s = {total:0, groups:{}, required:0, evidence:0};
-        (items||[]).forEach(it=>{
-          s.total++;
-          const g = it.groep || it.group || 'overig';
-          s.groups[g] = (s.groups[g]||0) + 1;
-          if(it.required) s.required++;
-          if(it.evidence_required) s.evidence++;
-        });
-        return s;
-      }
-
-      async function refreshTemplatePreview(){
-        const box = document.getElementById('wiz_tpl_preview');
-        if(!box) return;
-        if(!isLoggedIn()){ box.innerHTML = 'Log in om templates te laden (preview)'; return; }
-        try{
-          box.innerHTML = 'Template preview laden…';
-          const lst = await window.Auth.phase1.listInspectionTemplates(wiz.project.exc);
-          if(!lst || !lst.length){ box.innerHTML = 'Geen inspectie-template gevonden voor '+UI.esc(wiz.project.exc)+'.'; return; }
-          const tpl = lst.find(t=>t.is_default) || lst[0];
-          const items = tpl.items_json || tpl.items || [];
-          const st = tplStats(items);
-          const grp = Object.keys(st.groups).sort().map(k=>`<span class="pillmini" style="margin-right:6px">${UI.esc(k)}: ${st.groups[k]}</span>`).join('');
-          box.innerHTML = `<div style="display:flex; justify-content:space-between; gap:10px; align-items:center">
-            <div><b>${UI.esc(tpl.name||'Template')}</b> <span class="smallmuted">(v${UI.esc(String(tpl.version||1))})</span></div>
-            <div class="pillmini">Totaal: ${st.total} • Verplicht: ${st.required} • Bewijs: ${st.evidence}</div>
-          </div><div style="margin-top:8px">${grp || '<span class="smallmuted">Geen groepen</span>'}</div>`;
-        }catch(e){ console.error(e); box.innerHTML = 'Template preview laden mislukt.'; }
-      }
-
-      
-      // =====================
-      // Wizard steps 3-9 (Optie B) — API-first met veilige fallback
-      // =====================
-      function _has(fn){ return typeof fn === 'function'; }
-
-      function _ensureArray(k){ if(!window.wiz[k]) window.wiz[k]=[]; return window.wiz[k]; }
-
-      // --- Step 3: WPS/WPQR ---
-      async function mountWpsStep(){
-        const created = await ensureCreated();
-        const projectId = created.id;
-
-        const btnAll = document.getElementById('wiz_wps_add_all');
-        const btnManual = document.getElementById('wiz_wps_add_manual');
-        const btnRefresh = document.getElementById('wiz_wps_refresh');
-
-        async function load(){
-          const rows = document.getElementById('wiz_wps_rows');
-          const warn = document.getElementById('wiz_wps_warn');
-          if(!rows) return;
-
-          let items = [];
-          if(isLoggedIn() && window.Auth?.phase1 && _has(window.Auth.phase1.selectedWps)){
-            items = await _apiTry(()=> window.Auth.phase1.selectedWps(projectId), ()=>[]);
-          }else{
-            items = _ensureArray('wps');
-          }
-
-          if(!items.length){
-            if(warn) warn.style.display='inline-flex';
-            rows.innerHTML = '<tr><td colspan="5" class="smallmuted">Nog geen WPS/WPQR gekoppeld.</td></tr>';
-            return;
-          }
-          if(warn) warn.style.display='none';
-
-          rows.innerHTML = items.map((it, idx)=>`
-            <tr data-idx="${idx}">
-              <td>${UI.esc(it.code||it.wps_code||it.id||'')}</td>
-              <td>${UI.esc(it.name||it.omschrijving||it.description||'')}</td>
-              <td>${UI.esc(it.doc_no||it.documentnr||'')}</td>
-              <td>${UI.esc(it.version||it.versie||'')}</td>
-              <td><button class="btn btn-sm" data-act="rm" data-code="${UI.esc(it.code||it.wps_code||it.id||'')}">Verwijder</button></td>
-            </tr>
-          `).join('');
-
-          rows.querySelectorAll('button[data-act="rm"]').forEach(b=>{
-            b.onclick = async ()=>{
-              const code = b.getAttribute('data-code');
-              if(!confirm(`WPS/WPQR "${code}" loskoppelen?`)) return;
-
-              if(isLoggedIn() && window.Auth?.phase1 && _has(window.Auth.phase1.removeWps)){
-                await _apiTry(()=> window.Auth.phase1.removeWps(projectId, code), ()=>null);
-              }else{
-                window.wiz.wps = _ensureArray('wps').filter(x => (x.code||x.wps_code||x.id) !== code);
-              }
-              await load();
-            };
-          });
-        }
-
-        if(btnAll){
-          btnAll.onclick = async ()=>{
-            if(!isLoggedIn() || !window.Auth?.phase1 || !_has(window.Auth.phase1.addAllWps)){
-              UI.toast('Login/API nodig voor “Alles toevoegen”. Gebruik “Handmatig toevoegen”.');
-              return;
-            }
-            await _apiTry(()=> window.Auth.phase1.addAllWps(projectId), ()=>null);
-            await load();
-          };
-        }
-
-        if(btnManual){
-          btnManual.onclick = async ()=>{
-            const list = (isLoggedIn() && window.Auth?.settings?.wps && _has(window.Auth.settings.wps.list))
-              ? await _apiTry(()=> window.Auth.settings.wps.list(), ()=>[])
-              : [];
-            const html = `
-              <div style="font-weight:900; margin-bottom:6px">Handmatig WPS/WPQR toevoegen</div>
-              <div class="smallmuted" style="margin-bottom:10px">Kies uit Instellingen (API) of vul handmatig in (concept).</div>
-              <div style="display:grid; grid-template-columns:160px 1fr; gap:8px; align-items:center">
-                <div class="smallmuted">Selecteer (API)</div>
-                <select class="input" id="wiz_wps_pick">
-                  <option value="">— kies —</option>
-                  ${list.map(it=>`<option value="${UI.esc(it.code||it.id||'')}">${UI.esc((it.code||it.id||'')+' — '+(it.name||it.omschrijving||''))}</option>`).join('')}
-                </select>
-                <div class="smallmuted">Of handmatig</div>
-                <div style="display:flex; gap:8px; flex-wrap:wrap">
-                  <input class="input" id="wiz_wps_code" placeholder="Code" style="width:180px" />
-                  <input class="input" id="wiz_wps_name" placeholder="Omschrijving" />
-                </div>
-              </div>
-              <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:14px">
-                <button class="btn" id="wiz_wps_cancel">Annuleren</button>
-                <button class="btn primary" id="wiz_wps_save">Toevoegen</button>
-              </div>
-            `;
-            UI.openModal({
-              title:'WPS/WPQR toevoegen',
-              saveLabel:'Sluiten',
-              bodyHtml: html,
-              onSave: ({close})=>close(),
-              onMount: ({close})=>{
-                document.getElementById('wiz_wps_cancel').onclick = close;
-                document.getElementById('wiz_wps_save').onclick = async ()=>{
-                  const pick = (document.getElementById('wiz_wps_pick').value||'').trim();
-                  const code = (pick || (document.getElementById('wiz_wps_code').value||'').trim());
-                  const name = (document.getElementById('wiz_wps_name').value||'').trim();
-                  if(!code){ UI.toast('Code ontbreekt'); return; }
-
-                  if(isLoggedIn() && window.Auth?.phase1 && _has(window.Auth.phase1.addWps)){
-                    await _apiTry(()=> window.Auth.phase1.addWps(projectId, { code, name }), ()=>null);
-                  }else{
-                    const arr=_ensureArray('wps');
-                    if(!arr.some(x => (x.code||x.wps_code||x.id)===code)) arr.push({code, name});
-                  }
-                  close();
-                  await load();
-                };
-              }
-            });
-          };
-        }
-
-        if(btnRefresh) btnRefresh.onclick = load;
-
-        await load();
-      }
-
-      // --- Step 4: NDO plan ---
-      async function mountNdoStep(){
-        const created = await ensureCreated();
-        const projectId = created.id;
-
-        const elReq = document.getElementById('wiz_ndo_required');
-        const elMethod = document.getElementById('wiz_ndo_method');
-        const elPct = document.getElementById('wiz_ndo_percent');
-        const elCnt = document.getElementById('wiz_ndo_count');
-        const elNote = document.getElementById('wiz_ndo_note');
-        const btnSave = document.getElementById('wiz_ndo_save');
-        const warn = document.getElementById('wiz_ndo_warn');
-
-        function read(){
-          const required = !!(elReq && elReq.checked);
-          const method = (elMethod?.value||'').trim() || null;
-          const percent = (elPct?.value||'').trim(); 
-          const count = (elCnt?.value||'').trim();
-          const note = (elNote?.value||'').trim() || null;
-          return {
-            required,
-            method,
-            percent: percent ? Number(percent) : null,
-            count: count ? Number(count) : null,
-            note
-          };
-        }
-
-        function validate(){
-          const v = read();
-          const bad = v.required && (!v.method || (!v.percent && !v.count));
-          if(warn) warn.style.display = bad ? 'inline-flex' : 'none';
-          return !bad;
-        }
-
-        async function load(){
-          const ndo = wiz.ndo_plan || null;
-          if(ndo){
-            if(elReq) elReq.checked = !!ndo.required;
-            if(elMethod) elMethod.value = ndo.method || '';
-            if(elPct) elPct.value = ndo.percent!=null ? String(ndo.percent) : '';
-            if(elCnt) elCnt.value = ndo.count!=null ? String(ndo.count) : '';
-            if(elNote) elNote.value = ndo.note || '';
-          }else{
-            if(elReq) elReq.checked = false;
-            if(elMethod) elMethod.value = '';
-            if(elPct) elPct.value = '';
-            if(elCnt) elCnt.value = '';
-            if(elNote) elNote.value = '';
-          }
-          validate();
-        }
-
-        async function save(){
-          wiz.ndo_plan = read();
-          validate();
-          if(isLoggedIn() && window.Auth?.projects && _has(window.Auth.projects.patch)){
-            await _apiTry(()=> window.Auth.projects.patch(projectId, { ndo_plan: wiz.ndo_plan }), ()=>null);
-          }
-          UI.toast('NDO plan opgeslagen');
-        }
-
-        if(elReq) elReq.onchange = validate;
-        if(elMethod) elMethod.onchange = validate;
-        if(elPct) elPct.oninput = validate;
-        if(elCnt) elCnt.oninput = validate;
-        if(btnSave) btnSave.onclick = save;
-
-        await load();
-      }
-
-      // --- Step 5: Materials ---
-      async function mountMaterialsStep(){
-        const created = await ensureCreated();
-        const projectId = created.id;
-
-        const btnAll = document.getElementById('wiz_mat_add_all');
-        const btnManual = document.getElementById('wiz_mat_add_manual');
-        const btnRefresh = document.getElementById('wiz_mat_refresh');
-
-        async function load(){
-          const rows = document.getElementById('wiz_mat_rows');
-          const warn = document.getElementById('wiz_mat_warn');
-          if(!rows) return;
-
-          let items=[];
-          if(isLoggedIn() && window.Auth?.phase1 && _has(window.Auth.phase1.selectedMaterials)){
-            items = await _apiTry(()=> window.Auth.phase1.selectedMaterials(projectId), ()=>[]);
-          }else{
-            items = _ensureArray('materials');
-          }
-
-          if(!items.length){
-            if(warn) warn.style.display='inline-flex';
-            rows.innerHTML = '<tr><td colspan="5" class="smallmuted">Nog geen materialen gekoppeld.</td></tr>';
-            return;
-          }
-          if(warn) warn.style.display='none';
-
-          rows.innerHTML = items.map(it=>`
-            <tr>
-              <td>${UI.esc(it.code||it.material_code||it.id||'')}</td>
-              <td>${UI.esc(it.name||it.omschrijving||it.description||'')}</td>
-              <td>${UI.esc(it.norm||it.standard||'')}</td>
-              <td>${UI.esc(it.cert||it.certificate||'')}</td>
-              <td><button class="btn btn-sm" data-act="rm" data-code="${UI.esc(it.code||it.material_code||it.id||'')}">Verwijder</button></td>
-            </tr>
-          `).join('');
-
-          rows.querySelectorAll('button[data-act="rm"]').forEach(b=>{
-            b.onclick = async ()=>{
-              const code = b.getAttribute('data-code');
-              if(!confirm(`Materiaal "${code}" loskoppelen?`)) return;
-
-              if(isLoggedIn() && window.Auth?.phase1 && _has(window.Auth.phase1.removeMaterial)){
-                await _apiTry(()=> window.Auth.phase1.removeMaterial(projectId, code), ()=>null);
-              }else{
-                window.wiz.materials = _ensureArray('materials').filter(x => (x.code||x.material_code||x.id) !== code);
-              }
-              await load();
-            };
-          });
-        }
-
-        if(btnAll){
-          btnAll.onclick = async ()=>{
-            if(!isLoggedIn() || !window.Auth?.phase1 || !_has(window.Auth.phase1.addAllMaterials)){
-              UI.toast('Login/API nodig voor “Alles toevoegen”. Gebruik “Handmatig toevoegen”.');
-              return;
-            }
-            await _apiTry(()=> window.Auth.phase1.addAllMaterials(projectId), ()=>null);
-            await load();
-          };
-        }
-
-        if(btnManual){
-          btnManual.onclick = async ()=>{
-            const list = (isLoggedIn() && window.Auth?.settings?.materials && _has(window.Auth.settings.materials.list))
-              ? await _apiTry(()=> window.Auth.settings.materials.list(), ()=>[])
-              : [];
-
-            const html = `
-              <div style="font-weight:900; margin-bottom:6px">Handmatig materiaal toevoegen</div>
-              <div class="smallmuted" style="margin-bottom:10px">Kies uit Instellingen (API) of vul handmatig in (concept).</div>
-              <div style="display:grid; grid-template-columns:160px 1fr; gap:8px; align-items:center">
-                <div class="smallmuted">Selecteer (API)</div>
-                <select class="input" id="wiz_mat_pick">
-                  <option value="">— kies —</option>
-                  ${list.map(it=>`<option value="${UI.esc(it.code||it.id||'')}">${UI.esc((it.code||it.id||'')+' — '+(it.name||it.omschrijving||''))}</option>`).join('')}
-                </select>
-
-                <div class="smallmuted">Of handmatig</div>
-                <div style="display:flex; gap:8px; flex-wrap:wrap">
-                  <input class="input" id="wiz_mat_code" placeholder="Code" style="width:180px" />
-                  <input class="input" id="wiz_mat_name" placeholder="Omschrijving" />
-                  <input class="input" id="wiz_mat_norm" placeholder="Norm" style="width:180px" />
-                  <input class="input" id="wiz_mat_cert" placeholder="Cert (optioneel)" style="width:180px" />
-                </div>
-              </div>
-              <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:14px">
-                <button class="btn" id="wiz_mat_cancel">Annuleren</button>
-                <button class="btn primary" id="wiz_mat_save">Toevoegen</button>
-              </div>
-            `;
-
-            UI.openModal({
-              title:'Materiaal toevoegen',
-              saveLabel:'Sluiten',
-              bodyHtml: html,
-              onSave: ({close})=>close(),
-              onMount: ({close})=>{
-                document.getElementById('wiz_mat_cancel').onclick = close;
-                document.getElementById('wiz_mat_save').onclick = async ()=>{
-                  const pick = (document.getElementById('wiz_mat_pick').value||'').trim();
-                  const code = (pick || (document.getElementById('wiz_mat_code').value||'').trim());
-                  const name = (document.getElementById('wiz_mat_name').value||'').trim();
-                  const norm = (document.getElementById('wiz_mat_norm').value||'').trim();
-                  const cert = (document.getElementById('wiz_mat_cert').value||'').trim();
-                  if(!code){ UI.toast('Code ontbreekt'); return; }
-
-                  if(isLoggedIn() && window.Auth?.phase1 && _has(window.Auth.phase1.addMaterial)){
-                    await _apiTry(()=> window.Auth.phase1.addMaterial(projectId, { code, name, norm, cert }), ()=>null);
-                  }else{
-                    const arr=_ensureArray('materials');
-                    if(!arr.some(x => (x.code||x.material_code||x.id)===code)) arr.push({code, name, norm, cert});
-                  }
-                  close();
-                  await load();
-                };
-              }
-            });
-          };
-        }
-
-        if(btnRefresh) btnRefresh.onclick = load;
-
-        await load();
-      }
-
-      // --- Step 6: Welders ---
-      async function mountWeldersStep(){
-        const created = await ensureCreated();
-        const projectId = created.id;
-
-        const btnAll = document.getElementById('wiz_wel_add_all');
-        const btnManual = document.getElementById('wiz_wel_add_manual');
-        const btnRefresh = document.getElementById('wiz_wel_refresh');
-
-        async function load(){
-          const rows = document.getElementById('wiz_wel_rows');
-          const warn = document.getElementById('wiz_wel_warn');
-          if(!rows) return;
-
-          let items=[];
-          if(isLoggedIn() && window.Auth?.phase1 && _has(window.Auth.phase1.selectedWelders)){
-            items = await _apiTry(()=> window.Auth.phase1.selectedWelders(projectId), ()=>[]);
-          }else{
-            items = _ensureArray('welders');
-          }
-
-          if(!items.length){
-            if(warn) warn.style.display='inline-flex';
-            rows.innerHTML = '<tr><td colspan="5" class="smallmuted">Nog geen lassers gekoppeld.</td></tr>';
-            return;
-          }
-          if(warn) warn.style.display='none';
-
-          rows.innerHTML = items.map(it=>`
-            <tr>
-              <td>${UI.esc(it.code||it.welder_code||it.id||'')}</td>
-              <td>${UI.esc(it.name||it.naam||'')}</td>
-              <td>${UI.esc(it.processes||it.process||it.proc||'')}</td>
-              <td>${UI.esc(it.certs||it.certificaten||'')}</td>
-              <td><button class="btn btn-sm" data-act="rm" data-code="${UI.esc(it.code||it.welder_code||it.id||'')}">Verwijder</button></td>
-            </tr>
-          `).join('');
-
-          rows.querySelectorAll('button[data-act="rm"]').forEach(b=>{
-            b.onclick = async ()=>{
-              const code = b.getAttribute('data-code');
-              if(!confirm(`Lasser "${code}" loskoppelen?`)) return;
-
-              if(isLoggedIn() && window.Auth?.phase1 && _has(window.Auth.phase1.removeWelder)){
-                await _apiTry(()=> window.Auth.phase1.removeWelder(projectId, code), ()=>null);
-              }else{
-                window.wiz.welders = _ensureArray('welders').filter(x => (x.code||x.welder_code||x.id) !== code);
-              }
-              await load();
-            };
-          });
-        }
-
-        if(btnAll){
-          btnAll.onclick = async ()=>{
-            if(!isLoggedIn() || !window.Auth?.phase1 || !_has(window.Auth.phase1.addAllWelders)){
-              UI.toast('Login/API nodig voor “Alles toevoegen”. Gebruik “Handmatig toevoegen”.');
-              return;
-            }
-            await _apiTry(()=> window.Auth.phase1.addAllWelders(projectId), ()=>null);
-            await load();
-          };
-        }
-
-        if(btnManual){
-          btnManual.onclick = async ()=>{
-            const list = (isLoggedIn() && window.Auth?.settings?.welders && _has(window.Auth.settings.welders.list))
-              ? await _apiTry(()=> window.Auth.settings.welders.list(), ()=>[])
-              : [];
-
-            const html = `
-              <div style="font-weight:900; margin-bottom:6px">Handmatig lasser toevoegen</div>
-              <div class="smallmuted" style="margin-bottom:10px">Kies uit Instellingen (API) of vul handmatig in (concept).</div>
-              <div style="display:grid; grid-template-columns:160px 1fr; gap:8px; align-items:center">
-                <div class="smallmuted">Selecteer (API)</div>
-                <select class="input" id="wiz_wel_pick">
-                  <option value="">— kies —</option>
-                  ${list.map(it=>`<option value="${UI.esc(it.code||it.id||'')}">${UI.esc((it.code||it.id||'')+' — '+(it.name||it.naam||''))}</option>`).join('')}
-                </select>
-
-                <div class="smallmuted">Of handmatig</div>
-                <div style="display:flex; gap:8px; flex-wrap:wrap">
-                  <input class="input" id="wiz_wel_code" placeholder="Code" style="width:180px" />
-                  <input class="input" id="wiz_wel_name" placeholder="Naam" />
-                  <input class="input" id="wiz_wel_proc" placeholder="Proces(sen) (bijv. 135,141)" style="width:220px" />
-                  <input class="input" id="wiz_wel_certs" placeholder="Certificaten (kort)" style="width:220px" />
-                </div>
-              </div>
-              <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:14px">
-                <button class="btn" id="wiz_wel_cancel">Annuleren</button>
-                <button class="btn primary" id="wiz_wel_save">Toevoegen</button>
-              </div>
-            `;
-
-            UI.openModal({
-              title:'Lasser toevoegen',
-              saveLabel:'Sluiten',
-              bodyHtml: html,
-              onSave: ({close})=>close(),
-              onMount: ({close})=>{
-                document.getElementById('wiz_wel_cancel').onclick = close;
-                document.getElementById('wiz_wel_save').onclick = async ()=>{
-                  const pick = (document.getElementById('wiz_wel_pick').value||'').trim();
-                  const code = (pick || (document.getElementById('wiz_wel_code').value||'').trim());
-                  const name = (document.getElementById('wiz_wel_name').value||'').trim();
-                  const processes = (document.getElementById('wiz_wel_proc').value||'').trim();
-                  const certs = (document.getElementById('wiz_wel_certs').value||'').trim();
-                  if(!code){ UI.toast('Code ontbreekt'); return; }
-
-                  if(isLoggedIn() && window.Auth?.phase1 && _has(window.Auth.phase1.addWelder)){
-                    await _apiTry(()=> window.Auth.phase1.addWelder(projectId, { code, name, processes, certs }), ()=>null);
-                  }else{
-                    const arr=_ensureArray('welders');
-                    if(!arr.some(x => (x.code||x.welder_code||x.id)===code)) arr.push({code, name, processes, certs});
-                  }
-                  close();
-                  await load();
-                };
-              }
-            });
-          };
-        }
-
-        if(btnRefresh) btnRefresh.onclick = load;
-
-        await load();
-      }
-
-      // --- Step 7: Documents ---
-      async function mountDocsStep(){
-        _ensureArray('docs');
-        const rows = document.getElementById('wiz_doc_rows');
-        const warn = document.getElementById('wiz_doc_warn');
-        const kindSel = document.getElementById('wiz_doc_kind');
-        const fileInp = document.getElementById('wiz_doc_files');
-        const btnUp = document.getElementById('wiz_doc_upload');
-        const btnRef = document.getElementById('wiz_doc_refresh');
-
-        function render(){
-          const items = _ensureArray('docs');
-          if(!rows) return;
-          if(!items.length){
-            if(warn) warn.style.display='inline-flex';
-            rows.innerHTML = '<tr><td colspan="5" class="smallmuted">Nog geen documenten toegevoegd.</td></tr>';
-            return;
-          }
-          if(warn) warn.style.display='none';
-
-          rows.innerHTML = items.map((d, idx)=>`
-            <tr data-idx="${idx}">
-              <td>${UI.esc(d.kind||'overig')}</td>
-              <td>${UI.esc(d.name||'')}</td>
-              <td>${UI.esc(d.size||'')}</td>
-              <td>${UI.esc(d.addedAt||'')}</td>
-              <td><button class="btn btn-sm" data-act="rm" data-idx="${idx}">Verwijder</button></td>
-            </tr>
-          `).join('');
-
-          rows.querySelectorAll('button[data-act="rm"]').forEach(b=>{
-            b.onclick = async ()=>{
-              const idx = parseInt(b.getAttribute('data-idx'),10);
-              if(!confirm('Document verwijderen?')) return;
-              window.wiz.docs.splice(idx,1);
-              render();
-            };
-          });
-        }
-
-        async function upload(){
-          const files = fileInp?.files ? Array.from(fileInp.files) : [];
-          if(!files.length){ UI.toast('Geen bestanden gekozen'); return; }
-          const kind = (kindSel?.value||'overig');
-
-          // API upload alleen als beschikbaar (anders: concept metadata)
-          const canApi = isLoggedIn() && window.Auth?.attachments && _has(window.Auth.attachments.upload);
-          if(canApi){
-            const created = await ensureCreated();
-            const projectId = created.id;
-            for(const f of files){
-              await _apiTry(()=> window.Auth.attachments.upload({ scope_type:'project', scope_id:projectId, kind, file:f }), ()=>null);
-            }
-            UI.toast('Upload (API) voltooid');
-          }else{
-            for(const f of files){
-              window.wiz.docs.push({
-                kind,
-                name: f.name,
-                size: (f.size||0) ? Math.round(f.size/1024)+' KB' : '',
-                addedAt: new Date().toLocaleString('nl-NL')
-              });
-            }
-            UI.toast('Documenten toegevoegd (concept)');
-          }
-          if(fileInp) fileInp.value='';
+      async function loadProjects(){
+        const tbody = document.getElementById('projectsTbody');
+        if(!getToken()){
+          state.allProjects = [];
+          syncProjectsIntoCwsStore([]);
           render();
+          return;
         }
-
-        if(btnUp) btnUp.onclick = upload;
-        if(btnRef) btnRef.onclick = render;
-
-        render();
-      }
-
-      // --- Step 8: Checklist ---
-      function ensureChecklist(){
-        if(wiz.checklist && wiz.checklist.length) return;
-        wiz.checklist = [
-          { group:'Voorbereiding', text:'Projectgegevens compleet', applicable:true, approved:false, note:'' },
-          { group:'Materiaal', text:'Materiaalcertificaten aanwezig', applicable:true, approved:false, note:'' },
-          { group:'Uitvoering', text:'WPS/WPQR gekoppeld', applicable:true, approved:false, note:'' },
-          { group:'NDT', text:'NDO plan vastgelegd', applicable:true, approved:false, note:'' },
-          { group:'Documentatie', text:'Documenten geüpload', applicable:true, approved:false, note:'' },
-        ];
-      }
-
-      function isChecklistConform(){
-        ensureChecklist();
-        return wiz.checklist.every(it => !it.applicable || !!it.approved);
-      }
-
-      async function mountChecklistStep(){
-        ensureChecklist();
-        const rows = document.getElementById('wiz_chk_rows');
-        const warn = document.getElementById('wiz_chk_warn');
-
-        function render(){
-          if(!rows) return;
-          rows.innerHTML = wiz.checklist.map((it, idx)=>`
-            <tr data-idx="${idx}" style="cursor:pointer">
-              <td>${UI.esc(it.group)}</td>
-              <td>${UI.esc(it.text)}</td>
-              <td>${it.applicable ? 'Ja' : 'Nee'}</td>
-              <td>${it.approved ? 'Ja' : 'Nee'}</td>
-              <td>${UI.esc(it.note||'')}</td>
-            </tr>
-          `).join('');
-
-          rows.querySelectorAll('tr[data-idx]').forEach(tr=>{
-            tr.onclick = ()=>{
-              const idx = parseInt(tr.getAttribute('data-idx'),10);
-              openChecklistItem(idx);
-            };
-          });
-
-          if(warn) warn.style.display = isChecklistConform() ? 'none' : 'inline-flex';
+        tbody.innerHTML = '<tr class="empty-row"><td colspan="8">Projecten worden geladen…</td></tr>';
+        try{
+          const json = await apiFetch('/api/v1/projects', { method: 'GET' });
+          state.allProjects = (Array.isArray(json) ? json : []).map(toFrontendProject);
+          syncProjectsIntoCwsStore(state.allProjects);
+          render();
+        }catch(err){
+          console.error('Laden projecten mislukt:', err);
+          if(err && (err.status === 401 || err.status === 403)){
+            try{
+              localStorage.removeItem('auth_token');
+              localStorage.removeItem('nen1090.auth.access');
+              localStorage.removeItem('nen1090.auth.refresh');
+              localStorage.removeItem('nen1090.auth.email');
+              localStorage.removeItem('nen1090.auth.tenant');
+              window.dispatchEvent(new Event('auth-changed'));
+            }catch(_){ }
+          }
+          state.allProjects = [];
+          syncProjectsIntoCwsStore([]);
+          tbody.innerHTML = `<tr class="empty-row"><td colspan="8">Laden van projecten mislukt: ${esc(err.message || 'onbekende fout')}</td></tr>`;
+          document.getElementById('projectsCount').textContent = '0 projecten';
         }
+      }
 
-        function openChecklistItem(idx){
-          const it = wiz.checklist[idx];
-          const html = `
-            <div style="font-weight:900; margin-bottom:6px">Controlepunt wijzigen</div>
-            <div class="smallmuted" style="margin-bottom:10px">${UI.esc(it.group)} — ${UI.esc(it.text)}</div>
-            <div style="display:grid; grid-template-columns:200px 1fr; gap:10px; align-items:center">
-              <div class="smallmuted" style="font-weight:800">Van toepassing</div>
-              <label style="display:flex; gap:8px; align-items:center">
-                <input type="checkbox" id="chk_app" ${it.applicable?'checked':''} />
-                <span>Ja</span>
-              </label>
+      function projectToFormValues(project){
+        return {
+          code: project ? (project.nummer || '') : '',
+          name: project ? (project.naam || '') : '',
+          client_name: project ? (project.opdrachtgever || '') : '',
+          execution_class: project ? (project.executieklasse || '') : 'EXC2',
+          acceptance_class: project ? (project.acceptatieklasse || '') : 'B',
+          status: project ? ((project.locked ? 'locked' : project.status) || 'in_controle') : 'in_controle',
+          locked: project ? !!project.locked : false,
+          start_date: '',
+          end_date: ''
+        };
+      }
 
-              <div class="smallmuted" style="font-weight:800">Goedgekeurd</div>
-              <label style="display:flex; gap:8px; align-items:center">
-                <input type="checkbox" id="chk_ok" ${it.approved?'checked':''} />
-                <span>Ja</span>
-              </label>
+      function openProjectModal(project){
+        const editMode = !!project;
+        const values = projectToFormValues(project);
 
-              <div class="smallmuted" style="font-weight:800">Opmerking</div>
-              <textarea class="input" id="chk_note" rows="3" placeholder="Opmerking">${UI.esc(it.note||'')}</textarea>
-            </div>
-            <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:14px">
-              <button class="btn" id="chk_cancel">Annuleren</button>
-              <button class="btn primary" id="chk_save">Opslaan</button>
-            </div>
-          `;
-          UI.openModal({
-            title:'Checklist item',
-            saveLabel:'Sluiten',
-            bodyHtml: html,
-            onSave: ({close})=>close(),
-            onMount: ({close})=>{
-              document.getElementById('chk_cancel').onclick = close;
-              document.getElementById('chk_save').onclick = ()=>{
-                it.applicable = !!document.getElementById('chk_app').checked;
-                it.approved = !!document.getElementById('chk_ok').checked;
-                it.note = (document.getElementById('chk_note').value||'').trim();
-                close();
-                render();
-              };
+        if(window.UI && typeof window.UI.modalForm === 'function'){
+          window.UI.modalForm({
+            title: editMode ? 'Project bewerken' : 'Nieuw project',
+            submitLabel: editMode ? 'Opslaan' : 'Aanmaken',
+            values,
+            fields: [
+              { key:'code', label:'Projectnummer', type:'text' },
+              { key:'name', label:'Projectnaam', type:'text' },
+              { key:'client_name', label:'Opdrachtgever', type:'text' },
+              { key:'execution_class', label:'Executieklasse', type:'select', options:[['EXC1','EXC1'],['EXC2','EXC2'],['EXC3','EXC3'],['EXC4','EXC4']] },
+              { key:'acceptance_class', label:'Acceptatieklasse', type:'select', options:[['A','A'],['B','B'],['C','C'],['D','D']] },
+              { key:'status', label:'Status', type:'select', options:[['in_controle','In controle'],['conform','Conform'],['afgekeurd','Afgekeurd']] },
+              { key:'locked', label:'Locked', type:'checkbox' },
+              { key:'start_date', label:'Startdatum', type:'date' },
+              { key:'end_date', label:'Einddatum', type:'date' }
+            ],
+            onSubmit: async (vals)=>{
+              await saveProject(project, vals);
+              return true;
             }
           });
+          return;
         }
 
-        // bulk actions
-        const btnOff = document.getElementById('wiz_chk_all_off');
-        const btnOn = document.getElementById('wiz_chk_all_on');
-        const btnReset = document.getElementById('wiz_chk_reset');
-        if(btnOff) btnOff.onclick = ()=>{ wiz.checklist.forEach(it=>{ it.applicable=false; it.approved=false; }); render(); };
-        if(btnOn) btnOn.onclick = ()=>{ wiz.checklist.forEach(it=>{ it.applicable=true; it.approved=true; }); render(); };
-        if(btnReset) btnReset.onclick = ()=>{ wiz.checklist = []; ensureChecklist(); render(); };
-
-        render();
+        const fallback = {
+          code: prompt('Projectnummer', values.code) ?? values.code,
+          name: prompt('Projectnaam', values.name) ?? values.name,
+          client_name: prompt('Opdrachtgever', values.client_name) ?? values.client_name,
+          execution_class: prompt('Executieklasse (EXC1/EXC2/EXC3/EXC4)', values.execution_class) ?? values.execution_class,
+          acceptance_class: prompt('Acceptatieklasse (A/B/C/D)', values.acceptance_class) ?? values.acceptance_class,
+          status: prompt('Status (in_controle/conform/afgekeurd)', values.status) ?? values.status,
+          locked: confirm('Project locked? OK = ja, Annuleren = nee'),
+          start_date: '',
+          end_date: ''
+        };
+        saveProject(project, fallback).catch((err)=>{
+          alert('Opslaan mislukt: ' + (err.message || err));
+        });
       }
 
-      // --- Step 9: Report ---
-      async function mountReportStep(){
-        const el = document.getElementById('wiz_rep_summary');
-        function summary(){
-          const p = wiz.project || {};
-          const lines = [];
-          lines.push(`<b>${UI.esc((p.nummer||'')+' — '+(p.naam||''))}</b>`);
-          lines.push(`Opdrachtgever: ${UI.esc(p.opdrachtgever||'—')}`);
-          lines.push(`Lassen: <b>${(wiz.welds||[]).length}</b>`);
-          lines.push(`WPS/WPQR: <b>${(_ensureArray('wps').length)}</b>`);
-          lines.push(`Materialen: <b>${(_ensureArray('materials').length)}</b>`);
-          lines.push(`Lassers: <b>${(_ensureArray('welders').length)}</b>`);
-          lines.push(`Documenten: <b>${(_ensureArray('docs').length)}</b>`);
-          lines.push(`Checklist conform: <b>${isChecklistConform() ? 'Ja' : 'Nee'}</b>`);
-          return lines.join('<br/>');
+      async function saveProject(existingProject, vals){
+        const payload = {
+          code: String(vals.code || '').trim() || null,
+          name: String(vals.name || '').trim(),
+          client_name: String(vals.client_name || '').trim() || null,
+          execution_class: String(vals.execution_class || '').trim() || null,
+          acceptance_class: String(vals.acceptance_class || '').trim() || null,
+          status: String(vals.status || 'in_controle').trim() || 'in_controle',
+          locked: !!vals.locked,
+          start_date: vals.start_date ? String(vals.start_date) : null,
+          end_date: vals.end_date ? String(vals.end_date) : null
+        };
+
+        if(!payload.name){
+          throw new Error('Projectnaam is verplicht.');
         }
-        if(el) el.innerHTML = summary();
 
-        const btnDl = document.getElementById('wiz_rep_download');
-        const btnPr = document.getElementById('wiz_rep_print');
-        const btnGo = document.getElementById('wiz_rep_go_las');
+        if(existingProject){
+          await apiFetch('/api/v1/projects/' + encodeURIComponent(existingProject.id), {
+            method: 'PUT',
+            body: JSON.stringify(payload)
+          });
+          if(window.UI && window.UI.toast) window.UI.toast('Project opgeslagen');
+        } else {
+          await apiFetch('/api/v1/projects', {
+            method: 'POST',
+            body: JSON.stringify(payload)
+          });
+          if(window.UI && window.UI.toast) window.UI.toast('Project aangemaakt');
+        }
+        await loadProjects();
+      }
 
-        if(btnDl) btnDl.onclick = ()=>{
-          const data = {
-            project: wiz.project,
-            welds: wiz.welds,
-            wps: _ensureArray('wps'),
-            ndo_plan: wiz.ndo_plan || null,
-            materials: _ensureArray('materials'),
-            welders: _ensureArray('welders'),
-            docs: _ensureArray('docs'),
-            checklist: wiz.checklist || []
-          };
-          const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+      async function deleteProject(project){
+        const ok = confirm(`Project verwijderen?\n\n${project.nummer} — ${project.naam}`);
+        if(!ok) return;
+        await apiFetch('/api/v1/projects/' + encodeURIComponent(project.id), {
+          method: 'DELETE'
+        });
+        if(window.UI && window.UI.toast) window.UI.toast('Project verwijderd');
+        await loadProjects();
+      }
+
+      function bindEvents(){
+        document.getElementById('projectSearch').addEventListener('input', (e)=>{
+          state.search = e.target.value || '';
+          render();
+        });
+
+        document.querySelectorAll('[data-filter]').forEach((btn)=>{
+          btn.addEventListener('click', ()=>{
+            document.querySelectorAll('[data-filter]').forEach((x)=>x.classList.remove('active'));
+            btn.classList.add('active');
+            state.filter = btn.getAttribute('data-filter') || 'all';
+            render();
+          });
+        });
+
+        document.getElementById('btnNieuw').addEventListener('click', ()=>{
+          if(!getToken()){
+            if(window.UI && window.UI.toast) window.UI.toast('Log eerst in.');
+            return;
+          }
+          openProjectModal(null);
+        });
+
+        document.getElementById('btnExport').addEventListener('click', ()=>{
+          const rows = state.filteredProjects.length ? state.filteredProjects : state.allProjects;
+          const csv = [
+            ['Projectnummer','Projectnaam','Opdrachtgever','Executieklasse','Acceptatieklasse','Status','Laatst gewijzigd'].join(';')
+          ].concat(rows.map((p)=>[
+            p.nummer,
+            p.naam,
+            p.opdrachtgever,
+            p.executieklasse,
+            p.acceptatieklasse,
+            mapStatusLabel(p.status),
+            formatDate(p.laatstGewijzigd)
+          ].map((v)=>`"${String(v ?? '').replaceAll('"','""')}"`).join(';'))).join('\n');
+          const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
-          a.download = (wiz.project?.nummer || 'project') + '_wizard_rapport.json';
+          a.download = 'projecten_export.csv';
           document.body.appendChild(a);
           a.click();
           a.remove();
-          setTimeout(()=>URL.revokeObjectURL(url), 1000);
-        };
+          URL.revokeObjectURL(url);
+        });
 
-        if(btnPr) btnPr.onclick = ()=> window.print();
+        document.getElementById('btnKolommen').addEventListener('click', ()=>{
+          if(window.UI && window.UI.toast) window.UI.toast('Kolommenbeheer volgt later.');
+        });
 
-        if(btnGo) btnGo.onclick = ()=>{
-          modal.close();
-          location.href = 'lascontrole.html';
-        };
-      }
-
-
-      async function mountNormStep(){
-        await ensureAdminChecked();
-        // Disable/enable replace option dynamically without rerender
-        const replaceRadio = document.querySelector('input[name="wiz_tpl_mode"][value="replace"]');
-        if(replaceRadio) replaceRadio.disabled = !wiz.isAdmin;
-
-        const excSel = document.getElementById('wiz_p_exc');
-        if(excSel){
-          excSel.onchange = async ()=>{
-            wiz.project.exc = excSel.value;
-            await refreshTemplatePreview();
-          };
-        }
-        await refreshTemplatePreview();
-      }
-
-      async function ensureCreated(){
-        if(wiz.created.id) return wiz.created;
-        // validate
-        if(!wiz.project.nummer || !wiz.project.nummer.trim()) throw new Error('Projectnummer verplicht');
-
-        // Create via API when logged in, otherwise local fallback
-        if(isLoggedIn()){
-          const saved = await window.Auth.projects.create(localToApi(wiz.project));
-          wiz.created = { id: saved.id, api:true };
-          // refresh store
-          await syncProjectsFromApi();
-          return wiz.created;
-        }
-
-        // local offline
-        const p = { id: wiz.project.nummer.trim(), nummer:wiz.project.nummer.trim(), naam:wiz.project.naam||"", opdrachtgever:wiz.project.opdrachtgever||"", exc:wiz.project.exc||"EXC2", acceptatieklasse:wiz.project.acceptatieklasse||"B", status:'in_controle', locked:false };
-        window.CWS.upsertProject(p);
-        wiz.created = { id: p.id, api:false };
-        return wiz.created;
-      }
-
-      async function applyTemplateIfNeeded(projectId){
-        if(!isLoggedIn()) return;
-        if(wiz.applyTemplateMode==='skip') return;
-        const mode = wiz.applyTemplateMode==='replace' ? 'replace' : 'merge';
-
-        // replace = admin only guard
-        if(mode==='replace'){
+        document.getElementById('projectsTbody').addEventListener('click', async (e)=>{
+          const btn = e.target.closest('[data-action]');
+          if(!btn) return;
+          const id = btn.getAttribute('data-id');
+          const project = state.allProjects.find((p)=>p.id === id);
+          if(!project) return;
+          const action = btn.getAttribute('data-action');
           try{
-            const me = await window.Auth.me();
-            const isAdmin = !!(me && (me.is_tenant_admin || me.is_platform_admin || me.role==='Admin'));
-            if(!isAdmin){ UI.toast('Vervangen is alleen voor admin. Gebruik merge.'); return; }
-          }catch(_){ UI.toast('Admin check mislukt, replace overgeslagen.'); return; }
-        }
-
-        const list = await window.Auth.phase1.listInspectionTemplates(wiz.project.exc);
-        if(!list || !list.length){ UI.toast('Geen inspectie-template gevonden voor '+wiz.project.exc); return; }
-        const tpl = list.find(t=>t.is_default) || list[0];
-        await window.Auth.phase1.applyInspectionTemplate(projectId, { template_id: tpl.id, mode });
-      }
-
-      async function bulkAddIfNeeded(projectId){
-        if(!isLoggedIn()) return;
-        let counts = {wps_added:0, materials_added:0, welders_added:0};
-        if(wiz.bulkAdd.wps && wiz.bulkAdd.materials && wiz.bulkAdd.welders){
-          const r = await window.Auth.phase1.addAllLascontrole(projectId);
-          counts = r || counts;
-        } else {
-          if(wiz.bulkAdd.wps){ const r = await window.Auth.phase1.addAllWps(projectId); counts.wps_added += (r?.wps_added||0); }
-          if(wiz.bulkAdd.materials){ const r = await window.Auth.phase1.addAllMaterials(projectId); counts.materials_added += (r?.materials_added||0); }
-          if(wiz.bulkAdd.welders){ const r = await window.Auth.phase1.addAllWelders(projectId); counts.welders_added += (r?.welders_added||0); }
-        }
-        UI.toast(`Toegevoegd: WPS ${counts.wps_added||0}, Materialen ${counts.materials_added||0}, Lassers ${counts.welders_added||0}`);
-      }
-
-      async function next(){
-        try{
-          steps[wiz.idx].apply?.();
-
-          // Validaties per stap (Optie B: echt, maar zonder harde blokkades waar niet nodig)
-          if(wiz.idx===0){
-            const num=(wiz.project.nummer||'').trim();
-            const naam=(wiz.project.naam||'').trim();
-            if(!num || num==='P-'){ throw new Error('Vul een geldig projectnummer in.'); }
-            if(!naam){ throw new Error('Vul een projectnaam in.'); }
-            await ensureCreated(); // nodig voor alle vervolgstappen
-            updateBadges();
-          }
-
-          if(wiz.idx===1){
-            if((wiz.welds||[]).length===0){
-              try{ UI.toast('Let op: je hebt nog geen lassen toegevoegd.'); }catch(_){}
+            if(action === 'edit'){
+              openProjectModal(project);
+            } else if(action === 'delete'){
+              await deleteProject(project);
             }
+          }catch(err){
+            console.error(err);
+            if(window.UI && window.UI.toast) window.UI.toast(err.message || 'Actie mislukt');
           }
+        });
 
-          if(wiz.idx===3){
-            // NDO soft warning als vereist maar onvolledig
-            const ndo = wiz.ndo_plan || {};
-            if(ndo.required && (!ndo.method || (!ndo.percent && !ndo.count))){
-              try{ UI.toast('Let op: NDO vereist, maar methode/omvang ontbreekt.'); }catch(_){}
-            }
+        document.getElementById('projectsTbody').addEventListener('dblclick', (e)=>{
+          const row = e.target.closest('tr[data-project-id]');
+          if(!row) return;
+          const project = state.allProjects.find((p)=>p.id === row.getAttribute('data-project-id'));
+          if(project) openProjectModal(project);
+        });
+
+        document.getElementById('projectsTbody').addEventListener('contextmenu', (e)=>{
+          const row = e.target.closest('tr[data-project-id]');
+          if(!row) return;
+          e.preventDefault();
+          const project = state.allProjects.find((p)=>p.id === row.getAttribute('data-project-id'));
+          if(!project) return;
+          const choice = prompt(`Menu voor ${project.nummer}\nTyp: edit of delete`, 'edit');
+          if(choice === 'delete'){
+            deleteProject(project).catch((err)=>{
+              console.error(err);
+              if(window.UI && window.UI.toast) window.UI.toast(err.message || 'Verwijderen mislukt');
+            });
+          } else if(choice === 'edit'){
+            openProjectModal(project);
           }
+        });
 
-          if(wiz.idx===7){
-            // Checklist warning als niet conform
-            if(!isChecklistConform()){
-              try{ UI.toast('Let op: checklist is nog niet volledig conform.'); }catch(_){}
-            }
-          }
+        window.addEventListener('auth-changed', ()=>{
+          loadProjects();
+        });
+      }
 
-          if(wiz.idx>=steps.length-1){
-            const created = await ensureCreated();
-            const st2 = window.CWS.getState();
-            st2.ui.activeProjectId = created.id;
-            window.CWS.setState(st2);
-            UI.toast('Wizard afgerond.');
-            modal.close();
-            location.href = 'lascontrole.html';
-            return;
-          }
-
-          wiz.idx++;
-          document.getElementById('uiModalBody').innerHTML = body();
-          wire();
-          updateBadges();
-        }catch(e){
-          console.error(e);
-          UI.toast(e && e.message ? e.message : 'Wizard stap mislukt');
+      function boot(){
+        if(window.Shell && typeof window.Shell.mount === 'function'){
+          window.Shell.mount();
         }
+        bindEvents();
+        loadProjects();
       }
 
-
-      function back(){
-        steps[wiz.idx].apply?.();
-        wiz.idx = Math.max(0, wiz.idx-1);
-        document.getElementById('uiModalBody').innerHTML = body();
-        wire();
+      if(document.readyState === 'loading'){
+        document.addEventListener('DOMContentLoaded', boot);
+      } else {
+        boot();
       }
-
-
-      function updateBadges(){
-        try{
-          const pnum = (wiz.project.nummer||'').trim();
-          const pnaam = (wiz.project.naam||'').trim();
-          const ptitle = (pnum||'Nieuw project') + (pnaam?(' — '+pnaam):'');
-          const pclient = (wiz.project.opdrachtgever||'').trim();
-          const exc = wiz.project.exc || '';
-          const acc = wiz.project.acceptatieklasse || '';
-          const status = wiz.project.status || 'in_controle';
-
-          const elProj = document.getElementById('wizBadgeProject'); if(elProj) elProj.innerHTML = '<b>'+UI.esc(ptitle)+'</b>';
-          const elCli = document.getElementById('wizBadgeClient'); if(elCli) elCli.textContent = 'Opdrachtgever: ' + (pclient||'—');
-          const elExc = document.getElementById('wizBadgeExc'); if(elExc) elExc.textContent = 'EXC: ' + (exc||'—');
-          const elAcc = document.getElementById('wizBadgeAcc'); if(elAcc) elAcc.textContent = 'Acceptatie: ' + (acc||'—');
-          const elSt = document.getElementById('wizBadgeStatus'); if(elSt) elSt.textContent = 'Status: ' + (status||'in_controle');
-          const elStep = document.getElementById('wizBadgeStep'); if(elStep) elStep.textContent = `Stap ${wiz.idx+1} / ${steps.length}`;
-        }catch(_){ }
-      }
-
-      async function saveDraft(){
-        try{
-          steps[wiz.idx].apply?.();
-          await ensureCreated();
-          updateBadges();
-          UI.toast('Concept opgeslagen.');
-        }catch(e){
-          console.error(e);
-          UI.toast(e && e.message ? e.message : 'Opslaan concept mislukt');
-        }
-      }
-
-      function wire(){
-        const b = document.getElementById('wizBack');
-        const n = document.getElementById('wizNext');
-        const s = document.getElementById('wizSaveDraft');
-        if(b) b.onclick = back;
-        if(n) n.onclick = next;
-        if(s) s.onclick = saveDraft;
-
-        // Live badge updates (no flakes, no timeouts)
-        if(wiz.idx===0){
-          const iNum = document.getElementById('wiz_p_nummer');
-          const iNaam = document.getElementById('wiz_p_naam');
-          const iCli = document.getElementById('wiz_p_client');
-          if(iNum) iNum.oninput = ()=>{ wiz.project.nummer = iNum.value; updateBadges(); };
-          if(iNaam) iNaam.oninput = ()=>{ wiz.project.naam = iNaam.value; updateBadges(); };
-          if(iCli) iCli.oninput = ()=>{ wiz.project.opdrachtgever = iCli.value; updateBadges(); };
-        }
-        if(wiz.idx===2){
-          const excSel = document.getElementById('wiz_p_exc');
-          const accSel = document.getElementById('wiz_p_acc');
-          if(excSel) excSel.onchange = ()=>{ wiz.project.exc = excSel.value; updateBadges(); };
-          if(accSel) accSel.onchange = ()=>{ wiz.project.acceptatieklasse = accSel.value; updateBadges(); };
-        }
-        if(wiz.idx===1){ mountWeldsStep(); }
-        if(wiz.idx===2){ mountWpsStep(); }
-        if(wiz.idx===3){ mountNdoStep(); }
-        if(wiz.idx===4){ mountMaterialsStep(); }
-        if(wiz.idx===5){ mountWeldersStep(); }
-        if(wiz.idx===6){ mountDocsStep(); }
-        if(wiz.idx===7){ mountChecklistStep(); }
-        if(wiz.idx===8){ mountReportStep(); }
-
-        updateBadges();
-      }
-      wire();
-    }
-
-    // Backwards-compat: als er elders nog een knop bestaat, koppel 'm veilig.
-    const btnWizard = document.getElementById("btnWizard");
-    if(btnWizard){ btnWizard.addEventListener("click", openProjectWizard); }
-
-    // Hoofdmenu → Nieuw project wizard
-    if(String(location.hash||'')==="#wizard-nieuw-project"){
-      // Wacht op app ready (stabiliteit) en open daarna.
-      if(document.body && document.body.dataset && document.body.dataset.appReady==="1") openProjectWizard();
-      else window.addEventListener('cws-app-ready', ()=>openProjectWizard(), {once:true});
-    }
-    document.getElementById("btnCols").addEventListener("click", ()=>{
-      UI.columnManager({title:"Kolommen (Projecten)", columns: COLS.filter(c=>c.key!=="actie"), stateKey:"projectenCols", onApply: ()=>render()});
-    });
-
-    document.getElementById("btnExport").addEventListener("click", ()=>{
-      const list = filteredProjects();
-      const rows = [["Projectnummer","Projectnaam","Opdrachtgever","EXC","Acceptatie","Status","Laatst gewijzigd"]];
-      list.forEach(p=>rows.push([p.nummer,p.naam,p.opdrachtgever,p.exc,p.acceptatieklasse,p.status,p.laatstGewijzigd]));
-      window.parent?.Export?.csv?.("projecten.csv", rows);
-      UI.toast("Export gestart.");
-    });
-
-    // Initial load: try to sync from API (if logged in), then render.
-    (async ()=>{
-      await syncProjectsFromApi();
-      render();
     })();
-
-    // When the shell seeds demo or clears data in the backend, reload projects.
-    window.addEventListener('cws_projects_changed', async ()=>{
-      await syncProjectsFromApi();
-      render();
-    });
   </script>
 </body>
 </html>
