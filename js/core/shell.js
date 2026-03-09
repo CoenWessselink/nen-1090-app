@@ -136,6 +136,7 @@
       btn.dataset.pid = p ? p.id : "";
     }
 
+
     function clearAuthArtifacts(){
       try{
         if(window.Auth && typeof window.Auth.clearTokens === 'function'){
@@ -211,8 +212,8 @@
         st2.ui.activeProjectId = id;
         window.CWS.setState(st2);
         refreshProjectPill();
-        // If already logged in, sync projects from API so the project picker is correct on every page.
-        syncProjectsIntoStore();
+    // If already logged in, sync projects from API so the project picker is correct on every page.
+    syncProjectsIntoStore();
         try{ window.dispatchEvent(new CustomEvent("cws_project_changed", {detail:{id}})); }catch(_){}
         UI.toast("Project gekozen.");
         // close modal
@@ -234,49 +235,51 @@
       UI.toast("Rol: " + next);
     });
 
-    async function syncProjectsIntoStore(){
-      try{
-        if(!window.Auth || !window.CWS || !window.CWS.getState) return false;
-        const token = (window.Auth.getAccessToken && window.Auth.getAccessToken()) || localStorage.getItem('nen1090.auth.access') || localStorage.getItem('auth_token') || '';
-        if(!token) return false;
-        const list = await window.Auth.projects.list();
-        const st = window.CWS.getState();
-        const prevActive = st.ui.activeProjectId || "";
-        const prevCode = (prevActive && st.projects.byId[prevActive] && st.projects.byId[prevActive].nummer) ? st.projects.byId[prevActive].nummer : "";
-        st.projects.byId = {};
-        st.projects.order = [];
-        (list||[]).forEach(p=>{
-          const lp = {
-            id: p.id,
-            nummer: p.code || '',
-            naam: p.name || '',
-            opdrachtgever: p.client_name || '',
-            exc: p.execution_class || '',
-            acceptatieklasse: p.acceptance_class || '',
-            status: p.status || 'in_controle',
-            locked: !!p.locked,
-            laatstGewijzigd: (p.updated_at || p.created_at || '').toString()
-          };
-          st.projects.byId[lp.id] = lp;
-          st.projects.order.push(lp.id);
-        });
-        // keep active project by matching code if possible
-        if(prevCode){
-          const matchId = st.projects.order.find(id => (st.projects.byId[id]?.nummer||"") === prevCode);
-          if(matchId) st.ui.activeProjectId = matchId;
-        }
-        if(!st.ui.activeProjectId && st.projects.order.length) st.ui.activeProjectId = st.projects.order[0];
-        window.CWS.setState(st);
-        refreshProjectPill();
-        return true;
-      }catch(e){
-        console.error(e);
-        return false;
-      }
+    
+
+async function syncProjectsIntoStore(){
+  try{
+    if(!window.Auth || !window.CWS || !window.CWS.getState) return false;
+    const token = (window.Auth.getAccessToken && window.Auth.getAccessToken()) || localStorage.getItem('nen1090.auth.access') || localStorage.getItem('auth_token') || '';
+    if(!token) return false;
+    const list = await window.Auth.projects.list();
+    const st = window.CWS.getState();
+    const prevActive = st.ui.activeProjectId || "";
+    const prevCode = (prevActive && st.projects.byId[prevActive] && st.projects.byId[prevActive].nummer) ? st.projects.byId[prevActive].nummer : "";
+    st.projects.byId = {};
+    st.projects.order = [];
+    (list||[]).forEach(p=>{
+      const lp = {
+        id: p.id,
+        nummer: p.code || '',
+        naam: p.name || '',
+        opdrachtgever: p.client_name || '',
+        exc: p.execution_class || '',
+        acceptatieklasse: p.acceptance_class || '',
+        status: p.status || 'in_controle',
+        locked: !!p.locked,
+        laatstGewijzigd: (p.updated_at || p.created_at || '').toString()
+      };
+      st.projects.byId[lp.id] = lp;
+      st.projects.order.push(lp.id);
+    });
+    // keep active project by matching code if possible
+    if(prevCode){
+      const matchId = st.projects.order.find(id => (st.projects.byId[id]?.nummer||"") === prevCode);
+      if(matchId) st.ui.activeProjectId = matchId;
     }
+    if(!st.ui.activeProjectId && st.projects.order.length) st.ui.activeProjectId = st.projects.order[0];
+    window.CWS.setState(st);
+    refreshProjectPill();
+    return true;
+  }catch(e){
+    console.error(e);
+    return false;
+  }
+}
 
-    // ===== Phase 3: optional real backend login =====
-
+// ===== Phase 3: optional real backend login =====
+    
     function openApiConfigModal(){
       try{
         const cur = (window.Auth && window.Auth.getBaseUrl && window.Auth.getBaseUrl()) || localStorage.getItem('nen1090.api.baseUrl') || localStorage.getItem('API_BASE_URL') || window.__API_BASE_URL__ || '/api';
@@ -296,10 +299,10 @@
             const ok = await window.Auth.health().then(r=>!!r.ok).catch(()=>false);
             UI.toast(ok ? 'API OK' : 'API niet bereikbaar (check backend/CORS)');
             await updateApiUi();
-            try{
-              const ap = document.getElementById('apiPill');
-              if(ap) ap.addEventListener('click', ()=>openApiConfigModal());
-            }catch(_){}
+    try{
+      const ap = document.getElementById('apiPill');
+      if(ap) ap.addEventListener('click', ()=>openApiConfigModal());
+    }catch(_){}
 
             return true;
           }
@@ -307,7 +310,7 @@
       }catch(e){ console.error(e); }
     }
 
-    async function updateApiUi(){
+async function updateApiUi(){
       const stEl = document.getElementById('apiStatus');
       const apiPill = document.getElementById('apiPill');
       const u = document.getElementById('userPill');
@@ -416,6 +419,7 @@
         }
       });
     });
+
 
     // Click API pill -> open API settings (Instellingen)
     try{
