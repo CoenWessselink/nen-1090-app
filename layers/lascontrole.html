@@ -600,7 +600,7 @@
           </div>
 
           <div class="table-wrap">
-            <table>
+            <table class="mobile-cards">
               <thead><tr id="weldHead"></tr></thead>
               <tbody id="weldRows"></tbody>
             </table>
@@ -1643,6 +1643,8 @@ return `
       if(tab==="checklist") bindChecklist();
       if(tab==="historie") bindHistorie();
       if(tab==="rapportage") bindRapportage();
+
+      try{ v.querySelectorAll("table").forEach(t=>t.classList.add("mobile-cards")); window.MobileUI && window.MobileUI.annotateAll(v); }catch(_){ }
 
       // bind actions for lassen view
       const body1 = document.getElementById("weldRows");

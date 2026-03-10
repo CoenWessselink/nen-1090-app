@@ -5,47 +5,120 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="../css/theme.css" />
   <title>Klantbeheer</title>
-<link rel="manifest" href="/manifest.webmanifest" />
-<meta name="theme-color" content="#0c1830" />
-<link rel="apple-touch-icon" href="/icons/icon-192.png" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <meta name="theme-color" content="#0c1830" />
+  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+  <style>
+    .sa-wrap{display:grid;gap:14px;}
+    .sa-cards{display:grid;grid-template-columns:repeat(5,minmax(180px,1fr));gap:12px;}
+    .sa-card{background:#fff;border:1px solid rgba(15,23,42,.10);border-radius:16px;padding:14px;box-shadow:0 8px 20px rgba(15,23,42,.06);}
+    .sa-card-label{font-size:12px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.04em;}
+    .sa-card-value{font-size:28px;font-weight:900;color:#0f172a;margin-top:6px;}
+    .sa-card-sub{font-size:12px;color:#64748b;margin-top:4px;}
+    .sa-toolbar{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;}
+    .sa-toolbar-left,.sa-toolbar-right{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;}
+    .sa-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+    .sa-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+    .sa-stack{display:grid;gap:8px;}
+    .sa-label{font-size:12px;color:#64748b;font-weight:800;}
+    .sa-tabs{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;}
+    .sa-tabpane{display:none;}
+    .sa-tabpane.active{display:block;}
+    .sa-kpi-line{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;}
+    .sa-chip{display:inline-flex;align-items:center;padding:6px 10px;border-radius:999px;background:#eef2ff;color:#1e3a8a;font-size:12px;font-weight:800;}
+    .sa-right{text-align:right;}
+    .sa-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;}
+    .sa-empty{padding:20px;text-align:center;color:#64748b;}
+    .sa-warning{padding:12px 14px;border-radius:14px;background:#fff7ed;border:1px solid #fdba74;color:#9a3412;font-weight:700;}
+    .sa-danger{background:#fee2e2 !important;color:#991b1b !important;}
+    .sa-success{background:#dcfce7 !important;color:#166534 !important;}
+    .sa-muted{font-size:12px;color:#64748b;}
+    .sa-modal-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
+    .sa-modal-grid-3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;}
+    .sa-field{display:grid;gap:6px;}
+    .sa-field input,.sa-field select,.sa-field textarea{width:100%;}
+    .sa-linkline{font-size:12px;color:#64748b;word-break:break-all;}
+    .sa-table td .btn{margin-right:6px;}
+    @media (max-width:1200px){.sa-cards{grid-template-columns:repeat(3,minmax(180px,1fr));}}
+    @media (max-width:860px){.sa-cards,.sa-grid-2,.sa-grid-3,.sa-modal-grid,.sa-modal-grid-3{grid-template-columns:1fr;}}
+  </style>
 </head>
 <body data-title="Klantbeheer (Superadmin)">
-  <div class="panel-head">
-    <div class="panel-tools">
-      <input class="input" id="q" placeholder="Zoek tenant" />
-      <button class="btn" id="btnRefresh">Vernieuwen</button>
-      <button class="btn" id="btnNewTenant">Nieuwe tenant</button>
-      <button class="btn" id="btnExportCsv">Export CSV</button>
-    </div>
-    <div class="kbd">Dubbelklik tenant → 360° • Alleen zichtbaar voor role: platform_admin</div>
-  </div>
+  <main class="sa-wrap">
+    <section class="card pad">
+      <div class="sa-toolbar">
+        <div class="sa-toolbar-left">
+          <div>
+            <div class="sa-label">Zoeken</div>
+            <input class="input" id="q" placeholder="Zoek op tenant, status, provider of admin" />
+          </div>
+          <div>
+            <div class="sa-label">Status</div>
+            <select class="input" id="statusFilter">
+              <option value="all">Alle statussen</option>
+              <option value="trial">Trial</option>
+              <option value="active">Active</option>
+              <option value="suspended">Suspended</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          </div>
+          <div>
+            <div class="sa-label">Billing</div>
+            <select class="input" id="billingFilter">
+              <option value="all">Alle providers</option>
+              <option value="none">none</option>
+              <option value="mollie">mollie</option>
+            </select>
+          </div>
+        </div>
+        <div class="sa-toolbar-right">
+          <button class="btn" id="btnRefresh">Vernieuwen</button>
+          <button class="btn" id="btnNewTenant">Nieuwe tenant</button>
+          <button class="btn" id="btnExportCsv">Export CSV</button>
+        </div>
+      </div>
+      <div class="sa-muted" style="margin-top:8px;">Volledig klantbeheer voor platform_admin: tenants, seats, gebruikers, billingstatus, audit en lifecycle.</div>
+    </section>
 
-  <div class="table-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th>Tenant</th>
-          <th>Status</th>
-          <th>Actief</th>
-          <th>Trial tot</th>
-          <th>Geldig tot</th>
-          <th>Seats</th>
-          <th>Users</th>
-          <th>Billing</th>
-        </tr>
-      </thead>
-      <tbody id="rows"></tbody>
-    </table>
-  </div>
+    <section class="sa-cards">
+      <div class="sa-card"><div class="sa-card-label">Totaal tenants</div><div class="sa-card-value" id="kpiTenants">0</div><div class="sa-card-sub">Alle geregistreerde klanten</div></div>
+      <div class="sa-card"><div class="sa-card-label">Active</div><div class="sa-card-value" id="kpiActive">0</div><div class="sa-card-sub">Operationeel actief</div></div>
+      <div class="sa-card"><div class="sa-card-label">Trial</div><div class="sa-card-value" id="kpiTrial">0</div><div class="sa-card-sub">Nog in proefperiode</div></div>
+      <div class="sa-card"><div class="sa-card-label">Gebruikers</div><div class="sa-card-value" id="kpiUsers">0</div><div class="sa-card-sub">Totaal gekoppelde users</div></div>
+      <div class="sa-card"><div class="sa-card-label">Seats</div><div class="sa-card-value" id="kpiSeats">0</div><div class="sa-card-sub">Ingekochte seats totaal</div></div>
+    </section>
 
-  <div class="footerbar">
-    <div id="count">0 tenants</div>
-    <div class="pagination">
-      <button class="pagebtn" disabled>‹</button>
-      <span>1</span>
-      <button class="pagebtn" disabled>›</button>
-    </div>
-  </div>
+    <section class="card pad" id="accessDenied" style="display:none;">
+      <div class="sa-warning">Deze pagina is alleen bedoeld voor een gebruiker met rol <b>platform_admin</b>. Log in met een platform-beheeraccount om klantbeheer te openen.</div>
+    </section>
+
+    <section class="card pad" id="superadminContent">
+      <div class="table-wrap sa-table">
+        <table class="mobile-cards">
+          <thead>
+            <tr>
+              <th>Tenant</th>
+              <th>Status</th>
+              <th>Actief</th>
+              <th>Trial tot</th>
+              <th>Geldig tot</th>
+              <th>Seats</th>
+              <th>Users</th>
+              <th>Billing</th>
+              <th>Actie</th>
+            </tr>
+          </thead>
+          <tbody id="rows">
+            <tr><td colspan="9" class="sa-empty">Tenants worden geladen…</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="footerbar">
+        <div id="count">0 tenants</div>
+        <div class="sa-muted">Dubbelklik op een tenant om Tenant 360° te openen.</div>
+      </div>
+    </section>
+  </main>
 
   <script src="../js/core/store.js"></script>
   <script src="../js/core/ui.js"></script>

@@ -99,7 +99,7 @@
           <div class="kbd">Dubbelklik op de rij om te bewerken.</div>
         </div>
         ${tableWrap(`
-          <table>
+          <table class="mobile-cards">
             <thead><tr><th>Naam</th><th>Adres</th><th>Email</th><th>Telefoon</th><th>Actie</th></tr></thead>
             <tbody id="companyRows">
               <tr data-id="company">
@@ -132,7 +132,7 @@
             </div>
           </div>
           <div class="table-wrap" style="margin-top:10px">
-            <table>
+            <table class="mobile-cards">
               <thead>
                 <tr>
                   <th>Bestandsnaam</th>
@@ -176,7 +176,7 @@
           <div class="kbd">Dubbelklik op een werknemer om te bewerken.</div>
         </div>
         ${tableWrap(`
-          <table>
+          <table class="mobile-cards">
             <thead><tr id="workerHead"></tr></thead>
             <tbody id="workerRows">${rows}</tbody>
           </table>
@@ -208,7 +208,7 @@
           <div class="kbd">Dubbelklik op een certificaat om te bewerken.</div>
         </div>
         ${tableWrap(`
-          <table>
+          <table class="mobile-cards">
             <thead><tr id="certHead"></tr></thead>
             <tbody id="settingsCertRows">${rows}</tbody>
           </table>
@@ -229,7 +229,7 @@
             <div class="kbd">Dubbelklik op een rij om te bewerken.</div>
           </div>
           ${tableWrap(`
-            <table>
+            <table class="mobile-cards">
               <thead><tr><th>Waarde</th><th>Actie</th></tr></thead>
               <tbody data-list-body="${UI.esc(key)}">${rows}</tbody>
             </table>
@@ -268,6 +268,7 @@
       if(tab==="keuzelijsten") html = viewKeuzelijsten(st, q);
 
       document.getElementById("content").innerHTML = html;
+      try{ document.querySelectorAll("#content table").forEach(t=>t.classList.add("mobile-cards")); window.MobileUI && window.MobileUI.annotateAll(document.getElementById("content")); }catch(_){ }
 
       bind(tab);
     }

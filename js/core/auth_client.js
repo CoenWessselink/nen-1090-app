@@ -17,9 +17,9 @@
     window.__API_BASE_URL__ = window.__API_BASE_URL__
       || localStorage.getItem('API_BASE_URL')
       || localStorage.getItem('nen1090.api.baseUrl')
-      || '/api';
+      || 'https://nen1090-api-prod-f5ddagedbrftb4ew.westeurope-01.azurewebsites.net';
   } catch (_) {
-    window.__API_BASE_URL__ = window.__API_BASE_URL__ || '/api';
+    window.__API_BASE_URL__ = window.__API_BASE_URL__ || 'https://nen1090-api-prod-f5ddagedbrftb4ew.westeurope-01.azurewebsites.net';
   }
 
   const LS_KEYS = {
@@ -399,6 +399,33 @@
       approveAllLascontrole: (projectId, payload) => apiFetch(`/api/v1/projects/${projectId}/lascontrole/approve_all`, { method: 'POST', body: JSON.stringify(payload) }),
     },
 
+
+    platform: {
+      tenants: {
+        list: () => apiFetch('/api/v1/platform/tenants', { method: 'GET' }),
+        get: (tenantId) => apiFetch(`/api/v1/platform/tenants/${tenantId}`, { method: 'GET' }),
+        create: (payload) => apiFetch('/api/v1/platform/tenants', { method: 'POST', body: JSON.stringify(payload) }),
+        patch: (tenantId, payload) => apiFetch(`/api/v1/platform/tenants/${tenantId}`, { method: 'PATCH', body: JSON.stringify(payload) }),
+        startTrial: (tenantId, payload) => apiFetch(`/api/v1/platform/tenants/${tenantId}/trial/start`, { method: 'POST', body: JSON.stringify(payload || {}) }),
+        forceLogout: (tenantId) => apiFetch(`/api/v1/platform/tenants/${tenantId}/force_logout`, { method: 'POST' }),
+        users: {
+          list: (tenantId) => apiFetch(`/api/v1/platform/tenants/${tenantId}/users`, { method: 'GET' }),
+          create: (tenantId, payload) => apiFetch(`/api/v1/platform/tenants/${tenantId}/users`, { method: 'POST', body: JSON.stringify(payload) }),
+          patch: (tenantId, userId, payload) => apiFetch(`/api/v1/platform/tenants/${tenantId}/users/${userId}`, { method: 'PATCH', body: JSON.stringify(payload) }),
+        },
+        payments: (tenantId) => apiFetch(`/api/v1/platform/tenants/${tenantId}/payments`, { method: 'GET' }),
+        audit: (tenantId) => apiFetch(`/api/v1/platform/tenants/${tenantId}/audit`, { method: 'GET' }),
+        exportCsv: () => apiFetch('/api/v1/platform/tenants.csv', { method: 'GET' }),
+        billing: {
+          link: (tenantId, payload) => apiFetch(`/api/v1/platform/tenants/${tenantId}/billing/link`, { method: 'POST', body: JSON.stringify(payload || {}) }),
+          previewSeats: (tenantId, payload) => apiFetch(`/api/v1/platform/tenants/${tenantId}/billing/seats`, { method: 'POST', body: JSON.stringify(payload || {}) }),
+          applySeats: (tenantId, payload) => apiFetch(`/api/v1/platform/tenants/${tenantId}/billing/seats`, { method: 'POST', body: JSON.stringify(payload || {}) }),
+          activateYear: (tenantId) => apiFetch(`/api/v1/platform/tenants/${tenantId}/billing/activate_year`, { method: 'POST' }),
+          cancel: (tenantId) => apiFetch(`/api/v1/platform/tenants/${tenantId}/billing/cancel`, { method: 'POST' }),
+        },
+        paymentsManual: (tenantId, payload) => apiFetch(`/api/v1/platform/tenants/${tenantId}/payments/manual`, { method: 'POST', body: JSON.stringify(payload) }),
+      }
+    },
     // low-level helper (kept private-ish but useful for debugging)
     _apiFetch: apiFetch,
   };

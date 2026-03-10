@@ -12,17 +12,17 @@
 
     const header = el(`
       <div class="headerbar">
-        <div class="left">
-          <button class="btn" id="openApps">Apps Menu</button>
-          <span class="pill">Rol: <span id="rolePill">Admin</span></span>
-          <button class="btn" id="projectPill" title="Kies project">Project: -</button>
-          <button class="btn" id="roleToggle">Wissel rol</button>
+        <div class="left header-main">
+          <button class="btn compact" id="openApps"><span class="hamburger">☰</span> Menu</button>
+          <button class="btn compact" id="authBtn" title="Login / Logout">Login</button>
         </div>
-        <div id="moduleTitle" style="font-size:28px;">-</div>
-        <div class="right">
-          <button class="pill pillbtn" id="apiPill" title="Backend status (klik voor API instellingen)">API: <span id="apiStatus">off</span></button>
-          <span class="pill" title="Ingelogde gebruiker">User: <span id="userPill">Not logged in</span></span>
-          <button class="btn" id="authBtn" title="Login / Logout">Login</button>
+        <div id="moduleTitle" class="header-title">-</div>
+        <div class="right header-actions">
+          <button class="pill pillbtn compact" id="apiPill" title="Backend status (klik voor API instellingen)">API: <span id="apiStatus">off</span></button>
+          <span class="pill compact" title="Ingelogde gebruiker">User: <span id="userPill">Not logged in</span></span>
+          <span class="pill compact">Rol: <span id="rolePill">Admin</span></span>
+          <button class="btn compact" id="projectPill" title="Kies project">Project: -</button>
+          <button class="btn compact" id="roleToggle">Wissel rol</button>
         </div>
       </div>
     `);
@@ -220,6 +220,32 @@
         document.getElementById("uiModalClose").click();
       });
     }
+
+
+
+  function annotateMobileTables(root){
+    const scope = root || document;
+    scope.querySelectorAll('table.mobile-cards').forEach((table)=>{
+      const headers = [...table.querySelectorAll('thead th')].map((th)=>th.textContent.trim());
+      table.querySelectorAll('tbody tr').forEach((tr)=>{
+        [...tr.children].forEach((td, idx)=>{
+          if(td.tagName !== 'TD') return;
+          if(!td.getAttribute('data-label')) td.setAttribute('data-label', headers[idx] || '');
+        });
+      });
+    });
+  }
+  window.MobileUI = {
+    annotateAll: annotateMobileTables,
+    enableAuto(root){
+      const target = root || document.body;
+      annotateMobileTables(target);
+      if(target.__mobileObserver) return;
+      const obs = new MutationObserver(()=>annotateMobileTables(target));
+      obs.observe(target, {childList:true, subtree:true});
+      target.__mobileObserver = obs;
+    }
+  };
 
     // bind buttons
 
@@ -444,6 +470,7 @@ async function updateApiUi(){
 
     AppsMenu.render();
     AppsMenu.bind();
+    try{ window.MobileUI.enableAuto(document.body); }catch(_){ }
 
     // title from page
     const t = document.body.getAttribute("data-title") || document.title || "";

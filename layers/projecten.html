@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Projecten</title>
-  <script>window.__API_BASE_URL__ = window.__API_BASE_URL__ || localStorage.getItem("API_BASE_URL") || "/api";</script>
+  <script>window.__API_BASE_URL__ = window.__API_BASE_URL__ || localStorage.getItem("API_BASE_URL") || "https://nen1090-api-prod-f5ddagedbrftb4ew.westeurope-01.azurewebsites.net";</script>
   <link rel="stylesheet" href="../css/theme.css" />
 <meta name="theme-color" content="#0c1830" />
   <style>
@@ -51,7 +51,7 @@
       </div>
 
       <div class="table-wrap">
-        <table>
+        <table class="mobile-cards">
           <thead>
             <tr>
               <th>Projectnummer</th>
@@ -301,6 +301,7 @@
           tbody.innerHTML = `<tr class="empty-row"><td colspan="8">Laden van projecten mislukt: ${esc(err.message || 'onbekende fout')}</td></tr>`;
           document.getElementById('projectsCount').textContent = '0 projecten';
         }
+        try{ window.MobileUI && window.MobileUI.annotateAll(document); }catch(_){ }
       }
 
       function projectToFormValues(project){
