@@ -42,16 +42,12 @@
     @media (max-width:1200px){.sa-cards{grid-template-columns:repeat(3,minmax(180px,1fr));}}
     @media (max-width:860px){.sa-cards,.sa-grid-2,.sa-grid-3,.sa-modal-grid,.sa-modal-grid-3{grid-template-columns:1fr;}}
   </style>
-  <link rel="stylesheet" href="../css/wave16-mobile-polish.css">
-  <link rel="stylesheet" href="../css/login-marketing.css" />
-  <script src="../js/core/auth_client.js"></script>
-  <script src="../js/core/app_guard.js"></script>
 </head>
 <body data-title="Klantbeheer (Superadmin)">
   <main class="sa-wrap mobile-page-main">
     <section class="mobile-shell-section" style="padding:14px 14px 0;">
       <div class="mobile-section-title">Klantbeheer</div>
-      <div class="dash-sub">Beheer tenants, seats, gebruikers en lifecycle centraal vanuit één lichte beheeromgeving.</div>
+      <div class="mobile-helptext">Mobiele fase 3 shell voor tenants, seats, users, billing en lifecycle beheer.</div>
       <div class="mobile-summary-grid" style="margin-top:10px;">
         <div class="mobile-summary-card"><div class="mobile-summary-label">Weergave</div><div class="mobile-summary-value">Cards</div></div>
         <div class="mobile-summary-card"><div class="mobile-summary-label">Rol</div><div class="mobile-summary-value">Platform</div></div>
@@ -137,8 +133,8 @@
   <script src="../js/core/design_system.js"></script>
   <script src="../js/core/store.js"></script>
   <script src="../js/core/ui.js"></script>
-    <script src="../js/core/pwa.js"></script>
-  <script src="../js/core/icon_pack.js"></script>
+  <script src="../js/core/auth_client.js"></script>
+  <script src="../js/core/pwa.js"></script>
   <script src="../js/core/shell.js"></script>
   <script src="../js/core/apps_menu.js"></script>
   <script src="../js/core/phase3_finalize.js"></script>

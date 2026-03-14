@@ -1,0 +1,81 @@
+
+/* Wave 16 mobile polish */
+@media (max-width: 768px){
+  .mobile-shortcut-card,
+  .shortcut-card,
+  .mobile-feature-card{
+    border-radius: 22px !important;
+    box-shadow: 0 8px 24px rgba(18, 31, 66, 0.06) !important;
+    border: 1px solid #dfe7f3 !important;
+    background: #ffffff !important;
+  }
+  .mobile-shortcut-card .icon-wrap,
+  .shortcut-card .icon-wrap,
+  .mobile-feature-card .icon-wrap{
+    width: 46px !important;
+    height: 46px !important;
+    border-radius: 14px !important;
+    background: #edf3ff !important;
+    color: #3d6df6 !important;
+  }
+  .mobile-quick-actions,
+  .quick-actions-grid{
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0,1fr)) !important;
+    gap: 12px !important;
+  }
+  .mobile-quick-action,
+  .quick-action-tile{
+    border-radius: 18px !important;
+    min-height: 96px !important;
+    border: 1px solid #dfe7f3 !important;
+    background: #ffffff !important;
+    box-shadow: 0 8px 22px rgba(18,31,66,0.05) !important;
+  }
+  .mobile-bottom-nav,
+  .bottom-nav{
+    padding: 10px 12px !important;
+    border-radius: 24px !important;
+    background: rgba(255,255,255,0.96) !important;
+    box-shadow: 0 14px 40px rgba(18,31,66,0.10) !important;
+    border: 1px solid #dfe7f3 !important;
+  }
+  .mobile-bottom-nav .active,
+  .bottom-nav .active{
+    background: #edf3ff !important;
+    color: #3d6df6 !important;
+    border-radius: 18px !important;
+  }
+  .mobile-header,
+  .app-mobile-header{
+    padding: 14px 16px !important;
+    background: #ffffff !important;
+    border-bottom: 1px solid #e6edf7 !important;
+  }
+  .mobile-page-title{
+    font-size: 34px !important;
+    line-height: 1.02 !important;
+    letter-spacing: -0.04em !important;
+  }
+  .mobile-search,
+  .mobile-toolbar input[type="search"],
+  .mobile-toolbar input[type="text"]{
+    min-height: 44px !important;
+    border-radius: 16px !important;
+  }
+  .mobile-primary-button,
+  .mobile-secondary-button,
+  .mobile-toolbar .btn{
+    min-height: 48px !important;
+    border-radius: 18px !important;
+  }
+  .mobile-chip-row,
+  .mobile-tabs{
+    gap: 10px !important;
+    overflow-x: auto !important;
+    padding-bottom: 4px !important;
+    scrollbar-width: none;
+  }
+  .mobile-chip-row::-webkit-scrollbar,
+  .mobile-tabs::-webkit-scrollbar{ display:none; }
+}

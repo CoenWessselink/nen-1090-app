@@ -1,0 +1,13 @@
+/layers/projecten /layers/projecten.html 200
+/layers/lascontrole /layers/lascontrole.html 200
+/layers/instellingen /layers/instellingen.html 200
+/layers/superadmin /layers/superadmin.html 200
+/layers/tenant_billing /layers/tenant_billing.html 200
+
+/app/login.html /login.html 302
+/layers/projects.html /layers/projecten.html 302
+/layers/settings.html /layers/instellingen.html 302
+/layers/welds.html /layers/lascontrole.html 302
+/layers/capaciteit.html /layers/dashboard.html 302
+/layers/requirements.html /layers/dashboard.html 302
+/layers/auditlog.html /layers/dashboard.html 302

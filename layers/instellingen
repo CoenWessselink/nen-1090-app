@@ -4,24 +4,19 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="../css/theme.css" />
-  <link rel="stylesheet" href="../css/workflow-rebuild.css" />
   <title>Instellingen</title>
 <link rel="manifest" href="/manifest.webmanifest" />
 <meta name="theme-color" content="#0c1830" />
 <link rel="apple-touch-icon" href="/icons/icon-192.png" />
-  <link rel="stylesheet" href="../css/wave16-mobile-polish.css">
-  <link rel="stylesheet" href="../css/login-marketing.css" />
-  <script src="../js/core/auth_client.js"></script>
-  <script src="../js/core/app_guard.js"></script>
 </head>
 <body data-title="Instellingen">
   <main class="mobile-page-main">
     <section class="mobile-shell-section" style="padding:14px 14px 0;">
       <div class="mobile-section-title">Instellingen</div>
-      <div class="dash-sub">Beheer bedrijfsgegevens, medewerkers, certificaten en keuzelijsten in dezelfde lichte enterprise-stijl.</div>
+      <div class="mobile-helptext">Mobiele fase 3 weergave voor bedrijfsinstellingen, werknemers, certificaten en keuzelijsten.</div>
       <div class="mobile-summary-grid" style="margin-top:10px;">
-        <div class="mobile-summary-card"><div class="mobile-summary-label">Modules</div><div class="mobile-summary-value">4</div></div>
-        <div class="mobile-summary-card"><div class="mobile-summary-label">Weergave</div><div class="mobile-summary-value">Responsive</div></div>
+        <div class="mobile-summary-card"><div class="mobile-summary-label">Tabs</div><div class="mobile-summary-value">4</div></div>
+        <div class="mobile-summary-card"><div class="mobile-summary-label">Shell</div><div class="mobile-summary-value">Mobiel</div></div>
       </div>
     </section>
   <div class="panel-head">
@@ -29,7 +24,7 @@
       <button class="btn" id="btnApps">Apps</button>
       <input class="input" id="q" placeholder="Zoek in instellingen" />
     </div>
-    
+    <div class="kbd">Tabs volgens prompt (Bedrijf/Werknemers/Certificaten/Keuzelijsten)</div>
   </div>
 
   <div class="tabs" id="tabs"></div>
@@ -44,14 +39,13 @@
   <script src="../js/core/ui.js"></script>
   <script src="../js/core/apps_menu.js"></script>
   <script src="../js/core/export.js"></script>
-    <script src="../js/core/pwa.js"></script>
-  <script src="../js/core/icon_pack.js"></script>
+  <script src="../js/core/auth_client.js"></script>
+  <script src="../js/core/pwa.js"></script>
   <script src="../js/core/shell.js"></script>
-  <script src="../js/core/workflow_shell.js"></script>
   <script src="../js/core/phase3_finalize.js"></script>
 
   <script>
-    Shell.mount(); try{WorkflowShell.mount();}catch(_){ }
+    Shell.mount();
 
     const TABDEF = [
       {k:"bedrijf", label:"Bedrijf"},
@@ -115,18 +109,18 @@
           <div class="panel-tools">
             <button class="btn" id="btnEditCompany">Bewerk</button>
           </div>
-          
+          <div class="kbd">Dubbelklik op de rij om te bewerken.</div>
         </div>
         ${tableWrap(`
           <table class="mobile-cards">
             <thead><tr><th>Naam</th><th>Adres</th><th>Email</th><th>Telefoon</th><th>Actie</th></tr></thead>
             <tbody id="companyRows">
               <tr data-id="company">
-                <td data-label="Naam">${UI.esc(c.name)}</td>
-                <td data-label="Adres">${UI.esc(c.address)}</td>
-                <td data-label="Email">${UI.esc(c.email)}</td>
-                <td data-label="Telefoon">${UI.esc(c.phone)}</td>
-                <td data-label="Actie"><button class="smallbtn" data-act="edit">Edit</button></td>
+                <td>${UI.esc(c.name)}</td>
+                <td>${UI.esc(c.address)}</td>
+                <td>${UI.esc(c.email)}</td>
+                <td>${UI.esc(c.phone)}</td>
+                <td><button class="smallbtn" data-act="edit">Edit</button></td>
               </tr>
             </tbody>
           </table>
@@ -178,10 +172,10 @@
 
       const rows = list.map(w=>`
         <tr data-id="${UI.esc(w.id)}">
-          <td data-label="ID">${UI.esc(w.id)}</td>
-          <td data-label="Naam">${UI.esc(w.naam||"")}</td>
-          <td data-label="Rol">${UI.esc(w.rol||"")}</td>
-          <td data-label="Geldig tot">${UI.esc(w.geldigTot||"")}</td>
+          <td>${UI.esc(w.id)}</td>
+          <td>${UI.esc(w.naam||"")}</td>
+          <td>${UI.esc(w.rol||"")}</td>
+          <td>${UI.esc(w.geldigTot||"")}</td>
           <td><button class="smallbtn" data-act="edit">Edit</button> <button class="smallbtn" data-act="del">Verwijderen</button></td>
         </tr>
       `).join("") || '<tr><td colspan="5" class="smallmuted">Geen werknemers.</td></tr>';
@@ -192,7 +186,7 @@
             <button class="btn" id="btnNewWorker">Nieuw</button>
             <button class="btn" id="btnWorkerCols">Kolommen</button>
           </div>
-          
+          <div class="kbd">Dubbelklik op een werknemer om te bewerken.</div>
         </div>
         ${tableWrap(`
           <table class="mobile-cards">
@@ -209,11 +203,11 @@
 
       const rows = list.map(c=>`
         <tr data-id="${UI.esc(c.id)}">
-          <td data-label="Type">${UI.esc(c.type||"")}</td>
-          <td data-label="ID">${UI.esc(c.id)}</td>
-          <td data-label="Naam">${UI.esc(c.name||"")}</td>
-          <td data-label="Referentie">${UI.esc(c.ref||"")}</td>
-          <td data-label="Geldig tot">${UI.esc(c.validTo||"")}</td>
+          <td>${UI.esc(c.type||"")}</td>
+          <td>${UI.esc(c.id)}</td>
+          <td>${UI.esc(c.name||"")}</td>
+          <td>${UI.esc(c.ref||"")}</td>
+          <td>${UI.esc(c.validTo||"")}</td>
           <td><button class="smallbtn" data-act="edit">Edit</button> <button class="smallbtn" data-act="del">Verwijderen</button></td>
         </tr>
       `).join("") || '<tr><td colspan="6" class="smallmuted">Geen certificaten.</td></tr>';
@@ -224,7 +218,7 @@
             <button class="btn" id="btnNewCert">Nieuw</button>
             <button class="btn" id="btnCertCols">Kolommen</button>
           </div>
-          
+          <div class="kbd">Dubbelklik op een certificaat om te bewerken.</div>
         </div>
         ${tableWrap(`
           <table class="mobile-cards">
@@ -236,7 +230,7 @@
     }
 
     function listCard(title, key, values){
-      const rows = (values||[]).map((v, i)=>`<tr data-id="${i}"><td data-label="Waarde">${UI.esc(v)}</td><td data-label="Actie"><button class="smallbtn" data-act="edit">Edit</button> <button class="smallbtn" data-act="del">Verwijderen</button></td></tr>`).join("")
+      const rows = (values||[]).map((v, i)=>`<tr data-id="${i}"><td>${UI.esc(v)}</td><td><button class="smallbtn" data-act="edit">Edit</button> <button class="smallbtn" data-act="del">Verwijderen</button></td></tr>`).join("")
         || '<tr><td colspan="2" class="smallmuted">Leeg.</td></tr>';
       return `
         <div class="card">
@@ -245,7 +239,7 @@
               <span class="pillmini">${UI.esc(title)}</span>
               <button class="btn" data-list-new="${UI.esc(key)}">Nieuw</button>
             </div>
-            
+            <div class="kbd">Dubbelklik op een rij om te bewerken.</div>
           </div>
           ${tableWrap(`
             <table class="mobile-cards">

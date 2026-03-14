@@ -8,19 +8,15 @@
 <link rel="manifest" href="/manifest.webmanifest" />
 <meta name="theme-color" content="#0c1830" />
 <link rel="apple-touch-icon" href="/icons/icon-192.png" />
-  <link rel="stylesheet" href="../css/wave16-mobile-polish.css">
-  <link rel="stylesheet" href="../css/login-marketing.css" />
-  <script src="../js/core/auth_client.js"></script>
-  <script src="../js/core/app_guard.js"></script>
 </head>
 <body data-title="Abonnement">
   <main class="mobile-page-main">
     <section class="mobile-shell-section" style="padding:14px 14px 0;">
       <div class="mobile-section-title">Abonnement</div>
-      <div class="dash-sub">Bekijk status, seats en wijzigingen per tenant in een rustige abonnementspagina.</div>
+      <div class="mobile-helptext">Mobiele fase 3 shell voor billing status, seats en wijzigingen per tenant.</div>
       <div class="mobile-summary-grid" style="margin-top:10px;">
-        <div class="mobile-summary-card"><div class="mobile-summary-label">Seatbeheer</div><div class="mobile-summary-value">Live</div></div>
-        <div class="mobile-summary-card"><div class="mobile-summary-label">Doelgroep</div><div class="mobile-summary-value">Tenant admin</div></div>
+        <div class="mobile-summary-card"><div class="mobile-summary-label">Seat beheer</div><div class="mobile-summary-value">Live</div></div>
+        <div class="mobile-summary-card"><div class="mobile-summary-label">Doel</div><div class="mobile-summary-value">Tenant admin</div></div>
       </div>
     </section>
   <div class="panel-head">
@@ -28,7 +24,7 @@
       <button class="btn" id="btnRefresh">Vernieuwen</button>
       <span class="smallmuted" id="hint"></span>
     </div>
-    
+    <div class="kbd">Alleen zichtbaar voor role: tenant_admin • Werkt ook als tenant read-only is</div>
   </div>
 
   <div class="dash-grid">
@@ -79,8 +75,8 @@
   <script src="../js/core/design_system.js"></script>
   <script src="../js/core/store.js"></script>
   <script src="../js/core/ui.js"></script>
-    <script src="../js/core/pwa.js"></script>
-  <script src="../js/core/icon_pack.js"></script>
+  <script src="../js/core/auth_client.js"></script>
+  <script src="../js/core/pwa.js"></script>
   <script src="../js/core/shell.js"></script>
   <script src="../js/core/phase3_finalize.js"></script>
   <script src="../js/core/apps_menu.js"></script>

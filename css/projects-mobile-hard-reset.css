@@ -1,0 +1,61 @@
+@media (max-width:720px){
+  body[data-title="Projecten"]{background:#f3f6fb!important;padding-bottom:116px!important}
+  body[data-title="Projecten"] .headerbar{height:72px!important;padding:0 16px!important;background:#fff!important;border-bottom:1px solid #e4ebf3!important}
+  body[data-title="Projecten"] .headerbar .header-main{justify-content:space-between!important}
+  body[data-title="Projecten"] .headerbar .header-title-wrap,
+  body[data-title="Projecten"] .headerbar .header-center,
+  body[data-title="Projecten"] .headerbar .header-actions .cws-user-menu,
+  body[data-title="Projecten"] .headerbar .mobile-inline-title,
+  body[data-title="Projecten"] .headerbar #authBtn{display:none!important}
+  body[data-title="Projecten"] #openApps{width:44px!important;height:44px!important;border-radius:14px!important;border:1px solid #dde5ef!important;color:#7a879b!important}
+  body[data-title="Projecten"] #openApps .app-icon{width:18px;height:18px;display:grid;place-items:center}
+  body[data-title="Projecten"] #openApps svg{width:18px;height:18px;display:block}
+  body[data-title="Projecten"] .mobile-brand-mark{width:44px!important;height:24px!important;font-size:12px!important;margin-right:10px!important}
+  body[data-title="Projecten"] .mobile-brand-title{font-size:18px!important}
+  body[data-title="Projecten"] .mobile-brand-sub{font-size:10px!important;letter-spacing:.16em!important}
+
+  body[data-title="Projecten"] .projects-page.projects-reference{padding:12px!important;gap:12px!important}
+  body[data-title="Projecten"] .projects-page.projects-reference .projects-hero,
+  body[data-title="Projecten"] .projects-page.projects-reference .projects-tabs,
+  body[data-title="Projecten"] .projects-page.projects-reference .projects-surface,
+  body[data-title="Projecten"] .projects-page.projects-reference .workflow-shell{display:none!important}
+  body[data-title="Projecten"] .projects-mobile-hub{display:grid!important;gap:14px!important}
+  body[data-title="Projecten"] .projects-mobile-titlebar{display:flex!important;align-items:center;justify-content:space-between;gap:10px;padding:2px 2px 0}
+  body[data-title="Projecten"] .projects-mobile-page-title{font-size:28px!important;line-height:1.06!important;letter-spacing:-.04em!important;color:#1f2b46!important;font-weight:800!important;margin:0!important}
+  body[data-title="Projecten"] .projects-mobile-page-tag{padding:6px 10px!important;border-radius:10px!important;border:1px solid #e6ebf3!important;background:#f7f9fc!important;color:#7c8799!important;font-size:11px!important;font-weight:700!important}
+
+  body[data-title="Projecten"] .projects-shortcut-stack-ref{gap:10px!important}
+  body[data-title="Projecten"] .projects-shortcut-card-ref{padding:12px 14px!important;border-radius:14px!important;border:1px solid #e5ebf2!important;background:#fff!important;box-shadow:0 2px 8px rgba(28,40,70,.035)!important}
+  body[data-title="Projecten"] .projects-shortcut-leading{gap:12px!important}
+  body[data-title="Projecten"] .projects-icon-box{width:34px!important;height:34px!important;border-radius:10px!important;display:grid!important;place-items:center!important;background:#eef2f7!important;color:#4d7dff!important;flex:0 0 34px!important;border:1px solid #e2e8f2!important}
+  body[data-title="Projecten"] .projects-icon-box.is-secondary{background:#eef2f7!important;color:#5b84ef!important}
+  body[data-title="Projecten"] .projects-svg-icon{width:16px;height:16px;display:grid;place-items:center}
+  body[data-title="Projecten"] .projects-svg-icon svg{width:16px;height:16px;display:block}
+  body[data-title="Projecten"] .projects-shortcut-title{font-size:15px!important;line-height:1.15!important;color:#21304d!important;font-weight:700!important}
+  body[data-title="Projecten"] .projects-shortcut-sub{font-size:11px!important;line-height:1.35!important;color:#7e8aa1!important;margin-top:3px!important}
+  body[data-title="Projecten"] .projects-shortcut-arrow{font-size:20px!important;color:#b0bac9!important}
+  body[data-title="Projecten"] .projects-shortcut-alert{margin-top:7px!important;font-size:11px!important;color:#db5d5d!important;font-weight:800!important}
+
+  body[data-title="Projecten"] .projects-mobile-section-title{font-size:16px!important;line-height:1.2!important;color:#1f2b46!important;font-weight:800!important;margin:4px 0 10px!important}
+  body[data-title="Projecten"] .projects-mobile-quick-ref{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:10px!important}
+  body[data-title="Projecten"] .mobile-quick-btn-ref{min-height:74px!important;border-radius:14px!important;border:1px solid #e5ebf2!important;background:#fff!important;box-shadow:0 2px 8px rgba(28,40,70,.035)!important;padding:8px 6px!important}
+  body[data-title="Projecten"] .mobile-quick-btn-ref .quick-icon{width:34px!important;height:34px!important;border-radius:10px!important}
+  body[data-title="Projecten"] .mobile-quick-btn-ref .label{font-size:10px!important;line-height:1.2!important;font-weight:700!important;color:#5b667a!important}
+
+  body[data-title="Projecten"] .projects-mobile-list{display:grid!important;gap:10px!important}
+  body[data-title="Projecten"] .projects-mobile-list-card{padding:12px 14px!important;border-radius:14px!important;border:1px solid #e5ebf2!important;background:#fff!important;box-shadow:0 2px 8px rgba(28,40,70,.035)!important}
+  body[data-title="Projecten"] .projects-mobile-list-leading{gap:12px!important}
+  body[data-title="Projecten"] .projects-mobile-list-icon{width:34px!important;height:34px!important;border-radius:10px!important}
+  body[data-title="Projecten"] .projects-mobile-list-title{font-size:14px!important;line-height:1.2!important;font-weight:700!important;color:#23304d!important}
+  body[data-title="Projecten"] .projects-mobile-list-sub{font-size:11px!important;line-height:1.35!important;color:#7f8aa0!important;margin-top:3px!important}
+  body[data-title="Projecten"] .projects-mobile-list-meta{gap:6px!important;margin-top:7px!important}
+  body[data-title="Projecten"] .projects-mini-pill{padding:4px 8px!important;font-size:10px!important;border-radius:10px!important}
+  body[data-title="Projecten"] .projects-mobile-list-arrow{font-size:18px!important;color:#b0bac9!important}
+
+  body[data-title="Projecten"] .mobile-bottom-nav{left:8px!important;right:8px!important;bottom:8px!important;padding:7px!important;border-radius:18px!important;background:rgba(255,255,255,.98)!important;border:1px solid #e4e9f2!important;box-shadow:0 10px 24px rgba(28,40,70,.08)!important;display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:6px!important}
+  body[data-title="Projecten"] .mobile-bottom-link{min-height:54px!important;border-radius:14px!important;gap:4px!important;color:#748198!important;font-size:10px!important;font-weight:700!important;padding:6px 2px!important}
+  body[data-title="Projecten"] .mobile-bottom-link .app-icon{width:16px;height:16px;display:grid;place-items:center}
+  body[data-title="Projecten"] .mobile-bottom-link .app-icon svg{width:16px;height:16px;display:block}
+  body[data-title="Projecten"] .mobile-bottom-link.active{background:#eef3ff!important;border:1px solid #dce5f8!important;color:#376cff!important}
+  body[data-title="Projecten"] .mobile-bottom-link-menu{border:2px solid #293446!important;background:#fff!important;color:#5f6b81!important}
+}

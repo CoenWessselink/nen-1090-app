@@ -2,7 +2,7 @@
 <html lang="nl">
 <head>
   <!-- Backend base URL (NEN1090 API). Overschrijfbaar via localStorage.API_BASE_URL of window.__API_BASE_URL__. -->
-  <script>window.__API_BASE_URL__ = window.__API_BASE_URL__ || localStorage.getItem("API_BASE_URL") || "/api";</script>
+  <script>(function(){var existing=localStorage.getItem('nen1090.api.baseUrl')||localStorage.getItem('API_BASE_URL');var host=location.hostname||'';var direct='https://nen1090-api-prod-f5ddagedbrftb4ew.westeurope-01.azurewebsites.net';window.__API_BASE_URL__=existing||((host==='127.0.0.1'||host==='localhost')?direct:'/api');})();</script>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>NEN1090 Lascontrole – Start</title>
@@ -10,16 +10,28 @@
 <link rel="manifest" href="/manifest.webmanifest" />
 <meta name="theme-color" content="#0c1830" />
 <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+  <link rel="stylesheet" href="css/wave16-mobile-polish.css">
 </head>
 <body data-title="Start">
+  <main class="mobile-page-main">
+  <section class="mobile-shell-section" style="padding:14px 14px 0;">
+    <div class="mobile-section-title">Start</div>
+    <div class="mobile-helptext">Mobiele fase 3 shell voor snelle navigatie naar de kernmodules van het platform.</div>
+    <div class="mobile-summary-grid" style="margin-top:10px;">
+      <div class="mobile-summary-card"><div class="mobile-summary-label">Modules</div><div class="mobile-summary-value">3</div></div>
+      <div class="mobile-summary-card"><div class="mobile-summary-label">Status</div><div class="mobile-summary-value">Klaar</div></div>
+    </div>
+  </section>
   <div class="dash" >
     <div class="dash-grid">
       <div class="card">
         <h3>Start</h3>
         <div class="sub">Open de app direct via de knoppen (werkt ook via file://, zonder localhost server).</div>
         <div style="height:12px"></div>
+        <button class="btn" id="goDash">Dashboard</button>
         <button class="btn" id="goProjecten">Projecten</button>
         <button class="btn" id="goLas">Lascontrole</button>
+        <button class="btn" id="goCe">CE dossier</button>
         <button class="btn" id="goInst">Instellingen</button>
       </div>
       <div class="card">
@@ -28,7 +40,10 @@
       </div>
     </div>
   </div>
+  </main>
 
+  <script src="js/core/routes.js"></script>
+  <script src="js/core/design_system.js"></script>
   <script src="js/core/store.js"></script>
   <script src="js/core/permissions.js"></script>
   <script src="js/core/ui.js"></script>
@@ -36,7 +51,9 @@
   <script src="js/core/export.js"></script>
   <script src="js/core/auth_client.js"></script>
   <script src="js/core/pwa.js"></script>
+  <script src="js/core/icon_pack.js"></script>
   <script src="js/core/shell.js"></script>
+  <script src="js/core/phase3_finalize.js"></script>
 
   <script>
     Shell.mount();
@@ -48,16 +65,18 @@
         window.CWS.resetDemo();
       }
       const root = '.';
-      location.replace(root + '/layers/projecten.html?r=' + Date.now());
+      if(window.Auth && window.Auth.isLoggedIn && window.Auth.isLoggedIn()){ location.replace(root + '/layers/dashboard.html?r=' + Date.now()); } else { location.replace(root + '/login.html'); }
     }catch(e){ console.error(e); }
 
 
     const href = String(location.href||'');
     const inLayers = (href.indexOf('/layers/') !== -1) || (href.indexOf('\\\\layers\\\\') !== -1);
     const root = inLayers ? '..' : '.';
-    const map = {projecten: root + '/layers/projecten.html', lascontrole: root + '/layers/lascontrole.html', instellingen: root + '/layers/instellingen.html'};
+    const map = {dashboard: root + '/layers/dashboard.html', projecten: root + '/layers/projecten.html', lascontrole: root + '/layers/lascontrole.html', instellingen: root + '/layers/instellingen.html', ce: root + '/layers/ce_dossier.html'};
+    document.getElementById("goDash").onclick = ()=>location.href = map.dashboard + "?r=" + Date.now();
     document.getElementById("goProjecten").onclick = ()=>location.href = map.projecten + "?r=" + Date.now();
     document.getElementById("goLas").onclick = ()=>location.href = map.lascontrole + "?r=" + Date.now();
+    document.getElementById("goCe").onclick = ()=>location.href = map.ce + "?r=" + Date.now();
     document.getElementById("goInst").onclick = ()=>location.href = map.instellingen + "?r=" + Date.now();
   </script>
 </body>

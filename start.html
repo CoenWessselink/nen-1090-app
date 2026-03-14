@@ -3,51 +3,10 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>NEN1090 Lascontrole – Start</title>
-  <!-- API base URL (Pages default: /api). Overschrijfbaar via localStorage.API_BASE_URL of window.__API_BASE_URL__. -->
-  <script>window.__API_BASE_URL__ = window.__API_BASE_URL__ || localStorage.getItem("API_BASE_URL") || "/api";</script>
-  <link rel="stylesheet" href="css/theme.css" />
-<link rel="manifest" href="/manifest.webmanifest" />
-<meta name="theme-color" content="#0c1830" />
-<link rel="apple-touch-icon" href="/icons/icon-192.png" />
+  <title>CWS NEN-1090 Platform</title>
+  <meta http-equiv="refresh" content="0; url=layers/dashboard.html" />
+  <script>location.replace('layers/dashboard.html');</script>
+  <link rel="stylesheet" href="css/wave16-mobile-polish.css">
 </head>
-<body data-title="Start">
-  <div class="dash" >
-    <div class="dash-grid">
-      <div class="card">
-        <h3>Start</h3>
-        <div class="sub">Open de app direct via de knoppen (werkt ook via file://, zonder localhost server).</div>
-        <div style="height:12px"></div>
-        <button class="btn" id="goProjecten">Projecten</button>
-        <button class="btn" id="goLas">Lascontrole</button>
-        <button class="btn" id="goInst">Instellingen</button>
-      </div>
-      <div class="card">
-        <h3>Tip</h3>
-        <div class="sub">Deze build gebruikt geen iframe meer, dus geen origin/security issues bij file://. Alles draait via localStorage.</div>
-      </div>
-    </div>
-  </div>
-
-  <script src="js/core/store.js"></script>
-  <script src="js/core/permissions.js"></script>
-  <script src="js/core/ui.js"></script>
-  <script src="js/core/apps_menu.js"></script>
-  <script src="js/core/export.js"></script>
-  <script src="js/core/pwa.js"></script>
-  <script src="js/core/shell.js"></script>
-
-  <script>
-    Shell.mount();
-
-
-    const href = String(location.href||'');
-    const inLayers = (href.indexOf('/layers/') !== -1) || (href.indexOf('\\\\layers\\\\') !== -1);
-    const root = inLayers ? '..' : '.';
-    const map = {projecten: root + '/layers/projecten.html', lascontrole: root + '/layers/lascontrole.html', instellingen: root + '/layers/instellingen.html'};
-    document.getElementById("goProjecten").onclick = ()=>location.href = map.projecten + "?r=" + Date.now();
-    document.getElementById("goLas").onclick = ()=>location.href = map.lascontrole + "?r=" + Date.now();
-    document.getElementById("goInst").onclick = ()=>location.href = map.instellingen + "?r=" + Date.now();
-  </script>
-</body>
+<body></body>
 </html>

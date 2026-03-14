@@ -14,12 +14,15 @@
   // Ensure a global API base is available on ALL pages (including /layers/*).
   // For Cloudflare Pages, we prefer same-origin proxy: /api
   try {
+    const __host = (typeof location !== 'undefined' && location.hostname) ? location.hostname : '';
+    const __directAzure = 'https://nen1090-api-prod-f5ddagedbrftb4ew.westeurope-01.azurewebsites.net';
     window.__API_BASE_URL__ = window.__API_BASE_URL__
       || localStorage.getItem('API_BASE_URL')
       || localStorage.getItem('nen1090.api.baseUrl')
-      || 'https://nen1090-api-prod-f5ddagedbrftb4ew.westeurope-01.azurewebsites.net';
+      || ((__host === '127.0.0.1' || __host === 'localhost') ? __directAzure : '/api');
   } catch (_) {
-    window.__API_BASE_URL__ = window.__API_BASE_URL__ || 'https://nen1090-api-prod-f5ddagedbrftb4ew.westeurope-01.azurewebsites.net';
+    const __host2 = (typeof location !== 'undefined' && location.hostname) ? location.hostname : '';
+    window.__API_BASE_URL__ = window.__API_BASE_URL__ || ((__host2 === '127.0.0.1' || __host2 === 'localhost') ? 'https://nen1090-api-prod-f5ddagedbrftb4ew.westeurope-01.azurewebsites.net' : '/api');
   }
 
   const LS_KEYS = {
@@ -202,6 +205,10 @@
     const tok = getAccessToken();
     const p = _decodeJwtPayload(tok);
     return (p && (p.tenant_id || p.tenantId)) ? (p.tenant_id || p.tenantId) : '';
+  }
+
+  function claims() {
+    return _decodeJwtPayload(getAccessToken()) || {};
   }
 
   async function apiFetchForm(path, formData, options = {}) {
@@ -400,6 +407,61 @@
     },
 
 
+    iso5817: {
+      listReferenceDefects: () => apiFetch('/api/v1/iso5817/reference-defects', { method: 'GET' }),
+      listDefects: (projectId, filters = {}) => {
+        const qs = new URLSearchParams();
+        if (filters.weld_id) qs.set('weld_id', filters.weld_id);
+        if (filters.inspection_id) qs.set('inspection_id', filters.inspection_id);
+        const suffix = qs.toString() ? `?${qs.toString()}` : '';
+        return apiFetch(`/api/v1/projects/${projectId}/weld-defects${suffix}`, { method: 'GET' });
+      },
+      createDefect: (projectId, payload) => apiFetch(`/api/v1/projects/${projectId}/weld-defects`, { method: 'POST', body: JSON.stringify(payload) }),
+      updateDefect: (projectId, defectId, payload) => apiFetch(`/api/v1/projects/${projectId}/weld-defects/${defectId}`, { method: 'PATCH', body: JSON.stringify(payload) }),
+      deleteDefect: (projectId, defectId) => apiFetch(`/api/v1/projects/${projectId}/weld-defects/${defectId}`, { method: 'DELETE' }),
+      getResult: (weldId) => apiFetch(`/api/v1/welds/${weldId}/iso5817/result`, { method: 'GET' }),
+      upsertResult: (weldId, payload) => apiFetch(`/api/v1/welds/${weldId}/iso5817/result`, { method: 'PUT', body: JSON.stringify(payload || {}) }),
+      evaluate: (weldId, payload) => apiFetch(`/api/v1/welds/${weldId}/iso5817/evaluate`, { method: 'POST', body: JSON.stringify(payload || {}) }),
+    },
+
+    exports: {
+      list: (projectId) => apiFetch(`/api/v1/projects/${projectId}/exports`, { method: 'GET' }),
+      create: (projectId, payload) => apiFetch(`/api/v1/projects/${projectId}/exports`, { method: 'POST', body: JSON.stringify(payload || {}) }),
+      retry: (projectId, exportId) => apiFetch(`/api/v1/projects/${projectId}/exports/${exportId}/retry`, { method: 'POST' }),
+      downloadBlob: (projectId, exportId) => apiFetchBlob(`/api/v1/projects/${projectId}/exports/${exportId}/download`),
+      ceDossierPreview: (projectId) => apiFetch(`/api/v1/projects/${projectId}/ce-dossier/preview`, { method: 'GET' }),
+      ceDossierExport: (projectId, payload) => apiFetch(`/api/v1/projects/${projectId}/ce-dossier/export`, { method: 'POST', body: JSON.stringify(payload || {}) }),
+    },
+
+    tenantBilling: {
+      status: () => apiFetch('/api/v1/tenant/billing/status', { method: 'GET' }),
+      preview: (payload) => apiFetch('/api/v1/tenant/billing/preview', { method: 'POST', body: JSON.stringify(payload || {}) }),
+      change: (payload) => apiFetch('/api/v1/tenant/billing/change', { method: 'POST', body: JSON.stringify(payload || {}) }),
+    },
+
+    compliance: {
+      projectMaterials: {
+        list: (projectId) => apiFetch(`/api/v1/projects/${projectId}/materials`, { method: 'GET' }),
+        create: (projectId, payload) => apiFetch(`/api/v1/projects/${projectId}/materials`, { method: 'POST', body: JSON.stringify(payload) }),
+      },
+      projectNdt: {
+        list: (projectId) => apiFetch(`/api/v1/projects/${projectId}/ndt`, { method: 'GET' }),
+        create: (projectId, payload) => apiFetch(`/api/v1/projects/${projectId}/ndt`, { method: 'POST', body: JSON.stringify(payload) }),
+      },
+      welders: {
+        list: () => apiFetch('/api/v1/welders', { method: 'GET' }),
+        create: (payload) => apiFetch('/api/v1/welders', { method: 'POST', body: JSON.stringify(payload) }),
+      },
+      wps: {
+        list: () => apiFetch('/api/v1/wps', { method: 'GET' }),
+        create: (payload) => apiFetch('/api/v1/wps', { method: 'POST', body: JSON.stringify(payload) }),
+      },
+      wpqr: {
+        list: () => apiFetch('/api/v1/wpqr', { method: 'GET' }),
+        create: (payload) => apiFetch('/api/v1/wpqr', { method: 'POST', body: JSON.stringify(payload) }),
+      },
+    },
+
     platform: {
       tenants: {
         list: () => apiFetch('/api/v1/platform/tenants', { method: 'GET' }),
@@ -418,14 +480,25 @@
         exportCsv: () => apiFetch('/api/v1/platform/tenants.csv', { method: 'GET' }),
         billing: {
           link: (tenantId, payload) => apiFetch(`/api/v1/platform/tenants/${tenantId}/billing/link`, { method: 'POST', body: JSON.stringify(payload || {}) }),
-          previewSeats: (tenantId, payload) => apiFetch(`/api/v1/platform/tenants/${tenantId}/billing/seats`, { method: 'POST', body: JSON.stringify(payload || {}) }),
-          applySeats: (tenantId, payload) => apiFetch(`/api/v1/platform/tenants/${tenantId}/billing/seats`, { method: 'POST', body: JSON.stringify(payload || {}) }),
+          previewSeats: (tenantId, payload) => {
+            const body = Object.assign({}, payload || {});
+            if (typeof body.seats_target === 'undefined' && typeof body.target === 'number') body.seats_target = body.target;
+            if (typeof body.seats_target === 'undefined' && typeof body.seats_purchased === 'number') body.seats_target = body.seats_purchased;
+            return apiFetch(`/api/v1/platform/tenants/${tenantId}/billing/preview`, { method: 'POST', body: JSON.stringify(body) });
+          },
+          applySeats: (tenantId, payload) => {
+            const body = Object.assign({}, payload || {});
+            if (typeof body.seats_purchased === 'undefined' && typeof body.target === 'number') body.seats_purchased = body.target;
+            if (typeof body.seats_purchased === 'undefined' && typeof body.seats_target === 'number') body.seats_purchased = body.seats_target;
+            return apiFetch(`/api/v1/platform/tenants/${tenantId}/billing/seats`, { method: 'POST', body: JSON.stringify(body) });
+          },
           activateYear: (tenantId) => apiFetch(`/api/v1/platform/tenants/${tenantId}/billing/activate_year`, { method: 'POST' }),
           cancel: (tenantId) => apiFetch(`/api/v1/platform/tenants/${tenantId}/billing/cancel`, { method: 'POST' }),
         },
         paymentsManual: (tenantId, payload) => apiFetch(`/api/v1/platform/tenants/${tenantId}/payments/manual`, { method: 'POST', body: JSON.stringify(payload) }),
       }
     },
+    claims,
     // low-level helper (kept private-ish but useful for debugging)
     _apiFetch: apiFetch,
   };
