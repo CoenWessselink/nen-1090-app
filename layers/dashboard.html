@@ -11,18 +11,14 @@
   <div id="page-content">
     <section class="hero">
       <div class="hero-copy">
-        <div class="overline">Fase 1 · nieuwe centrale shell actief</div>
+        <div class="overline">Fase 4 · Werkqueue, blokkades en volgende stap</div>
         <h1>Dashboard</h1>
-        <p>Taakgericht overzicht voor projectbeheer, lascontrole en CE-gereedheid. Vanuit dit scherm moet de gebruiker direct door de vaste keten kunnen werken.</p>
+        <p>Fase 4 maakt de app taakgerichter: projecten krijgen een werkqueue, blokkades en snelle routing naar de juiste vervolgstap.</p>
         <div class="workflow-banner">
-          <div class="workflow-pill">Project</div>
-          <div class="workflow-arrow">→</div>
-          <div class="workflow-pill">Lassen</div>
-          <div class="workflow-arrow">→</div>
-          <div class="workflow-pill">Inspectie</div>
-          <div class="workflow-arrow">→</div>
-          <div class="workflow-pill">CE-dossier</div>
-          <div class="workflow-arrow">→</div>
+          <div class="workflow-pill">Project</div><div class="workflow-arrow">→</div>
+          <div class="workflow-pill">Lassen</div><div class="workflow-arrow">→</div>
+          <div class="workflow-pill">Inspectie</div><div class="workflow-arrow">→</div>
+          <div class="workflow-pill">CE-dossier</div><div class="workflow-arrow">→</div>
           <div class="workflow-pill">Export</div>
         </div>
         <div class="hero-actions">
@@ -32,171 +28,64 @@
           <a class="btn btn-soft" href="ce_dossier.html">CE dossier</a>
         </div>
         <div class="quick-actions">
-          <div class="quick-action">
-            <strong>Open acties</strong>
-            <p>5 projecten wachten op inspectie of documentatie.</p>
-          </div>
-          <div class="quick-action">
-            <strong>Audit nodig</strong>
-            <p>3 dossiers hebben nog ontbrekende bewijslast.</p>
-          </div>
-          <div class="quick-action">
-            <strong>Export gereed</strong>
-            <p>7 dossiers zijn klaar voor review of vrijgave.</p>
-          </div>
+          <div class="quick-action"><strong>Open acties</strong><p id="dashboardQuickOpen"></p></div>
+          <div class="quick-action"><strong>Audit nodig</strong><p id="dashboardQuickAudit"></p></div>
+          <div class="quick-action"><strong>Export gereed</strong><p id="dashboardQuickReady"></p></div><div class="quick-action"><strong>Synchronisatie</strong><p id="dashboardSyncInfo"></p></div>
         </div>
       </div>
-
       <div class="hero-visual">
-        <div class="section-title">
-          <div>
-            <h2>Vandaag</h2>
-            <p>Kernstatus van de omgeving en directe stuurinformatie</p>
-          </div>
-        </div>
-        <div class="kpi-row">
-          <div class="kpi-card"><strong>18</strong><span>Actieve projecten</span></div>
-          <div class="kpi-card"><strong>42</strong><span>Lassen in controle</span></div>
-          <div class="kpi-card"><strong>7</strong><span>CE dossiers gereed</span></div>
-        </div>
+        <div class="section-title"><div><h2>Vandaag</h2><p>Kernstatus van de omgeving en directe stuurinformatie</p></div></div>
+        <div class="kpi-row" id="dashboardKpi"></div>
         <div class="progress-block">
-          <div class="progress-head">
-            <strong>Totale CE gereedheid</strong>
-            <span class="badge badge-primary">82%</span>
-          </div>
-          <div class="progress-bar"><span style="width:82%"></span></div>
-          <p class="muted">NDT rapport WL-004 en 1 materiaalcertificaat blokkeren de volledige vrijgave.</p>
+          <div class="progress-head"><strong>Totale CE gereedheid</strong><span class="badge badge-primary" id="dashboardProgressLabel">0%</span></div>
+          <div class="progress-bar"><span id="dashboardProgress" style="width:0%"></span></div>
+          <p class="muted">De demo-flow berekent deze waarde uit weldstatussen en documentgroepen.</p>
         </div>
       </div>
-    </section>
-
-    <section class="stat-strip">
-      <article class="stat-box">
-        <h3>Conform</h3>
-        <strong>9</strong>
-        <p>Gereed voor oplevering of archief</p>
-      </article>
-      <article class="stat-box">
-        <h3>In controle</h3>
-        <strong>5</strong>
-        <p>Inspectie of documentatie loopt nog</p>
-      </article>
-      <article class="stat-box">
-        <h3>Blokkades</h3>
-        <strong>3</strong>
-        <p>Documenten of certificaten ontbreken</p>
-      </article>
-      <article class="stat-box">
-        <h3>Planning</h3>
-        <strong>2</strong>
-        <p>Deadlines binnen 48 uur</p>
-      </article>
     </section>
 
     <section class="grid-2">
       <article class="table-card">
         <div class="section-title">
-          <div>
-            <h2>Projecten in focus</h2>
-            <p>Desktop en mobiel delen nu dezelfde status- en actiepatronen</p>
-          </div>
+          <div><h2>Projecten in focus</h2><p>Actieve projecten, status en volgende stap</p></div>
           <a class="btn btn-soft" href="projecten.html">Alle projecten</a>
         </div>
         <table class="table">
-          <thead>
-            <tr>
-              <th>Project</th>
-              <th>Opdrachtgever</th>
-              <th>Status</th>
-              <th>Volgende stap</th>
-              <th>Acties</th>
-            </tr>
-          </thead>
-          <tbody id="dashboardRows">
-            <tr data-filter-row>
-              <td><strong>L-001-1</strong><div class="table-meta"><span>Kolom A1 / Ligger 1</span><span>EXC3/C</span></div></td>
-              <td>Bouwbedrijf Delta</td>
-              <td><span class="badge badge-success">Conform</span></td>
-              <td>CE review en vrijgave</td>
-              <td><div class="inline-actions"><a class="btn btn-soft" href="project_detail.html">Project 360</a><a class="btn btn-soft" href="ce_dossier.html">CE</a></div></td>
-            </tr>
-            <tr data-filter-row>
-              <td><strong>L-002-1</strong><div class="table-meta"><span>Kolom A2 / Ligger 1</span><span>EXC2/A</span></div></td>
-              <td>Woningbouwgroep</td>
-              <td><span class="badge badge-warning">In controle</span></td>
-              <td>NDT upload en acceptatie</td>
-              <td><div class="inline-actions"><a class="btn btn-soft" href="project_detail.html">Detail</a><a class="btn btn-soft" href="lascontrole.html">Lassen</a></div></td>
-            </tr>
-            <tr data-filter-row>
-              <td><strong>WL-004</strong><div class="table-meta"><span>Zware kopse las</span><span>EXC3/C</span></div></td>
-              <td>Machinebouw Oost</td>
-              <td><span class="badge badge-warning">Actie</span></td>
-              <td>Procesblad/WPS afronden</td>
-              <td><div class="inline-actions"><a class="btn btn-soft" href="project_detail.html">Open</a><a class="btn btn-soft" href="lascontrole.html">Controle</a></div></td>
-            </tr>
-          </tbody>
+          <thead><tr><th>Project</th><th>Opdrachtgever</th><th>Status</th><th>Volgende stap</th><th>Acties</th></tr></thead>
+          <tbody id="dashboardRows"></tbody>
         </table>
-        <div class="mobile-list">
-          <article class="mobile-item">
-            <div class="mobile-item-top"><strong>L-001-1</strong><span class="badge badge-success">Conform</span></div>
-            <div class="mobile-item-meta"><span>Bouwbedrijf Delta · Kolom A1 / Ligger 1</span><span>Volgende stap: CE review en vrijgave</span></div>
-            <div class="inline-actions"><a class="btn btn-soft" href="project_detail.html">Bekijken</a><a class="btn btn-soft" href="ce_dossier.html">CE</a></div>
-          </article>
-          <article class="mobile-item">
-            <div class="mobile-item-top"><strong>L-002-1</strong><span class="badge badge-warning">In controle</span></div>
-            <div class="mobile-item-meta"><span>Woningbouwgroep · Kolom A2 / Ligger 1</span><span>Volgende stap: NDT upload en acceptatie</span></div>
-            <div class="inline-actions"><a class="btn btn-soft" href="project_detail.html">Detail</a><a class="btn btn-soft" href="lascontrole.html">Lassen</a></div>
-          </article>
-          <article class="mobile-item">
-            <div class="mobile-item-top"><strong>WL-004</strong><span class="badge badge-warning">Actie</span></div>
-            <div class="mobile-item-meta"><span>Machinebouw Oost · EXC3/C</span><span>Volgende stap: procesblad/WPS afronden</span></div>
-            <div class="inline-actions"><a class="btn btn-soft" href="project_detail.html">Open</a><a class="btn btn-soft" href="lascontrole.html">Controle</a></div>
-          </article>
-        </div>
+        <div class="mobile-list" id="dashboardMobile"></div>
       </article>
 
       <div class="right-stack">
         <article class="export-card">
-          <div class="section-title">
-            <div>
-              <h2>CE gereedheid</h2>
-              <p>Controleer wat nog ontbreekt voor export</p>
-            </div>
-          </div>
+          <div class="section-title"><div><h2>Werkende fase 4-acties</h2><p>Gebruik deze om de flow direct te testen</p></div></div>
           <div class="checklist">
-            <div class="check"><div><strong>Materiaalcertificaten</strong><small>4 van 5 aanwezig</small></div><span class="badge badge-warning">1 mist</span></div>
-            <div class="check"><div><strong>Lasserscertificaten</strong><small>Alle geldige documenten aanwezig</small></div><span class="badge badge-success">OK</span></div>
-            <div class="check"><div><strong>NDT rapporten</strong><small>WT rapport WL-004 nog uploaden</small></div><span class="badge badge-warning">Actie</span></div>
-          </div>
-          <div class="inline-actions" style="margin-top:12px">
-            <a class="btn btn-primary" href="ce_dossier.html">Open CE dossier</a>
-            <button class="btn" data-action="drawer" data-title="Exportrapport" data-content="<div class='notice'>Exportrapport is voorbereid. In fase 2 koppelen we dit aan echte exportstappen, ZIP-bestanden en manifesten.</div>">Genereer rapport</button>
+            <div class="check"><div><strong>Nieuw project</strong><small>Voegt lokaal een project toe aan de lijst</small></div><button class="btn btn-soft" data-action="modal-project">Open</button></div>
+            <div class="check"><div><strong>Project volledig gereed</strong><small>Zet documenten en lassen op akkoord in de detailflow</small></div><a class="btn btn-soft" href="project_detail.html">Open detail</a></div>
+            <div class="check"><div><strong>CE export</strong><small>Voegt exporthistorie toe in het CE-dossier</small></div><a class="btn btn-primary" href="ce_dossier.html">Naar CE</a></div>
           </div>
         </article>
-
         <article class="activity-card">
-          <div class="section-title">
-            <div>
-              <h2>Recente acties</h2>
-              <p>Belangrijkste wijzigingen in de flow</p>
-            </div>
-          </div>
+          <div class="section-title"><div><h2>Wat fase 4 toevoegt</h2><p>Meer sturing richting echte werkflow</p></div></div>
           <div class="timeline">
-            <div class="timeline-item">
-              <div class="timeline-dot"></div>
-              <div class="timeline-card"><strong>Project WL-004 bijgewerkt</strong><p>Uitvoering en materiaalstatus geactualiseerd voor vervolgcontrole.</p></div>
-            </div>
-            <div class="timeline-item">
-              <div class="timeline-dot"></div>
-              <div class="timeline-card"><strong>NDT rapport toegevoegd</strong><p>Radiografie bij L-002-1 ingevoerd en zichtbaar gemaakt in de lasflow.</p></div>
-            </div>
-            <div class="timeline-item">
-              <div class="timeline-dot"></div>
-              <div class="timeline-card"><strong>CE dossier klaar voor review</strong><p>L-001-1 is inhoudelijk gereed voor laatste vrijgave.</p></div>
-            </div>
+            <div class="timeline-item"><div class="timeline-dot"></div><div class="timeline-card"><strong>Projecten zijn bewerkbaar</strong><p>Nieuw project en wijzigen werken via drawer-formulieren.</p></div></div>
+            <div class="timeline-item"><div class="timeline-dot"></div><div class="timeline-card"><strong>Lascontrole werkt</strong><p>Status kan per lasregel worden aangepast, inclusief repair/conform.</p></div></div>
+            <div class="timeline-item"><div class="timeline-dot"></div><div class="timeline-card"><strong>CE-dossier reageert mee</strong><p>Completeness en exporthistorie werken mee op basis van dezelfde projectstate.</p></div></div>
           </div>
         </article>
       </div>
+    </section>
+
+    <section class="card-grid">
+      <article class="detail-card">
+        <div class="section-title"><div><h2>Werkqueue</h2><p>Direct door naar de juiste volgende stap per project</p></div></div>
+        <div class="list" id="dashboardQueue"></div>
+      </article>
+      <article class="detail-card">
+        <div class="section-title"><div><h2>Blokkades overzicht</h2><p>Wat houdt CE-vrijgave nu nog tegen</p></div></div>
+        <div class="list" id="dashboardBlockers"></div>
+      </article>
     </section>
   </div>
 </body>

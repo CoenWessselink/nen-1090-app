@@ -13,51 +13,38 @@
       <div>
         <div class="overline">Beheerlaag gescheiden van operationeel werk</div>
         <h1>Instellingen</h1>
-        <p>Applicatie, gebruikers, beveiliging en documentlogica zijn in fase 1 samengebracht in een vaste beheerstructuur met tabs en uniforme kaarten.</p>
+        <p>Fase 4 houdt instellingen functioneel en sluit beheer beter aan op de werkende projectflow.</p>
       </div>
       <div class="inline-actions">
-        <button class="btn btn-primary" data-action="drawer" data-title="Gebruiker toevoegen" data-content="<div class='field'><label>Naam</label><input value='Nieuwe gebruiker'></div><div class='field'><label>Rol</label><select><option>Admin</option><option>Planner</option><option>Viewer</option></select></div><div class='inline-actions'><button class='btn btn-primary'>Opslaan</button></div>">Gebruiker toevoegen</button>
+        <button class="btn btn-primary" data-action="save-settings">Opslaan</button>
       </div>
     </section>
 
     <section class="table-card" data-tabs-host>
       <div class="subtabs">
         <button class="subtab is-active" data-target="app">Applicatie</button>
-        <button class="subtab" data-target="gebruikers">Gebruikers</button>
         <button class="subtab" data-target="beveiliging">Beveiliging</button>
-        <button class="subtab" data-target="documenten">Documentlogica</button>
+        <button class="subtab" data-target="beheer">Beheer</button>
       </div>
 
       <div data-tab-panel="app" style="margin-top:16px">
         <div class="settings-grid">
           <article class="detail-card">
             <div class="section-title"><div><h2>Organisatie</h2><p>Basisinstellingen van de omgeving</p></div></div>
-            <div class="field"><label>Bedrijfsnaam</label><input value="CWS NEN-1090"></div>
-            <div class="field"><label>Standaard executieklasse</label><select><option>EXC1</option><option>EXC2</option><option selected>EXC3</option></select></div>
-            <div class="field"><label>Projectprefix</label><input value="L-"></div>
-            <div class="inline-actions"><button class="btn btn-primary" data-action="toast" data-message="Applicatie-instellingen opgeslagen in de demo-flow.">Opslaan</button></div>
+            <div class="field"><label>Bedrijfsnaam</label><input id="organisationName"></div>
+            <div class="field"><label>Standaard executieklasse</label><select id="defaultExc"><option>EXC1</option><option>EXC2</option><option>EXC3</option></select></div>
+            <div class="field"><label>Projectprefix</label><input id="projectPrefix"></div>
+            <div class="inline-actions"><button class="btn btn-primary" data-action="save-settings">Opslaan</button></div>
           </article>
           <article class="detail-card">
-            <div class="section-title"><div><h2>Workflow en afdelingen</h2><p>Vaste proceslijn voor het platform</p></div></div>
+            <div class="section-title"><div><h2>Workflow</h2><p>Vaste proceslijn voor het platform</p></div></div>
             <div class="list">
               <div class="list-item"><div><strong>Projectbeheer</strong><span>Projectstart, planning, opdrachtgever</span></div><span class="badge badge-soft">Actief</span></div>
               <div class="list-item"><div><strong>Lascontrole</strong><span>Materiaal, uitvoering, NDT</span></div><span class="badge badge-soft">Actief</span></div>
               <div class="list-item"><div><strong>CE Dossier</strong><span>Export, vrijgave en oplevering</span></div><span class="badge badge-soft">Actief</span></div>
+              <div class="list-item"><div><strong>Data bron</strong><span id="settingsApiStatus"></span></div><button class="btn btn-soft" data-action="sync-api">Ververs</button></div>
             </div>
           </article>
-        </div>
-      </div>
-
-      <div data-tab-panel="gebruikers" hidden style="margin-top:16px">
-        <div class="card-grid">
-          <article class="detail-card">
-            <div class="section-title"><div><h2>Gebruikers</h2><p>Rollen en toegang binnen de tenant</p></div></div>
-            <div class="list">
-              <div class="list-item"><div><strong>Hans Planner</strong><span>Planner · toegang tot projecten en lassen</span></div><button class="btn btn-soft" data-action="drawer" data-title="Gebruiker" data-content="<div class='notice'>Gebruikersdetail en rechten komen hier.</div>">Open</button></div>
-              <div class="list-item"><div><strong>Admin CWS</strong><span>Volledige rechten incl. instellingen</span></div><button class="btn btn-soft" data-action="drawer" data-title="Admin" data-content="<div class='notice'>Adminrechten en auditinstellingen komen hier.</div>">Open</button></div>
-            </div>
-          </article>
-          <article class="detail-card"><div class="section-title"><div><h2>Rollenmodel</h2><p>Voorbereid voor fase 2</p></div></div><p>In fase 2 koppelen we rollen, rechten, auditregels en gebruikersbeheer aan echte data en validaties.</p></article>
         </div>
       </div>
 
@@ -65,23 +52,19 @@
         <div class="card-grid">
           <article class="detail-card">
             <div class="section-title"><div><h2>Beveiliging</h2><p>Authenticatie en sessieregels</p></div></div>
-            <div class="field"><label>2FA verplicht</label><select><option>Ja</option><option>Nee</option></select></div>
-            <div class="field"><label>Session timeout</label><input value="30 minuten"></div>
-            <button class="btn btn-primary" data-action="toast" data-message="Beveiligingsinstellingen opgeslagen in de demo-flow.">Opslaan</button>
+            <div class="field"><label>2FA verplicht</label><select id="twoFactor"><option>Ja</option><option>Nee</option></select></div>
+            <div class="field"><label>Session timeout</label><input id="sessionTimeout"></div>
+            <button class="btn btn-primary" data-action="save-settings">Opslaan</button>
           </article>
-          <article class="detail-card"><div class="section-title"><div><h2>Audit & logging</h2><p>Vaste plek voor security controls</p></div></div><p>Fase 1 levert de vaste beheerstructuur. In fase 2 komen hier echte auditlogica, eventregistratie en securityvalidatie.</p></article>
+          <article class="detail-card"><div class="section-title"><div><h2>Audit & logging</h2><p>Voorbereid voor fase 3</p></div></div><p>In de laatste fase koppelen we auditlogica, validaties en foutafhandeling aan echte API-data.</p></article>
         </div>
       </div>
 
-      <div data-tab-panel="documenten" hidden style="margin-top:16px">
-        <article class="detail-card">
-          <div class="section-title"><div><h2>Documentregels</h2><p>Welke documenten vereist zijn per project / CE dossier</p></div></div>
-          <div class="checklist">
-            <div class="check"><div><strong>Materiaalcertificaat 3.1</strong><small>Verplicht voor export</small></div><span class="badge badge-success">Verplicht</span></div>
-            <div class="check"><div><strong>WPS / WPQR</strong><small>Verplicht voor elke lasgroep</small></div><span class="badge badge-success">Verplicht</span></div>
-            <div class="check"><div><strong>NDT rapport</strong><small>Alleen verplicht wanneer inspectieklasse dat vraagt</small></div><span class="badge badge-warning">Voorwaardelijk</span></div>
-          </div>
-        </article>
+      <div data-tab-panel="beheer" hidden style="margin-top:16px">
+        <div class="card-grid">
+          <article class="detail-card"><div class="section-title"><div><h2>Demo beheer</h2><p>Snel terug naar startsituatie</p></div></div><button class="btn btn-primary" data-action="reset-demo">Demo reset</button></article>
+          <article class="detail-card"><div class="section-title"><div><h2>Opmerking</h2><p>Instellingen worden lokaal in de browser opgeslagen.</p></div></div><p>Dit is bedoeld voor fase 2 validatie van de workflow. API-gekoppelde beheerlogica volgt in fase 3.</p></article>
+        </div>
       </div>
     </section>
   </div>

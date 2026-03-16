@@ -11,131 +11,38 @@
   <div id="page-content">
     <section class="page-head">
       <div>
-        <div class="overline">Operationele werkplek voor lassen en inspectie</div>
+        <div class="overline">Operationele werkplek voor uitvoering, inspectie, blokkades en vervolgstap</div>
         <h1>Lascontrole</h1>
-        <p>Voorbereiding, materiaal, uitvoering, NDT en documentatie zijn in fase 1 ondergebracht in één vaste werkplek met subtabs en een rechterkolom voor completeness.</p>
+        <p id="weldProjectLabel">Project</p>
       </div>
       <div class="inline-actions">
-        <a class="btn btn-soft" href="project_detail.html">Project 360</a>
-        <button class="btn btn-primary" data-action="drawer" data-title="Nieuwe las" data-content="<div class='field'><label>Lasnummer</label><input value='WL-005'></div><div class='field'><label>Constructiedeel</label><input value='Kolom B2 / Ligger 3'></div><div class='field'><label>Proces</label><select><option>135 MAG</option><option>141 TIG</option></select></div><div class='inline-actions'><button class='btn btn-primary'>Toevoegen</button></div>">+ Nieuwe las</button>
+        <button class="btn" data-action="simulate-inspection">Inspectie afronden</button><button class="btn" data-action="add-weld">Nieuwe las</button>
+        <a class="btn btn-primary" href="ce_dossier.html">Naar CE-dossier</a>
       </div>
     </section>
 
-    <section class="table-card" data-tabs-host>
+    <section class="metric-grid" id="weldStats"></section>
+
+    <section class="table-card">
       <div class="subtabs">
-        <button class="subtab is-active" data-target="voorbereiding">Voorbereiding</button>
-        <button class="subtab" data-target="materiaal">Materiaal</button>
-        <button class="subtab" data-target="uitvoering">Uitvoering</button>
-        <button class="subtab" data-target="ndt">NDT</button>
-        <button class="subtab" data-target="documentatie">Documentatie</button>
+        <button class="subtab is-active" data-weld-filter="all">Alle lassen</button>
+        <button class="subtab" data-weld-filter="Conform">Conform</button>
+        <button class="subtab" data-weld-filter="In controle">In controle</button>
+        <button class="subtab" data-weld-filter="Repair required">Repair</button>
+        <button class="subtab" data-weld-filter="Concept">Concept</button>
       </div>
+      <table class="table" style="margin-top:16px">
+        <thead><tr><th>Las</th><th>EXC</th><th>NDT</th><th>Status</th><th>Acties</th></tr></thead>
+        <tbody id="weldRows"></tbody>
+      </table>
+      <div class="mobile-list" id="weldMobile"></div>
+    </section>
 
-      <div data-tab-panel="voorbereiding" style="margin-top:16px">
-        <div class="grid-2">
-          <article class="panel">
-            <div class="section-title">
-              <div>
-                <h2>Lassenoverzicht</h2>
-                <p>Werk de controle stap voor stap af</p>
-              </div>
-            </div>
-            <table class="table">
-              <thead>
-                <tr><th>Las</th><th>Onderdeel</th><th>Klasse</th><th>Status</th><th>Acties</th></tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td><strong>WL-001</strong></td>
-                  <td>Kolom A1 / Ligger 1</td>
-                  <td>EXC3/C</td>
-                  <td><span class="badge badge-success">Conform</span></td>
-                  <td><button class="btn btn-soft" data-action="drawer" data-title="WL-001" data-content="<div class='notice'>Details van las WL-001. In fase 2 komen hier voorbereiding, meetwaarden en controles.</div>">Open</button></td>
-                </tr>
-                <tr>
-                  <td><strong>WL-002</strong></td>
-                  <td>Kolom A2 / Ligger 1</td>
-                  <td>EXC2/A</td>
-                  <td><span class="badge badge-warning">In controle</span></td>
-                  <td><button class="btn btn-soft" data-action="drawer" data-title="WL-002" data-content="<div class='notice'>Voeg hier visuele inspectie en acceptatie toe.</div>">Controle</button></td>
-                </tr>
-                <tr>
-                  <td><strong>WL-004</strong></td>
-                  <td>Zware kopse las</td>
-                  <td>EXC3/C</td>
-                  <td><span class="badge badge-warning">Wacht op NDT</span></td>
-                  <td><button class="btn btn-soft" data-action="drawer" data-title="WL-004" data-content="<div class='notice'>NDT rapport ontbreekt nog voor export.</div>">NDT</button></td>
-                </tr>
-              </tbody>
-            </table>
-            <div class="mobile-list">
-              <article class="mobile-item"><div class="mobile-item-top"><strong>WL-001</strong><span class="badge badge-success">Conform</span></div><div class="mobile-item-meta"><span>Kolom A1 / Ligger 1 · EXC3/C</span><span>Voorbereiding compleet</span></div><button class="btn btn-soft" data-action="drawer" data-title="WL-001" data-content="<div class='notice'>Details van las WL-001.</div>">Open</button></article>
-              <article class="mobile-item"><div class="mobile-item-top"><strong>WL-002</strong><span class="badge badge-warning">In controle</span></div><div class="mobile-item-meta"><span>Kolom A2 / Ligger 1 · EXC2/A</span><span>Visuele controle en acceptatie nodig</span></div><button class="btn btn-soft" data-action="drawer" data-title="WL-002" data-content="<div class='notice'>Controle openzetten voor WL-002.</div>">Controle</button></article>
-              <article class="mobile-item"><div class="mobile-item-top"><strong>WL-004</strong><span class="badge badge-warning">NDT</span></div><div class="mobile-item-meta"><span>Zware kopse las · EXC3/C</span><span>NDT rapport ontbreekt nog</span></div><button class="btn btn-soft" data-action="drawer" data-title="WL-004" data-content="<div class='notice'>NDT ontbreekt nog.</div>">Open</button></article>
-            </div>
-          </article>
-
-          <article class="export-card">
-            <div class="section-title">
-              <div>
-                <h2>Voorbereiden voor export</h2>
-                <p>Completeness en blokkades</p>
-              </div>
-            </div>
-            <div class="checklist">
-              <div class="check"><div><strong>CE checklist</strong><small>Basisgegevens aanwezig</small></div><span class="badge badge-success">Gereed</span></div>
-              <div class="check"><div><strong>Procesbladen / WPS</strong><small>3 van 4 gekoppeld</small></div><span class="badge badge-warning">1 mist</span></div>
-              <div class="check"><div><strong>Materiaalcertificaten</strong><small>Alle certificaten aanwezig</small></div><span class="badge badge-success">OK</span></div>
-            </div>
-            <div class="inline-actions" style="margin-top:12px"><a class="btn btn-primary" href="ce_dossier.html">Naar CE dossier</a><button class="btn" data-action="drawer" data-title="Lasexport" data-content="<div class='notice'>Hier komt export van lascontrole-overzicht, rapporten en bijlagen.</div>">Export</button></div>
-          </article>
-        </div>
-      </div>
-
-      <div data-tab-panel="materiaal" hidden style="margin-top:16px">
-        <div class="card-grid">
-          <article class="detail-card">
-            <div class="section-title"><div><h2>Batchs en materiaal</h2><p>Vast patroon voor materiaalbewaking</p></div></div>
-            <div class="list-item"><div><strong>S355 certificaat set</strong><span>4 van 5 documenten gekoppeld</span></div><span class="badge badge-warning">1 mist</span></div>
-          </article>
-          <article class="detail-card">
-            <div class="section-title"><div><h2>Verificatie</h2><p>Materiaalidentificatie en traceerbaarheid</p></div></div>
-            <p>Fase 1 zet hier de vaste kaartstructuur neer. In fase 2 volgen echte batchnummers, documentkoppelingen en controles.</p>
-          </article>
-        </div>
-      </div>
-
-      <div data-tab-panel="uitvoering" hidden style="margin-top:16px">
-        <div class="card-grid">
-          <article class="detail-card">
-            <div class="section-title"><div><h2>Uitvoering</h2><p>Visuele controle en acceptatiebesluiten</p></div></div>
-            <div class="list"><div class="list-item"><div><strong>WL-002</strong><span>Visuele inspectie nog afronden</span></div><span class="badge badge-warning">Actie</span></div></div>
-          </article>
-          <article class="detail-card"><div class="section-title"><div><h2>Meetwaarden</h2><p>Ruimte voor metingen en bevindingen</p></div></div><p>Fase 1 levert de vaste layout; fase 2 verbindt deze tab aan echte inspectiegegevens.</p></article>
-        </div>
-      </div>
-
-      <div data-tab-panel="ndt" hidden style="margin-top:16px">
-        <div class="card-grid">
-          <article class="detail-card">
-            <div class="section-title"><div><h2>NDT status</h2><p>VT, PT, MT, UT en RT per las</p></div></div>
-            <div class="list">
-              <div class="list-item"><div><strong>WL-004</strong><span>RT/UT rapport ontbreekt nog</span></div><span class="badge badge-warning">Open</span></div>
-              <div class="list-item"><div><strong>L-002-1</strong><span>Radiografie toegevoegd</span></div><span class="badge badge-success">OK</span></div>
-            </div>
-          </article>
-          <article class="detail-card"><div class="section-title"><div><h2>Volgende stap</h2><p>NDT moet direct CE readiness beïnvloeden</p></div></div><p>In fase 2 koppelen we deze tab aan blokkades, waarschuwingen en automatische statusupdates.</p></article>
-        </div>
-      </div>
-
-      <div data-tab-panel="documentatie" hidden style="margin-top:16px">
-        <div class="card-grid">
-          <article class="detail-card">
-            <div class="section-title"><div><h2>Documentbundel</h2><p>WPS, WPQR, certificaten, foto’s en rapporten</p></div></div>
-            <div class="list"><div class="list-item"><div><strong>WPS / WPQR</strong><span>3 documenten gekoppeld</span></div><span class="badge badge-success">OK</span></div></div>
-          </article>
-          <article class="detail-card"><div class="section-title"><div><h2>Uploadflow</h2><p>Vaste plek voor documenten in de workflow</p></div></div><p>In fase 2 wordt hier echte upload, validatie en koppeling aan project, las en CE dossier toegevoegd.</p></article>
-        </div>
-      </div>
+    <section class="card-grid">
+      <article class="detail-card">
+        <div class="section-title"><div><h2>Vervolgacties</h2><p>Werk vanuit lassen logisch door naar CE</p></div></div>
+        <div id="weldNextActions"></div>
+      </article>
     </section>
   </div>
 </body>

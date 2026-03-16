@@ -1,0 +1,14 @@
+CWS NEN-1090 Phase 4 build
+
+Toegevoegd in deze build:
+- werkqueue en blokkade-overzicht op dashboard
+- volgende-stap routing per project
+- project kopieren en verwijderen
+- workflow- en blokkadekaart in Project 360
+- vervolgacties in Lascontrole
+- vrijgaveadvies in CE-dossier
+- fase-4 lokale state keys
+
+Let op:
+- API blijft best-effort met lokale fallback
+- export blijft manifest-download, geen echte document-ZIP

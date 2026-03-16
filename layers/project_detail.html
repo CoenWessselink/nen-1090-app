@@ -12,52 +12,44 @@
     <section class="page-head">
       <div>
         <div class="overline">Project 360 als vaste detailstructuur</div>
-        <h1>Project 360</h1>
-        <p>Algemeen, voortgang, acties, historie en CE-context in één detailpagina. Deze pagina vormt in fase 1 het vaste skelet voor de complete detailflow.</p>
+        <h1 id="projectTitle">Project 360</h1>
+        <p>Fase 4 maakt dit scherm leidend voor blokkades, workflowfase en CE-vrijgave.</p>
       </div>
       <div class="inline-actions">
         <a class="btn btn-soft" href="projecten.html">← Terug</a>
-        <button class="btn btn-primary" data-action="drawer" data-title="Project wijzigen" data-content="<div class='field'><label>Projectnummer</label><input value='L-001-1'></div><div class='field'><label>Omschrijving</label><input value='Kolom A1 / Ligger 1'></div><div class='field'><label>Opmerkingen</label><textarea>Project zit in afrondende fase richting CE-export.</textarea></div><div class='inline-actions'><button class='btn btn-primary'>Opslaan</button></div>">Wijzigen</button>
+        <button class="btn" data-action="open-edit-project">Wijzigen</button>
+        <button class="btn" data-action="simulate-inspection">Inspectie afronden</button><button class="btn btn-primary" data-action="complete-project">Gereed zetten</button>
       </div>
     </section>
 
     <section class="info-grid">
-      <article class="info-card"><strong>Projectnummer</strong><span>L-001-1</span></article>
-      <article class="info-card"><strong>Opdrachtgever</strong><span>Bouwbedrijf Delta</span></article>
-      <article class="info-card"><strong>Executieklasse</strong><span>EXC3/C</span></article>
-      <article class="info-card"><strong>Status</strong><span><span class="badge badge-success">Conform</span></span></article>
+      <article class="info-card"><strong>Projectnummer</strong><span id="detailProjectId"></span></article>
+      <article class="info-card"><strong>Opdrachtgever</strong><span id="detailClient"></span></article>
+      <article class="info-card"><strong>Executieklasse</strong><span id="detailExc"></span></article>
+      <article class="info-card"><strong>Status</strong><span id="detailStatus"></span></article>
     </section>
 
     <section class="two-col-detail">
       <article class="detail-card">
-        <div class="section-title">
-          <div>
-            <h2>Stuurinformatie</h2>
-            <p>Dit projectdetail verbindt planning, lassen, dossier en historie</p>
-          </div>
-        </div>
+        <div class="section-title"><div><h2>Stuurinformatie</h2><p>Planning, lassen en documenten in één detailpagina</p></div></div>
         <div class="detail-list">
-          <div class="list-item"><div><strong>Planning</strong><span>Start 04-03-2026 · Oplevering 21-03-2026</span></div><span class="badge badge-soft">Actief</span></div>
-          <div class="list-item"><div><strong>Lassen</strong><span>14 lassen geregistreerd · 12 conform · 2 in controle</span></div><a class="btn btn-soft" href="lascontrole.html">Open</a></div>
-          <div class="list-item"><div><strong>Documenten</strong><span>WPS, WPQR en certificaten grotendeels compleet</span></div><a class="btn btn-soft" href="ce_dossier.html">Bekijk</a></div>
-          <div class="list-item"><div><strong>Volgende stap</strong><span>Laatste NDT rapport koppelen en CE review afronden</span></div><span class="badge badge-warning">Actie</span></div>
+          <div class="list-item"><div><strong>Planning</strong><span id="detailPlanning"></span></div><span class="badge badge-soft">Actief</span></div>
+          <div class="list-item"><div><strong>Lassen</strong><span id="detailWelds"></span></div><a class="btn btn-soft" href="lascontrole.html">Open</a></div>
+          <div class="list-item"><div><strong>Documenten</strong><span id="detailDocs"></span></div><a class="btn btn-soft" href="ce_dossier.html">Bekijk</a></div>
+          <div class="list-item"><div><strong>Bijlagen</strong><span id="detailAttachments"></span></div><span class="badge badge-soft">Bestanden</span></div>
+          <div class="list-item"><div><strong>Volgende stap</strong><span id="detailNextStep"></span></div><span class="badge badge-warning">Actie</span></div>
         </div>
       </article>
 
       <article class="export-card">
-        <div class="section-title">
-          <div>
-            <h2>Completeness</h2>
-            <p>Fase 1 vaste rechterkolom voor volgende stap en gereedheid</p>
-          </div>
-        </div>
+        <div class="section-title"><div><h2>Completeness</h2><p>Automatisch afgeleid uit lassen en documentgroepen</p></div></div>
         <div class="progress-block">
-          <div class="progress-head"><strong>Project gereedheid</strong><span class="badge badge-primary">85%</span></div>
-          <div class="progress-bar"><span style="width:85%"></span></div>
-          <p class="muted">Het project is inhoudelijk ver gevorderd, maar wacht nog op laatste documentcontrole.</p>
+          <div class="progress-head"><strong>Project gereedheid</strong><span class="badge badge-primary" id="detailProgressLabel">0%</span></div>
+          <div class="progress-bar"><span id="detailProgress" style="width:0%"></span></div>
+          <p class="muted">De gereedheid verandert direct mee bij lasstatussen en documentchecks.</p>
         </div>
         <div class="checklist" style="margin-top:12px">
-          <div class="check"><div><strong>Lascontrole afronden</strong><small>Laatste NDT rapport koppelen</small></div><a class="btn btn-soft" href="lascontrole.html">Naar lassen</a></div>
+          <div class="check"><div><strong>Lascontrole afronden</strong><small>Werk door in de lasmodule</small></div><a class="btn btn-soft" href="lascontrole.html">Naar lassen</a></div>
           <div class="check"><div><strong>CE dossier review</strong><small>Controleer ontbrekende documenten</small></div><a class="btn btn-primary" href="ce_dossier.html">Naar CE</a></div>
         </div>
       </article>
@@ -65,30 +57,24 @@
 
     <section class="card-grid">
       <article class="detail-card">
-        <div class="section-title"><div><h2>Algemeen</h2><p>Basisvelden die later aan echte data worden gekoppeld</p></div></div>
+        <div class="section-title"><div><h2>Algemeen</h2><p>Projectbasis en context</p></div></div>
         <div class="detail-list">
-          <div class="list-item"><div><strong>Projectnaam</strong><span>Kolom A1 / Ligger 1</span></div></div>
-          <div class="list-item"><div><strong>Locatie</strong><span>Dronten</span></div></div>
-          <div class="list-item"><div><strong>Projectleider</strong><span>Hans Planner</span></div></div>
+          <div class="list-item"><div><strong>Projectnaam</strong><span id="detailName"></span></div></div>
+          <div class="list-item"><div><strong>Locatie</strong><span id="detailLocation"></span></div></div>
+          <div class="list-item"><div><strong>Projectleider</strong><span id="detailOwner"></span></div></div>
+          <div class="list-item"><div><strong>Notities</strong><span id="detailNotes"></span></div></div>
         </div>
       </article>
       <article class="detail-card">
-        <div class="section-title"><div><h2>Status / voortgang</h2><p>Fase 1 statuskaarten met vaste terminologie</p></div></div>
-        <div class="detail-list">
-          <div class="list-item"><div><strong>Voortgang</strong><span>85% compleet</span></div><span class="badge badge-success">Op schema</span></div>
-          <div class="list-item"><div><strong>Documentstatus</strong><span>1 document mist nog</span></div><span class="badge badge-warning">Actie</span></div>
-        </div>
+        <div class="section-title"><div><h2>Historie</h2><p>Laatste wijzigingen binnen de flow</p></div></div>
+        <div class="timeline" id="detailHistory"></div>
       </article>
+    </section>
+
+    <section class="card-grid">
       <article class="detail-card">
-        <div class="section-title"><div><h2>Notities</h2><p>Samenvattende projectcontext</p></div></div>
-        <p>Projectdetail is in fase 1 ingericht als vaste cockpit. In fase 2 volgen echte formulieren, logica en opgeslagen projectacties.</p>
-      </article>
-      <article class="detail-card">
-        <div class="section-title"><div><h2>Historie</h2><p>Laatste mutaties in projectcontext</p></div></div>
-        <div class="timeline">
-          <div class="timeline-item"><div class="timeline-dot"></div><div class="timeline-card"><strong>16-03-2026</strong><p>Documentatie geactualiseerd</p></div></div>
-          <div class="timeline-item"><div class="timeline-dot"></div><div class="timeline-card"><strong>15-03-2026</strong><p>NDT-verzoek aangemaakt voor laatste las</p></div></div>
-        </div>
+        <div class="section-title"><div><h2>Workflow & blokkades</h2><p>Volgende stap, open punten en vrijgave vanuit één blok</p></div></div>
+        <div id="detailWorkflow"></div>
       </article>
     </section>
   </div>
