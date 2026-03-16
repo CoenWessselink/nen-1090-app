@@ -1,35 +1,30 @@
+
 name: App CI + Pages Validation
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
+    paths:
+      - 'layers/**'
+      - 'css/**'
+      - 'js/**'
+      - 'playwright/**'
+      - '.github/workflows/app_ci_production.yml'
+  workflow_dispatch:
 
 jobs:
   validate:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: 18
-
-      - name: Validate structure
-<<<<<<< HEAD
-        run: |
-          echo "Checking project structure"
-          ls -la
-          echo "Validation OK"
-=======
-        shell: bash
-        run: |
-          echo "Checking project structure"
-          pwd
-          ls -la
-          test -d src || (echo "src folder missing" && exit 1)
-          echo "Validation OK"
->>>>>>> dc88384 (Fix CI validation workflow)
+          node-version: '20'
+      - name: Install deps
+        run: npm ci
+      - name: Syntax check JS
+        run: node --check js/core/auth_client.js && node --check js/core/permissions.js && node --check js/superadmin.js && node --check js/tenant_billing.js
+      - name: Playwright install
+        run: npx playwright install --with-deps chromium
+      - name: Run smoke tests
+        run: npx playwright test playwright/tests/smoke.spec.js --reporter=line

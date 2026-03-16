@@ -1,213 +1,58 @@
 <!doctype html>
 <html lang="nl">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Lascontrole</title>
-  <script>(function(){var existing=localStorage.getItem("nen1090.api.baseUrl")||localStorage.getItem("API_BASE_URL");var host=location.hostname||"";var direct="https://nen1090-api-prod-f5ddagedbrftb4ew.westeurope-01.azurewebsites.net";window.__API_BASE_URL__ = window.__API_BASE_URL__ || existing || ((host==="127.0.0.1"||host==="localhost") ? direct : "/api");})();</script>
-  <link rel="stylesheet" href="../css/theme.css" />
-  <link rel="stylesheet" href="../css/workflow-rebuild.css" />
-  <style>
-    .lc-page{display:grid;gap:16px}
-    .lc-top{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
-    .lc-title{margin:0;font-size:42px;line-height:1;letter-spacing:-.04em;color:#111827;font-weight:900}
-    .lc-sub{margin:8px 0 0;color:#75839a;font-size:14px}
-    .lc-actions{display:flex;gap:10px;flex-wrap:wrap}
-    .lc-toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-    .lc-toolbar .input{width:320px;min-width:320px}
-    .lc-tabs{display:flex;gap:8px;flex-wrap:nowrap;overflow:auto;padding-bottom:4px}
-    .lc-tab{flex:0 0 auto;border:1px solid #e3eaf4;background:#fff;border-radius:12px;padding:9px 13px;font-weight:700;color:#334155;cursor:pointer}
-    .lc-tab.active{background:#eef4ff;color:#245fdf;border-color:#d7e4fb}
-    .lc-grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(320px,.95fr);gap:16px}
-    .lc-card{background:#fff;border:1px solid #e6ecf4;border-radius:18px;box-shadow:0 8px 24px rgba(15,23,42,.04)}
-    .lc-card-head{padding:16px 18px;border-bottom:1px solid #edf2f7;display:flex;align-items:center;justify-content:space-between;gap:12px}
-    .lc-card-title{margin:0;font-size:18px;font-weight:900;color:#111827}
-    .lc-table{overflow:auto}
-    .lc-table table{width:100%;min-width:920px;border-collapse:separate;border-spacing:0}
-    .lc-table th,.lc-table td{padding:14px 16px;border-bottom:1px solid #edf2f7;text-align:left}
-    .lc-table th{font-size:12px;color:#73829a;background:#f8fbff;font-weight:800}
-    .lc-table td{font-size:14px;color:#111827;font-weight:600}
-    .lc-code{font-weight:900;color:#111827}
-    .lc-meta{font-size:12px;color:#7b8798;font-weight:500;margin-top:4px}
-    .lc-mini-actions{display:flex;gap:8px;justify-content:flex-end}
-    .status-pill{display:inline-flex;align-items:center;justify-content:center;padding:7px 12px;border-radius:999px;font-size:12px;font-weight:800;min-width:98px}
-    .status-pill.in-controle{background:#dbeafe;color:#1d4ed8}
-    .status-pill.conform{background:#dcfce7;color:#166534}
-    .status-pill.afgekeurd{background:#fee2e2;color:#b91c1c}
-    .lc-side{padding:18px}
-    .metric{margin-top:14px}
-    .metric:first-child{margin-top:0}
-    .metric-label{display:flex;justify-content:space-between;gap:12px;font-size:13px;color:#475569;font-weight:700}
-    .metric-bar{height:10px;background:#edf2f7;border-radius:999px;overflow:hidden;margin-top:8px}
-    .metric-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,#36c2b4,#3b82f6)}
-    .export-box{margin-top:18px;padding:16px;border:1px solid #e6ecf4;border-radius:16px;background:#f8fbff}
-    .export-title{font-size:14px;font-weight:900;color:#111827}
-    .export-muted{font-size:13px;color:#75839a;margin-top:6px}
-    .checklist{margin-top:12px;display:grid;gap:10px}
-    .checkitem{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:13px;color:#475569}
-    @media (max-width:1180px){.lc-grid{grid-template-columns:1fr}.lc-toolbar .input{width:100%;min-width:0}}
-    @media (max-width:760px){
-      .lc-page{gap:14px}
-      .lc-top{gap:14px}
-      .lc-title{font-size:34px;letter-spacing:-.05em}
-      .lc-sub{font-size:14px;line-height:1.45}
-      .lc-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:100%;gap:10px}
-      .lc-actions .btn{width:100%;height:46px!important;border-radius:16px!important;padding:0 12px!important;font-size:12px!important}
-      .lc-toolbar{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
-      .lc-toolbar .input{grid-column:1/-1;height:48px!important;border-radius:16px!important}
-      .lc-toolbar .btn{height:46px!important;border-radius:16px!important;padding:0 10px!important;font-size:12px!important}
-      .lc-tabs{gap:10px;padding-bottom:4px;scrollbar-width:none}
-      .lc-tabs::-webkit-scrollbar{display:none}
-      .lc-tab{border-radius:16px;padding:10px 14px;min-width:max-content}
-      .lc-card{border-radius:24px}
-      .lc-card-head{padding:14px 14px 12px;align-items:flex-start;flex-direction:column}
-      .lc-mini-actions{width:100%;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-      .lc-mini-actions .btn{height:42px!important;border-radius:14px!important;padding:0 10px!important;font-size:12px!important}
-      .lc-table{overflow:visible}
-      .lc-table table{min-width:0}
-      .lc-table thead{display:none}
-      .lc-table tbody{display:grid;gap:12px;padding:0 14px 14px}
-      .lc-table tr{display:grid;grid-template-columns:1fr auto;gap:12px;background:#fff;border:1px solid #e8edf5;border-radius:18px;padding:14px}
-      .lc-table td{border-bottom:none;padding:0!important}
-      .lc-table td:nth-child(1){grid-column:1/2}
-      .lc-table td:nth-child(2),.lc-table td:nth-child(3),.lc-table td:nth-child(4){display:inline-flex;align-items:center;gap:6px;background:#f8fbff;border:1px solid #e6edf6;border-radius:14px;padding:10px 12px!important;font-size:13px!important}
-      .lc-table td:nth-child(5){justify-self:end;align-self:start}
-      .lc-table td:nth-child(6){justify-self:end;align-self:center;font-size:18px!important}
-      .lc-side{padding:16px}
-      .metric-bar{height:8px}
-      .export-box{border-radius:18px}
-    }
-
-    @media (max-width:720px){
-      .lc-page{padding:0 10px 14px;gap:16px}
-      .lc-title{font-size:46px;line-height:.94;letter-spacing:-.06em;margin-top:8px}
-      .lc-sub{font-size:14px;line-height:1.45;max-width:none}
-      .lc-actions{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
-      .lc-actions .btn{height:52px !important;border-radius:18px !important;padding:0 12px !important;font-size:12px !important}
-      .lc-toolbar .btn,.lc-mini-actions .btn{height:48px !important;border-radius:16px !important}
-      .lc-tab{height:40px;padding:0 16px;display:inline-flex;align-items:center}
-      .lc-card-head{padding:16px}
-      .lc-card-title{font-size:17px}
-      .lc-table tbody{gap:14px;padding:0 14px 14px}
-      .lc-table tr{padding:14px 14px 12px;border-radius:22px}
-      .lc-table td:nth-child(2),.lc-table td:nth-child(3),.lc-table td:nth-child(4){border-radius:16px;padding:14px !important}
-      .status-pill{padding:9px 16px;font-size:13px;min-width:120px}
-      .export-box{padding:16px;border-radius:20px}
-      .export-box .btn{height:50px !important;border-radius:16px !important;font-size:14px !important}
-    }
-  
-    @media (max-width:720px){
-      .lc-hero-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;width:100%}
-      .lc-hero-actions .btn{height:52px!important;border-radius:18px!important;font-size:12px!important;padding:0 10px!important}
-      .lc-filter-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
-      .lc-filter-row .input{grid-column:1 / -1}
-      .lc-filter-row .btn{height:46px!important;border-radius:16px!important;padding:0 8px!important}
-      .lc-tabs{display:flex;gap:10px;overflow:auto;scrollbar-width:none;padding-bottom:4px}
-      .lc-tabs::-webkit-scrollbar{display:none}
-      .lc-tabs .tab{flex:0 0 auto;min-width:104px;justify-content:center;height:42px;border-radius:16px}
-      .lc-mobile-card{border-radius:22px;box-shadow:0 10px 22px rgba(15,23,42,.04)}
-    }
-
-  
-    @media (max-width:720px){
-      .lc-page{gap:16px!important}
-      .lc-title{font-size:34px!important;line-height:1.02!important;letter-spacing:-.045em!important}
-      .lc-toolbar-top,.lc-toolbar-main,.lc-tabs{gap:10px!important}
-      .lc-toolbar-top .btn,.lc-toolbar-main .btn,.lc-tabs .btn{height:48px!important;border-radius:16px!important;font-size:14px!important;padding:0 14px!important}
-      .lc-main-grid{grid-template-columns:1fr!important;gap:16px!important}
-      .lc-summary-card{order:2!important}
-      .lc-list-card{order:1!important}
-      .lc-mobile-row{border-radius:22px!important;padding:16px!important;box-shadow:0 8px 22px rgba(15,23,42,.04)!important}
-      .lc-mobile-row .status-pill{padding:10px 16px!important;font-size:12px!important}
-    }
-
-      @media (max-width:720px){
-        .qc-page,.lascontrole-page,.inspection-page{padding:0 10px 14px!important;}
-        .lc-hero,.page-hero,.las-hero{padding:0!important;margin:0 0 12px!important;}
-        .lc-title,.page-title,h1{letter-spacing:-.05em!important;}
-      }
-
-</style>
-  <link rel="stylesheet" href="../css/wave16-mobile-polish.css">
-  <link rel="stylesheet" href="../css/login-marketing.css" />
-  <script src="../js/core/auth_client.js"></script>
-  <script src="../js/core/app_guard.js"></script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lascontrole · CWS NEN-1090</title>
+  <link rel="stylesheet" href="../css/app-v2.css">
+  <script defer src="../js/core/app_v2.js"></script>
 </head>
-<body data-title="Lascontrole (NEN 1090)">
-  <main class="mobile-shell-main">
-    <section class="lc-page lc-reference">
-      <div class="lc-top">
-        <div>
-          <h1 class="lc-title">Lascontrole</h1>
-          <p class="lc-sub">Werkvoorbereiding, inspectie en CE-dossieropbouw in één lichte enterprise-weergave.</p>
-        </div>
-        <div class="lc-actions">
-          <button class="btn">Project wisselen</button>
-          <button class="btn">Controlematrix</button>
-          <button class="btn cws-btn-primary">Dossier preview</button>
-        </div>
-      </div>
-      <div class="lc-toolbar">
-        <input class="input" placeholder="Zoeken op las, project of lasser" />
-        <button class="btn">Filter</button>
-        <button class="btn">Actief</button>
-        <button class="btn">Severity</button>
-        <button class="btn">Meer</button>
-      </div>
-      <div class="lc-tabs">
-        <button class="lc-tab active">Lasnummers</button>
-        <button class="lc-tab">Defecten</button>
-        <button class="lc-tab">ISO 5817</button>
-        <button class="lc-tab">WPS</button>
-        <button class="lc-tab">Lassers</button>
-        <button class="lc-tab">NDT records</button>
-        <button class="lc-tab">Documenten</button>
-        <button class="lc-tab">Samenvatting</button>
-      </div>
-      <section class="lc-grid">
-        <article class="lc-card">
-          <div class="lc-card-head">
-            <h2 class="lc-card-title">Project A · CE Dossier</h2>
-            <div class="lc-mini-actions"><button class="btn">Stel in</button><button class="btn">Certificatiecheck</button><button class="btn cws-btn-primary">Data prefille</button></div>
+<body>
+  <div id="page-content">
+    <section class="page-head">
+      <div><h1>Lascontrole</h1><p>Werkplek voor voorbereiding, materiaal, uitvoering, NDT en documentatie.</p></div>
+      <div class="toolbar"><a class="btn btn-primary" href="ce_dossier.html">Naar CE dossier</a></div>
+    </section>
+
+    <section class="subtabs">
+      <span class="subtab is-active">Voorbereiding</span>
+      <span class="subtab">Materiaal</span>
+      <span class="subtab">Uitvoering</span>
+      <span class="subtab">NDT</span>
+      <span class="subtab">Documentatie</span>
+    </section>
+
+    <section class="grid-2">
+      <article class="table-card">
+        <div class="section-title"><div><h2>WL-004 · Zware kopse las</h2><p>Actieve lasregels voor dit project.</p></div></div>
+        <table class="table">
+          <thead><tr><th>Lasnummer</th><th>Constructiedeel</th><th>Executieklasse</th><th>Acceptatieklasse</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td>WL-004</td><td>Kolom A1 / Ligger 1</td><td>EXC3/C</td><td>B</td><td><span class="badge badge-success">Conform</span></td></tr>
+            <tr><td>WL-004</td><td>Kolom A2 / Ligger 1</td><td>EXC2/A</td><td>C</td><td><span class="badge badge-warning">In controle</span></td></tr>
+            <tr><td>WL-003-1</td><td>Stijgpunt B1 / Console</td><td>EXC1/A</td><td>C</td><td><span class="badge badge-soft">Concept</span></td></tr>
+          </tbody>
+        </table>
+      </article>
+      <div class="right-stack">
+        <article class="panel">
+          <div class="section-title"><div><h2>Voorbereiden voor export</h2><p>Documenten en checks per lasset.</p></div></div>
+          <div class="checklist">
+            <div class="check"><div><strong>CE-checklist</strong><small>Laatste versie is gekoppeld</small></div><span class="badge badge-success">Check</span></div>
+            <div class="check"><div><strong>Procesbladen / WPS</strong><small>1 revisie moet nog akkoord</small></div><span class="badge badge-warning">Actie</span></div>
+            <div class="check"><div><strong>Materiaalcertificaten</strong><small>Volledig op batchniveau</small></div><span class="badge badge-success">Check</span></div>
           </div>
-          <div class="lc-table">
-            <table>
-              <thead><tr><th>Referentie</th><th>Project</th><th>Inspectie</th><th>Materiaal</th><th>Status</th><th>Actie</th></tr></thead>
-              <tbody>
-                <tr><td><div class="lc-code">W-10-002</div><div class="lc-meta">Naad 18 · Sectie A</div></td><td>Project A</td><td>GCC</td><td>S355</td><td><span class="status-pill conform">Conform</span></td><td>⋯</td></tr>
-                <tr><td><div class="lc-code">W-10-001</div><div class="lc-meta">Naad 13 · Sectie B</div></td><td>Project B</td><td>CCC</td><td>S384</td><td><span class="status-pill in-controle">In controle</span></td><td>⋯</td></tr>
-                <tr><td><div class="lc-code">W-10-003</div><div class="lc-meta">Naad 16 · Sectie C</div></td><td>Project C</td><td>SCC</td><td>S344</td><td><span class="status-pill afgekeurd">Afgekeurd</span></td><td>⋯</td></tr>
-                <tr><td><div class="lc-code">W-10-502</div><div class="lc-meta">Naad 19 · Sectie D</div></td><td>Project D</td><td>OSC</td><td>S544</td><td><span class="status-pill in-controle">In controle</span></td><td>⋯</td></tr>
-                <tr><td><div class="lc-code">W-10-324</div><div class="lc-meta">Naad 21 · Sectie E</div></td><td>Project E</td><td>GCC</td><td>S532</td><td><span class="status-pill conform">Conform</span></td><td>⋯</td></tr>
-              </tbody>
-            </table>
+          <div class="inline-actions" style="margin-top:16px"><button class="btn btn-primary">Exporteer ZIP</button><button class="btn">Genereer CE rapport</button></div>
+        </article>
+        <article class="panel">
+          <div class="section-title"><div><h2>Opmerkingen</h2><p>Laatste voortgang in deze werkstroom.</p></div></div>
+          <div class="list">
+            <div class="list-item"><div><strong>NDT gepland</strong><span>Morgen 07:30 · externe partij</span></div><span class="badge badge-soft">Agenda</span></div>
+            <div class="list-item"><div><strong>Herstelpunt</strong><span>Visuele controle console B1</span></div><span class="badge badge-warning">Open</span></div>
           </div>
         </article>
-        <aside class="lc-card">
-          <div class="lc-side">
-            <div class="metric"><div class="metric-label"><span>Nominaal</span><strong>74%</strong></div><div class="metric-bar"><div class="metric-fill" style="width:74%"></div></div></div>
-            <div class="metric"><div class="metric-label"><span>Nietconform</span><strong>63%</strong></div><div class="metric-bar"><div class="metric-fill" style="width:63%"></div></div></div>
-            <div class="metric"><div class="metric-label"><span>Nabeoordeling</span><strong>41%</strong></div><div class="metric-bar"><div class="metric-fill" style="width:41%"></div></div></div>
-            <div class="metric"><div class="metric-label"><span>WPS & WPQR</span><strong>32%</strong></div><div class="metric-bar"><div class="metric-fill" style="width:32%"></div></div></div>
-            <div class="export-box">
-              <div class="export-title">CE Dossier genereren</div>
-              <div class="export-muted">Accuratierapportage · Exportset<br/>Eenmalig basis of definitief</div>
-              <div class="checklist">
-                <div class="checkitem"><span>Accuratierapportage</span><span>✓ Gereed</span></div>
-                <div class="checkitem"><span>Inspectiestatus</span><span>2 open</span></div>
-                <div class="checkitem"><span>Documenten</span><span>1 ontbreekt</span></div>
-              </div>
-              <button class="btn cws-btn-primary" style="width:100%;margin-top:14px">Projecteer</button>
-            </div>
-          </div>
-        </aside>
-      </section>
+      </div>
     </section>
-  </main>
-  <script src="../js/core/routes.js"></script><script src="../js/core/design_system.js"></script><script src="../js/core/store.js"></script><script src="../js/core/permissions.js"></script><script src="../js/core/ui.js"></script><script src="../js/core/apps_menu.js"></script><script src="../js/core/export.js"></script><script src="../js/core/pwa.js"></script>
-  <script src="../js/core/icon_pack.js"></script><script src="../js/core/shell.js"></script>
-  <script src="../js/core/workflow_shell.js"></script>
-  <script>try{Shell.mount(); try{WorkflowShell.mount();}catch(_){ }}catch(_){}</script>
-  <script type="module" src="../js/core/phasef_bindings.js"></script>
+  </div>
 </body>
 </html>

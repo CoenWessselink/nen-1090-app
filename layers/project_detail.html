@@ -1,1 +1,63 @@
-<!doctype html><html lang="nl"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Projectdetail</title><script>(function(){var existing=localStorage.getItem("nen1090.api.baseUrl")||localStorage.getItem("API_BASE_URL");var host=location.hostname||"";var direct="https://nen1090-api-prod-f5ddagedbrftb4ew.westeurope-01.azurewebsites.net";window.__API_BASE_URL__ = window.__API_BASE_URL__ || existing || ((host==="127.0.0.1"||host==="localhost") ? direct : "/api");})();</script><link rel="stylesheet" href="../css/theme.css" /><link rel="stylesheet" href="../css/workflow-rebuild.css" /><script src="../js/core/auth_client.js"></script><script src="../js/core/app_guard.js"></script></head><body data-title="Projectdetail"><main class="mobile-page-main"><section class="ce-page"><div class="ce-hero"><div><h1 class="ce-title">Project 360</h1><p class="ce-sub">Detailweergave voor project, lassen, inspecties en dossierstatus.</p></div><div class="projects-toolbar"><button class="btn" onclick="history.back()">Terug</button><button class="btn cws-btn-primary" onclick="location.href='ce_dossier.html'+location.search">CE dossier</button></div></div><section class="ce-grid"><article class="ce-card"><strong style="font-size:20px">Projectinformatie</strong><div class="ce-muted" style="margin-top:8px">Gebruik ?project=... om dit scherm aan een bestaand project te koppelen.</div><div id="projectDetailMount" style="margin-top:16px"></div></article><aside class="ce-card"><div class="ce-side-section"><strong style="font-size:20px">Volgende stap</strong><div class="ce-muted" style="margin-top:8px">Koppel dit detail aan de workflowstate en gebruik hetzelfde project-id voor Lassen en CE Dossier.</div></div></aside></section></section></main><script src="../js/core/routes.js"></script><script src="../js/core/design_system.js"></script><script src="../js/core/store.js"></script><script src="../js/core/permissions.js"></script><script src="../js/core/ui.js"></script><script src="../js/core/apps_menu.js"></script><script src="../js/core/export.js"></script><script src="../js/core/pwa.js"></script><script src="../js/core/icon_pack.js"></script><script src="../js/core/shell.js"></script><script src="../js/core/workflow_shell.js"></script><script>try{Shell.mount(); try{WorkflowShell.mount();}catch(_){ }}catch(_){}</script><script type="module">import { getProjects, pickActiveProjectId, getWelds } from '../js/core/api_shape_bridge.js';import { deriveDossierProgress } from '../js/core/workflow_engine.js';const mount=async()=>{const projects=await getProjects().catch(()=>[]);const pid=pickActiveProjectId(projects);const project=projects.find(p=>p.id===pid)||projects[0];const welds=await getWelds(pid).catch(()=>[]);const progress=deriveDossierProgress({}, welds);const el=document.getElementById('projectDetailMount');if(!el)return;el.innerHTML=`<div class="ce-check"><span>Projectnummer</span><strong>${project?.nummer||'-'}</strong></div><div class="ce-check"><span>Naam</span><strong>${project?.naam||'-'}</strong></div><div class="ce-check"><span>Opdrachtgever</span><strong>${project?.opdrachtgever||'-'}</strong></div><div class="ce-check"><span>Lassen</span><strong>${welds.length}</strong></div><div class="ce-check"><span>Completeness</span><strong>${Math.round(progress.completeness||0)}%</strong></div>`};document.addEventListener('DOMContentLoaded',mount);</script></body></html>
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Projectdetail · CWS NEN-1090</title>
+  <link rel="stylesheet" href="../css/app-v2.css">
+  <script defer src="../js/core/app_v2.js"></script>
+</head>
+<body>
+  <div id="page-content">
+    <section class="page-head">
+      <div><h1>Project L-001-1</h1><p>Project 360 met algemene gegevens, lassen, documenten en CE-status.</p></div>
+      <div class="toolbar"><span class="badge badge-success">Conform</span><a class="btn btn-primary" href="lascontrole.html">Open lascontrole</a></div>
+    </section>
+
+    <section class="grid-2">
+      <article class="table-card">
+        <div class="section-title"><div><h2>Algemeen</h2><p>Kerngegevens van het project.</p></div></div>
+        <div class="info-grid">
+          <div class="info-card"><strong>Projectnummer</strong><span>L-001-1</span></div>
+          <div class="info-card"><strong>Opdrachtgever</strong><span>Bouwbedrijf Delta</span></div>
+          <div class="info-card"><strong>Locatie</strong><span>Zwolle</span></div>
+          <div class="info-card"><strong>Executieklasse</strong><span>EXC3/C</span></div>
+          <div class="info-card"><strong>Lascoördinator</strong><span>Hans Jansen</span></div>
+          <div class="info-card"><strong>Status</strong><span>Conform</span></div>
+        </div>
+      </article>
+      <article class="panel">
+        <div class="section-title"><div><h2>CE status</h2><p>Readiness voor export en oplevering.</p></div></div>
+        <div class="checklist">
+          <div class="check"><div><strong>Materiaalcertificaten</strong><small>Volledig aanwezig</small></div><span class="badge badge-success">Gereed</span></div>
+          <div class="check"><div><strong>WPS / WPQR</strong><small>Laatste revisie gekoppeld</small></div><span class="badge badge-success">Gereed</span></div>
+          <div class="check"><div><strong>Inspectierapporten</strong><small>Laatste beoordeling verwerkt</small></div><span class="badge badge-success">Gereed</span></div>
+          <div class="check"><div><strong>Export</strong><small>ZIP en CE rapport kunnen worden gemaakt</small></div><span class="badge badge-success">Actief</span></div>
+        </div>
+      </article>
+    </section>
+
+    <section class="grid-2">
+      <article class="table-card">
+        <div class="section-title"><div><h2>Lassen</h2><p>Gekoppelde lassen binnen dit project.</p></div><a class="btn" href="lascontrole.html">Naar lascontrole</a></div>
+        <table class="table">
+          <thead><tr><th>Lasnummer</th><th>Onderdeel</th><th>Executieklasse</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td>WL-001</td><td>Kolom A1 / Ligger 1</td><td>EXC3/C</td><td><span class="badge badge-success">Conform</span></td></tr>
+            <tr><td>WL-002</td><td>Kolom A2 / Ligger 1</td><td>EXC3/C</td><td><span class="badge badge-warning">In controle</span></td></tr>
+            <tr><td>WL-003</td><td>Console B1</td><td>EXC2/A</td><td><span class="badge badge-soft">Concept</span></td></tr>
+          </tbody>
+        </table>
+      </article>
+      <article class="panel">
+        <div class="section-title"><div><h2>Documenten</h2><p>Belangrijkste projectbijlagen.</p></div></div>
+        <div class="list">
+          <div class="list-item"><div><strong>WPS_001.pdf</strong><span>Goedgekeurde lasmethode</span></div><span class="badge badge-success">Aanwezig</span></div>
+          <div class="list-item"><div><strong>Materiaallijst_3.1.pdf</strong><span>Materiaalcertificaten gekoppeld</span></div><span class="badge badge-success">Aanwezig</span></div>
+          <div class="list-item"><div><strong>NDT_overzicht.pdf</strong><span>Laatste rapport gereed</span></div><span class="badge badge-soft">Info</span></div>
+        </div>
+      </article>
+    </section>
+  </div>
+</body>
+</html>

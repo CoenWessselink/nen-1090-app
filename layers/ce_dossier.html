@@ -1,64 +1,47 @@
 <!doctype html>
 <html lang="nl">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>CE Dossier</title>
-  <script>(function(){var existing=localStorage.getItem("nen1090.api.baseUrl")||localStorage.getItem("API_BASE_URL");var host=location.hostname||"";var direct="https://nen1090-api-prod-f5ddagedbrftb4ew.westeurope-01.azurewebsites.net";window.__API_BASE_URL__ = window.__API_BASE_URL__ || existing || ((host==="127.0.0.1"||host==="localhost") ? direct : "/api");})();</script>
-  <link rel="stylesheet" href="../css/theme.css" />
-  <link rel="stylesheet" href="../css/workflow-rebuild.css" />
-  <style>
-    .ce-page{display:grid;gap:20px}
-    .ce-hero{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap}
-    .ce-title{margin:0;font-size:44px;line-height:1;letter-spacing:-.03em;color:#0f172a}.ce-sub{margin:8px 0 0;color:#64748b;font-size:14px}
-    .ce-grid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(320px,.9fr);gap:16px}
-    .ce-card{background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:18px;box-shadow:0 12px 30px rgba(15,23,42,.05)}
-    .ce-tabs{display:flex;gap:10px;flex-wrap:wrap}.ce-tabs .btn.active{color:#2563eb;border-color:#bfdbfe;box-shadow:inset 0 -2px 0 #2563eb}
-    .ce-table{overflow:auto;margin-top:14px}.ce-table table{width:100%;border-collapse:separate;border-spacing:0;min-width:760px}.ce-table th,.ce-table td{padding:14px 16px;border-bottom:1px solid #eef2f7;text-align:left}.ce-table th{color:#64748b;font-size:13px}.ce-table td{font-weight:700;color:#0f172a}
-    .ce-side-section{padding:14px 0;border-top:1px solid #eef2f7}.ce-side-section:first-of-type{border-top:none;padding-top:0}.ce-check{display:flex;justify-content:space-between;gap:12px;padding:8px 0;color:#0f172a}.ce-progress{height:10px;background:#eef2f7;border-radius:999px;overflow:hidden;margin-top:10px}.ce-progress span{display:block;height:100%;background:linear-gradient(90deg,#34d399,#60a5fa);border-radius:999px}.ce-muted{font-size:14px;color:#64748b}
-    @media (max-width: 980px){.ce-grid{grid-template-columns:1fr}.ce-title{font-size:34px}}
-  </style>
-  <link rel="stylesheet" href="../css/wave16-mobile-polish.css">
-  <link rel="stylesheet" href="../css/login-marketing.css" />
-  <script src="../js/core/auth_client.js"></script>
-  <script src="../js/core/app_guard.js"></script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CE dossier · CWS NEN-1090</title>
+  <link rel="stylesheet" href="../css/app-v2.css">
+  <script defer src="../js/core/app_v2.js"></script>
 </head>
-<body data-title="CE Dossier">
-  <main class="mobile-page-main">
-    <section class="ce-page">
-      <div class="ce-hero">
-        <div><h1 class="ce-title">CE Dossier</h1><p class="ce-sub">Overzicht van lasketen, documentatie en exporteerbare dossieronderdelen.</p></div>
-        <div class="projects-toolbar"><button class="btn">Preview</button><button class="btn cws-btn-primary">Export</button></div>
-      </div>
-      <div class="ce-tabs">
-        <button class="btn active">Lasnummers</button><button class="btn">Defecten</button><button class="btn">ISO 5817</button><button class="btn">WPS</button><button class="btn">Lassers</button><button class="btn">NDT</button><button class="btn">Documenten</button>
-      </div>
-      <section class="ce-grid">
-        <article class="ce-card">
-          <div style="display:flex;justify-content:space-between;gap:12px;align-items:center"><strong style="font-size:20px">Project PRJ-001 · Brug Zwolle</strong><span class="ce-muted">Completeness matrix</span></div>
-          <div class="ce-table">
-            <table>
-              <thead><tr><th>Lasnummer</th><th>WPS</th><th>Lasser</th><th>NDT</th><th>Status</th></tr></thead>
-              <tbody>
-                <tr><td>W-10-301</td><td>WPS-001</td><td>H. Jansen</td><td>VT + MT</td><td><span class="status-pill conform">Conform</span></td></tr>
-                <tr><td>W-22-684</td><td>WPS-004</td><td>M. de Vries</td><td>VT</td><td><span class="status-pill in-controle">In controle</span></td></tr>
-                <tr><td>W-39-5622</td><td>WPS-010</td><td>P. Smit</td><td>UT</td><td><span class="status-pill afgekeurd">Afgekeurd</span></td></tr>
-              </tbody>
-            </table>
+<body>
+  <div id="page-content">
+    <section class="page-head">
+      <div><h1>CE dossier</h1><p>Controlelijst, documentgroepen en exportgereedheid in één overzicht.</p></div>
+      <div class="toolbar"><button class="btn btn-primary">Export ZIP</button><button class="btn">Genereer CE rapport</button></div>
+    </section>
+
+    <section class="grid-2">
+      <article class="table-card">
+        <div class="section-title"><div><h2>Completeness</h2><p>Wat is aanwezig en wat ontbreekt nog.</p></div></div>
+        <div class="checklist">
+          <div class="check"><div><strong>Leverancierheuren</strong><small>1 aanvullende bijlage ontbreekt</small></div><span class="badge badge-warning">Bijwerken</span></div>
+          <div class="check"><div><strong>Materiaalcertificaten</strong><small>Volledig aanwezig</small></div><span class="badge badge-success">Gereed</span></div>
+          <div class="check"><div><strong>Lassers bevoegdheid</strong><small>Laatste certificaat geldig</small></div><span class="badge badge-success">Gereed</span></div>
+          <div class="check"><div><strong>Lascoördinatie</strong><small>Overzicht en paraaf aanwezig</small></div><span class="badge badge-success">Gereed</span></div>
+          <div class="check"><div><strong>NDT rapporten</strong><small>2 documenten gekoppeld</small></div><span class="badge badge-success">Gereed</span></div>
+          <div class="check"><div><strong>Opleverdocumenten</strong><small>1 sjabloon wacht op invulling</small></div><span class="badge badge-warning">Open</span></div>
+        </div>
+      </article>
+      <div class="right-stack">
+        <article class="panel">
+          <div class="section-title"><div><h2>Documentgroepen</h2><p>Snel door de set bladeren.</p></div></div>
+          <div class="list">
+            <div class="list-item"><div><strong>WPQR</strong><span>2 documenten</span></div><span class="badge badge-soft">Open</span></div>
+            <div class="list-item"><div><strong>Lasserscertificaten</strong><span>3 documenten</span></div><span class="badge badge-soft">Open</span></div>
+            <div class="list-item"><div><strong>Organisatiebevestiging</strong><span>Laatste revisie 12-03-2026</span></div><span class="badge badge-soft">Open</span></div>
           </div>
         </article>
-        <aside class="ce-card">
-          <div class="ce-side-section"><strong style="font-size:20px">Dossierstatus</strong><div class="ce-muted" style="margin-top:6px">Laatste export 13 mrt 2026 · versie 1.4</div></div>
-          <div class="ce-side-section"><div class="ce-check"><span>Assemblies</span><strong>100%</strong></div><div class="ce-check"><span>Inspecties</span><strong>72%</strong></div><div class="ce-check"><span>Materialen</span><strong>84%</strong></div><div class="ce-check"><span>Documenten</span><strong>58%</strong></div><div class="ce-progress"><span style="width:74%"></span></div></div>
-          <div class="ce-side-section"><strong>Acties</strong><div class="projects-toolbar" style="margin-top:12px"><button class="btn" style="width:100%">Dossier preview</button><button class="btn cws-btn-primary" style="width:100%">Export starten</button></div></div>
-        </aside>
-      </section>
+        <article class="export-card">
+          <div class="section-title"><div><h2>Export readiness</h2><p>De set is bijna gereed voor vrijgave.</p></div></div>
+          <div class="notice">Nog 2 punten open: leverancierheuren en opleverdocumenten.</div>
+          <div class="inline-actions" style="margin-top:16px"><button class="btn btn-primary">Exporteer ZIP</button><button class="btn">Controlelijst openen</button></div>
+        </article>
+      </div>
     </section>
-  </main>
-  <script src="../js/core/routes.js"></script><script src="../js/core/design_system.js"></script><script src="../js/core/store.js"></script><script src="../js/core/permissions.js"></script><script src="../js/core/ui.js"></script><script src="../js/core/apps_menu.js"></script><script src="../js/core/export.js"></script><script src="../js/core/pwa.js"></script>
-  <script src="../js/core/icon_pack.js"></script><script src="../js/core/shell.js"></script>
-  <script src="../js/core/workflow_shell.js"></script>
-  <script>try{Shell.mount(); try{WorkflowShell.mount();}catch(_){ }}catch(_){}</script>
-  <script type="module" src="../js/core/phasef_bindings.js"></script>
+  </div>
 </body>
 </html>

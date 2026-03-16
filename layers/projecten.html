@@ -1,371 +1,43 @@
 <!doctype html>
 <html lang="nl">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Projecten</title>
-  <script>(function(){var existing=localStorage.getItem("nen1090.api.baseUrl")||localStorage.getItem("API_BASE_URL");var host=location.hostname||"";var direct="https://nen1090-api-prod-f5ddagedbrftb4ew.westeurope-01.azurewebsites.net";window.__API_BASE_URL__ = window.__API_BASE_URL__ || existing || ((host==="127.0.0.1"||host==="localhost") ? direct : "/api");})();</script>
-  <link rel="stylesheet" href="../css/theme.css" />
-  <link rel="stylesheet" href="../css/workflow-rebuild.css" />
-  <link rel="stylesheet" href="../css/reference-polish.css" />
-  <meta name="theme-color" content="#0c1830" />
-  <style>
-    .projects-page{display:grid;gap:18px;}
-    .projects-hero{display:grid;grid-template-columns:minmax(320px,1fr) auto;align-items:end;gap:18px;}
-    .projects-title{margin:0;font-size:46px;line-height:.98;letter-spacing:-.04em;color:#0f172a;font-weight:900;}
-    .projects-sub{margin:10px 0 0;color:#728096;font-size:14px;max-width:640px;}
-    .projects-toolbar,.projects-tabs{display:flex;gap:14px;flex-wrap:wrap;align-items:center;}
-    .projects-toolbar .input{min-width:420px;width:420px;}
-    .projects-tabs .btn{background:#fff;border-color:#e4ebf5;color:#1f2937;}
-    .projects-tabs .btn.active{color:#2f6fff;border-color:#dbe7ff;background:#eef4ff;box-shadow:none;}
-    .projects-surface{padding:18px 18px 16px;}
-    .projects-surface-header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px;}
-    .projects-table{overflow:auto;}
-    .projects-table table{width:100%;border-collapse:separate;border-spacing:0;min-width:900px;background:#fff;}
-    .projects-table td:first-child,.projects-table th:first-child{padding-left:24px;}
-    .projects-table td:last-child,.projects-table th:last-child{padding-right:20px;}
-    .status-pill{display:inline-flex;align-items:center;justify-content:center;padding:7px 12px;border-radius:999px;font-size:13px;font-weight:800;min-width:110px;border:1px solid transparent;}
-    .status-pill.in-controle{background:#dbeafe;color:#1d4ed8;}
-    .status-pill.conform{background:#dcfce7;color:#166534;}
-    .status-pill.afgekeurd{background:#fee2e2;color:#b91c1c;}
-    .status-pill.locked{background:#e5e7eb;color:#334155;}
-    .projects-actions{display:flex;gap:8px;align-items:center;justify-content:flex-end;}
-    .projects-pagination{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding-top:18px;color:#64748b;font-size:14px;}
-    .projects-mobile-cards{display:none;gap:12px;}
-    .project-mobile-card{background:#fff;border:1px solid #e8edf6;border-radius:22px;padding:16px;box-shadow:0 10px 22px rgba(15,23,42,.04);}
-    .project-mobile-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
-    .project-mobile-code{font-size:24px;font-weight:900;color:#0f172a;letter-spacing:-.03em;}
-    .project-mobile-name{font-size:18px;font-weight:800;color:#0f172a;margin-top:2px;}
-    .project-mobile-client{font-size:14px;color:#64748b;margin-top:4px;}
-    .project-mobile-meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px;}
-    .project-mobile-meta div{background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:10px 12px;}
-    .project-mobile-meta strong{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#64748b;margin-bottom:4px;}
-    .project-mobile-actions{display:flex;gap:10px;margin-top:14px;}
-    .empty-state{padding:56px 12px;text-align:center;color:#728096;}
-    .empty-state strong{display:block;color:#0f172a;font-size:18px;margin-bottom:8px;}
-
-    .projects-mobile-hub{display:none}
-    .projects-shortcut-stack{display:grid;gap:12px}
-    .projects-shortcut-card{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px;border:1px solid #e5ebf5;border-radius:18px;background:#fff;box-shadow:0 8px 22px rgba(15,23,42,.04);text-decoration:none;color:#0f172a}
-    .projects-shortcut-leading{display:flex;align-items:center;gap:12px;min-width:0;flex:1}
-    .projects-shortcut-icon{width:42px;height:42px;border-radius:14px;background:#edf4ff;display:grid;place-items:center;color:#2f6fff;font-size:20px;flex:0 0 42px}
-    .projects-shortcut-title{font-size:18px;font-weight:900;line-height:1.15}
-    .projects-shortcut-sub{font-size:12px;color:#6b7a90;margin-top:4px;line-height:1.35}
-    .projects-shortcut-arrow{font-size:24px;color:#96a4bb;line-height:1}
-    .projects-shortcut-alert{margin-top:8px;font-size:12px;color:#dc2626;font-weight:700;display:flex;align-items:center;gap:6px}
-    .projects-shortcut-alert::before{content:"⚠";font-size:12px}
-    .projects-mobile-section-title{font-size:18px;font-weight:900;color:#0f172a;margin:4px 2px 10px}
-    .projects-mobile-quick{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
-    .projects-mobile-quick .mobile-quick-btn{display:grid;justify-items:center;align-content:center;gap:8px;min-height:88px;border:1px solid #e5ebf5;border-radius:16px;background:#fff;box-shadow:0 8px 22px rgba(15,23,42,.04);text-align:center;padding:10px;text-decoration:none;color:#13223e}
-    .projects-mobile-quick .quick-icon{width:40px;height:40px;border-radius:13px;background:#edf4ff;display:grid;place-items:center;color:#2f6fff;font-size:20px}
-    .projects-mobile-quick .label{font-size:12px;font-weight:800;line-height:1.2}
-
-    @media (max-width:1040px){ .projects-hero{grid-template-columns:1fr;} .projects-toolbar{justify-content:flex-start;} .projects-toolbar .input{width:min(100%,520px);min-width:280px;} }
-    @media (max-width:720px){
-      .projects-mobile-hub{display:grid;gap:16px}
-      .projects-page{gap:16px}
-      .projects-hero{gap:14px;}
-      .projects-title{font-size:34px;letter-spacing:-.05em;line-height:.95;}
-      .projects-sub{display:none;}
-      .projects-toolbar{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:12px;}
-      .projects-toolbar .input{grid-column:1 / -1;min-width:0;width:100%;height:48px!important;border-radius:16px!important;}
-      .projects-toolbar .btn{height:48px!important;border-radius:16px!important;font-size:14px!important;}
-      #btnExport{grid-column:1 / span 1;}
-      .projects-tabs{overflow:auto;flex-wrap:nowrap;padding-bottom:4px;margin-right:-12px;padding-right:12px;scrollbar-width:none;}
-      .projects-tabs::-webkit-scrollbar{display:none;}
-      .projects-tabs .btn{flex:0 0 auto;min-width:88px;height:46px!important;border-radius:16px!important;}
-      .projects-surface{padding:14px;border-radius:24px!important;}
-      .projects-table,.projects-pagination{display:none;}
-      .projects-mobile-cards{display:grid;gap:14px;}
-      .project-mobile-card{border-radius:24px;padding:18px 18px 16px;}
-      .project-mobile-top{align-items:flex-start}
-      .project-mobile-code{font-size:24px;}
-      .project-mobile-name{font-size:17px;line-height:1.2}
-      .project-mobile-client{font-size:13px;}
-      .project-mobile-meta{gap:12px;margin-top:16px;}
-      .project-mobile-meta div{border-radius:16px;padding:12px 14px;background:#f8fbff;}
-      .project-mobile-actions{gap:10px;margin-top:14px;}
-      .project-mobile-actions .btn{flex:1 1 0;height:48px!important;border-radius:16px!important;font-size:14px!important;font-weight:800!important;}
-      .status-pill{min-width:126px;padding:9px 14px;font-size:13px;}
-    }
-
-    .project-mobile-hdr{display:none}
-    @media (max-width:720px){
-      .projects-page{padding:0 14px 14px;gap:16px}
-      .projects-title{font-size:58px;line-height:.92;letter-spacing:-.065em}
-      .projects-sub{display:none}
-      .projects-toolbar{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-      .projects-toolbar .input{grid-column:1/-1;width:100%;min-width:0;height:52px !important;border-radius:18px !important}
-      .projects-toolbar .btn{height:52px !important;border-radius:18px !important;padding:0 16px !important;font-size:12px !important}
-      .projects-toolbar,.projects-tabs,.projects-surface{display:none!important}
-      .projects-tabs{display:flex;overflow:auto;white-space:nowrap;gap:12px;padding-bottom:4px;scrollbar-width:none}
-      .projects-tabs::-webkit-scrollbar{display:none}
-      .projects-tabs .btn{min-width:max-content;height:48px !important;border-radius:16px !important;padding:0 16px !important}
-      .project-card{border-radius:22px;padding:18px 18px 16px;box-shadow:0 10px 28px rgba(15,23,42,.05)}
-      .project-card-title{font-size:26px;line-height:1.04;letter-spacing:-.03em}
-      .project-card-subtitle{font-size:13px}
-      .project-card-status{top:18px;right:18px;padding:10px 16px;font-size:13px}
-      .project-card-actions .btn{height:48px !important;border-radius:16px !important;font-size:12px !important}
-      .project-card .project-chip{border-radius:16px;padding:14px 14px}
-    }
-  
-    @media (max-width:720px){
-      .projects-toolbar{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%}
-      .projects-toolbar #projectSearch{grid-column:1 / -1}
-      .projects-toolbar #btnExport{grid-column:1 / 2}
-      .chip-row{display:flex;gap:10px;overflow:auto;scrollbar-width:none;padding-bottom:4px}
-      .chip-row::-webkit-scrollbar{display:none}
-      .chip-row .tabbtn{flex:0 0 auto;min-width:108px;height:50px;border-radius:18px}
-    }
-
-  
-    @media (max-width:720px){
-      .project-mobile-card{border-radius:22px!important;padding:18px!important;box-shadow:0 8px 22px rgba(15,23,42,.04)!important}
-      .project-mobile-code{font-size:24px!important;line-height:1!important}
-      .project-mobile-name{font-size:16px!important;line-height:1.15!important;margin-top:8px!important}
-      .project-mobile-client{font-size:13px!important;margin-top:6px!important}
-      .project-mobile-meta>div{border-radius:18px!important;padding:14px 14px 12px!important;background:#f5f8fc!important}
-      .project-mobile-meta strong{font-size:11px!important;letter-spacing:.08em!important;color:#7a8ba4!important}
-      .project-mobile-actions .btn{height:48px!important;border-radius:16px!important;font-size:14px!important}
-      .status-pill{padding:10px 16px!important;font-size:12px!important}
-    }
-
-      @media (max-width:720px){
-        .projects-page{padding:0 14px 14px!important;gap:16px!important;}
-        .projects-hero{display:block!important;}
-        .projects-title{font-size:56px!important;line-height:.93!important;letter-spacing:-.065em!important;margin:4px 0 14px!important;}
-        .projects-toolbar,.projects-tabs,.projects-surface{display:none!important;}
-        .projects-mobile-hub{display:grid!important;gap:16px!important;}
-        .projects-shortcut-card{padding:16px!important;border-radius:18px!important;}
-        .projects-shortcut-title{font-size:16px!important;}
-        .projects-shortcut-sub{font-size:12px!important;}
-        .projects-mobile-quick{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:10px!important;}
-        .projects-mobile-quick .mobile-quick-btn{min-height:88px!important;border-radius:16px!important;padding:10px 8px!important;}
-        .projects-mobile-quick .quick-icon{width:40px!important;height:40px!important;border-radius:13px!important;}
-      }
-
-</style>
-  <link rel="stylesheet" href="../css/wave16-mobile-polish.css">
-  <link rel="stylesheet" href="../css/projects-mobile-hard-reset.css">
-  <link rel="stylesheet" href="../css/login-marketing.css" />
-  <script src="../js/core/auth_client.js"></script>
-  <script src="../js/core/app_guard.js"></script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Projecten · CWS NEN-1090</title>
+  <link rel="stylesheet" href="../css/app-v2.css">
+  <script defer src="../js/core/app_v2.js"></script>
 </head>
-<body data-title="Projecten">
-  <main class="mobile-page-main">
-    <section class="projects-page projects-reference">
-      <div class="projects-hero">
-        <div>
-          <h1 class="projects-title">Projecten</h1>
-          <p class="projects-sub">Bekijk, filter en beheer alle projecten vanuit één overzicht.</p>
-        </div>
-        <div class="projects-toolbar">
-          <input id="projectSearch" class="input" type="search" placeholder="Zoeken..." />
-          <button id="btnNieuw" class="btn cws-btn-primary">+ Nieuw project</button>
-          <button id="btnKolommen" class="btn">Kolommen</button>
-          <button id="btnExport" class="btn">Export</button>
-        </div>
-      </div>
-
-      <section class="projects-mobile-hub">
-        <div class="projects-mobile-titlebar">
-          <h1 class="projects-mobile-page-title">Projecten</h1>
-          <div class="projects-mobile-page-tag">Beheer</div>
-        </div>
-        <div class="projects-shortcut-stack projects-shortcut-stack-ref">
-          <a class="projects-shortcut-card projects-shortcut-card-ref" href="projecten.html">
-            <div class="projects-shortcut-leading"><div class="projects-shortcut-icon projects-icon-box is-primary"><span class="projects-svg-icon" data-icon="folder"></span></div><div><div class="projects-shortcut-title">Projecten</div><div class="projects-shortcut-sub">Bekijk en beheer je projecten</div></div></div>
-            <div class="projects-shortcut-arrow"><span data-cws-icon="chevronRight"></span></div>
-          </a>
-          <a class="projects-shortcut-card projects-shortcut-card-ref" href="lascontrole.html">
-            <div style="min-width:0;flex:1">
-              <div class="projects-shortcut-leading"><div class="projects-shortcut-icon projects-icon-box is-secondary"><span class="projects-svg-icon" data-icon="inspection"></span></div><div><div class="projects-shortcut-title">Lascontrole</div><div class="projects-shortcut-sub">Bekijk en beheer keuringsrapporten</div></div></div>
-              <div class="projects-shortcut-alert">Audit benodigd</div>
-            </div>
-            <div class="projects-shortcut-arrow"><span data-cws-icon="chevronRight"></span></div>
-          </a>
-        </div>
-        <div>
-          <div class="projects-mobile-section-title">Snelle Acties</div>
-          <div class="projects-mobile-quick projects-mobile-quick-ref">
-            <a class="mobile-quick-btn mobile-quick-btn-ref" href="projecten.html"><div class="quick-icon projects-icon-box"><span class="projects-svg-icon" data-icon="plus"></span></div><span class="label">Nieuw project</span></a>
-            <a class="mobile-quick-btn mobile-quick-btn-ref" href="lascontrole.html"><div class="quick-icon projects-icon-box"><span class="projects-svg-icon" data-icon="check"></span></div><span class="label">Inspecties</span></a>
-            <a class="mobile-quick-btn mobile-quick-btn-ref" href="ce_dossier.html"><div class="quick-icon projects-icon-box"><span class="projects-svg-icon" data-icon="docs"></span></div><span class="label">Documenten</span></a>
-            <a class="mobile-quick-btn mobile-quick-btn-ref" href="instellingen.html"><div class="quick-icon projects-icon-box"><span class="projects-svg-icon" data-icon="gear"></span></div><span class="label">Instellingen</span></a>
-          </div>
-        </div>
-        <div>
-          <div class="projects-mobile-section-title">Actieve projecten</div>
-          <div id="mobileProjectList" class="projects-mobile-list"></div>
-        </div>
-      </section>
-
-      <div class="projects-tabs">
-        <button class="btn active" data-filter="all">Alle</button>
-        <button class="btn" data-filter="in_controle">In controle</button>
-        <button class="btn" data-filter="conform">Conform</button>
-        <button class="btn" data-filter="afgekeurd">Afgekeurd</button>
-        <button class="btn" data-filter="locked">Locked</button>
-      </div>
-
-      <section class="projects-surface cws-card">
-        <div class="projects-surface-header">
-          <div class="projects-sub" id="projectsCount">0 projecten</div>
-        </div>
-        <div class="projects-surface-header">
-          <div class="projects-sub" id="projectsCount">0 projecten</div>
-        </div>
-
-        <div id="mobileProjectCards" class="projects-mobile-cards"></div>
-
-        <div class="projects-table mobile-table-wrap">
-          <table class="mobile-cards">
-            <thead>
-              <tr>
-                <th>Projectnummer</th>
-                <th>Projectnaam</th>
-                <th>Opdrachtgever</th>
-                <th>Executieklasse</th>
-                <th>Acceptatieklasse</th>
-                <th>Status</th>
-                <th>Laatst gewijzigd</th>
-                <th>Actie</th>
-              </tr>
-            </thead>
-            <tbody id="projectsTbody">
-              <tr class="empty-row"><td colspan="8">Projecten worden geladen…</td></tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div class="projects-pagination">
-          <div id="projectsPaginationInfo">0 projecten</div>
-          <div>
-            <button class="btn" type="button" disabled aria-label="Vorige pagina">‹</button>
-            <span style="padding:0 8px;">1</span>
-            <button class="btn" type="button" disabled aria-label="Volgende pagina">›</button>
-          </div>
-        </div>
-      </section>
+<body>
+  <div id="page-content">
+    <section class="page-head">
+      <div><h1>Projecten</h1><p>Alle projecten, duidelijke filters en een vaste detailflow.</p></div>
+      <div class="toolbar"><a class="btn btn-primary" href="project_detail.html">+ Nieuw project</a><button class="btn">Export</button></div>
     </section>
-  </main>
 
-  <script src="../js/core/routes.js"></script>
-  <script src="../js/core/design_system.js"></script>
-  <script src="../js/core/store.js"></script>
-  <script src="../js/core/permissions.js"></script>
-  <script src="../js/core/ui.js"></script>
-  <script src="../js/core/apps_menu.js"></script>
-  <script src="../js/core/export.js"></script>
-    <script src="../js/core/pwa.js"></script>
-  <script src="../js/core/icon_pack.js"></script>
-  <script src="../js/core/shell.js"></script>
-  <script src="../js/core/workflow_shell.js"></script>
-  <script>
-    (function(){
-      const state = { allProjects: [], filteredProjects: [], filter: 'all', search: '' };
-      const ICONS = (window.CWSIcons && {folder:window.CWSIcons.get('folder'), inspection:window.CWSIcons.get('inspection'), plus:window.CWSIcons.get('plus'), check:window.CWSIcons.get('check'), docs:window.CWSIcons.get('docs'), gear:window.CWSIcons.get('gear')}) || {
-        folder:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 7.5h5l1.7 1.8H20a1.5 1.5 0 0 1 1.5 1.5v6.7A2.5 2.5 0 0 1 19 20H5a2.5 2.5 0 0 1-2.5-2.5z"/></svg>`,
-        inspection:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="12" rx="2.5"/><path d="m8.5 20 2.2-2.7h2.6l2.2 2.7"/><path d="m8 10 2.2 2.2L15.8 7"/></svg>`,
-        plus:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>`,
-        check:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8.5 12.3 2.2 2.2 4.8-5"/></svg>`,
-        docs:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3.5h6l4 4V19a1.5 1.5 0 0 1-1.5 1.5h-8A1.5 1.5 0 0 1 7 19V5A1.5 1.5 0 0 1 8.5 3.5Z"/><path d="M14 3.5V8h4"/><path d="M9.5 12h5M9.5 15h5"/></svg>`,
-        gear:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.8 13.3 5l1.8-.2.9 1.5-.9 1.5 1.2 1.2 1.7-.1.7 1.7-1.4 1 .1 1.7 1.4 1-.7 1.7-1.7-.1-1.2 1.2.9 1.5-.9 1.5-1.8-.2-1.3 1.2-1.3-1.2-1.8.2-.9-1.5.9-1.5-1.2-1.2-1.7.1-.7-1.7 1.4-1-.1-1.7-1.4-1 .7-1.7 1.7.1 1.2-1.2-.9-1.5.9-1.5 1.8.2z"/><circle cx="12" cy="12" r="2.7"/></svg>`
-      };
-      function icon(name){ return `<span class="projects-svg-icon" data-icon="${name}">${ICONS[name] || ''}</span>`; }
-      function esc(v){ return String(v ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'", '&#039;'); }
-      function getToken(){ return localStorage.getItem('nen1090.auth.access') || localStorage.getItem('auth_token') || ''; }
-      function getApiBaseUrl(){ const base = localStorage.getItem('nen1090.api.baseUrl') || localStorage.getItem('API_BASE_URL') || window.__API_BASE_URL__ || '/api'; return String(base || '').replace(/\/+$/,''); }
-      async function apiFetch(path, options){
-        const token = getToken(); const baseUrl = getApiBaseUrl(); if((location.hostname==='127.0.0.1' || location.hostname==='localhost') && (!baseUrl || baseUrl==='/api')){ const err = new Error('Lokale demo modus'); err.status = 0; throw err; }
-        const headers = new Headers((options && options.headers) || {}); headers.set('Accept', 'application/json'); if(token){ headers.set('Authorization', 'Bearer ' + token); }
-        if(options && options.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
-        const res = await fetch(baseUrl + path, Object.assign({}, options || {}, { headers }));
-        let json = null; let text = '';
-        const ct = res.headers.get('content-type') || '';
-        if(ct.includes('application/json')) json = await res.json().catch(()=>null); else text = await res.text().catch(()=>'');
-        if(!res.ok){ const detail = (json && (json.detail || json.message)) || text || ('HTTP ' + res.status); const err = new Error(detail); err.status = res.status; err.payload = json; throw err; }
-        return json;
-      }
-      function formatDate(v){ if(!v) return ''; const d = new Date(v); if(Number.isNaN(d.getTime())) return String(v); return d.toLocaleDateString('nl-NL', { day:'2-digit', month:'short', year:'numeric' }); }
-      function mapStatusLabel(v){ const s = String(v || '').toLowerCase(); if(s === 'in_controle') return 'In controle'; if(s === 'conform') return 'Conform'; if(s === 'afgekeurd') return 'Afgekeurd'; if(s === 'locked') return 'Locked'; return v || ''; }
-      function mapStatusClass(v){ const s = String(v || '').toLowerCase(); if(s === 'in_controle') return 'in-controle'; if(s === 'conform') return 'conform'; if(s === 'afgekeurd') return 'afgekeurd'; if(s === 'locked') return 'locked'; return 'in-controle'; }
-      function demoProjects(){ return [
-        {id:'p1', nummer:'PRJ-001', naam:'Brug Zwolle', opdrachtgever:'Van der Staal', executieklasse:'EXC3', acceptatieklasse:'5817-B', status:'in_controle', locked:false, laatstGewijzigd:'2026-03-13'},
-        {id:'p2', nummer:'PRJ-002', naam:'Machineframe Utrecht', opdrachtgever:'Metaalbouw BV', executieklasse:'EXC2', acceptatieklasse:'5817-C', status:'conform', locked:false, laatstGewijzigd:'2026-03-12'},
-        {id:'p3', nummer:'PRJ-003', naam:'Offshore Skid', opdrachtgever:'Port Systems', executieklasse:'EXC3', acceptatieklasse:'5817-B', status:'afgekeurd', locked:false, laatstGewijzigd:'2026-03-11'},
-        {id:'p4', nummer:'PRJ-004', naam:'Productielijn 7', opdrachtgever:'Infra Projects', executieklasse:'EXC1', acceptatieklasse:'5817-A', status:'locked', locked:true, laatstGewijzigd:'2026-03-09'}
-      ]; }
+    <section class="table-card">
+      <div class="toolbar">
+        <select class="select"><option>Alle projecten</option><option>In controle</option><option>Conform</option><option>Afgekeurd</option></select>
+        <div class="grow"><input class="input" type="search" placeholder="Zoek project"></div>
+        <button class="btn">Kolommen</button>
+        <button class="btn">Import</button>
+      </div>
+      <div class="subtabs" style="margin-top:16px"><span class="subtab is-active">Alle projecten</span><span class="subtab">In controle</span><span class="subtab">Conform</span><span class="subtab">Afgekeurd</span></div>
+      <table class="table" style="margin-top:16px">
+        <thead><tr><th>Projectnummer</th><th>Opdrachtgever</th><th>Executieklasse</th><th>Status</th><th>Acties</th></tr></thead>
+        <tbody>
+          <tr><td><strong>L-001-1</strong><br><span class="muted">Kolom A1 / Ligger 1</span></td><td>Bouwbedrijf Delta</td><td>EXC3/C</td><td><span class="badge badge-success">Conform</span></td><td><div class="inline-actions"><a class="btn btn-soft" href="project_detail.html">Bekijken</a><a class="btn btn-soft" href="lascontrole.html">Lassen</a></div></td></tr>
+          <tr><td><strong>L-002-1</strong><br><span class="muted">Kolom A2 / Ligger 1</span></td><td>Woningbouwgroep</td><td>EXC2/A</td><td><span class="badge badge-warning">In controle</span></td><td><div class="inline-actions"><a class="btn btn-soft" href="project_detail.html">Bekijken</a><a class="btn btn-soft" href="ce_dossier.html">CE</a></div></td></tr>
+          <tr><td><strong>L-003-1</strong><br><span class="muted">Stijgpunt B1 / Console</span></td><td>Recos Vastgoed</td><td>EXC1/A</td><td><span class="badge badge-soft">Concept</span></td><td><div class="inline-actions"><a class="btn btn-soft" href="project_detail.html">Bekijken</a><button class="btn btn-soft">Wijzigen</button></div></td></tr>
+          <tr><td><strong>WL-004</strong><br><span class="muted">Zware kopse las, hoeknaad</span></td><td>Machinebouw Oost</td><td>EXC3/C</td><td><span class="badge badge-warning">In controle</span></td><td><div class="inline-actions"><a class="btn btn-soft" href="project_detail.html">Bekijken</a><a class="btn btn-soft" href="lascontrole.html">Lascontrole</a></div></td></tr>
+        </tbody>
+      </table>
+    </section>
 
-      function toFrontendProject(project){ return { id: project.id, nummer: project.code || '', naam: project.name || '', opdrachtgever: project.client_name || '', executieklasse: project.execution_class || '', acceptatieklasse: project.acceptance_class || '', status: project.locked ? 'locked' : (project.status || 'in_controle'), locked: !!project.locked, laatstGewijzigd: project.updated_at || project.created_at || '' }; }
-      function syncProjectsIntoCwsStore(projects){ try{ if(!window.CWS || !window.CWS.getState || !window.CWS.setState) return; const st = window.CWS.getState(); st.projects.byId = {}; st.projects.order = []; projects.forEach((p)=>{ st.projects.byId[p.id] = { id:p.id, nummer:p.nummer, naam:p.naam, opdrachtgever:p.opdrachtgever, exc:p.executieklasse, acceptatieklasse:p.acceptatieklasse, status:p.status, locked:p.locked, laatstGewijzigd:p.laatstGewijzigd }; st.projects.order.push(p.id); }); if(!st.ui.activeProjectId && st.projects.order[0]) st.ui.activeProjectId = st.projects.order[0]; window.CWS.setState(st); }catch(err){ console.error('Sync CWS store mislukt:', err); } }
-      function getVisibleProjects(){ const q = state.search.trim().toLowerCase(); return state.allProjects.filter((p)=>{ if(state.filter === 'locked' && !p.locked) return false; if(state.filter !== 'all' && state.filter !== 'locked' && p.status !== state.filter) return false; if(!q) return true; const hay = [p.nummer, p.naam, p.opdrachtgever, p.executieklasse, p.acceptatieklasse, p.status].join(' ').toLowerCase(); return hay.includes(q); }); }
-      function updateCounter(){ const text = `${state.filteredProjects.length} project${state.filteredProjects.length === 1 ? '' : 'en'}`; const count=document.getElementById('projectsCount'); const page=document.getElementById('projectsPaginationInfo'); if(count) count.textContent = text; if(page) page.textContent = text; }
-      function renderMobileCards(projects){
-        const wrap = document.getElementById('mobileProjectCards');
-        const list = document.getElementById('mobileProjectList');
-        if(wrap){
-          if(!projects.length){ wrap.innerHTML = `<div class="empty-state"><strong>Geen projecten gevonden</strong>Pas de zoekopdracht of filter aan.</div>`; }
-          else wrap.innerHTML = projects.map((project)=>`
-            <article class="project-mobile-card">
-              <div class="project-mobile-top">
-                <div>
-                  <div class="project-mobile-code">${esc(project.nummer || '-')}</div>
-                  <div class="project-mobile-name">${esc(project.naam || 'Naamloos project')}</div>
-                  <div class="project-mobile-client">${esc(project.opdrachtgever || '-')}</div>
-                </div>
-                <span class="status-pill ${esc(mapStatusClass(project.status))}">${esc(mapStatusLabel(project.status))}</span>
-              </div>
-              <div class="project-mobile-meta">
-                <div><strong>Executieklasse</strong>${esc(project.executieklasse || '-')}</div>
-                <div><strong>Acceptatieklasse</strong>${esc(project.acceptatieklasse || '-')}</div>
-              </div>
-              <div class="project-mobile-actions">
-                <button class="btn" data-action="edit" data-id="${esc(project.id)}">Bewerken</button>
-                <button class="btn" data-action="delete" data-id="${esc(project.id)}">Verwijderen</button>
-              </div>
-            </article>`).join('');
-        }
-        if(!list) return;
-        if(!projects.length){ list.innerHTML = `<div class="empty-state"><strong>Geen projecten gevonden</strong>Pas de zoekopdracht of filter aan.</div>`; return; }
-        list.innerHTML = projects.map((project)=>`
-          <article class="projects-mobile-list-card" data-action="edit" data-id="${esc(project.id)}">
-            <div class="projects-mobile-list-leading">
-              <div class="projects-mobile-list-icon projects-icon-box is-primary"><span class="projects-svg-icon" data-icon="folder"></span></div>
-              <div>
-                <div class="projects-mobile-list-title">${esc(project.naam || 'Naamloos project')}</div>
-                <div class="projects-mobile-list-sub">${esc(project.nummer || '-')} · ${esc(project.opdrachtgever || '-')}</div>
-                <div class="projects-mobile-list-meta">
-                  <span class="projects-mini-pill">${esc(project.executieklasse || '-')}</span>
-                  <span class="projects-mini-pill status-${esc(mapStatusClass(project.status))}">${esc(mapStatusLabel(project.status))}</span>
-                </div>
-              </div>
-            </div>
-            <div class="projects-mobile-list-arrow"><span data-cws-icon="chevronRight"></span></div>
-          </article>`).join('');
-      }
-      function renderTable(projects){ const tbody = document.getElementById('projectsTbody'); if(!projects.length){ tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><strong>Geen projecten gevonden</strong>Pas de zoekopdracht of filter aan.</div></td></tr>`; return; } tbody.innerHTML = projects.map((project)=>`
-          <tr data-project-id="${esc(project.id)}">
-            <td><strong>${esc(project.nummer || '-')}</strong></td>
-            <td>${esc(project.naam || '')}</td>
-            <td>${esc(project.opdrachtgever || '')}</td>
-            <td>${esc(project.executieklasse || '')}</td>
-            <td>${esc(project.acceptatieklasse || '')}</td>
-            <td><span class="status-pill ${esc(mapStatusClass(project.status))}">${esc(mapStatusLabel(project.status))}</span></td>
-            <td>${esc(formatDate(project.laatstGewijzigd))}</td>
-            <td><div class="projects-actions"><button class="btn" data-action="edit" data-id="${esc(project.id)}">Bewerken</button><button class="btn" data-action="delete" data-id="${esc(project.id)}">Verwijderen</button></div></td>
-          </tr>`).join(''); }
-      function hydrateStaticIcons(){ document.querySelectorAll('.projects-svg-icon[data-icon]').forEach((el)=>{ const name = el.getAttribute('data-icon'); el.innerHTML = ICONS[name] || ''; }); try{ window.CWSIcons && window.CWSIcons.hydrate && window.CWSIcons.hydrate(document); }catch(_){} }
-      function render(){ state.filteredProjects = getVisibleProjects(); updateCounter(); renderTable(state.filteredProjects); renderMobileCards(state.filteredProjects); hydrateStaticIcons(); }
-      async function loadProjects(){ const tbody = document.getElementById('projectsTbody'); try{ const response = await apiFetch('/api/v1/projects'); const projects = Array.isArray(response) ? response : Array.isArray(response.items) ? response.items : []; state.allProjects = projects.map(toFrontendProject); syncProjectsIntoCwsStore(state.allProjects); render(); }catch(error){ console.warn('API niet beschikbaar, demo data geladen', error); state.allProjects = demoProjects(); syncProjectsIntoCwsStore(state.allProjects); render(); } }
-      async function saveProject(projectId, payload){ if(projectId){ await apiFetch(`/api/v1/projects/${projectId}`, { method:'PUT', body:JSON.stringify(payload) }); UI.toast('Project bijgewerkt'); } else { await apiFetch('/api/v1/projects', { method:'POST', body:JSON.stringify(payload) }); UI.toast('Project aangemaakt'); } await loadProjects(); }
-      async function deleteProject(project){ if(!confirm(`Project ${project.nummer} verwijderen?`)) return; await apiFetch(`/api/v1/projects/${project.id}`, { method:'DELETE' }); UI.toast('Project verwijderd'); await loadProjects(); }
-      function openProjectModal(project){ const current = project || { nummer:'', naam:'', opdrachtgever:'', executieklasse:'', acceptatieklasse:'', status:'in_controle' }; UI.modalForm({ title: project ? 'Project bewerken' : 'Nieuw project', submitLabel: project ? 'Opslaan' : 'Aanmaken', values:{ code:current.nummer, name:current.naam, client_name:current.opdrachtgever, execution_class:current.executieklasse, acceptance_class:current.acceptatieklasse, status:current.status }, fields:[ { key:'code', label:'Projectnummer', type:'text' }, { key:'name', label:'Projectnaam', type:'text' }, { key:'client_name', label:'Opdrachtgever', type:'text' }, { key:'execution_class', label:'Executieklasse', type:'text' }, { key:'acceptance_class', label:'Acceptatieklasse', type:'text' }, { key:'status', label:'Status', type:'select', options:[ {value:'in_controle',label:'In controle'}, {value:'conform',label:'Conform'}, {value:'afgekeurd',label:'Afgekeurd'}, {value:'locked',label:'Locked'} ] } ], onSubmit: async (values)=>{ const payload = { code: values.code, name: values.name, client_name: values.client_name, execution_class: values.execution_class, acceptance_class: values.acceptance_class, status: values.status }; await saveProject(project ? project.id : null, payload); return true; } }); }
-      function bindEvents(){ document.getElementById('projectSearch').addEventListener('input', (e)=>{ state.search = e.target.value || ''; render(); }); document.querySelectorAll('[data-filter]').forEach((btn)=>{ btn.addEventListener('click', ()=>{ state.filter = btn.getAttribute('data-filter'); document.querySelectorAll('[data-filter]').forEach((el)=>el.classList.toggle('active', el === btn)); render(); }); }); document.getElementById('btnNieuw').addEventListener('click', ()=>openProjectModal(null)); document.getElementById('btnExport').addEventListener('click', ()=>{ try{ Export.toCsv('projecten.csv', state.filteredProjects); }catch(error){ console.error(error); UI.toast('Export mislukt'); } }); document.getElementById('btnKolommen').addEventListener('click', ()=>UI.toast('Kolommenbeheer volgt in volgende stap.')); document.getElementById('projectsTbody').addEventListener('click', async (e)=>{ const btn = e.target.closest('[data-action]'); if(!btn) return; const id = btn.getAttribute('data-id'); const project = state.allProjects.find((p)=>String(p.id) === String(id)); if(!project) return; const action = btn.getAttribute('data-action'); if(action === 'edit') openProjectModal(project); else if(action === 'delete') await deleteProject(project); }); document.getElementById('mobileProjectCards').addEventListener('click', async (e)=>{ const btn = e.target.closest('[data-action]'); if(!btn) return; const id = btn.getAttribute('data-id'); const project = state.allProjects.find((p)=>String(p.id) === String(id)); if(!project) return; const action = btn.getAttribute('data-action'); if(action === 'edit') openProjectModal(project); else if(action === 'delete') await deleteProject(project); }); const mobileList = document.getElementById('mobileProjectList'); if(mobileList){ mobileList.addEventListener('click', async (e)=>{ const btn = e.target.closest('[data-action]'); if(!btn) return; const id = btn.getAttribute('data-id'); const project = state.allProjects.find((p)=>String(p.id) === String(id)); if(!project) return; openProjectModal(project); }); } }
-      async function bootstrap(){ try{ Shell.mount(); }catch(_){} hydrateStaticIcons(); bindEvents(); await loadProjects(); }
-      bootstrap();
-    })();
-  </script>
-  <script type="module" src="../js/core/phasef_bindings.js"></script>
+    <section class="card-grid">
+      <article class="panel"><div class="section-title"><h2>Conform</h2></div><div class="list"><div class="list-item"><div><strong>7 projecten</strong><span>Gereed voor oplevering of archief.</span></div><span class="badge badge-success">Groen</span></div></div></article>
+      <article class="panel"><div class="section-title"><h2>In controle</h2></div><div class="list"><div class="list-item"><div><strong>5 projecten</strong><span>Controle, inspectie of documentatie loopt nog.</span></div><span class="badge badge-warning">Actie</span></div></div></article>
+      <article class="panel"><div class="section-title"><h2>Planning</h2></div><div class="list"><div class="list-item"><div><strong>Volgende deadline</strong><span>Vrijdag 21 maart · CE set WL-004</span></div><span class="badge badge-soft">Info</span></div></div></article>
+    </section>
+  </div>
 </body>
 </html>
