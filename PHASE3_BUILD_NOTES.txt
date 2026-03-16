@@ -1,0 +1,29 @@
+CWS NEN-1090 APP - PHASE 3 BUILD NOTES
+Datum: 2026-03-16
+
+In deze fase toegevoegd:
+- API-bridge met lokale fallback naar demo-data
+- API statuschip in topbar met handmatige sync-knop
+- valideerbaar nieuw/wijzig projectformulier
+- exportmanifest download als JSON-bestand vanuit CE-dossier
+- documentupload per dossiergroep in CE-dossier
+- inspectie-simulatie in Project 360 en Lascontrole
+- verbeterde state-opslag voor attachments, history en synchronisatie
+- loading overlay en extra succes/waarschuwing toasts
+
+Belangrijk:
+- Wanneer de backend /projects endpoint bereikbaar is, probeert de app projecten vanaf de API te laden.
+- Wanneer de API niet bereikbaar is of qua shape afwijkt, blijft de lokale fase-3 demo-state actief.
+- Export is in deze build een downloadbaar manifestbestand, geen echte ZIP met binaire documenten.
+- Upload werkt frontend-breed en markeert documentgroepen compleet in lokale state.
+
+Belangrijkste aangepaste bestanden:
+- css/app-v2.css
+- js/core/app_v2.js
+- js/core/api.js
+- layers/dashboard.html
+- layers/projecten.html
+- layers/project_detail.html
+- layers/lascontrole.html
+- layers/ce_dossier.html
+- layers/instellingen.html
