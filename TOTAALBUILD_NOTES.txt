@@ -1,26 +1,26 @@
-TOTAALBUILD V2
+TOTAALBUILD V3
 
-Deze build vervangt in één slag de zichtbare hoofdfrontend voor:
+Deze build vervangt de zichtbare hoofdschermen met een logischer opgebouwde frontend-slag.
+
+In deze slag:
+- werkende navigatie tussen hoofdschermen
+- klikbare primaire acties via links, drawer-acties en toasts
+- verbeterde mobiele weergave met aparte mobile cards
+- vaste shell, vaste topbar, vaste bottom navigation mobiel
+- hoofdschermen aanwezig: dashboard, projecten, projectdetail, lascontrole, CE dossier, instellingen
+
+Niet in deze slag:
+- echte backend/API-koppeling
+- echte opslaan/export/import functionaliteit
+- alle legacy pagina's buiten deze kernschermen
+- complete planbord/gantt modules
+
+Bestanden die zijn vervangen:
+- css/app-v2.css
+- js/core/app_v2.js
 - layers/dashboard.html
 - layers/projecten.html
 - layers/project_detail.html
 - layers/lascontrole.html
 - layers/ce_dossier.html
 - layers/instellingen.html
-
-Nieuw toegevoegd:
-- css/app-v2.css
-- js/core/app_v2.js
-
-Belangrijk:
-- deze slag vervangt de zichtbare layer-pagina's hard
-- oude workflow/wave CSS en scripts worden op deze schermen niet meer geladen
-- deze build is gericht op de nieuwe lichte, consistente app-uitstraling
-- bestaande backend/API-koppelingen zijn in deze slag niet opnieuw volledig aangesloten
-
-Push:
-1. Pak deze map uit over C:\NEN1090\nen-1090-app
-2. Controleer git status
-3. git add .
-4. git commit -m "Frontend totaalbuild v2 hard replace main layers"
-5. git push origin main

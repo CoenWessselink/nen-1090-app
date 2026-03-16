@@ -9,55 +9,38 @@
 </head>
 <body>
   <div id="page-content">
-    <section class="page-head">
-      <div><h1>Project L-001-1</h1><p>Project 360 met algemene gegevens, lassen, documenten en CE-status.</p></div>
-      <div class="toolbar"><span class="badge badge-success">Conform</span><a class="btn btn-primary" href="lascontrole.html">Open lascontrole</a></div>
-    </section>
-
-    <section class="grid-2">
-      <article class="table-card">
-        <div class="section-title"><div><h2>Algemeen</h2><p>Kerngegevens van het project.</p></div></div>
-        <div class="info-grid">
-          <div class="info-card"><strong>Projectnummer</strong><span>L-001-1</span></div>
-          <div class="info-card"><strong>Opdrachtgever</strong><span>Bouwbedrijf Delta</span></div>
-          <div class="info-card"><strong>Locatie</strong><span>Zwolle</span></div>
-          <div class="info-card"><strong>Executieklasse</strong><span>EXC3/C</span></div>
-          <div class="info-card"><strong>Lascoördinator</strong><span>Hans Jansen</span></div>
-          <div class="info-card"><strong>Status</strong><span>Conform</span></div>
-        </div>
-      </article>
-      <article class="panel">
-        <div class="section-title"><div><h2>CE status</h2><p>Readiness voor export en oplevering.</p></div></div>
-        <div class="checklist">
-          <div class="check"><div><strong>Materiaalcertificaten</strong><small>Volledig aanwezig</small></div><span class="badge badge-success">Gereed</span></div>
-          <div class="check"><div><strong>WPS / WPQR</strong><small>Laatste revisie gekoppeld</small></div><span class="badge badge-success">Gereed</span></div>
-          <div class="check"><div><strong>Inspectierapporten</strong><small>Laatste beoordeling verwerkt</small></div><span class="badge badge-success">Gereed</span></div>
-          <div class="check"><div><strong>Export</strong><small>ZIP en CE rapport kunnen worden gemaakt</small></div><span class="badge badge-success">Actief</span></div>
-        </div>
-      </article>
-    </section>
-
-    <section class="grid-2">
-      <article class="table-card">
-        <div class="section-title"><div><h2>Lassen</h2><p>Gekoppelde lassen binnen dit project.</p></div><a class="btn" href="lascontrole.html">Naar lascontrole</a></div>
-        <table class="table">
-          <thead><tr><th>Lasnummer</th><th>Onderdeel</th><th>Executieklasse</th><th>Status</th></tr></thead>
-          <tbody>
-            <tr><td>WL-001</td><td>Kolom A1 / Ligger 1</td><td>EXC3/C</td><td><span class="badge badge-success">Conform</span></td></tr>
-            <tr><td>WL-002</td><td>Kolom A2 / Ligger 1</td><td>EXC3/C</td><td><span class="badge badge-warning">In controle</span></td></tr>
-            <tr><td>WL-003</td><td>Console B1</td><td>EXC2/A</td><td><span class="badge badge-soft">Concept</span></td></tr>
-          </tbody>
-        </table>
-      </article>
-      <article class="panel">
-        <div class="section-title"><div><h2>Documenten</h2><p>Belangrijkste projectbijlagen.</p></div></div>
-        <div class="list">
-          <div class="list-item"><div><strong>WPS_001.pdf</strong><span>Goedgekeurde lasmethode</span></div><span class="badge badge-success">Aanwezig</span></div>
-          <div class="list-item"><div><strong>Materiaallijst_3.1.pdf</strong><span>Materiaalcertificaten gekoppeld</span></div><span class="badge badge-success">Aanwezig</span></div>
-          <div class="list-item"><div><strong>NDT_overzicht.pdf</strong><span>Laatste rapport gereed</span></div><span class="badge badge-soft">Info</span></div>
-        </div>
-      </article>
-    </section>
-  </div>
+<section class="page-head">
+  <div><h1>Project 360</h1><p>Algemeen, planning, documenten en voortgang in één vaste detailpagina.</p></div>
+  <div class="inline-actions"><a class="btn btn-soft" href="projecten.html">← Terug</a><button class="btn btn-primary" data-action="drawer" data-title="Project wijzigen" data-content="<div class='field'><label>Projectnummer</label><input value='L-001-1'></div><div class='field'><label>Omschrijving</label><input value='Kolom A1 / Ligger 1'></div><div class='field'><label>Opmerkingen</label><textarea>Project zit in afrondende fase richting CE export.</textarea></div><div class='inline-actions'><button class='btn btn-primary'>Opslaan</button></div>">Wijzigen</button></div>
+</section>
+<section class="info-grid">
+  <article class="info-card"><strong>Projectnummer</strong><span>L-001-1</span></article>
+  <article class="info-card"><strong>Opdrachtgever</strong><span>Bouwbedrijf Delta</span></article>
+  <article class="info-card"><strong>Executieklasse</strong><span>EXC3/C</span></article>
+  <article class="info-card"><strong>Status</strong><span><span class="badge badge-success">Conform</span></span></article>
+</section>
+<section class="grid-2">
+  <article class="panel">
+    <div class="section-title"><div><h2>Projectoverzicht</h2><p>Belangrijkste stuurinformatie</p></div></div>
+    <div class="list">
+      <div class="list-item"><div><strong>Planning</strong><span>Start 04-03-2026 · Oplevering 21-03-2026</span></div><span class="badge badge-soft">Actief</span></div>
+      <div class="list-item"><div><strong>Lassen</strong><span>14 lassen geregistreerd · 12 conform · 2 in controle</span></div><a class="btn btn-soft" href="lascontrole.html">Open</a></div>
+      <div class="list-item"><div><strong>Documenten</strong><span>WPS, WPQR en certificaten grotendeels compleet</span></div><a class="btn btn-soft" href="ce_dossier.html">Bekijk</a></div>
+    </div>
+  </article>
+  <article class="export-card">
+    <div class="section-title"><div><h2>Volgende stap</h2><p>Stuur door naar de volgende actie</p></div></div>
+    <div class="checklist">
+      <div class="check"><div><strong>Lascontrole afronden</strong><small>Laatste NDT rapport koppelen</small></div><a class="btn btn-soft" href="lascontrole.html">Naar lassen</a></div>
+      <div class="check"><div><strong>CE dossier review</strong><small>Controleer ontbrekende documenten</small></div><a class="btn btn-primary" href="ce_dossier.html">Naar CE</a></div>
+    </div>
+  </article>
+</section>
+<section class="card-grid">
+  <article class="panel"><div class="section-title"><div><h2>Planning</h2></div></div><div class="notice">Gantt en planbord worden in de volgende slag aan deze detailpagina gekoppeld.</div></article>
+  <article class="panel"><div class="section-title"><div><h2>Status / voortgang</h2></div></div><div class="list"><div class="list-item"><div><strong>Voortgang</strong><span>85% compleet</span></div><span class="badge badge-success">Op schema</span></div></div></article>
+  <article class="panel"><div class="section-title"><div><h2>Historie</h2></div></div><div class="list"><div class="list-item"><div><strong>16-03-2026</strong><span>Documentatie geactualiseerd</span></div><span class="badge badge-soft">Log</span></div></div></article>
+</section>
+</div>
 </body>
 </html>

@@ -9,78 +9,77 @@
 </head>
 <body>
   <div id="page-content">
-    <section class="hero">
-      <div>
-        <h1>NEN-1090 lascontrole en projectbeheer in één professioneel platform</h1>
-        <p>Beheer projecten, lassen, inspecties, documentatie en CE-dossiers vanuit één rustige werkomgeving. Desktop en mobiel volgen dezelfde logische procesflow.</p>
-        <div class="hero-actions">
-          <a class="btn btn-accent" href="projecten.html">Gratis demo aanvragen</a>
-          <a class="btn btn-primary" href="projecten.html">Bekijk de software</a>
-        </div>
-        <div class="hero-actions">
-          <span class="btn btn-soft">Projectbeheer</span>
-          <span class="btn btn-soft">Lascontrole</span>
-          <span class="btn btn-soft">CE-dossier</span>
-        </div>
-      </div>
-      <div class="hero-visual">
-        <div class="kpi-row">
-          <div class="kpi-card"><strong>18</strong><span>Actieve projecten</span></div>
-          <div class="kpi-card"><strong>142</strong><span>Lassen in controle</span></div>
-          <div class="kpi-card"><strong>91%</strong><span>Dossier compleet</span></div>
-        </div>
-        <div class="chart-card">
-          <div class="section-title"><h2>Projectverloop</h2><span class="badge badge-soft">Laatste 6 weken</span></div>
-          <div class="chart-placeholder"><div class="line"></div></div>
-        </div>
-        <div class="list-item">
-          <div><strong>WL-004 · Kolom A1 / Ligger 1</strong><span>Recente activiteit · 30 minuten geleden</span></div>
-          <span class="badge badge-success">Beoordelen</span>
-        </div>
-      </div>
-    </section>
-
-    <section class="stat-strip">
-      <article class="stat-box"><h3>Modules</h3><strong>5</strong><p>Dashboard, Projecten, Lascontrole, CE dossier en Instellingen.</p></article>
-      <article class="stat-box"><h3>Workflow</h3><strong>6 stappen</strong><p>Van projectstart tot export in één vaste lijn.</p></article>
-      <article class="stat-box"><h3>Open punten</h3><strong>12</strong><p>Resterende opvolgacties verspreid over 3 projecten.</p></article>
-      <article class="stat-box"><h3>Design</h3><strong>SSOT</strong><p>Lichte enterprise SaaS-uitstraling op desktop en mobiel.</p></article>
-    </section>
-
-    <section class="grid-2">
-      <article class="table-card">
-        <div class="section-title"><div><h2>Projecten</h2><p>Direct overzicht met status en acties.</p></div><a class="btn" href="projecten.html">Alle projecten</a></div>
-        <table class="table">
-          <thead><tr><th>Projectnummer</th><th>Opdrachtgever</th><th>Executieklasse</th><th>Status</th><th>Actie</th></tr></thead>
-          <tbody>
-            <tr><td><strong>L-001-1</strong><br><span class="muted">Kolom A1 / Ligger 1</span></td><td>Bouwbedrijf Delta</td><td>EXC3/C</td><td><span class="badge badge-success">Conform</span></td><td><a class="btn btn-soft" href="project_detail.html">Bekijken</a></td></tr>
-            <tr><td><strong>L-002-1</strong><br><span class="muted">Kolom A2 / Ligger 1</span></td><td>Woningbouwgroep</td><td>EXC2/A</td><td><span class="badge badge-warning">In controle</span></td><td><a class="btn btn-soft" href="project_detail.html">Bekijken</a></td></tr>
-            <tr><td><strong>L-003-1</strong><br><span class="muted">Stijgpunt B1 / Console</span></td><td>Recos Vastgoed</td><td>EXC1/A</td><td><span class="badge badge-soft">Concept</span></td><td><a class="btn btn-soft" href="project_detail.html">Bekijken</a></td></tr>
-          </tbody>
-        </table>
-      </article>
-      <div class="right-stack">
-        <article class="panel">
-          <div class="section-title"><div><h2>Procesflow</h2><p>De app volgt overal dezelfde werkwijze.</p></div></div>
-          <div class="mini-flow">
-            <div class="flow-step"><strong>1 · Project</strong><span>Start en context</span></div>
-            <div class="flow-step"><strong>2 · Lassen</strong><span>Werkvoorbereiding</span></div>
-            <div class="flow-step"><strong>3 · Inspectie</strong><span>Beoordelen en registreren</span></div>
-            <div class="flow-step"><strong>4 · Documentatie</strong><span>Bewijzen en bijlagen</span></div>
-            <div class="flow-step"><strong>5 · CE dossier</strong><span>Completeness en checks</span></div>
-            <div class="flow-step"><strong>6 · Export</strong><span>Definitieve set</span></div>
-          </div>
-        </article>
-        <article class="export-card">
-          <div class="section-title"><div><h2>Welkom terug, Hans.</h2><p>Dit zijn de snelste vervolgstappen voor vandaag.</p></div></div>
-          <div class="list">
-            <div class="list-item"><div><strong>Project L-002-1</strong><span>2 inspecties wachten op beoordeling</span></div><span class="badge badge-warning">Actie</span></div>
-            <div class="list-item"><div><strong>CE dossier WL-004</strong><span>1 document ontbreekt voor export</span></div><span class="badge badge-danger">Ontbreekt</span></div>
-            <div class="list-item"><div><strong>Instellingen</strong><span>Controleer gebruikers en rollen voor nieuwe planner</span></div><span class="badge badge-soft">Info</span></div>
-          </div>
-        </article>
-      </div>
-    </section>
+<section class="hero">
+  <div class="hero-copy">
+    <div class="notice">Workflow van projectstart naar CE-export in één vaste appflow.</div>
+    <h1>Dashboard</h1>
+    <p>Direct inzicht in projecten, lassen, documenten en CE-gereedheid. Elke hoofdactie is klikbaar en leidt logisch naar de volgende stap.</p>
+    <div class="hero-actions">
+      <button class="btn btn-accent" data-action="modal-project">Nieuw project</button>
+      <a class="btn btn-primary" href="projecten.html">Projecten openen</a>
+      <a class="btn btn-soft" href="lascontrole.html">Lascontrole</a>
+      <a class="btn btn-soft" href="ce_dossier.html">CE dossier</a>
+    </div>
   </div>
+  <div class="right-stack">
+    <div class="panel">
+      <div class="section-title"><div><h2>Vandaag</h2><p>Kernstatus van de omgeving</p></div></div>
+      <div class="kpi-row">
+        <div class="kpi-card"><strong>18</strong><span>Actieve projecten</span></div>
+        <div class="kpi-card"><strong>42</strong><span>Lassen in controle</span></div>
+        <div class="kpi-card"><strong>7</strong><span>CE dossiers gereed</span></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="section-title"><div><h2>Volgende stap</h2><p>Stuur het werk logisch door de keten</p></div></div>
+      <div class="mini-flow">
+        <div class="flow-step"><strong>Project</strong><span>Start, opdrachtgever en klasse</span></div>
+        <div class="flow-step"><strong>Lascontrole</strong><span>Materiaal, uitvoering en NDT</span></div>
+        <div class="flow-step"><strong>Export</strong><span>CE set en rapport genereren</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="stat-strip">
+  <article class="stat-box"><h3>Conform</h3><strong>9</strong><p>Gereed voor oplevering of archief</p></article>
+  <article class="stat-box"><h3>In controle</h3><strong>5</strong><p>Inspectie of documentatie loopt nog</p></article>
+  <article class="stat-box"><h3>Blokkades</h3><strong>3</strong><p>Documenten of certificaten ontbreken</p></article>
+  <article class="stat-box"><h3>Planning</h3><strong>2</strong><p>Deadlines binnen 48 uur</p></article>
+</section>
+<section class="grid-2">
+  <article class="table-card">
+    <div class="section-title"><div><h2>Projecten in focus</h2><p>Klik door naar detail, lassen of CE</p></div><a class="btn btn-soft" href="projecten.html">Alle projecten</a></div>
+    <table class="table"><thead><tr><th>Project</th><th>Opdrachtgever</th><th>Status</th><th>Acties</th></tr></thead>
+    <tbody id="dashboardRows">
+      <tr data-filter-row><td><strong>L-001-1</strong><br><span class="muted">Kolom A1 / Ligger 1</span></td><td>Bouwbedrijf Delta</td><td><span class="badge badge-success">Conform</span></td><td><div class="inline-actions"><a class="btn btn-soft" href="project_detail.html">Bekijken</a><a class="btn btn-soft" href="ce_dossier.html">CE</a></div></td></tr>
+      <tr data-filter-row><td><strong>L-002-1</strong><br><span class="muted">Kolom A2 / Ligger 1</span></td><td>Woningbouwgroep</td><td><span class="badge badge-warning">In controle</span></td><td><div class="inline-actions"><a class="btn btn-soft" href="project_detail.html">Detail</a><a class="btn btn-soft" href="lascontrole.html">Lassen</a></div></td></tr>
+      <tr data-filter-row><td><strong>WL-004</strong><br><span class="muted">Zware kopse las, hoeknaad</span></td><td>Machinebouw Oost</td><td><span class="badge badge-warning">Actie</span></td><td><div class="inline-actions"><a class="btn btn-soft" href="project_detail.html">Project 360</a><a class="btn btn-soft" href="lascontrole.html">Controle</a></div></td></tr>
+    </tbody></table>
+    <div class="mobile-list">
+      <article class="mobile-item"><div class="mobile-item-top"><strong>L-001-1</strong><span class="badge badge-success">Conform</span></div><div class="mobile-item-meta"><span>Bouwbedrijf Delta</span><span>Kolom A1 / Ligger 1</span></div><div class="inline-actions"><a class="btn btn-soft" href="project_detail.html">Bekijken</a><a class="btn btn-soft" href="ce_dossier.html">CE</a></div></article>
+      <article class="mobile-item"><div class="mobile-item-top"><strong>L-002-1</strong><span class="badge badge-warning">In controle</span></div><div class="mobile-item-meta"><span>Woningbouwgroep</span><span>Kolom A2 / Ligger 1</span></div><div class="inline-actions"><a class="btn btn-soft" href="project_detail.html">Detail</a><a class="btn btn-soft" href="lascontrole.html">Lassen</a></div></article>
+    </div>
+  </article>
+  <div class="right-stack">
+    <article class="export-card">
+      <div class="section-title"><div><h2>CE gereedheid</h2><p>Controleer wat nog ontbreekt</p></div></div>
+      <div class="checklist">
+        <div class="check"><div><strong>Materiaalcertificaten</strong><small>4 van 5 aanwezig</small></div><span class="badge badge-warning">1 mist</span></div>
+        <div class="check"><div><strong>Lasserscertificaten</strong><small>Alle geldige documenten aanwezig</small></div><span class="badge badge-success">OK</span></div>
+        <div class="check"><div><strong>NDT rapporten</strong><small>WT rapport WL-004 nog uploaden</small></div><span class="badge badge-warning">Actie</span></div>
+      </div>
+      <div class="inline-actions" style="margin-top:12px"><a class="btn btn-primary" href="ce_dossier.html">Open CE dossier</a><button class="btn" data-action="drawer" data-title="Exportrapport" data-content="<div class='notice'>Exportrapport is voorbereid. In de volgende koppelslag wordt dit aan echte bestanden en ZIP-export gekoppeld.</div>">Genereer rapport</button></div>
+    </article>
+    <article class="activity-card">
+      <div class="section-title"><div><h2>Recente acties</h2><p>Meest recente wijzigingen</p></div></div>
+      <div class="list">
+        <div class="list-item"><div><strong>Project WL-004 bijgewerkt</strong><span>Uitvoering en materiaalstatus geactualiseerd</span></div><span class="badge badge-soft">10 min</span></div>
+        <div class="list-item"><div><strong>NDT rapport toegevoegd</strong><span>Radiografie bij L-002-1 ingevoerd</span></div><span class="badge badge-soft">24 min</span></div>
+        <div class="list-item"><div><strong>CE dossier klaar voor review</strong><span>L-001-1 staat gereed</span></div><span class="badge badge-success">Ready</span></div>
+      </div>
+    </article>
+  </div>
+</section>
+</div>
 </body>
 </html>

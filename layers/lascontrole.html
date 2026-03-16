@@ -9,50 +9,48 @@
 </head>
 <body>
   <div id="page-content">
-    <section class="page-head">
-      <div><h1>Lascontrole</h1><p>Werkplek voor voorbereiding, materiaal, uitvoering, NDT en documentatie.</p></div>
-      <div class="toolbar"><a class="btn btn-primary" href="ce_dossier.html">Naar CE dossier</a></div>
-    </section>
-
-    <section class="subtabs">
-      <span class="subtab is-active">Voorbereiding</span>
-      <span class="subtab">Materiaal</span>
-      <span class="subtab">Uitvoering</span>
-      <span class="subtab">NDT</span>
-      <span class="subtab">Documentatie</span>
-    </section>
-
-    <section class="grid-2">
-      <article class="table-card">
-        <div class="section-title"><div><h2>WL-004 · Zware kopse las</h2><p>Actieve lasregels voor dit project.</p></div></div>
-        <table class="table">
-          <thead><tr><th>Lasnummer</th><th>Constructiedeel</th><th>Executieklasse</th><th>Acceptatieklasse</th><th>Status</th></tr></thead>
-          <tbody>
-            <tr><td>WL-004</td><td>Kolom A1 / Ligger 1</td><td>EXC3/C</td><td>B</td><td><span class="badge badge-success">Conform</span></td></tr>
-            <tr><td>WL-004</td><td>Kolom A2 / Ligger 1</td><td>EXC2/A</td><td>C</td><td><span class="badge badge-warning">In controle</span></td></tr>
-            <tr><td>WL-003-1</td><td>Stijgpunt B1 / Console</td><td>EXC1/A</td><td>C</td><td><span class="badge badge-soft">Concept</span></td></tr>
-          </tbody>
-        </table>
-      </article>
-      <div class="right-stack">
-        <article class="panel">
-          <div class="section-title"><div><h2>Voorbereiden voor export</h2><p>Documenten en checks per lasset.</p></div></div>
-          <div class="checklist">
-            <div class="check"><div><strong>CE-checklist</strong><small>Laatste versie is gekoppeld</small></div><span class="badge badge-success">Check</span></div>
-            <div class="check"><div><strong>Procesbladen / WPS</strong><small>1 revisie moet nog akkoord</small></div><span class="badge badge-warning">Actie</span></div>
-            <div class="check"><div><strong>Materiaalcertificaten</strong><small>Volledig op batchniveau</small></div><span class="badge badge-success">Check</span></div>
-          </div>
-          <div class="inline-actions" style="margin-top:16px"><button class="btn btn-primary">Exporteer ZIP</button><button class="btn">Genereer CE rapport</button></div>
-        </article>
-        <article class="panel">
-          <div class="section-title"><div><h2>Opmerkingen</h2><p>Laatste voortgang in deze werkstroom.</p></div></div>
-          <div class="list">
-            <div class="list-item"><div><strong>NDT gepland</strong><span>Morgen 07:30 · externe partij</span></div><span class="badge badge-soft">Agenda</span></div>
-            <div class="list-item"><div><strong>Herstelpunt</strong><span>Visuele controle console B1</span></div><span class="badge badge-warning">Open</span></div>
-          </div>
-        </article>
-      </div>
-    </section>
+<section class="page-head">
+  <div><h1>Lascontrole</h1><p>Voorbereiding, materiaal, uitvoering, NDT en documentatie in één werkplek.</p></div>
+  <div class="inline-actions"><a class="btn btn-soft" href="project_detail.html">Project 360</a><button class="btn btn-primary" data-action="drawer" data-title="Nieuwe las" data-content="<div class='field'><label>Lasnummer</label><input value='WL-005'></div><div class='field'><label>Constructiedeel</label><input value='Kolom B2 / Ligger 3'></div><div class='field'><label>Proces</label><select><option>135 MAG</option><option>141 TIG</option></select></div><div class='inline-actions'><button class='btn btn-primary'>Toevoegen</button></div>">+ Nieuwe las</button></div>
+</section>
+<section class="table-card" data-tabs-host>
+  <div class="subtabs">
+    <button class="subtab is-active" data-target="voorbereiding">Voorbereiding</button>
+    <button class="subtab" data-target="materiaal">Materiaal</button>
+    <button class="subtab" data-target="uitvoering">Uitvoering</button>
+    <button class="subtab" data-target="ndt">NDT</button>
+    <button class="subtab" data-target="documentatie">Documentatie</button>
   </div>
+  <div data-tab-panel="voorbereiding" style="margin-top:16px">
+    <div class="grid-2">
+      <article class="panel">
+        <div class="section-title"><div><h2>Lassenoverzicht</h2><p>Werk de controle stap voor stap af</p></div></div>
+        <table class="table"><thead><tr><th>Las</th><th>Onderdeel</th><th>Klasse</th><th>Status</th><th>Acties</th></tr></thead><tbody>
+          <tr><td><strong>WL-001</strong></td><td>Kolom A1 / Ligger 1</td><td>EXC3/C</td><td><span class="badge badge-success">Conform</span></td><td><button class="btn btn-soft" data-action="drawer" data-title="WL-001" data-content="<div class='notice'>Details van las WL-001. Hier komen voorbereiding, meetwaarden en controles.</div>">Open</button></td></tr>
+          <tr><td><strong>WL-002</strong></td><td>Kolom A2 / Ligger 1</td><td>EXC2/A</td><td><span class="badge badge-warning">In controle</span></td><td><button class="btn btn-soft" data-action="drawer" data-title="WL-002" data-content="<div class='notice'>Voeg hier visuele inspectie en acceptatie toe.</div>">Controle</button></td></tr>
+          <tr><td><strong>WL-004</strong></td><td>Zware kopse las</td><td>EXC3/C</td><td><span class="badge badge-warning">Wacht op NDT</span></td><td><button class="btn btn-soft" data-action="drawer" data-title="WL-004" data-content="<div class='notice'>NDT rapport ontbreekt nog voor export.</div>">NDT</button></td></tr>
+        </tbody></table>
+        <div class="mobile-list">
+          <article class="mobile-item"><div class="mobile-item-top"><strong>WL-001</strong><span class="badge badge-success">Conform</span></div><div class="mobile-item-meta"><span>Kolom A1 / Ligger 1 · EXC3/C</span></div><button class="btn btn-soft" data-action="drawer" data-title="WL-001" data-content="<div class='notice'>Details van las WL-001.</div>">Open</button></article>
+          <article class="mobile-item"><div class="mobile-item-top"><strong>WL-002</strong><span class="badge badge-warning">In controle</span></div><div class="mobile-item-meta"><span>Kolom A2 / Ligger 1 · EXC2/A</span></div><button class="btn btn-soft" data-action="drawer" data-title="WL-002" data-content="<div class='notice'>Controle openzetten voor WL-002.</div>">Controle</button></article>
+        </div>
+      </article>
+      <article class="export-card">
+        <div class="section-title"><div><h2>Voorbereiden voor export</h2><p>Completeness en blokkades</p></div></div>
+        <div class="checklist">
+          <div class="check"><div><strong>CE checklist</strong><small>Basisgegevens aanwezig</small></div><span class="badge badge-success">Gereed</span></div>
+          <div class="check"><div><strong>Procesbladen / WPS</strong><small>3 van 4 gekoppeld</small></div><span class="badge badge-warning">1 mist</span></div>
+          <div class="check"><div><strong>Materiaalcertificaten</strong><small>Alle certificaten aanwezig</small></div><span class="badge badge-success">OK</span></div>
+        </div>
+        <div class="inline-actions" style="margin-top:12px"><a class="btn btn-primary" href="ce_dossier.html">Naar CE dossier</a><button class="btn" data-action="drawer" data-title="Lasexport" data-content="<div class='notice'>Hier komt export van lascontrole-overzicht, rapporten en bijlagen.</div>">Export</button></div>
+      </article>
+    </div>
+  </div>
+  <div data-tab-panel="materiaal" hidden style="margin-top:16px"><div class="notice">Materiaalstatus, batchnummers en certificaten worden hier logisch samengebracht.</div></div>
+  <div data-tab-panel="uitvoering" hidden style="margin-top:16px"><div class="notice">Uitvoering bevat visuele controle, meetwaarden en acceptatiebesluiten.</div></div>
+  <div data-tab-panel="ndt" hidden style="margin-top:16px"><div class="notice">NDT bevat VT, PT, MT, UT en RT rapportages met status per las.</div></div>
+  <div data-tab-panel="documentatie" hidden style="margin-top:16px"><div class="notice">Documentatie bundelt WPS, WPQR, certificaten, foto’s en opleverdossier.</div></div>
+</section>
+</div>
 </body>
 </html>

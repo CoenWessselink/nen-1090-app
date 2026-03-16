@@ -9,39 +9,26 @@
 </head>
 <body>
   <div id="page-content">
-    <section class="page-head">
-      <div><h1>CE dossier</h1><p>Controlelijst, documentgroepen en exportgereedheid in één overzicht.</p></div>
-      <div class="toolbar"><button class="btn btn-primary">Export ZIP</button><button class="btn">Genereer CE rapport</button></div>
-    </section>
-
-    <section class="grid-2">
-      <article class="table-card">
-        <div class="section-title"><div><h2>Completeness</h2><p>Wat is aanwezig en wat ontbreekt nog.</p></div></div>
-        <div class="checklist">
-          <div class="check"><div><strong>Leverancierheuren</strong><small>1 aanvullende bijlage ontbreekt</small></div><span class="badge badge-warning">Bijwerken</span></div>
-          <div class="check"><div><strong>Materiaalcertificaten</strong><small>Volledig aanwezig</small></div><span class="badge badge-success">Gereed</span></div>
-          <div class="check"><div><strong>Lassers bevoegdheid</strong><small>Laatste certificaat geldig</small></div><span class="badge badge-success">Gereed</span></div>
-          <div class="check"><div><strong>Lascoördinatie</strong><small>Overzicht en paraaf aanwezig</small></div><span class="badge badge-success">Gereed</span></div>
-          <div class="check"><div><strong>NDT rapporten</strong><small>2 documenten gekoppeld</small></div><span class="badge badge-success">Gereed</span></div>
-          <div class="check"><div><strong>Opleverdocumenten</strong><small>1 sjabloon wacht op invulling</small></div><span class="badge badge-warning">Open</span></div>
-        </div>
-      </article>
-      <div class="right-stack">
-        <article class="panel">
-          <div class="section-title"><div><h2>Documentgroepen</h2><p>Snel door de set bladeren.</p></div></div>
-          <div class="list">
-            <div class="list-item"><div><strong>WPQR</strong><span>2 documenten</span></div><span class="badge badge-soft">Open</span></div>
-            <div class="list-item"><div><strong>Lasserscertificaten</strong><span>3 documenten</span></div><span class="badge badge-soft">Open</span></div>
-            <div class="list-item"><div><strong>Organisatiebevestiging</strong><span>Laatste revisie 12-03-2026</span></div><span class="badge badge-soft">Open</span></div>
-          </div>
-        </article>
-        <article class="export-card">
-          <div class="section-title"><div><h2>Export readiness</h2><p>De set is bijna gereed voor vrijgave.</p></div></div>
-          <div class="notice">Nog 2 punten open: leverancierheuren en opleverdocumenten.</div>
-          <div class="inline-actions" style="margin-top:16px"><button class="btn btn-primary">Exporteer ZIP</button><button class="btn">Controlelijst openen</button></div>
-        </article>
-      </div>
-    </section>
+<section class="page-head">
+  <div><h1>CE Dossier</h1><p>Completeness, ontbrekende documenten en export in één logisch dossieroverzicht.</p></div>
+  <div class="inline-actions"><button class="btn btn-primary" data-action="drawer" data-title="Exporteer ZIP" data-content="<div class='notice'>ZIP-export is voorbereid. Koppel later aan echte bestanden en bundeling.</div>">Exporteer ZIP</button><button class="btn" data-action="drawer" data-title="CE rapport" data-content="<div class='notice'>CE dossierrapport wordt hier opgebouwd.</div>">Genereer rapport</button></div>
+</section>
+<section class="grid-2">
+  <article class="panel">
+    <div class="section-title"><div><h2>Checklist</h2><p>Alles wat nodig is voor vrijgave</p></div></div>
+    <div class="checklist">
+      <div class="check"><div><strong>Materiaalcertificaten</strong><small>5 documenten, 4 aanwezig</small></div><span class="badge badge-warning">1 ontbreekt</span></div>
+      <div class="check"><div><strong>Lassersbevoegdheid</strong><small>Certificaten geldig tot 2026-11</small></div><span class="badge badge-success">OK</span></div>
+      <div class="check"><div><strong>WPS / WPQR</strong><small>3 documenten gekoppeld</small></div><span class="badge badge-success">OK</span></div>
+      <div class="check"><div><strong>NDT rapporten</strong><small>RT/UT rapport WL-004 ontbreekt nog</small></div><span class="badge badge-warning">Actie</span></div>
+      <div class="check"><div><strong>Opleverdocumenten</strong><small>Concept gereed</small></div><span class="badge badge-soft">Review</span></div>
+    </div>
+  </article>
+  <div class="right-stack">
+    <article class="export-card"><div class="section-title"><div><h2>Gereedheid</h2><p>Samenvatting voor export</p></div></div><div class="list"><div class="list-item"><div><strong>Completeness</strong><span>82% gereed · 2 acties open</span></div><span class="badge badge-warning">Actie</span></div><div class="list-item"><div><strong>Volgende stap</strong><span>NDT uploaden en eindreview uitvoeren</span></div><a class="btn btn-soft" href="lascontrole.html">Naar lassen</a></div></div></article>
+    <article class="panel"><div class="section-title"><div><h2>Documentgroepen</h2></div></div><div class="list"><div class="list-item"><div><strong>Certificaten</strong><span>Materiaal, lassers, organisatie</span></div><span class="badge badge-soft">7</span></div><div class="list-item"><div><strong>Procesdocumenten</strong><span>WPS, WPQR, procedures</span></div><span class="badge badge-soft">5</span></div><div class="list-item"><div><strong>Inspecties</strong><span>VT, maatcontrole, NDT</span></div><span class="badge badge-soft">8</span></div></div></article>
   </div>
+</section>
+</div>
 </body>
 </html>

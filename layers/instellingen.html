@@ -9,44 +9,40 @@
 </head>
 <body>
   <div id="page-content">
-    <section class="page-head">
-      <div><h1>Instellingen</h1><p>Applicatie, gebruikers en beveiliging in dezelfde rustige stijl als de rest van de app.</p></div>
-      <div class="toolbar"><button class="btn btn-primary">Opslaan</button></div>
-    </section>
-
-    <section class="subtabs">
-      <span class="subtab is-active">Applicatie</span>
-      <span class="subtab">Gebruikers</span>
-      <span class="subtab">Rollen</span>
-      <span class="subtab">Beveiliging</span>
-    </section>
-
-    <section class="settings-grid">
-      <article class="panel">
-        <div class="section-title"><div><h2>Applicatie</h2><p>Basisgegevens van de omgeving.</p></div></div>
-        <div class="field"><label>Organisatienaam</label><input value="CWS NEN-1090 Softwareplatform"></div>
-        <div class="field"><label>Standaard projectprefix</label><input value="L-"></div>
-        <div class="field"><label>Standaard executieklasse</label><select><option>EXC2/A</option><option selected>EXC3/C</option></select></div>
-        <div class="field"><label>Notities</label><textarea>Deze omgeving gebruikt de lichte enterprise SaaS-uitstraling als vaste visuele basis.</textarea></div>
-      </article>
-      <div class="right-stack">
-        <article class="panel">
-          <div class="section-title"><div><h2>Beveiliging</h2><p>Controlepunten voor toegang en certificaten.</p></div></div>
-          <div class="checklist">
-            <div class="check"><div><strong>Twee-factor authenticatie</strong><small>Verplicht voor beheerders</small></div><span class="badge badge-success">Actief</span></div>
-            <div class="check"><div><strong>Materiaalcertificaten</strong><small>Uploadvalidatie ingeschakeld</small></div><span class="badge badge-success">Actief</span></div>
-            <div class="check"><div><strong>Autorisatie app</strong><small>Rollen per tenant</small></div><span class="badge badge-success">Actief</span></div>
-          </div>
-        </article>
-        <article class="panel">
-          <div class="section-title"><div><h2>Gebruikers</h2><p>Samenvatting van huidige omgeving.</p></div></div>
-          <div class="list">
-            <div class="list-item"><div><strong>4 actieve gebruikers</strong><span>2 planners · 1 beheerder · 1 viewer</span></div><span class="badge badge-soft">Info</span></div>
-            <div class="list-item"><div><strong>Laatste login</strong><span>Vandaag 08:14 · Hans Jansen</span></div><span class="badge badge-soft">Info</span></div>
-          </div>
-        </article>
-      </div>
-    </section>
+<section class="page-head">
+  <div><h1>Instellingen</h1><p>Applicatie, gebruikers en documentlogica in één overzichtelijke beheerstructuur.</p></div>
+  <div class="inline-actions"><button class="btn btn-primary" data-action="drawer" data-title="Gebruiker toevoegen" data-content="<div class='field'><label>Naam</label><input value='Nieuwe gebruiker'></div><div class='field'><label>Rol</label><select><option>Admin</option><option>Planner</option><option>Viewer</option></select></div><div class='inline-actions'><button class='btn btn-primary'>Opslaan</button></div>">Gebruiker toevoegen</button></div>
+</section>
+<section class="table-card" data-tabs-host>
+  <div class="subtabs">
+    <button class="subtab is-active" data-target="app">Applicatie</button>
+    <button class="subtab" data-target="gebruikers">Gebruikers</button>
+    <button class="subtab" data-target="beveiliging">Beveiliging</button>
+    <button class="subtab" data-target="documenten">Documentlogica</button>
   </div>
+  <div data-tab-panel="app" style="margin-top:16px">
+    <div class="settings-grid">
+      <article class="panel">
+        <div class="section-title"><div><h2>Organisatie</h2><p>Basisinstellingen van de omgeving</p></div></div>
+        <div class="field"><label>Bedrijfsnaam</label><input value="CWS NEN-1090"></div>
+        <div class="field"><label>Standaard executieklasse</label><select><option>EXC1</option><option>EXC2</option><option selected>EXC3</option></select></div>
+        <div class="field"><label>Projectprefix</label><input value="L-"></div>
+        <div class="inline-actions"><button class="btn btn-primary" data-action="toast" data-message="Applicatie-instellingen opgeslagen in de demo-flow.">Opslaan</button></div>
+      </article>
+      <article class="panel">
+        <div class="section-title"><div><h2>Afdelingen en workflow</h2><p>Stuur de vaste proceslijn</p></div></div>
+        <div class="list">
+          <div class="list-item"><div><strong>Projectbeheer</strong><span>Projectstart, planning, opdrachtgever</span></div><span class="badge badge-soft">Actief</span></div>
+          <div class="list-item"><div><strong>Lascontrole</strong><span>Materiaal, uitvoering, NDT</span></div><span class="badge badge-soft">Actief</span></div>
+          <div class="list-item"><div><strong>CE Dossier</strong><span>Export, vrijgave en oplevering</span></div><span class="badge badge-soft">Actief</span></div>
+        </div>
+      </article>
+    </div>
+  </div>
+  <div data-tab-panel="gebruikers" hidden style="margin-top:16px"><div class="list"><div class="list-item"><div><strong>Hans Planner</strong><span>Planner · toegang tot projecten en lassen</span></div><button class="btn btn-soft" data-action="drawer" data-title="Gebruiker" data-content="<div class='notice'>Gebruikersdetail en rechten komen hier.</div>">Open</button></div><div class="list-item"><div><strong>Admin CWS</strong><span>Volledige rechten incl. instellingen</span></div><button class="btn btn-soft" data-action="drawer" data-title="Admin" data-content="<div class='notice'>Adminrechten en auditinstellingen komen hier.</div>">Open</button></div></div></div>
+  <div data-tab-panel="beveiliging" hidden style="margin-top:16px"><div class="settings-grid"><article class="panel"><div class="field"><label>2FA verplicht</label><select><option>Ja</option><option>Nee</option></select></div><div class="field"><label>Session timeout</label><input value="30 minuten"></div><button class="btn btn-primary" data-action="toast" data-message="Beveiligingsinstellingen opgeslagen in de demo-flow.">Opslaan</button></article><article class="panel"><div class="notice">Koppel hier later echte authenticatie, rollen en audit logging aan.</div></article></div></div>
+  <div data-tab-panel="documenten" hidden style="margin-top:16px"><div class="panel"><div class="section-title"><div><h2>Documentregels</h2><p>Welke documenten vereist zijn per project / CE dossier</p></div></div><div class="checklist"><div class="check"><div><strong>Materiaalcertificaat 3.1</strong><small>Verplicht voor export</small></div><span class="badge badge-success">Verplicht</span></div><div class="check"><div><strong>WPS / WPQR</strong><small>Verplicht voor elke lasgroep</small></div><span class="badge badge-success">Verplicht</span></div><div class="check"><div><strong>NDT rapport</strong><small>Alleen verplicht wanneer inspectieklasse dat vraagt</small></div><span class="badge badge-warning">Voorwaardelijk</span></div></div></div></div>
+</section>
+</div>
 </body>
 </html>
