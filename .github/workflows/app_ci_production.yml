@@ -1,4 +1,3 @@
-
 name: App CI + Pages Validation
 
 on:
@@ -20,7 +19,17 @@ jobs:
           node-version: 18
 
       - name: Validate structure
+<<<<<<< HEAD
         run: |
           echo "Checking project structure"
           ls -la
           echo "Validation OK"
+=======
+        shell: bash
+        run: |
+          echo "Checking project structure"
+          pwd
+          ls -la
+          test -d src || (echo "src folder missing" && exit 1)
+          echo "Validation OK"
+>>>>>>> dc88384 (Fix CI validation workflow)
