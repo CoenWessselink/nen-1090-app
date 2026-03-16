@@ -125,7 +125,7 @@
       <nav class="mobile-bottom-nav" id="mobileBottomNav" aria-label="Mobiele navigatie">
         <a class="mobile-bottom-link" data-route="start" href="#">${icon('home')}<span>Home</span></a>
         <a class="mobile-bottom-link" data-route="projects" href="#">${icon('folder')}<span>Projecten</span></a>
-        <a class="mobile-bottom-link" data-route="welds" href="#">${icon('shield')}<span>Welds</span></a>
+        <a class="mobile-bottom-link" data-route="welds" href="#">${icon('shield')}<span>Lassen</span></a>
         <a class="mobile-bottom-link" data-route="ce" href="#">${icon('doc')}<span>CE</span></a>
         <button class="mobile-bottom-link mobile-bottom-link-menu" data-route="menu" type="button">${icon('menu')}<span>Meer</span></button>
       </nav>
