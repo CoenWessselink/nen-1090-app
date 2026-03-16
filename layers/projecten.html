@@ -9,35 +9,124 @@
 </head>
 <body>
   <div id="page-content">
-<section class="page-head">
-  <div><h1>Projecten</h1><p>Alle projecten, duidelijke filters en een vaste detailflow.</p></div>
-  <div class="toolbar"><button class="btn btn-primary" data-action="modal-project">+ Nieuw project</button><button class="btn" data-action="drawer" data-title="Projectexport" data-content="<div class='notice'>Projectexport is als klikbare flow voorbereid. Koppel later aan CSV/PDF export.</div>">Export</button></div>
-</section>
-<section class="table-card" data-tabs-host>
-  <div class="toolbar">
-    <select class="select"><option>Alle projecten</option><option>In controle</option><option>Conform</option><option>Afgekeurd</option></select>
-    <div class="grow"><input class="input" type="search" placeholder="Zoek project" data-filter-target="#projectRows"></div>
-    <button class="btn" data-action="drawer" data-title="Kolommen" data-content="<div class='notice'>Kolombeheer wordt in de volgende slag gekoppeld aan voorkeuren per gebruiker.</div>">Kolommen</button>
-    <button class="btn" data-action="drawer" data-title="Import" data-content="<div class='notice'>Importflow voor projecten en uren wordt hier gekoppeld.</div>">Import</button>
+    <section class="page-head">
+      <div>
+        <div class="overline">Projecten als kapstok van de hele app</div>
+        <h1>Projecten</h1>
+        <p>Nieuwe fase 1-structuur met vaste filters, samenvattingen, projectkaarten en dezelfde componenttaal op desktop en mobiel.</p>
+      </div>
+      <div class="head-actions">
+        <button class="btn btn-primary" data-action="modal-project">+ Nieuw project</button>
+        <button class="btn" data-action="drawer" data-title="Projectexport" data-content="<div class='notice'>Projectexport is visueel voorbereid. In fase 2 koppelen we CSV, PDF en selectie-export.</div>">Export</button>
+      </div>
+    </section>
+
+    <section class="metric-grid">
+      <article class="metric-card"><h3>Alle projecten</h3><strong>18</strong><span>Volledige projectportefeuille</span></article>
+      <article class="metric-card"><h3>In controle</h3><strong>5</strong><span>Inspectie of documentatie nog open</span></article>
+      <article class="metric-card"><h3>Conform</h3><strong>7</strong><span>Gereed voor CE-review of archief</span></article>
+      <article class="metric-card"><h3>Blokkades</h3><strong>3</strong><span>Documenten of certificaten missen</span></article>
+    </section>
+
+    <section class="table-card">
+      <div class="toolbar">
+        <select class="select"><option>Alle projecten</option><option>In controle</option><option>Conform</option><option>Afgekeurd</option></select>
+        <div class="grow"><input class="input" type="search" placeholder="Zoek project" data-filter-target="#projectRows"></div>
+        <button class="btn" data-action="drawer" data-title="Kolommen" data-content="<div class='notice'>Kolombeheer is in fase 1 gestandaardiseerd. In fase 2 koppelen we voorkeuren per gebruiker en opslag.</div>">Kolommen</button>
+        <button class="btn" data-action="drawer" data-title="Import" data-content="<div class='notice'>Importflow voor projecten, projectregels en uren volgt in fase 2.</div>">Import</button>
+      </div>
+
+      <div class="subtabs" style="margin-top:16px">
+        <button class="subtab is-active" data-action="filters">Alle projecten</button>
+        <button class="subtab" data-action="filters">In controle</button>
+        <button class="subtab" data-action="filters">Conform</button>
+        <button class="subtab" data-action="filters">Afgekeurd</button>
+      </div>
+
+      <table class="table" style="margin-top:16px">
+        <thead>
+          <tr>
+            <th>Projectnummer</th>
+            <th>Opdrachtgever</th>
+            <th>Executieklasse</th>
+            <th>Status</th>
+            <th>Volgende stap</th>
+            <th>Acties</th>
+          </tr>
+        </thead>
+        <tbody id="projectRows">
+          <tr data-filter-row>
+            <td><strong>L-001-1</strong><div class="table-meta"><span>Kolom A1 / Ligger 1</span><span>Laatste update: vandaag</span></div></td>
+            <td>Bouwbedrijf Delta</td>
+            <td>EXC3/C</td>
+            <td><span class="badge badge-success">Conform</span></td>
+            <td>CE review en vrijgave</td>
+            <td><div class="inline-actions"><a class="btn btn-soft" href="project_detail.html">Bekijken</a><a class="btn btn-soft" href="lascontrole.html">Lassen</a></div></td>
+          </tr>
+          <tr data-filter-row>
+            <td><strong>L-002-1</strong><div class="table-meta"><span>Kolom A2 / Ligger 1</span><span>Laatste update: 24 min geleden</span></div></td>
+            <td>Woningbouwgroep</td>
+            <td>EXC2/A</td>
+            <td><span class="badge badge-warning">In controle</span></td>
+            <td>NDT upload en acceptatie</td>
+            <td><div class="inline-actions"><a class="btn btn-soft" href="project_detail.html">Bekijken</a><a class="btn btn-soft" href="ce_dossier.html">CE</a></div></td>
+          </tr>
+          <tr data-filter-row>
+            <td><strong>L-003-1</strong><div class="table-meta"><span>Stijgpunt B1 / Console</span><span>Nieuw conceptproject</span></div></td>
+            <td>Recos Vastgoed</td>
+            <td>EXC1/A</td>
+            <td><span class="badge badge-soft">Concept</span></td>
+            <td>Projectbasis aanvullen</td>
+            <td><div class="inline-actions"><a class="btn btn-soft" href="project_detail.html">Bekijken</a><button class="btn btn-soft" data-action="drawer" data-title="Project wijzigen" data-content="<div class='field'><label>Naam</label><input value='Stijgpunt B1 / Console'></div><div class='field'><label>Status</label><select><option>Concept</option><option>In controle</option></select></div><div class='inline-actions'><button class='btn btn-primary' type='button'>Opslaan</button></div>">Wijzigen</button></div></td>
+          </tr>
+          <tr data-filter-row>
+            <td><strong>WL-004</strong><div class="table-meta"><span>Zware kopse las, hoeknaad</span><span>Auditgevoelig project</span></div></td>
+            <td>Machinebouw Oost</td>
+            <td>EXC3/C</td>
+            <td><span class="badge badge-warning">In controle</span></td>
+            <td>Procesbladen / WPS afronden</td>
+            <td><div class="inline-actions"><a class="btn btn-soft" href="project_detail.html">Bekijken</a><a class="btn btn-soft" href="lascontrole.html">Lascontrole</a></div></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="mobile-list">
+        <article class="mobile-item" data-filter-row>
+          <div class="mobile-item-top"><strong>L-001-1</strong><span class="badge badge-success">Conform</span></div>
+          <div class="mobile-item-meta"><span>Bouwbedrijf Delta · Kolom A1 / Ligger 1 · EXC3/C</span><span>Volgende stap: CE review en vrijgave</span></div>
+          <div class="inline-actions"><a class="btn btn-soft" href="project_detail.html">Bekijken</a><a class="btn btn-soft" href="lascontrole.html">Lassen</a></div>
+        </article>
+        <article class="mobile-item" data-filter-row>
+          <div class="mobile-item-top"><strong>L-002-1</strong><span class="badge badge-warning">In controle</span></div>
+          <div class="mobile-item-meta"><span>Woningbouwgroep · Kolom A2 / Ligger 1 · EXC2/A</span><span>Volgende stap: NDT upload en acceptatie</span></div>
+          <div class="inline-actions"><a class="btn btn-soft" href="project_detail.html">Detail</a><a class="btn btn-soft" href="ce_dossier.html">CE</a></div>
+        </article>
+        <article class="mobile-item" data-filter-row>
+          <div class="mobile-item-top"><strong>WL-004</strong><span class="badge badge-warning">Actie</span></div>
+          <div class="mobile-item-meta"><span>Machinebouw Oost · EXC3/C</span><span>Volgende stap: procesbladen/WPS afronden</span></div>
+          <div class="inline-actions"><a class="btn btn-soft" href="project_detail.html">Project 360</a><a class="btn btn-soft" href="lascontrole.html">Controle</a></div>
+        </article>
+      </div>
+    </section>
+
+    <section class="summary-grid">
+      <article class="summary-card">
+        <h3>Conforme projecten</h3>
+        <p>Gereed voor oplevering of archief, met nog alleen laatste dossiercontrole.</p>
+      </article>
+      <article class="summary-card">
+        <h3>Projecten in controle</h3>
+        <p>Vragen nog inspectie, documentatie of acceptatiebesluit.</p>
+      </article>
+      <article class="summary-card">
+        <h3>Blokkades</h3>
+        <p>Zijn zichtbaar gemaakt als vaste status, zodat ze in fase 2 centraal aangestuurd kunnen worden.</p>
+      </article>
+      <article class="summary-card">
+        <h3>Mobiele projectkaarten</h3>
+        <p>Geen ingezoomde desktop meer, maar aparte kaarten met volgende stap en directe acties.</p>
+      </article>
+    </section>
   </div>
-  <div class="subtabs" style="margin-top:16px"><button class="subtab is-active" data-action="filters">Alle projecten</button><button class="subtab" data-action="filters">In controle</button><button class="subtab" data-action="filters">Conform</button><button class="subtab" data-action="filters">Afgekeurd</button></div>
-  <table class="table" style="margin-top:16px"><thead><tr><th>Projectnummer</th><th>Opdrachtgever</th><th>Executieklasse</th><th>Status</th><th>Acties</th></tr></thead><tbody id="projectRows">
-    <tr data-filter-row><td><strong>L-001-1</strong><br><span class="muted">Kolom A1 / Ligger 1</span></td><td>Bouwbedrijf Delta</td><td>EXC3/C</td><td><span class="badge badge-success">Conform</span></td><td><div class="inline-actions"><a class="btn btn-soft" href="project_detail.html">Bekijken</a><a class="btn btn-soft" href="lascontrole.html">Lassen</a></div></td></tr>
-    <tr data-filter-row><td><strong>L-002-1</strong><br><span class="muted">Kolom A2 / Ligger 1</span></td><td>Woningbouwgroep</td><td>EXC2/A</td><td><span class="badge badge-warning">In controle</span></td><td><div class="inline-actions"><a class="btn btn-soft" href="project_detail.html">Bekijken</a><a class="btn btn-soft" href="ce_dossier.html">CE</a></div></td></tr>
-    <tr data-filter-row><td><strong>L-003-1</strong><br><span class="muted">Stijgpunt B1 / Console</span></td><td>Recos Vastgoed</td><td>EXC1/A</td><td><span class="badge badge-soft">Concept</span></td><td><div class="inline-actions"><a class="btn btn-soft" href="project_detail.html">Bekijken</a><button class="btn btn-soft" data-action="drawer" data-title="Project wijzigen" data-content="<div class='field'><label>Naam</label><input value='Stijgpunt B1 / Console'></div><div class='field'><label>Status</label><select><option>Concept</option><option>In controle</option></select></div><div class='inline-actions'><button class='btn btn-primary' type='button'>Opslaan</button></div>">Wijzigen</button></div></td></tr>
-    <tr data-filter-row><td><strong>WL-004</strong><br><span class="muted">Zware kopse las, hoeknaad</span></td><td>Machinebouw Oost</td><td>EXC3/C</td><td><span class="badge badge-warning">In controle</span></td><td><div class="inline-actions"><a class="btn btn-soft" href="project_detail.html">Bekijken</a><a class="btn btn-soft" href="lascontrole.html">Lascontrole</a></div></td></tr>
-  </tbody></table>
-  <div class="mobile-list">
-    <article class="mobile-item" data-filter-row><div class="mobile-item-top"><strong>L-001-1</strong><span class="badge badge-success">Conform</span></div><div class="mobile-item-meta"><span>Bouwbedrijf Delta</span><span>Kolom A1 / Ligger 1 · EXC3/C</span></div><div class="inline-actions"><a class="btn btn-soft" href="project_detail.html">Bekijken</a><a class="btn btn-soft" href="lascontrole.html">Lassen</a></div></article>
-    <article class="mobile-item" data-filter-row><div class="mobile-item-top"><strong>L-002-1</strong><span class="badge badge-warning">In controle</span></div><div class="mobile-item-meta"><span>Woningbouwgroep</span><span>Kolom A2 / Ligger 1 · EXC2/A</span></div><div class="inline-actions"><a class="btn btn-soft" href="project_detail.html">Detail</a><a class="btn btn-soft" href="ce_dossier.html">CE</a></div></article>
-    <article class="mobile-item" data-filter-row><div class="mobile-item-top"><strong>WL-004</strong><span class="badge badge-warning">Actie</span></div><div class="mobile-item-meta"><span>Machinebouw Oost</span><span>Zware kopse las, hoeknaad · EXC3/C</span></div><div class="inline-actions"><a class="btn btn-soft" href="project_detail.html">Project 360</a><a class="btn btn-soft" href="lascontrole.html">Controle</a></div></article>
-  </div>
-</section>
-<section class="summary-grid">
-  <article class="panel"><div class="section-title"><div><h2>Conform</h2></div></div><div class="list-item"><div><strong>7 projecten</strong><span>Gereed voor oplevering of archief.</span></div><span class="badge badge-success">Groen</span></div></article>
-  <article class="panel"><div class="section-title"><div><h2>In controle</h2></div></div><div class="list-item"><div><strong>5 projecten</strong><span>Controle, inspectie of documentatie loopt nog.</span></div><span class="badge badge-warning">Actie</span></div></article>
-  <article class="panel"><div class="section-title"><div><h2>Planning</h2></div></div><div class="list-item"><div><strong>Volgende deadline</strong><span>Vrijdag 21 maart · CE set WL-004</span></div><span class="badge badge-soft">Info</span></div></article>
-</section>
-</div>
 </body>
 </html>
