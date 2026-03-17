@@ -21,7 +21,7 @@
         <h1>CE dossier</h1>
         <p>Fase 9: completenessberekening, exporteerbare dossieronderdelen en rapportages op basis van project, assemblies, lassen, inspecties en foto’s.</p>
       </div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" id="btnBack">Terug naar lascontrole</button><button class="btn" id="btnExportCe">CE export</button></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" id="btnBack">Terug naar lascontrole</button><button class="btn" id="btnExportCe">CE export</button><button class="btn" id="btnExportApi">CE export API</button></div>
     </section>
 
     <section class="summary" id="summary"></section>
@@ -45,6 +45,7 @@
   <script src="../js/core/ui.js"></script>
   <script src="../js/core/apps_menu.js"></script>
   <script src="../js/core/export.js"></script>
+  <script src="../js/core/api_sync.js"></script>
   <script src="../js/core/pwa.js"></script>
   <script src="../js/core/icon_pack.js"></script>
   <script src="../js/core/shell.js"></script>
@@ -102,6 +103,13 @@
         {label:'Foto-index', detail:`${photos.length} fotobestanden gekoppeld aan project/lassen`}
       ].map(item => `<article class="item"><strong>${UI.esc(item.label)}</strong><div class="muted" style="margin-top:4px">${UI.esc(item.detail)}</div></article>`).join('');
       document.getElementById('btnExportCe').onclick = () => Export.json(`ce_dossier_${p?.nummer || 'project'}.json`, exportData);
+      document.getElementById('btnExportApi').onclick = async () => {
+        try{
+          const out = await window.CWSApiSync.ceExport(p?.id);
+          Export.json(`ce_export_api_${p?.nummer || 'project'}.json`, out);
+          UI.toast('CE export uit API opgeslagen');
+        }catch(err){ UI.toast(err?.message || 'API export mislukt'); }
+      };
     }
     document.getElementById('btnBack').addEventListener('click', () => location.href = window.CWS_ROUTES.welds);
     if(!(st().projects.order || []).length) window.CWS.resetDemo();

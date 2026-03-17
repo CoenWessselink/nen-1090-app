@@ -57,6 +57,8 @@
       <button id="btnNew" class="btn">Nieuw project</button>
       <button id="btnExport" class="btn">CSV export</button>
       <button id="btnSeed" class="btn">Demo data</button>
+      <button id="btnApiPush" class="btn">Sync actief project</button>
+      <button id="btnApiPull" class="btn">API projecten</button>
     </section>
 
     <section class="filters">
@@ -89,6 +91,7 @@
   <script src="../js/core/ui.js"></script>
   <script src="../js/core/apps_menu.js"></script>
   <script src="../js/core/export.js"></script>
+  <script src="../js/core/api_sync.js"></script>
   <script src="../js/core/pwa.js"></script>
   <script src="../js/core/icon_pack.js"></script>
   <script src="../js/core/shell.js"></script>
@@ -224,6 +227,21 @@
     document.getElementById('btnNew').addEventListener('click', () => projectModal(null));
     document.getElementById('btnExport').addEventListener('click', () => Export.toCsv('projecten.csv', visible()));
     document.getElementById('btnSeed').addEventListener('click', () => { window.CWS.resetDemo(); render(); UI.toast('Demo data geladen'); });
+    document.getElementById('btnApiPush').addEventListener('click', async () => {
+      try{
+        const current = st().ui.activeProjectId || visible()[0]?.id;
+        if(!current) throw new Error('Geen project geselecteerd');
+        setActiveProject(current, false);
+        await window.CWSApiSync.pushActiveProject();
+        UI.toast('Actief project gesynchroniseerd naar API');
+      }catch(err){ UI.toast(err?.message || 'Sync mislukt'); }
+    });
+    document.getElementById('btnApiPull').addEventListener('click', async () => {
+      try{
+        const rows = await window.CWSApiSync.pullProjects();
+        UI.openModal({ title:'Projecten uit API', saveLabel:'Sluiten', bodyHtml:`<div style="display:grid;gap:10px">${(rows||[]).map(p => `<article style="border:1px solid #e5ebf5;border-radius:16px;padding:12px"><strong>${UI.esc(p.project_number || p.nummer || p.id)}</strong><div class="smallmuted">${UI.esc(p.name || p.naam || '')}</div></article>`).join('') || '<div class="smallmuted">Geen projecten gevonden in API.</div>'}` });
+      }catch(err){ UI.toast(err?.message || 'API ophalen mislukt'); }
+    });
     document.getElementById('tbody').addEventListener('click', e => {
       const btn = e.target.closest('[data-action]');
       if(btn) onAction(btn.dataset.id, btn.dataset.action);
