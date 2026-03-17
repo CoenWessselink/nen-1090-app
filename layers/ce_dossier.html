@@ -1,69 +1,111 @@
 <!doctype html>
 <html lang="nl">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>CE dossier · CWS NEN-1090</title>
-  <link rel="stylesheet" href="../css/app-v2.css">
-  <script defer src="../js/core/app_v2.js"></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CE dossier</title>
+  <link rel="stylesheet" href="../css/theme.css" />
+  <link rel="stylesheet" href="../css/workflow-rebuild.css" />
+  <style>
+    .page{display:grid;gap:18px}.hero{display:flex;justify-content:space-between;gap:18px;align-items:end;flex-wrap:wrap}.hero h1{margin:0;font-size:42px;line-height:.95;letter-spacing:-.04em}.hero p{margin:8px 0 0;color:#64748b;max-width:760px}
+    .grid{display:grid;grid-template-columns:1.1fr .9fr;gap:16px}.panel{background:#fff;border:1px solid #e5ebf5;border-radius:24px;box-shadow:0 12px 34px rgba(15,23,42,.05);padding:18px}.panel h3{margin:0 0 10px}.list{display:grid;gap:10px}.item{border:1px solid #e5ebf5;border-radius:18px;padding:14px;background:#fff}.item strong{display:block}.muted{color:#64748b}.badge{display:inline-flex;align-items:center;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:800}.badge.complete{background:#dcfce7;color:#166534}.badge.warning{background:#fef3c7;color:#92400e}.badge.incomplete{background:#fee2e2;color:#b91c1c}
+    .summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.summary .card{background:#fff;border:1px solid #e5ebf5;border-radius:20px;padding:16px;box-shadow:0 8px 22px rgba(15,23,42,.04)}.summary strong{display:block;font-size:26px}.summary span{color:#64748b;font-size:13px}
+    @media (max-width:900px){.grid{grid-template-columns:1fr}.summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media (max-width:760px){.hero h1{font-size:34px}.summary{grid-template-columns:1fr 1fr}}
+  </style>
 </head>
-<body>
-  <div id="page-content">
-    <section class="page-head">
+<body data-title="CE dossier">
+  <main class="page">
+    <section class="hero">
       <div>
-        <div class="overline">Completeness, blokkades, vrijgave en export</div>
-        <h1>CE Dossier</h1>
-        <p id="ceProjectLabel">Project</p>
+        <h1>CE dossier</h1>
+        <p>Fase 9: completenessberekening, exporteerbare dossieronderdelen en rapportages op basis van project, assemblies, lassen, inspecties en foto’s.</p>
       </div>
-      <div class="inline-actions">
-        <button class="btn btn-primary" data-action="export-file">Exporteer manifest</button><button class="btn" data-action="new-export">Historie bijwerken</button>
-        <a class="btn" href="lascontrole.html">Terug naar lassen</a>
-      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" id="btnBack">Terug naar lascontrole</button><button class="btn" id="btnExportCe">CE export</button></div>
     </section>
 
-    <section class="grid-2">
-      <article class="panel">
-        <div class="section-title"><div><h2>Completeness matrix</h2><p>Documentgroepen die de gereedheid bepalen</p></div></div>
-        <div class="matrix" id="ceMatrix"></div>
-      </article>
+    <section class="summary" id="summary"></section>
 
-      <div class="right-stack">
-        <article class="export-card">
-          <div class="section-title"><div><h2>Gereedheid</h2><p>Samenvatting voor export</p></div></div>
-          <div class="progress-block">
-            <div class="progress-head"><strong>Dossierstatus</strong><span class="badge badge-primary" id="ceProgressLabel">0%</span></div>
-            <div class="progress-bar"><span id="ceProgress" style="width:0%"></span></div>
-            <p class="muted">Werk de open documentgroepen af of genereer direct een demo-export.</p>
-          </div>
-        </article>
-        <article class="panel">
-          <div class="section-title"><div><h2>Documentgroepen</h2><p>Status per dossieronderdeel</p></div></div>
-          <div class="list" id="ceGroups"></div>
-        </article>
+    <section class="grid">
+      <div class="panel">
+        <h3>Completeness</h3>
+        <div id="checklist" class="list"></div>
+      </div>
+      <div class="panel">
+        <h3>Exportbundel</h3>
+        <div id="bundle" class="list"></div>
       </div>
     </section>
+  </main>
 
-    <section class="card-grid">
-      <article class="detail-card">
-        <div class="section-title"><div><h2>Ontbrekende onderdelen</h2><p>Gericht zichtbaar gemaakt voor workflowsturing</p></div></div>
-        <div class="checklist" id="ceMissing"></div>
-      </article>
-      <article class="detail-card">
-        <div class="section-title"><div><h2>Exporthistorie</h2><p>Nieuwe demo-exports verschijnen direct hier</p></div></div>
-        <div class="timeline" id="ceHistory"></div>
-      </article>
-    </section>
-    <section class="card-grid">
-      <article class="detail-card">
-        <div class="section-title"><div><h2>Documentupload</h2><p>Koppel bestanden per dossiergroep en markeer direct compleet</p></div></div>
-        <div id="ceAttachments"></div>
-      </article>
-      <article class="detail-card">
-        <div class="section-title"><div><h2>Vrijgaveadvies</h2><p>Controleer blokkades en geef vrij voor export</p></div></div>
-        <div id="ceReleaseAdvice"></div>
-      </article>
-    </section>
-
-  </div>
+  <script src="../js/core/routes.js"></script>
+  <script src="../js/core/design_system.js"></script>
+  <script src="../js/core/store.js"></script>
+  <script src="../js/core/permissions.js"></script>
+  <script src="../js/core/ui.js"></script>
+  <script src="../js/core/apps_menu.js"></script>
+  <script src="../js/core/export.js"></script>
+  <script src="../js/core/pwa.js"></script>
+  <script src="../js/core/icon_pack.js"></script>
+  <script src="../js/core/shell.js"></script>
+  <script src="../js/core/workflow_shell.js"></script>
+  <script>
+    try{ Shell.mount(); WorkflowShell.mount(); }catch(_){ }
+    function st(){ return window.CWS.getState(); }
+    function project(){ return st().projects.byId[st().ui.activeProjectId] || null; }
+    function assemblies(){ return (st().assemblies.byProject[st().ui.activeProjectId] || []).map(id => st().assemblies.byId[id]).filter(Boolean); }
+    function welds(){ return (st().welds.byProject[st().ui.activeProjectId] || []).map(id => st().welds.byId[id]).filter(Boolean); }
+    function docs(){ return (st().documents.byProject[st().ui.activeProjectId] || []).map(id => st().documents.byId[id]).filter(Boolean); }
+    function completeness(){
+      const p = project();
+      const a = assemblies();
+      const w = welds();
+      const photos = docs().filter(d => d.kind === 'photo');
+      const allControlsOk = w.length && w.every(row => String(row.vtStatus || '').toLowerCase() === 'ok');
+      const allWps = w.length && w.every(row => String(row.wps || '').trim());
+      const allWelders = w.length && w.every(row => String(row.lassers || '').trim());
+      return [
+        { key:'project', label:'Projectgegevens', status:(p && p.nummer && p.naam) ? 'complete' : 'incomplete', detail:`${p?.nummer || '-'} · ${p?.naam || '-'}` },
+        { key:'assemblies', label:'Assemblies', status:a.length ? 'complete' : 'incomplete', detail:`${a.length} assemblies vastgelegd` },
+        { key:'welds', label:'Lassen', status:w.length ? 'complete' : 'incomplete', detail:`${w.length} lassen vastgelegd` },
+        { key:'inspectie', label:'Inspectie', status:allControlsOk ? 'complete' : (w.length ? 'warning' : 'incomplete'), detail: allControlsOk ? 'Alle VT checks akkoord' : 'Niet alle inspecties afgerond' },
+        { key:'wps', label:'WPS / lasmethodes', status:allWps ? 'complete' : (w.length ? 'warning' : 'incomplete'), detail: allWps ? 'Elke las heeft WPS/lasmethode' : 'Niet elke las heeft WPS' },
+        { key:'lassers', label:'Lassers', status:allWelders ? 'complete' : (w.length ? 'warning' : 'incomplete'), detail: allWelders ? 'Elke las heeft een lasser' : 'Niet elke las heeft een lasser' },
+        { key:'fotos', label:'Foto’s / bewijs', status:photos.length ? 'complete' : 'warning', detail:`${photos.length} foto’s gekoppeld` }
+      ];
+    }
+    function render(){
+      const p = project();
+      const c = completeness();
+      const ready = c.every(x => x.status === 'complete' || x.key === 'fotos');
+      const list = welds();
+      const photos = docs().filter(d => d.kind === 'photo');
+      document.getElementById('summary').innerHTML = [
+        ['Project', p?.nummer || '-'],
+        ['Assemblies', assemblies().length],
+        ['Lassen', list.length],
+        ['Ready', ready ? 'Ja' : 'Nee']
+      ].map(([label,val]) => `<div class="card"><strong>${val}</strong><span>${label}</span></div>`).join('');
+      document.getElementById('checklist').innerHTML = c.map(item => `<article class="item"><div style="display:flex;justify-content:space-between;gap:12px;align-items:start"><div><strong>${UI.esc(item.label)}</strong><div class="muted" style="margin-top:4px">${UI.esc(item.detail)}</div></div><span class="badge ${item.status}">${UI.esc(item.status)}</span></div></article>`).join('');
+      const exportData = {
+        generatedAt: new Date().toISOString(),
+        project: p,
+        assemblies: assemblies(),
+        welds: list,
+        photos: photos.map(d => ({ id:d.id, name:d.name, weldId:d.weldId, ts:d.ts })),
+        completeness: c,
+        readyForExport: ready
+      };
+      document.getElementById('bundle').innerHTML = [
+        {label:'CE samenvatting', detail:'Volledige JSON met project, assemblies, lassen en completeness'},
+        {label:'Lasinspectierapport', detail:'Samenvatting per las inclusief status en foto-aantal'},
+        {label:'Foto-index', detail:`${photos.length} fotobestanden gekoppeld aan project/lassen`}
+      ].map(item => `<article class="item"><strong>${UI.esc(item.label)}</strong><div class="muted" style="margin-top:4px">${UI.esc(item.detail)}</div></article>`).join('');
+      document.getElementById('btnExportCe').onclick = () => Export.json(`ce_dossier_${p?.nummer || 'project'}.json`, exportData);
+    }
+    document.getElementById('btnBack').addEventListener('click', () => location.href = window.CWS_ROUTES.welds);
+    if(!(st().projects.order || []).length) window.CWS.resetDemo();
+    render();
+  </script>
 </body>
 </html>

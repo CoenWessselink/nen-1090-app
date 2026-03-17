@@ -1,49 +1,342 @@
 <!doctype html>
 <html lang="nl">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Lascontrole · CWS NEN-1090</title>
-  <link rel="stylesheet" href="../css/app-v2.css">
-  <script defer src="../js/core/app_v2.js"></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Lascontrole</title>
+  <link rel="stylesheet" href="../css/theme.css" />
+  <link rel="stylesheet" href="../css/workflow-rebuild.css" />
+  <style>
+    .page{display:grid;gap:18px}
+    .hero{display:flex;justify-content:space-between;gap:18px;align-items:end;flex-wrap:wrap}
+    .hero h1{margin:0;font-size:42px;line-height:.95;letter-spacing:-.04em}
+    .hero p{margin:8px 0 0;color:#64748b;max-width:780px}
+    .surface{background:#fff;border:1px solid #e5ebf5;border-radius:24px;box-shadow:0 12px 34px rgba(15,23,42,.05);padding:18px}
+    .toolbar,.tabs,.stats,.actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .toolbar .input{min-width:250px}
+    .stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+    .stat{background:#fff;border:1px solid #e5ebf5;border-radius:20px;padding:16px;box-shadow:0 8px 22px rgba(15,23,42,.04)}
+    .stat strong{display:block;font-size:26px}
+    .stat span{color:#64748b;font-size:13px}
+    .tab.active{background:#eef4ff;border-color:#cfe0ff;color:#2457e6}
+    .grid{display:grid;grid-template-columns:1.1fr .9fr;gap:16px}
+    .panel{background:#fff;border:1px solid #e5ebf5;border-radius:22px;padding:16px}
+    .panel h3{margin:0 0 8px}
+    .list{display:grid;gap:10px}
+    .item{border:1px solid #e5ebf5;border-radius:18px;padding:14px;background:#fff}
+    .item-head{display:flex;justify-content:space-between;gap:12px;align-items:start}
+    .item-sub{margin-top:4px;color:#64748b;font-size:13px}
+    .badge{display:inline-flex;align-items:center;border-radius:999px;padding:6px 10px;background:#f1f5f9;color:#334155;font-size:12px;font-weight:800}
+    .badge.ok{background:#dcfce7;color:#166534}.badge.open{background:#dbeafe;color:#1d4ed8}.badge.nok{background:#fee2e2;color:#b91c1c}
+    .table-wrap{overflow:auto}
+    table{width:100%;border-collapse:collapse;min-width:980px}
+    th,td{padding:12px 10px;border-bottom:1px solid #edf2f7;text-align:left;vertical-align:top}
+    th{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#64748b}
+    .photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px}
+    .photo-card{border:1px solid #e5ebf5;border-radius:18px;overflow:hidden;background:#fff}
+    .photo-card img{display:block;width:100%;height:130px;object-fit:cover;background:#f8fafc}
+    .photo-card .body{padding:10px 12px}
+    .muted{color:#64748b}
+    @media (max-width:900px){ .grid{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,minmax(0,1fr))} }
+    @media (max-width:760px){ .hero h1{font-size:34px}.toolbar{display:grid;grid-template-columns:1fr 1fr}.toolbar .input{grid-column:1/-1;min-width:0;width:100%}.stats{grid-template-columns:1fr 1fr} }
+  </style>
 </head>
-<body>
-  <div id="page-content">
-    <section class="page-head">
+<body data-title="Lascontrole">
+  <main class="page">
+    <section class="hero">
       <div>
-        <div class="overline">Operationele werkplek voor uitvoering, inspectie, blokkades en vervolgstap</div>
         <h1>Lascontrole</h1>
-        <p id="weldProjectLabel">Project</p>
+        <p>Fase 8 workflow: project → assemblies → lassen → inspectie → foto’s → rapportage. Popupformulieren, mobiel foto-upload en dubbelklik wijzigen zijn actief.</p>
       </div>
-      <div class="inline-actions">
-        <button class="btn" data-action="simulate-inspection">Inspectie afronden</button><button class="btn" data-action="add-weld">Nieuwe las</button>
-        <a class="btn btn-primary" href="ce_dossier.html">Naar CE-dossier</a>
+      <div class="actions">
+        <button class="btn" id="btnToCe">Open CE dossier</button>
       </div>
     </section>
 
-    <section class="metric-grid" id="weldStats"></section>
-
-    <section class="table-card">
-      <div class="subtabs">
-        <button class="subtab is-active" data-weld-filter="all">Alle lassen</button>
-        <button class="subtab" data-weld-filter="Conform">Conform</button>
-        <button class="subtab" data-weld-filter="In controle">In controle</button>
-        <button class="subtab" data-weld-filter="Repair required">Repair</button>
-        <button class="subtab" data-weld-filter="Concept">Concept</button>
+    <section class="surface">
+      <div class="toolbar">
+        <select id="projectSelect" class="input"></select>
+        <input id="search" class="input" placeholder="Zoeken op assembly, las of lasser" />
+        <button class="btn" id="btnAssembly">Nieuwe assembly</button>
+        <button class="btn" id="btnWeld">Nieuwe las</button>
+        <button class="btn" id="btnPhoto">Foto upload</button>
       </div>
-      <table class="table" style="margin-top:16px">
-        <thead><tr><th>Las</th><th>EXC</th><th>NDT</th><th>Status</th><th>Acties</th></tr></thead>
-        <tbody id="weldRows"></tbody>
-      </table>
-      <div class="mobile-list" id="weldMobile"></div>
     </section>
 
-    <section class="card-grid">
-      <article class="detail-card">
-        <div class="section-title"><div><h2>Vervolgacties</h2><p>Werk vanuit lassen logisch door naar CE</p></div></div>
-        <div id="weldNextActions"></div>
-      </article>
+    <section class="stats" id="stats"></section>
+
+    <section class="tabs">
+      <button class="tab active" data-tab="structuur">Structuur</button>
+      <button class="tab" data-tab="lassen">Lassen</button>
+      <button class="tab" data-tab="inspectie">Inspectie</button>
+      <button class="tab" data-tab="fotos">Foto’s</button>
+      <button class="tab" data-tab="rapportage">Rapportage</button>
     </section>
-  </div>
+
+    <section id="view"></section>
+  </main>
+
+  <script src="../js/core/routes.js"></script>
+  <script src="../js/core/design_system.js"></script>
+  <script src="../js/core/store.js"></script>
+  <script src="../js/core/permissions.js"></script>
+  <script src="../js/core/ui.js"></script>
+  <script src="../js/core/apps_menu.js"></script>
+  <script src="../js/core/export.js"></script>
+  <script src="../js/core/pwa.js"></script>
+  <script src="../js/core/icon_pack.js"></script>
+  <script src="../js/core/shell.js"></script>
+  <script src="../js/core/workflow_shell.js"></script>
+  <script>
+    try{ Shell.mount(); WorkflowShell.mount(); }catch(_){ }
+
+    const state = { tab:'structuur', search:'' };
+    function st(){ return window.CWS.getState(); }
+    function esc(v){ return UI.esc(v ?? ''); }
+    function uid(prefix){ return `${prefix}-${Date.now()}`; }
+    function projectId(){ const s = st(); return s.ui.activeProjectId || s.projects.order?.[0] || null; }
+    function activeProject(){ return st().projects.byId[projectId()] || null; }
+    function assemblies(){ const s = st(); return (s.assemblies.byProject[projectId()] || []).map(id => s.assemblies.byId[id]).filter(Boolean); }
+    function welds(){ const s = st(); return (s.welds.byProject[projectId()] || []).map(id => s.welds.byId[id]).filter(Boolean); }
+    function docsForProject(kind){
+      const s = st();
+      const ids = s.documents.byProject[projectId()] || [];
+      return ids.map(id => s.documents.byId[id]).filter(Boolean).filter(d => !kind || d.kind === kind);
+    }
+    function filteredWelds(){
+      const q = state.search.trim().toLowerCase();
+      return welds().filter(w => !q || [w.weldNo || w.id, w.locatie, w.lassers, assemblyName(w.assemblyId), w.materiaal, w.proces].join(' ').toLowerCase().includes(q));
+    }
+    function assemblyName(id){ return st().assemblies.byId[id]?.name || st().assemblies.byId[id]?.code || '-'; }
+    function setProject(id){ const s = st(); s.ui.activeProjectId = id; window.CWS.setState(s); render(); }
+    function statusBadge(status){ const cls = /ok|conform|goedgekeurd/.test(String(status||'').toLowerCase()) ? 'ok' : (/afgekeurd|nok|repair/.test(String(status||'').toLowerCase()) ? 'nok' : 'open'); return `<span class="badge ${cls}">${esc(status || 'open')}</span>`; }
+    function refreshProjectSelect(){
+      const sel = document.getElementById('projectSelect');
+      const s = st();
+      sel.innerHTML = (s.projects.order || []).map(id => {
+        const p = s.projects.byId[id];
+        return `<option value="${esc(id)}" ${String(id)===String(projectId())?'selected':''}>${esc(p.nummer)} · ${esc(p.naam)}</option>`;
+      }).join('');
+    }
+    function buildStats(){
+      const list = filteredWelds();
+      const photoCount = docsForProject('photo').length;
+      const okCount = list.filter(w => String(w.vtStatus || '').toLowerCase() === 'ok').length;
+      const assembliesCount = assemblies().length;
+      document.getElementById('stats').innerHTML = [
+        ['Assemblies', assembliesCount],
+        ['Lassen', list.length],
+        ['VT akkoord', okCount],
+        ['Foto’s', photoCount]
+      ].map(([label,val]) => `<div class="stat"><strong>${val}</strong><span>${label}</span></div>`).join('');
+    }
+    function assemblyModal(assembly){
+      const a = assembly || { code:'', name:'', drawingNo:'', revision:'A', status:'open', notes:'' };
+      UI.modalForm({
+        title: assembly ? 'Assembly wijzigen' : 'Nieuwe assembly',
+        submitLabel: assembly ? 'Opslaan' : 'Toevoegen',
+        values: a,
+        fields: [
+          { key:'code', label:'Code' },
+          { key:'name', label:'Naam' },
+          { key:'drawingNo', label:'Tekeningnummer' },
+          { key:'revision', label:'Revisie' },
+          { key:'status', label:'Status', type:'select', options:['open','released','closed'] },
+          { key:'notes', label:'Notities', type:'textarea', rows:3 }
+        ],
+        onSubmit: values => {
+          window.CWS.upsertAssembly({ id: assembly?.id || uid('ASM'), projectId: projectId(), ...values });
+          render();
+          UI.toast(assembly ? 'Assembly opgeslagen' : 'Assembly toegevoegd');
+          return true;
+        }
+      });
+    }
+    function weldModal(weld){
+      const s = st();
+      const assemblyOptions = assemblies().map(a => ({ value:a.id, label:`${a.code} · ${a.name}` }));
+      const workerOptions = (s.settings.workers.order || []).map(id => s.settings.workers.byId[id]).filter(Boolean).map(w => ({ value:w.naam || w.id, label:`${w.naam || w.id}` }));
+      const materialOptions = (s.settings.lists.materials || []).map(x => ({ value:x, label:x }));
+      const processOptions = (s.settings.lists.processes || []).map(x => ({ value:x, label:x }));
+      const w = weld || { weldNo:'', assemblyId:assemblies()[0]?.id || '', locatie:'', proces:processOptions[0]?.value || '', materiaal:materialOptions[0]?.value || '', dikte:'', lassers:workerOptions[0]?.value || '', wps:'', vtStatus:'open', ndoStatus:'open', status:'open' };
+      UI.modalForm({
+        title: weld ? 'Las wijzigen' : 'Nieuwe las',
+        submitLabel: weld ? 'Opslaan' : 'Toevoegen',
+        values: w,
+        fields: [
+          { key:'weldNo', label:'Lasnummer' },
+          { key:'assemblyId', label:'Assembly', type:'select', options: assemblyOptions.length ? assemblyOptions : [{value:'',label:'Geen assembly'}] },
+          { key:'locatie', label:'Locatie' },
+          { key:'proces', label:'Proces', type:'select', options: processOptions },
+          { key:'materiaal', label:'Materiaal', type:'select', options: materialOptions },
+          { key:'dikte', label:'Dikte (mm)' },
+          { key:'lassers', label:'Lasser', type:'select', options: workerOptions.length ? workerOptions : [{value:'',label:'Geen medewerker'}] },
+          { key:'wps', label:'WPS / lasmethode' },
+          { key:'vtStatus', label:'VT status', type:'select', options:['open','ok','nok'] },
+          { key:'ndoStatus', label:'NDO status', type:'select', options:['open','nvt','gepland','gereed'] },
+          { key:'status', label:'Workflowstatus', type:'select', options:['open','in_controle','conform','afgekeurd'] }
+        ],
+        onSubmit: values => {
+          const id = weld?.id || uid('W');
+          const current = st().welds.byId[id] || {};
+          window.CWS.upsertWeld({ ...current, id, projectId:projectId(), photos: current.photos || 0, last:new Date().toISOString(), ...values });
+          render();
+          UI.toast(weld ? 'Las opgeslagen' : 'Las toegevoegd');
+          return true;
+        }
+      });
+    }
+    function inspectionModal(weld){
+      const controls = window.CWS.ensureControlsForWeld(weld.id);
+      const flat = ['pre','mat','weld','ndt','doc'].flatMap(group => (controls[group] || []).map(row => ({ group, ...row })));
+      const body = `
+        <div class="list">${flat.map((row,idx) => `
+          <div class="item">
+            <div class="item-head"><strong>${esc(row.criterium)}</strong><span class="badge ${row.goedgekeurd?'ok':'open'}">${row.group}</span></div>
+            <div class="item-sub">${esc(row.norm || '')}</div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px">
+              <label><input type="checkbox" data-i="${idx}" data-f="vanToepassing" ${row.vanToepassing ? 'checked' : ''}> van toepassing</label>
+              <label><input type="checkbox" data-i="${idx}" data-f="goedgekeurd" ${row.goedgekeurd ? 'checked' : ''}> goedgekeurd</label>
+            </div>
+            <textarea class="input" rows="2" data-i="${idx}" data-f="opmerking" style="margin-top:10px">${esc(row.opmerking || '')}</textarea>
+          </div>`).join('')}</div>`;
+      UI.openModal({
+        title: `Inspectie ${weld.weldNo || weld.id}`,
+        saveLabel: 'Opslaan',
+        bodyHtml: body,
+        onSave: ({close}) => {
+          document.querySelectorAll('#uiModalBody [data-i]').forEach(el => {
+            const idx = Number(el.dataset.i);
+            const row = flat[idx];
+            if(!row) return;
+            const patch = {};
+            if(el.dataset.f === 'opmerking') patch.opmerking = el.value;
+            else patch[el.dataset.f] = !!el.checked;
+            window.CWS.setCriterion(weld.id, row.group, row.id, patch);
+          });
+          const allGroups = window.CWS.ensureControlsForWeld(weld.id);
+          const allRows = ['pre','mat','weld','ndt','doc'].flatMap(g => allGroups[g] || []).filter(x => x.vanToepassing !== false);
+          const ok = allRows.length && allRows.every(x => x.goedgekeurd);
+          window.CWS.upsertWeld({ ...weld, vtStatus: ok ? 'ok' : 'open', status: ok ? 'conform' : 'in_controle', last:new Date().toISOString() });
+          close();
+          render();
+          UI.toast('Inspectie opgeslagen');
+        }
+      });
+    }
+    function uploadPhotos(){
+      const list = filteredWelds();
+      if(!list.length){ UI.toast('Voeg eerst een las toe'); return; }
+      const options = list.map(w => ({ value:w.id, label:`${w.weldNo || w.id} · ${w.locatie || '-'}` }));
+      const defaultWeld = options[0]?.value || '';
+      UI.openModal({
+        title:'Foto upload',
+        saveLabel:'Opslaan',
+        bodyHtml:`
+          <div style="display:grid;gap:12px">
+            <label><div class="smallmuted" style="font-weight:800;margin-bottom:6px">Las</div><select id="photoWeld" class="input">${options.map(o => `<option value="${esc(o.value)}">${esc(o.label)}</option>`).join('')}</select></label>
+            <label><div class="smallmuted" style="font-weight:800;margin-bottom:6px">Camera / foto</div><input id="photoInput" class="input" type="file" accept="image/*" capture="environment" multiple></label>
+            <div class="smallmuted">Mobiele camera wordt ondersteund via capture=environment.</div>
+          </div>`,
+        onSave: ({close}) => {
+          const weldId = document.getElementById('photoWeld').value || defaultWeld;
+          const files = Array.from(document.getElementById('photoInput').files || []);
+          if(!files.length){ UI.toast('Kies minimaal één foto'); return false; }
+          let remaining = files.length;
+          files.forEach(file => {
+            const reader = new FileReader();
+            reader.onload = () => {
+              window.CWS.upsertDocument({ id: uid('DOC'), projectId:projectId(), weldId, name:file.name, mime:file.type || 'image/jpeg', size:file.size || 0, kind:'photo', dataUrl:String(reader.result || ''), ts:new Date().toISOString() });
+              const weld = st().welds.byId[weldId];
+              if(weld) window.CWS.upsertWeld({ ...weld, photos: (Number(weld.photos)||0) + 1, last:new Date().toISOString() });
+              remaining -= 1;
+              if(remaining === 0){ close(); render(); UI.toast('Foto(s) opgeslagen'); }
+            };
+            reader.readAsDataURL(file);
+          });
+        }
+      });
+    }
+    function deleteAssembly(id){ if(confirm('Assembly verwijderen?')){ window.CWS.removeAssembly(id); render(); } }
+    function deleteWeld(id){ if(confirm('Las verwijderen?')){ window.CWS.removeWeld(id); render(); } }
+    function renderStructuur(){
+      const asm = assemblies().map(a => ({...a, welds: filteredWelds().filter(w => String(w.assemblyId)===String(a.id))}));
+      return `<div class="grid"><div class="panel"><h3>Assemblies</h3><div class="list">${asm.map(a => `
+        <article class="item" data-assembly-id="${esc(a.id)}">
+          <div class="item-head"><div><strong>${esc(a.code)}</strong><div class="item-sub">${esc(a.name)} · Tekening ${esc(a.drawingNo || '-')} · Rev. ${esc(a.revision || '-')}</div></div>${statusBadge(a.status)}</div>
+          <div class="row-actions" style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-action="edit-assembly" data-id="${esc(a.id)}">Wijzig</button><button class="btn" data-action="delete-assembly" data-id="${esc(a.id)}">Verwijder</button><button class="btn" data-action="new-weld" data-id="${esc(a.id)}">Las toevoegen</button></div>
+        </article>`).join('') || '<div class="muted">Nog geen assemblies.</div>'}</div></div>
+        <div class="panel"><h3>Structuur</h3><div class="list">${asm.map(a => `
+          <article class="item"><div class="item-head"><strong>${esc(a.code)} · ${esc(a.name)}</strong><span class="badge">${a.welds.length} lassen</span></div><div class="item-sub">${a.welds.map(w => `${esc(w.weldNo || w.id)} (${esc(w.locatie || '-')})`).join('<br>') || 'Nog geen lassen in deze assembly.'}</div></article>`).join('') || '<div class="muted">Selecteer of maak eerst een assembly aan.</div>'}</div></div></div>`;
+    }
+    function renderLassen(){
+      const rows = filteredWelds();
+      return `<div class="surface"><div class="table-wrap"><table><thead><tr><th>Las</th><th>Assembly</th><th>Proces</th><th>Materiaal</th><th>Lasser</th><th>VT</th><th>NDO</th><th>Foto’s</th><th>Acties</th></tr></thead><tbody>${rows.map(w => `
+        <tr data-id="${esc(w.id)}"><td><strong>${esc(w.weldNo || w.id)}</strong><div class="smallmuted">${esc(w.locatie || '-')}</div></td><td>${esc(assemblyName(w.assemblyId))}</td><td>${esc(w.proces || '-')}</td><td>${esc(w.materiaal || '-')}</td><td>${esc(w.lassers || '-')}</td><td>${statusBadge(w.vtStatus)}</td><td>${statusBadge(w.ndoStatus)}</td><td>${esc(w.photos || 0)}</td><td><button class="btn" data-action="edit-weld" data-id="${esc(w.id)}">Wijzig</button><button class="btn" data-action="inspect" data-id="${esc(w.id)}">Inspectie</button><button class="btn" data-action="delete-weld" data-id="${esc(w.id)}">Verwijder</button></td></tr>`).join('') || '<tr><td colspan="9" class="smallmuted">Nog geen lassen.</td></tr>'}</tbody></table></div></div>`;
+    }
+    function renderInspectie(){
+      const rows = filteredWelds();
+      return `<div class="grid"><div class="panel"><h3>Openstaande inspecties</h3><div class="list">${rows.map(w => `
+        <article class="item"><div class="item-head"><div><strong>${esc(w.weldNo || w.id)}</strong><div class="item-sub">${esc(w.locatie || '-')} · ${esc(assemblyName(w.assemblyId))}</div></div>${statusBadge(w.vtStatus)}</div><div class="row-actions" style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-action="inspect" data-id="${esc(w.id)}">Inspectie openen</button><button class="btn" data-action="upload-photo-for" data-id="${esc(w.id)}">Foto koppelen</button></div></article>`).join('') || '<div class="muted">Nog geen lassen.</div>'}</div></div>
+      <div class="panel"><h3>Normstructuur</h3><div class="muted">De inspectie gebruikt de groepen voorbereiding, materiaal, las, NDT en documentatie. Na volledig goedkeuren wordt VT automatisch op OK gezet en telt de las mee voor het CE-dossier.</div></div></div>`;
+    }
+    function renderFotos(){
+      const photos = docsForProject('photo');
+      return `<div class="surface"><div class="photo-grid">${photos.map(doc => `<article class="photo-card"><img src="${esc(doc.dataUrl || '')}" alt="${esc(doc.name)}"><div class="body"><strong>${esc(doc.name)}</strong><div class="muted">Las: ${esc(st().welds.byId[doc.weldId]?.weldNo || doc.weldId || '-')}</div></div></article>`).join('') || '<div class="muted">Nog geen foto’s opgeslagen.</div>'}</div></div>`;
+    }
+    function buildReportText(){
+      const p = activeProject();
+      const rows = filteredWelds();
+      return [`Lasinspectierapport`, `Project: ${p?.nummer || '-'} - ${p?.naam || '-'}`, '', ...rows.map(w => `${w.weldNo || w.id} | ${w.locatie || '-'} | ${assemblyName(w.assemblyId)} | VT=${w.vtStatus || '-'} | NDO=${w.ndoStatus || '-'} | Lasser=${w.lassers || '-'} | Foto's=${w.photos || 0}`)].join('\n');
+    }
+    function renderRapportage(){
+      const text = buildReportText();
+      return `<div class="grid"><div class="panel"><h3>Lasinspectierapport</h3><pre style="white-space:pre-wrap;font:inherit;color:#334155;background:#f8fbff;border:1px solid #e5ebf5;border-radius:18px;padding:14px">${esc(text)}</pre></div><div class="panel"><h3>Export</h3><div class="muted">Gebruik dit rapport voor fase 9 export. Het CE-dossier leest dezelfde projectdata uit.</div><div class="row-actions" style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="btnExportReportTxt">TXT export</button><button class="btn" id="btnExportReportCsv">CSV export</button></div></div></div>`;
+    }
+    function renderView(){
+      const root = document.getElementById('view');
+      if(!activeProject()){ root.innerHTML = '<section class="surface"><div class="muted">Geen actief project geselecteerd.</div></section>'; return; }
+      if(state.tab === 'structuur') root.innerHTML = renderStructuur();
+      else if(state.tab === 'lassen') root.innerHTML = renderLassen();
+      else if(state.tab === 'inspectie') root.innerHTML = renderInspectie();
+      else if(state.tab === 'fotos') root.innerHTML = renderFotos();
+      else root.innerHTML = renderRapportage();
+      UI.bindRowDblClick(root.querySelector('tbody'), id => weldModal(st().welds.byId[id]));
+    }
+    function render(){ refreshProjectSelect(); buildStats(); renderView(); }
+
+    document.getElementById('projectSelect').addEventListener('change', e => setProject(e.target.value));
+    document.getElementById('search').addEventListener('input', e => { state.search = e.target.value || ''; render(); });
+    document.getElementById('btnAssembly').addEventListener('click', () => assemblyModal(null));
+    document.getElementById('btnWeld').addEventListener('click', () => weldModal(null));
+    document.getElementById('btnPhoto').addEventListener('click', uploadPhotos);
+    document.getElementById('btnToCe').addEventListener('click', () => location.href = window.CWS_ROUTES.billing);
+    document.querySelectorAll('[data-tab]').forEach(btn => btn.addEventListener('click', () => { state.tab = btn.dataset.tab; document.querySelectorAll('[data-tab]').forEach(x => x.classList.toggle('active', x === btn)); renderView(); }));
+    document.getElementById('view').addEventListener('click', e => {
+      const btn = e.target.closest('[data-action]');
+      if(!btn) return;
+      const id = btn.dataset.id;
+      const action = btn.dataset.action;
+      if(action === 'edit-assembly') assemblyModal(st().assemblies.byId[id]);
+      else if(action === 'delete-assembly') deleteAssembly(id);
+      else if(action === 'new-weld') weldModal({ assemblyId:id });
+      else if(action === 'edit-weld') weldModal(st().welds.byId[id]);
+      else if(action === 'delete-weld') deleteWeld(id);
+      else if(action === 'inspect') inspectionModal(st().welds.byId[id]);
+      else if(action === 'upload-photo-for') uploadPhotos();
+    });
+    document.getElementById('view').addEventListener('click', e => {
+      if(e.target.id === 'btnExportReportTxt') Export.text('lasinspectierapport.txt', buildReportText());
+      if(e.target.id === 'btnExportReportCsv') Export.toCsv('lasinspectierapport.csv', filteredWelds().map(w => ({ weld:w.weldNo || w.id, location:w.locatie || '', assembly:assemblyName(w.assemblyId), vt:w.vtStatus || '', ndo:w.ndoStatus || '', welder:w.lassers || '', photos:w.photos || 0 })));
+    });
+
+    if(!(st().projects.order || []).length) window.CWS.resetDemo();
+    if(!projectId()){
+      const s = st();
+      s.ui.activeProjectId = s.projects.order?.[0] || null;
+      window.CWS.setState(s);
+    }
+    render();
+  </script>
 </body>
 </html>

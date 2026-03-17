@@ -1,72 +1,150 @@
 <!doctype html>
 <html lang="nl">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Instellingen · CWS NEN-1090</title>
-  <link rel="stylesheet" href="../css/app-v2.css">
-  <script defer src="../js/core/app_v2.js"></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Instellingen</title>
+  <link rel="stylesheet" href="../css/theme.css" />
+  <link rel="stylesheet" href="../css/workflow-rebuild.css" />
+  <style>
+    .page{display:grid;gap:18px}.hero{display:flex;justify-content:space-between;gap:18px;align-items:end;flex-wrap:wrap}.hero h1{margin:0;font-size:42px;line-height:.95;letter-spacing:-.04em}.hero p{margin:8px 0 0;color:#64748b;max-width:760px}
+    .toolbar,.tabs,.row-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.toolbar .input{min-width:280px}
+    .panel{background:#fff;border:1px solid #e5ebf5;border-radius:24px;box-shadow:0 12px 34px rgba(15,23,42,.05);padding:18px}.grid{display:grid;gap:16px}.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.card{background:#fff;border:1px solid #e5ebf5;border-radius:20px;padding:16px;box-shadow:0 8px 22px rgba(15,23,42,.04)}.card strong{display:block;font-size:24px}.card span{color:#64748b;font-size:13px}
+    table{width:100%;border-collapse:collapse}th,td{padding:12px 10px;border-bottom:1px solid #edf2f7;text-align:left;vertical-align:top}th{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#64748b}
+    .tab.active{background:#eef4ff;border-color:#cfe0ff;color:#2457e6}
+    @media (max-width:760px){.hero h1{font-size:34px}.toolbar{display:grid;grid-template-columns:1fr 1fr}.toolbar .input{grid-column:1/-1;min-width:0;width:100%}.cards{grid-template-columns:1fr 1fr}}
+  </style>
 </head>
-<body>
-  <div id="page-content">
-    <section class="page-head">
+<body data-title="Instellingen">
+  <main class="page">
+    <section class="hero">
       <div>
-        <div class="overline">Beheerlaag gescheiden van operationeel werk</div>
         <h1>Instellingen</h1>
-        <p>Fase 4 houdt instellingen functioneel en sluit beheer beter aan op de werkende projectflow.</p>
-      </div>
-      <div class="inline-actions">
-        <button class="btn btn-primary" data-action="save-settings">Opslaan</button>
+        <p>Fase 10: bedrijfsgegevens, medewerkers, certificaten, materialen, lasmethodes en keuzelijsten. Deze lijsten worden gebruikt in de popupformulieren van projecten en lascontrole.</p>
       </div>
     </section>
 
-    <section class="table-card" data-tabs-host>
-      <div class="subtabs">
-        <button class="subtab is-active" data-target="app">Applicatie</button>
-        <button class="subtab" data-target="beveiliging">Beveiliging</button>
-        <button class="subtab" data-target="beheer">Beheer</button>
-      </div>
+    <section class="cards" id="cards"></section>
 
-      <div data-tab-panel="app" style="margin-top:16px">
-        <div class="settings-grid">
-          <article class="detail-card">
-            <div class="section-title"><div><h2>Organisatie</h2><p>Basisinstellingen van de omgeving</p></div></div>
-            <div class="field"><label>Bedrijfsnaam</label><input id="organisationName"></div>
-            <div class="field"><label>Standaard executieklasse</label><select id="defaultExc"><option>EXC1</option><option>EXC2</option><option>EXC3</option></select></div>
-            <div class="field"><label>Projectprefix</label><input id="projectPrefix"></div>
-            <div class="inline-actions"><button class="btn btn-primary" data-action="save-settings">Opslaan</button></div>
-          </article>
-          <article class="detail-card">
-            <div class="section-title"><div><h2>Workflow</h2><p>Vaste proceslijn voor het platform</p></div></div>
-            <div class="list">
-              <div class="list-item"><div><strong>Projectbeheer</strong><span>Projectstart, planning, opdrachtgever</span></div><span class="badge badge-soft">Actief</span></div>
-              <div class="list-item"><div><strong>Lascontrole</strong><span>Materiaal, uitvoering, NDT</span></div><span class="badge badge-soft">Actief</span></div>
-              <div class="list-item"><div><strong>CE Dossier</strong><span>Export, vrijgave en oplevering</span></div><span class="badge badge-soft">Actief</span></div>
-              <div class="list-item"><div><strong>Data bron</strong><span id="settingsApiStatus"></span></div><button class="btn btn-soft" data-action="sync-api">Ververs</button></div>
-            </div>
-          </article>
-        </div>
-      </div>
-
-      <div data-tab-panel="beveiliging" hidden style="margin-top:16px">
-        <div class="card-grid">
-          <article class="detail-card">
-            <div class="section-title"><div><h2>Beveiliging</h2><p>Authenticatie en sessieregels</p></div></div>
-            <div class="field"><label>2FA verplicht</label><select id="twoFactor"><option>Ja</option><option>Nee</option></select></div>
-            <div class="field"><label>Session timeout</label><input id="sessionTimeout"></div>
-            <button class="btn btn-primary" data-action="save-settings">Opslaan</button>
-          </article>
-          <article class="detail-card"><div class="section-title"><div><h2>Audit & logging</h2><p>Voorbereid voor fase 3</p></div></div><p>In de laatste fase koppelen we auditlogica, validaties en foutafhandeling aan echte API-data.</p></article>
-        </div>
-      </div>
-
-      <div data-tab-panel="beheer" hidden style="margin-top:16px">
-        <div class="card-grid">
-          <article class="detail-card"><div class="section-title"><div><h2>Demo beheer</h2><p>Snel terug naar startsituatie</p></div></div><button class="btn btn-primary" data-action="reset-demo">Demo reset</button></article>
-          <article class="detail-card"><div class="section-title"><div><h2>Opmerking</h2><p>Instellingen worden lokaal in de browser opgeslagen.</p></div></div><p>Dit is bedoeld voor fase 2 validatie van de workflow. API-gekoppelde beheerlogica volgt in fase 3.</p></article>
-        </div>
-      </div>
+    <section class="toolbar">
+      <input id="search" class="input" type="search" placeholder="Zoeken binnen instellingen" />
+      <button class="btn" id="btnAdd">Nieuw item</button>
     </section>
-  </div>
+
+    <section class="tabs">
+      <button class="tab active" data-tab="bedrijf">Bedrijf</button>
+      <button class="tab" data-tab="werknemers">Werknemers</button>
+      <button class="tab" data-tab="certificaten">Certificaten</button>
+      <button class="tab" data-tab="materialen">Materialen</button>
+      <button class="tab" data-tab="lasmethodes">Lasmethodes</button>
+      <button class="tab" data-tab="keuzelijsten">Keuzelijsten</button>
+    </section>
+
+    <section id="view" class="panel"></section>
+  </main>
+
+  <script src="../js/core/routes.js"></script>
+  <script src="../js/core/design_system.js"></script>
+  <script src="../js/core/store.js"></script>
+  <script src="../js/core/permissions.js"></script>
+  <script src="../js/core/ui.js"></script>
+  <script src="../js/core/apps_menu.js"></script>
+  <script src="../js/core/export.js"></script>
+  <script src="../js/core/pwa.js"></script>
+  <script src="../js/core/icon_pack.js"></script>
+  <script src="../js/core/shell.js"></script>
+  <script src="../js/core/workflow_shell.js"></script>
+  <script>
+    try{ Shell.mount(); WorkflowShell.mount(); }catch(_){ }
+    const state = { tab:'bedrijf', search:'' };
+    function st(){ return window.CWS.getState(); }
+    function q(v){ return String(v || '').toLowerCase().includes(state.search.trim().toLowerCase()); }
+    function cards(){
+      const s = st();
+      document.getElementById('cards').innerHTML = [
+        ['Medewerkers', (s.settings.workers.order || []).length],
+        ['Certificaten', Object.keys(s.certs.byId || {}).length],
+        ['Materialen', (s.settings.lists.materials || []).length],
+        ['Processen', (s.settings.lists.processes || []).length]
+      ].map(([label,val]) => `<div class="card"><strong>${val}</strong><span>${UI.esc(label)}</span></div>`).join('');
+    }
+    function companyView(){
+      const c = st().settings.company || {};
+      return `<table><tbody>
+        <tr><th>Bedrijfsnaam</th><td>${UI.esc(c.name || '-')}</td></tr>
+        <tr><th>Adres</th><td>${UI.esc(c.address || '-')}</td></tr>
+        <tr><th>E-mail</th><td>${UI.esc(c.email || '-')}</td></tr>
+        <tr><th>Telefoon</th><td>${UI.esc(c.phone || '-')}</td></tr>
+      </tbody></table>`;
+    }
+    function workersView(){
+      const rows = (st().settings.workers.order || []).map(id => st().settings.workers.byId[id]).filter(Boolean).filter(w => !state.search || q([w.id,w.naam,w.rol].join(' ')));
+      return `<table><thead><tr><th>ID</th><th>Naam</th><th>Rol</th><th>Geldig tot</th><th>Acties</th></tr></thead><tbody>${rows.map(w => `<tr data-id="${UI.esc(w.id)}"><td>${UI.esc(w.id)}</td><td>${UI.esc(w.naam || '')}</td><td>${UI.esc(w.rol || '')}</td><td>${UI.esc(w.geldigTot || '')}</td><td><button class="btn" data-action="edit-worker" data-id="${UI.esc(w.id)}">Wijzig</button><button class="btn" data-action="delete-worker" data-id="${UI.esc(w.id)}">Verwijder</button></td></tr>`).join('') || '<tr><td colspan="5" class="smallmuted">Geen werknemers.</td></tr>'}</tbody></table>`;
+    }
+    function certView(){
+      const rows = Object.values(st().certs.byId || {}).filter(Boolean).filter(c => !state.search || q([c.id,c.type,c.name,c.ref].join(' ')));
+      return `<table><thead><tr><th>ID</th><th>Type</th><th>Naam</th><th>Referentie</th><th>Geldig tot</th><th>Acties</th></tr></thead><tbody>${rows.map(c => `<tr><td>${UI.esc(c.id)}</td><td>${UI.esc(c.type || '')}</td><td>${UI.esc(c.name || '')}</td><td>${UI.esc(c.ref || '')}</td><td>${UI.esc(c.validTo || '')}</td><td><button class="btn" data-action="edit-cert" data-id="${UI.esc(c.id)}">Wijzig</button><button class="btn" data-action="delete-cert" data-id="${UI.esc(c.id)}">Verwijder</button></td></tr>`).join('') || '<tr><td colspan="6" class="smallmuted">Geen certificaten.</td></tr>'}</tbody></table>`;
+    }
+    function listTable(listKey, title){
+      const rows = (st().settings.lists[listKey] || []).filter(x => !state.search || q(x));
+      return `<div class="row-actions" style="margin-bottom:10px"><span class="smallmuted">${UI.esc(title)}</span></div><table><thead><tr><th>Waarde</th><th>Acties</th></tr></thead><tbody>${rows.map((value,idx) => `<tr><td>${UI.esc(value)}</td><td><button class="btn" data-action="edit-list" data-list="${UI.esc(listKey)}" data-value="${UI.esc(value)}">Wijzig</button><button class="btn" data-action="delete-list" data-list="${UI.esc(listKey)}" data-value="${UI.esc(value)}">Verwijder</button></td></tr>`).join('') || '<tr><td colspan="2" class="smallmuted">Geen waarden.</td></tr>'}</tbody></table>`;
+    }
+    function render(){
+      cards();
+      const view = document.getElementById('view');
+      if(state.tab === 'bedrijf') view.innerHTML = companyView();
+      else if(state.tab === 'werknemers') view.innerHTML = workersView();
+      else if(state.tab === 'certificaten') view.innerHTML = certView();
+      else if(state.tab === 'materialen') view.innerHTML = listTable('materials', 'Materiaalsoorten');
+      else if(state.tab === 'lasmethodes') view.innerHTML = listTable('lasmethodes', 'Lasmethodes / WPS labels');
+      else view.innerHTML = `<div class="grid">${listTable('processes','Processen')}<br><br>${listTable('ndoMethods','NDO methoden')}<br><br>${listTable('excKlassen','EXC klassen')}</div>`;
+    }
+    function editCompany(){
+      const c = st().settings.company || {};
+      UI.modalForm({ title:'Bedrijfsgegevens', submitLabel:'Opslaan', values:c, fields:[{key:'name',label:'Naam'},{key:'address',label:'Adres'},{key:'email',label:'E-mail'},{key:'phone',label:'Telefoon'}], onSubmit: values => { window.CWS.updateCompany(values); render(); UI.toast('Bedrijfsgegevens opgeslagen'); return true; } });
+    }
+    function workerModal(worker){
+      const w = worker || { id:'WKR-' + Date.now(), naam:'', rol:'Lasser', geldigTot:'' };
+      UI.modalForm({ title:worker?'Werknemer wijzigen':'Nieuwe werknemer', submitLabel:'Opslaan', values:w, fields:[{key:'id',label:'ID'},{key:'naam',label:'Naam'},{key:'rol',label:'Rol',type:'select',options:['Lasser','Inspecteur','Werkvoorbereider','Admin']},{key:'geldigTot',label:'Geldig tot'}], onSubmit: values => { window.CWS.upsertWorker(values); render(); UI.toast('Werknemer opgeslagen'); return true; } });
+    }
+    function certModal(cert){
+      const c = cert || { id:'CERT-' + Date.now(), type:'bedrijf', name:'', ref:'', validTo:'' };
+      UI.modalForm({ title:cert?'Certificaat wijzigen':'Nieuw certificaat', submitLabel:'Opslaan', values:c, fields:[{key:'id',label:'ID'},{key:'type',label:'Type',type:'select',options:['bedrijf','lassers','lascoordinator']},{key:'name',label:'Naam'},{key:'ref',label:'Referentie'},{key:'validTo',label:'Geldig tot'}], onSubmit: values => { window.CWS.upsertCert(values); render(); UI.toast('Certificaat opgeslagen'); return true; } });
+    }
+    function listModal(listKey, value){
+      UI.modalForm({ title:'Waarde bewerken', submitLabel:'Opslaan', values:{ value:value || '' }, fields:[{key:'value',label:'Waarde'}], onSubmit: values => {
+        const arr = [...(st().settings.lists[listKey] || [])];
+        if(value){ const idx = arr.indexOf(value); if(idx >= 0) arr[idx] = values.value; }
+        else arr.push(values.value);
+        window.CWS.updateList(listKey, Array.from(new Set(arr.filter(Boolean))));
+        render(); UI.toast('Lijst bijgewerkt'); return true;
+      }});
+    }
+    document.getElementById('search').addEventListener('input', e => { state.search = e.target.value || ''; render(); });
+    document.querySelectorAll('[data-tab]').forEach(btn => btn.addEventListener('click', () => { state.tab = btn.dataset.tab; document.querySelectorAll('[data-tab]').forEach(x => x.classList.toggle('active', x === btn)); render(); }));
+    document.getElementById('btnAdd').addEventListener('click', () => {
+      if(state.tab === 'bedrijf') editCompany();
+      else if(state.tab === 'werknemers') workerModal(null);
+      else if(state.tab === 'certificaten') certModal(null);
+      else if(state.tab === 'materialen') listModal('materials','');
+      else if(state.tab === 'lasmethodes') listModal('lasmethodes','');
+      else listModal('processes','');
+    });
+    document.getElementById('view').addEventListener('click', e => {
+      const btn = e.target.closest('[data-action]'); if(!btn) return;
+      const act = btn.dataset.action;
+      if(act === 'edit-worker') workerModal(st().settings.workers.byId[btn.dataset.id]);
+      else if(act === 'delete-worker'){ if(confirm('Werknemer verwijderen?')){ window.CWS.removeWorker(btn.dataset.id); render(); } }
+      else if(act === 'edit-cert') certModal(st().certs.byId[btn.dataset.id]);
+      else if(act === 'delete-cert'){ if(confirm('Certificaat verwijderen?')){ window.CWS.removeCert(btn.dataset.id); render(); } }
+      else if(act === 'edit-list') listModal(btn.dataset.list, btn.dataset.value);
+      else if(act === 'delete-list'){
+        const arr = (st().settings.lists[btn.dataset.list] || []).filter(x => x !== btn.dataset.value);
+        window.CWS.updateList(btn.dataset.list, arr); render();
+      }
+    });
+    if(!(st().projects.order || []).length) window.CWS.resetDemo();
+    render();
+  </script>
 </body>
 </html>

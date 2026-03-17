@@ -9,11 +9,9 @@
     root: ROOT,
     start: ROOT + '/layers/dashboard.html',
     projects: ROOT + '/layers/projecten.html',
-    projectDetail: ROOT + '/layers/project_detail.html',
     welds: ROOT + '/layers/lascontrole.html',
-    ce: ROOT + '/layers/ce_dossier.html',
     settings: ROOT + '/layers/instellingen.html',
     admin: ROOT + '/layers/superadmin.html',
-    billing: ROOT + '/layers/tenant_billing.html'
+    billing: ROOT + '/layers/ce_dossier.html'
   });
 })();

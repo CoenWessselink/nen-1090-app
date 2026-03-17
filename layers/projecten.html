@@ -1,52 +1,240 @@
 <!doctype html>
 <html lang="nl">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Projecten · CWS NEN-1090</title>
-  <link rel="stylesheet" href="../css/app-v2.css">
-  <script defer src="../js/core/app_v2.js"></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Projecten</title>
+  <link rel="stylesheet" href="../css/theme.css" />
+  <link rel="stylesheet" href="../css/workflow-rebuild.css" />
+  <meta name="theme-color" content="#0c1830" />
+  <style>
+    .page{display:grid;gap:18px}
+    .hero{display:flex;justify-content:space-between;gap:18px;align-items:end;flex-wrap:wrap}
+    .hero h1{margin:0;font-size:44px;line-height:.95;letter-spacing:-.04em}
+    .hero p{margin:8px 0 0;color:#64748b;max-width:720px}
+    .toolbar,.filters,.actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .toolbar .input{min-width:280px}
+    .surface{background:#fff;border:1px solid #e5ebf5;border-radius:24px;box-shadow:0 12px 34px rgba(15,23,42,.05);padding:18px}
+    .table-wrap{overflow:auto}
+    table{width:100%;border-collapse:collapse;min-width:980px}
+    th,td{padding:14px 12px;border-bottom:1px solid #edf2f7;text-align:left;vertical-align:top}
+    th{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#64748b}
+    tr[data-id]{cursor:pointer}
+    tr[data-id]:hover{background:#f8fbff}
+    .pill{display:inline-flex;align-items:center;border-radius:999px;padding:7px 12px;font-size:12px;font-weight:800}
+    .pill.in_controle{background:#dbeafe;color:#1d4ed8}.pill.conform{background:#dcfce7;color:#166534}.pill.afgekeurd{background:#fee2e2;color:#b91c1c}.pill.locked{background:#e5e7eb;color:#334155}
+    .cards{display:none;gap:12px}
+    .card{background:#fff;border:1px solid #e5ebf5;border-radius:22px;padding:16px;box-shadow:0 10px 24px rgba(15,23,42,.05)}
+    .card h3{margin:0;font-size:20px}
+    .card .sub{margin-top:4px;color:#64748b;font-size:13px}
+    .meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px}
+    .meta .box{background:#f8fbff;border:1px solid #e6eef8;border-radius:16px;padding:10px 12px}
+    .meta strong{display:block;font-size:11px;text-transform:uppercase;color:#64748b;margin-bottom:4px}
+    .row-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+    @media (max-width:760px){
+      .hero h1{font-size:36px}
+      .toolbar{display:grid;grid-template-columns:1fr 1fr}
+      .toolbar .input{grid-column:1/-1;min-width:0;width:100%}
+      .surface .table-wrap{display:none}
+      .cards{display:grid}
+    }
+  </style>
 </head>
-<body>
-  <div id="page-content">
-    <section class="page-head">
+<body data-title="Projecten">
+  <main class="page">
+    <section class="hero">
       <div>
-        <div class="overline">Projecten als kapstok van de hele app</div>
         <h1>Projecten</h1>
-        <p>Fase 4 maakt projecten bruikbaar als echte regietafel met kopiëren, verwijderen en directe vervolgstappen.</p>
+        <p>Fase 8 t/m 11: projectbeheer, actieve projectkeuze, workflow naar assemblies en lassen, dubbelklik wijzigen en export.</p>
       </div>
-      <div class="head-actions">
-        <button class="btn btn-primary" data-action="modal-project">+ Nieuw project</button>
-        <button class="btn" data-action="sync-api">Sync API</button><button class="btn" data-action="reset-demo">Demo reset</button>
+      <div class="actions">
+        <span id="counter" class="smallmuted"></span>
       </div>
     </section>
 
-    <section class="metric-grid">
-      <article class="metric-card"><h3>Alle projecten</h3><strong id="metricAllProjects">0</strong><span>Volledige projectportefeuille</span></article>
-      <article class="metric-card"><h3>In controle</h3><strong id="metricInControl">0</strong><span>Inspectie of documentatie nog open</span></article>
-      <article class="metric-card"><h3>Conform</h3><strong id="metricConform">0</strong><span>Gereed voor CE-review of archief</span></article>
-      <article class="metric-card"><h3>Blokkades</h3><strong id="metricBlocked">0</strong><span>Documenten of certificaten missen</span></article>
+    <section class="toolbar">
+      <input id="search" class="input" type="search" placeholder="Zoeken op projectnummer, naam of opdrachtgever" />
+      <button id="btnNew" class="btn">Nieuw project</button>
+      <button id="btnExport" class="btn">CSV export</button>
+      <button id="btnSeed" class="btn">Demo data</button>
     </section>
 
-    <section class="table-card">
-      <div class="toolbar">
-        <div class="grow"><input class="input" type="search" placeholder="Zoek project" data-filter-target="#projectRows"></div>
-        <button class="btn" data-action="drawer" data-title="Kolommen" data-content="<div class='notice'>Kolommen zijn gestandaardiseerd. In fase 4 ligt de focus op werkende acties en logische doorstroming.</div>">Kolommen</button>
-      </div>
-
-      <div class="subtabs" style="margin-top:16px">
-        <button class="subtab is-active" data-status-filter="all">Alle projecten</button>
-        <button class="subtab" data-status-filter="In controle">In controle</button>
-        <button class="subtab" data-status-filter="Conform">Conform</button>
-        <button class="subtab" data-status-filter="Concept">Concept</button>
-      </div>
-
-      <table class="table" style="margin-top:16px">
-        <thead><tr><th>Projectnummer</th><th>Opdrachtgever</th><th>Executieklasse</th><th>Status</th><th>Volgende stap</th><th>Acties</th></tr></thead>
-        <tbody id="projectRows"></tbody>
-      </table>
-      <div class="mobile-list" id="projectMobile"></div>
+    <section class="filters">
+      <button class="btn active" data-filter="all">Alle</button>
+      <button class="btn" data-filter="in_controle">In controle</button>
+      <button class="btn" data-filter="conform">Conform</button>
+      <button class="btn" data-filter="afgekeurd">Afgekeurd</button>
+      <button class="btn" data-filter="locked">Locked</button>
     </section>
-  </div>
+
+    <section class="surface">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Project</th><th>Opdrachtgever</th><th>EXC</th><th>Acceptatie</th><th>Status</th><th>Assemblies</th><th>Lassen</th><th>Acties</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+      <div id="cards" class="cards"></div>
+    </section>
+  </main>
+
+  <script src="../js/core/routes.js"></script>
+  <script src="../js/core/design_system.js"></script>
+  <script src="../js/core/store.js"></script>
+  <script src="../js/core/permissions.js"></script>
+  <script src="../js/core/ui.js"></script>
+  <script src="../js/core/apps_menu.js"></script>
+  <script src="../js/core/export.js"></script>
+  <script src="../js/core/pwa.js"></script>
+  <script src="../js/core/icon_pack.js"></script>
+  <script src="../js/core/shell.js"></script>
+  <script src="../js/core/workflow_shell.js"></script>
+  <script>
+    try{ Shell.mount(); WorkflowShell.mount(); }catch(_){ }
+
+    const state = { filter: 'all', search: '' };
+
+    function st(){ return window.CWS.getState(); }
+    function esc(v){ return UI.esc(v ?? ''); }
+    function projects(){
+      const s = st();
+      return (s.projects.order || []).map(id => s.projects.byId[id]).filter(Boolean).map(p => ({
+        ...p,
+        assemblyCount: (s.assemblies.byProject[p.id] || []).length,
+        weldCount: (s.welds.byProject[p.id] || []).length
+      }));
+    }
+    function visible(){
+      const q = state.search.trim().toLowerCase();
+      return projects().filter(p => {
+        if(state.filter !== 'all' && String(p.status) !== state.filter) return false;
+        if(!q) return true;
+        return [p.nummer,p.naam,p.opdrachtgever,p.exc,p.acceptatieklasse].join(' ').toLowerCase().includes(q);
+      });
+    }
+    function statusPill(status){ return `<span class="pill ${esc(status)}">${esc(String(status || '').replace('_',' '))}</span>`; }
+    function setActiveProject(id, navigate){
+      const s = st();
+      s.ui.activeProjectId = id;
+      window.CWS.setState(s);
+      if(navigate) location.href = window.CWS_ROUTES.welds;
+    }
+    function projectModal(project){
+      const p = project || { id:'', nummer:'', naam:'', opdrachtgever:'', exc:'EXC2', acceptatieklasse:'5817-B', status:'in_controle' };
+      UI.modalForm({
+        title: project ? 'Project wijzigen' : 'Nieuw project',
+        submitLabel: project ? 'Opslaan' : 'Aanmaken',
+        values: p,
+        fields: [
+          { key:'nummer', label:'Projectnummer' },
+          { key:'naam', label:'Projectnaam' },
+          { key:'opdrachtgever', label:'Opdrachtgever' },
+          { key:'exc', label:'Executieklasse', type:'select', options:(st().settings.lists.excKlassen || ['EXC1','EXC2','EXC3','EXC4']) },
+          { key:'acceptatieklasse', label:'Acceptatieklasse', type:'select', options:(st().settings.lists.acceptatieKlassen || ['5817-B','5817-C','5817-D']) },
+          { key:'status', label:'Status', type:'select', options:(st().settings.lists.projectStatussen || ['in_controle','conform','afgekeurd','locked']) }
+        ],
+        onSubmit: async (values) => {
+          const id = project?.id || ('P-' + Date.now());
+          window.CWS.upsertProject({
+            id,
+            nummer: values.nummer,
+            naam: values.naam,
+            opdrachtgever: values.opdrachtgever,
+            exc: values.exc,
+            acceptatieklasse: values.acceptatieklasse,
+            status: values.status,
+            locked: values.status === 'locked',
+            laatstGewijzigd: new Date().toISOString()
+          });
+          if(!project) setActiveProject(id, false);
+          render();
+          UI.toast(project ? 'Project opgeslagen' : 'Project aangemaakt');
+          return true;
+        }
+      });
+    }
+    function removeProject(id){
+      const p = st().projects.byId[id];
+      if(!p) return;
+      if(!confirm(`Project ${p.nummer} verwijderen?`)) return;
+      window.CWS.removeProject(id);
+      render();
+      UI.toast('Project verwijderd');
+    }
+    function render(){
+      const rows = visible();
+      document.getElementById('counter').textContent = `${rows.length} project${rows.length === 1 ? '' : 'en'}`;
+      const tbody = document.getElementById('tbody');
+      const cards = document.getElementById('cards');
+      if(!rows.length){
+        tbody.innerHTML = `<tr><td colspan="8" class="smallmuted">Geen projecten gevonden.</td></tr>`;
+        cards.innerHTML = `<div class="card"><div class="sub">Geen projecten gevonden.</div></div>`;
+        return;
+      }
+      tbody.innerHTML = rows.map(p => `
+        <tr data-id="${esc(p.id)}">
+          <td><strong>${esc(p.nummer)}</strong><div class="smallmuted">${esc(p.naam)}</div></td>
+          <td>${esc(p.opdrachtgever)}</td>
+          <td>${esc(p.exc)}</td>
+          <td>${esc(p.acceptatieklasse)}</td>
+          <td>${statusPill(p.status)}</td>
+          <td>${p.assemblyCount}</td>
+          <td>${p.weldCount}</td>
+          <td>
+            <button class="btn" data-action="open" data-id="${esc(p.id)}">Open</button>
+            <button class="btn" data-action="edit" data-id="${esc(p.id)}">Wijzig</button>
+            <button class="btn" data-action="delete" data-id="${esc(p.id)}">Verwijder</button>
+          </td>
+        </tr>`).join('');
+      cards.innerHTML = rows.map(p => `
+        <article class="card" data-id="${esc(p.id)}">
+          <h3>${esc(p.nummer)}</h3>
+          <div class="sub">${esc(p.naam)} · ${esc(p.opdrachtgever)}</div>
+          <div style="margin-top:12px">${statusPill(p.status)}</div>
+          <div class="meta">
+            <div class="box"><strong>Executieklasse</strong>${esc(p.exc)}</div>
+            <div class="box"><strong>Acceptatieklasse</strong>${esc(p.acceptatieklasse)}</div>
+            <div class="box"><strong>Assemblies</strong>${p.assemblyCount}</div>
+            <div class="box"><strong>Lassen</strong>${p.weldCount}</div>
+          </div>
+          <div class="row-actions">
+            <button class="btn" data-action="open" data-id="${esc(p.id)}">Open</button>
+            <button class="btn" data-action="edit" data-id="${esc(p.id)}">Wijzig</button>
+            <button class="btn" data-action="delete" data-id="${esc(p.id)}">Verwijder</button>
+          </div>
+        </article>`).join('');
+    }
+    function onAction(id, action){
+      const p = st().projects.byId[id];
+      if(!p) return;
+      if(action === 'open') setActiveProject(id, true);
+      else if(action === 'edit') projectModal(p);
+      else if(action === 'delete') removeProject(id);
+    }
+    document.getElementById('search').addEventListener('input', e => { state.search = e.target.value || ''; render(); });
+    document.querySelectorAll('[data-filter]').forEach(btn => btn.addEventListener('click', () => {
+      state.filter = btn.dataset.filter;
+      document.querySelectorAll('[data-filter]').forEach(x => x.classList.toggle('active', x === btn));
+      render();
+    }));
+    document.getElementById('btnNew').addEventListener('click', () => projectModal(null));
+    document.getElementById('btnExport').addEventListener('click', () => Export.toCsv('projecten.csv', visible()));
+    document.getElementById('btnSeed').addEventListener('click', () => { window.CWS.resetDemo(); render(); UI.toast('Demo data geladen'); });
+    document.getElementById('tbody').addEventListener('click', e => {
+      const btn = e.target.closest('[data-action]');
+      if(btn) onAction(btn.dataset.id, btn.dataset.action);
+    });
+    document.getElementById('cards').addEventListener('click', e => {
+      const btn = e.target.closest('[data-action]');
+      if(btn) onAction(btn.dataset.id, btn.dataset.action);
+    });
+    UI.bindRowDblClick(document.getElementById('tbody'), id => projectModal(st().projects.byId[id]));
+    if(!(st().projects.order || []).length) window.CWS.resetDemo();
+    render();
+  </script>
 </body>
 </html>

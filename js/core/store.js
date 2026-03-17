@@ -26,6 +26,10 @@
         byId: {},
         order: []
       },
+      assemblies: {
+        byId: {},
+        byProject: {}
+      },
       welds: {
         byId: {}, // weldId -> weld
         byProject: {} // projectId -> [weldId]
@@ -41,7 +45,11 @@
           processes: ["111","135","136","138","141"],
           ndoMethods: ["VT","MT","PT","UT","RT"],
           materials: ["S235","S355","S460"],
-          fillerMaterials: ["G3Si1","ER70S-6"]
+          fillerMaterials: ["G3Si1","ER70S-6"],
+          lasmethodes: ["Stompe hoeklas","V-naad","K-naad","Volle doorlassing"],
+          projectStatussen: ["in_controle","conform","afgekeurd","locked"],
+          excKlassen: ["EXC1","EXC2","EXC3","EXC4"],
+          acceptatieKlassen: ["5817-B","5817-C","5817-D"]
         },
         // norm defaults (expand later)
         excDefaults: {
@@ -232,16 +240,21 @@ function save(st){
     st.projects.order = [p1.id, p2.id];
     st.ui.activeProjectId = p1.id;
 
-    // Welds (minimal demo)
-    const w1 = { id:"W-001", projectId:p1.id, locatie:"Frame A – ligger L1", proces:"135", materiaal:"S355", dikte:"8", lassers:"J. de Vries", vtStatus:"open", ndoStatus:"nvt", fotos:0, status:"open", last: nowISO() };
-    const w2 = { id:"W-002", projectId:p1.id, locatie:"Kolom K2 – voetplaat", proces:"111", materiaal:"S235", dikte:"12", lassers:"A. Jansen", vtStatus:"ok", ndoStatus:"open", fotos:1, status:"in_controle", last: nowISO() };
+    // Assemblies + welds (demo)
+    const a1 = { id:"A-001", projectId:p1.id, code:"ASM-001", name:"Hoofdframe", drawingNo:"DRW-001", revision:"A", status:"open", notes:"" };
+    const a2 = { id:"A-002", projectId:p1.id, code:"ASM-002", name:"Voetplaatset", drawingNo:"DRW-002", revision:"B", status:"open", notes:"" };
+    st.assemblies.byId[a1.id]=a1; st.assemblies.byId[a2.id]=a2; st.assemblies.byProject[p1.id]=[a1.id,a2.id];
+    const w1 = { id:"W-001", projectId:p1.id, assemblyId:a1.id, weldNo:"W-001", locatie:"Frame A – ligger L1", proces:"135", materiaal:"S355", dikte:"8", lassers:"J. de Vries", vtStatus:"open", ndoStatus:"nvt", fotos:0, status:"open", last: nowISO(), wps:"WPS-135-01" };
+    const w2 = { id:"W-002", projectId:p1.id, assemblyId:a2.id, weldNo:"W-002", locatie:"Kolom K2 – voetplaat", proces:"111", materiaal:"S235", dikte:"12", lassers:"A. Jansen", vtStatus:"ok", ndoStatus:"open", fotos:1, status:"in_controle", last: nowISO(), wps:"WPS-111-01" };
     st.welds.byId[w1.id]=w1; st.welds.byId[w2.id]=w2;
     st.welds.byProject[p1.id]=[w1.id,w2.id];
     // default controls
     st.controls.byWeld[w1.id] = defaultCriteriaFor(w1, p1);
     st.controls.byWeld[w2.id] = defaultCriteriaFor(w2, p1);
 
-    const w3 = { id:"W-101", projectId:p2.id, locatie:"Rooster – randprofiel", proces:"135", materiaal:"S355", dikte:"6", lassers:"S. Bakker", vtStatus:"ok", ndoStatus:"nvt", fotos:0, status:"conform", last: nowISO() };
+    const a3 = { id:"A-101", projectId:p2.id, code:"ASM-101", name:"Roostervloer", drawingNo:"DRW-101", revision:"A", status:"released", notes:"" };
+    st.assemblies.byId[a3.id]=a3; st.assemblies.byProject[p2.id]=[a3.id];
+    const w3 = { id:"W-101", projectId:p2.id, assemblyId:a3.id, weldNo:"W-101", locatie:"Rooster – randprofiel", proces:"135", materiaal:"S355", dikte:"6", lassers:"S. Bakker", vtStatus:"ok", ndoStatus:"nvt", fotos:0, status:"conform", last: nowISO(), wps:"WPS-135-01" };
     st.welds.byId[w3.id]=w3;
     st.welds.byProject[p2.id]=[w3.id];
     st.controls.byWeld[w3.id] = defaultCriteriaFor(w3, p2);
@@ -827,6 +840,30 @@ const before = STATE.welds.byId[w.id] ? deepClone(STATE.welds.byId[w.id]) : null
     return true;
   }
 
+
+  function upsertAssembly(a){
+    const before = STATE.assemblies.byId[a.id] ? deepClone(STATE.assemblies.byId[a.id]) : null;
+    STATE.assemblies.byId[a.id] = {...(STATE.assemblies.byId[a.id]||{}), ...a, last: nowISO()};
+    const pid = STATE.assemblies.byId[a.id].projectId;
+    if(!STATE.assemblies.byProject[pid]) STATE.assemblies.byProject[pid]=[];
+    if(!STATE.assemblies.byProject[pid].includes(a.id)) STATE.assemblies.byProject[pid].unshift(a.id);
+    withAudit(before ? "update":"create", "assembly", a.id, before, STATE.assemblies.byId[a.id]);
+    save(STATE);
+    return STATE.assemblies.byId[a.id];
+  }
+
+  function removeAssembly(id){
+    const before = STATE.assemblies.byId[id] ? deepClone(STATE.assemblies.byId[id]) : null;
+    if(!before) return false;
+    const pid = before.projectId;
+    delete STATE.assemblies.byId[id];
+    if(STATE.assemblies.byProject[pid]) STATE.assemblies.byProject[pid] = STATE.assemblies.byProject[pid].filter(x=>x!==id);
+    Object.values(STATE.welds.byId||{}).forEach(w=>{ if(w && w.assemblyId===id) w.assemblyId = null; });
+    withAudit("delete", "assembly", id, before, null);
+    save(STATE);
+    return true;
+  }
+
   window.CWS = {
     getState,
     setState,
@@ -840,6 +877,8 @@ const before = STATE.welds.byId[w.id] ? deepClone(STATE.welds.byId[w.id]) : null
     removeWorker,
     upsertProject,
     removeProject,
+    upsertAssembly,
+    removeAssembly,
     upsertWeld,
     removeWeld,
     ensureControlsForWeld,
