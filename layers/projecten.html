@@ -6,38 +6,17 @@
   <title>Projecten</title>
   <link rel="stylesheet" href="../css/theme.css" />
   <link rel="stylesheet" href="../css/workflow-rebuild.css" />
-  <meta name="theme-color" content="#0c1830" />
   <style>
-    .page{display:grid;gap:18px}
-    .hero{display:flex;justify-content:space-between;gap:18px;align-items:end;flex-wrap:wrap}
-    .hero h1{margin:0;font-size:44px;line-height:.95;letter-spacing:-.04em}
-    .hero p{margin:8px 0 0;color:#64748b;max-width:720px}
-    .toolbar,.filters,.actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-    .toolbar .input{min-width:280px}
-    .surface{background:#fff;border:1px solid #e5ebf5;border-radius:24px;box-shadow:0 12px 34px rgba(15,23,42,.05);padding:18px}
-    .table-wrap{overflow:auto}
-    table{width:100%;border-collapse:collapse;min-width:980px}
-    th,td{padding:14px 12px;border-bottom:1px solid #edf2f7;text-align:left;vertical-align:top}
-    th{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#64748b}
-    tr[data-id]{cursor:pointer}
-    tr[data-id]:hover{background:#f8fbff}
-    .pill{display:inline-flex;align-items:center;border-radius:999px;padding:7px 12px;font-size:12px;font-weight:800}
-    .pill.in_controle{background:#dbeafe;color:#1d4ed8}.pill.conform{background:#dcfce7;color:#166534}.pill.afgekeurd{background:#fee2e2;color:#b91c1c}.pill.locked{background:#e5e7eb;color:#334155}
-    .cards{display:none;gap:12px}
-    .card{background:#fff;border:1px solid #e5ebf5;border-radius:22px;padding:16px;box-shadow:0 10px 24px rgba(15,23,42,.05)}
-    .card h3{margin:0;font-size:20px}
-    .card .sub{margin-top:4px;color:#64748b;font-size:13px}
-    .meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px}
-    .meta .box{background:#f8fbff;border:1px solid #e6eef8;border-radius:16px;padding:10px 12px}
-    .meta strong{display:block;font-size:11px;text-transform:uppercase;color:#64748b;margin-bottom:4px}
-    .row-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
-    @media (max-width:760px){
-      .hero h1{font-size:36px}
-      .toolbar{display:grid;grid-template-columns:1fr 1fr}
-      .toolbar .input{grid-column:1/-1;min-width:0;width:100%}
-      .surface .table-wrap{display:none}
-      .cards{display:grid}
-    }
+    .page{display:grid;gap:18px}.hero{display:flex;justify-content:space-between;gap:18px;align-items:end;flex-wrap:wrap}.hero h1{margin:0;font-size:44px;line-height:.95;letter-spacing:-.04em}.hero p{margin:8px 0 0;color:#64748b;max-width:820px}
+    .hero-actions,.toolbar,.filters,.row-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.toolbar .input{min-width:280px}
+    .surface,.banner,.workflow-card,.card{background:#fff;border:1px solid #e5ebf5;border-radius:24px;box-shadow:0 12px 34px rgba(15,23,42,.05)}
+    .banner{padding:18px;display:grid;grid-template-columns:1.15fr .85fr;gap:16px}.banner h2{margin:0 0 8px}.banner p{margin:0;color:#64748b}.workflow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.workflow-card{padding:14px}.workflow-card strong{display:block;font-size:15px}.workflow-card span{display:block;margin-top:4px;color:#64748b;font-size:13px}
+    .surface{padding:18px}.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.stat{border:1px solid #e8eef8;border-radius:20px;padding:16px;background:#fff}.stat strong{display:block;font-size:28px}.stat span{color:#64748b;font-size:13px}
+    .pill{display:inline-flex;align-items:center;border-radius:999px;padding:7px 12px;font-size:12px;font-weight:800}.pill.in_controle{background:#dbeafe;color:#1d4ed8}.pill.conform{background:#dcfce7;color:#166534}.pill.afgekeurd{background:#fee2e2;color:#b91c1c}.pill.locked{background:#e5e7eb;color:#334155}
+    .table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:980px}th,td{padding:14px 12px;border-bottom:1px solid #edf2f7;text-align:left;vertical-align:top}th{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#64748b}tr[data-id]{cursor:pointer}tr[data-id]:hover{background:#f8fbff}
+    .cards{display:none;gap:12px}.card{padding:16px}.card h3{margin:0;font-size:20px}.card .sub{margin-top:4px;color:#64748b;font-size:13px}.meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px}.meta .box{background:#f8fbff;border:1px solid #e6eef8;border-radius:16px;padding:10px 12px}.meta strong{display:block;font-size:11px;text-transform:uppercase;color:#64748b;margin-bottom:4px}.active-box{padding:16px;border:1px dashed #dbe5f4;border-radius:18px;background:#f8fbff}
+    @media (max-width:900px){.banner{grid-template-columns:1fr}.workflow{grid-template-columns:repeat(2,minmax(0,1fr))}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media (max-width:760px){.hero h1{font-size:36px}.toolbar{display:grid;grid-template-columns:1fr 1fr}.toolbar .input{grid-column:1/-1;min-width:0;width:100%}.surface .table-wrap{display:none}.cards{display:grid}.stats{grid-template-columns:1fr 1fr}.workflow{grid-template-columns:1fr 1fr}}
   </style>
 </head>
 <body data-title="Projecten">
@@ -45,20 +24,34 @@
     <section class="hero">
       <div>
         <h1>Projecten</h1>
-        <p>Fase 8 t/m 11: projectbeheer, actieve projectkeuze, workflow naar assemblies en lassen, dubbelklik wijzigen en export.</p>
+        <p>Fase 8 t/m 11: projectbeheer als startpunt voor assemblies, lassen, inspectie, dossieropbouw en export. Deze pagina stuurt de actieve projectcontext voor de rest van de app.</p>
       </div>
-      <div class="actions">
-        <span id="counter" class="smallmuted"></span>
-      </div>
+      <div class="hero-actions"><span id="counter" class="smallmuted"></span></div>
     </section>
+
+    <section class="banner">
+      <div>
+        <h2>Workflow per project</h2>
+        <p>Open een project en ga direct verder naar werkvoorbereiding, inspectie of CE dossier. De actieve projectkeuze blijft door de hele app heen staan.</p>
+        <div class="workflow" style="margin-top:14px">
+          <div class="workflow-card"><strong>1. Project</strong><span>Basis, opdrachtgever en normkader</span></div>
+          <div class="workflow-card"><strong>2. Assemblies</strong><span>Productiestructuur en tekeningen</span></div>
+          <div class="workflow-card"><strong>3. Lassen</strong><span>WPS, lasser, materiaal en status</span></div>
+          <div class="workflow-card"><strong>4. Dossier</strong><span>Inspectie, foto’s en export</span></div>
+        </div>
+      </div>
+      <div class="active-box" id="activeProjectBox"></div>
+    </section>
+
+    <section class="stats" id="stats"></section>
 
     <section class="toolbar">
       <input id="search" class="input" type="search" placeholder="Zoeken op projectnummer, naam of opdrachtgever" />
       <button id="btnNew" class="btn">Nieuw project</button>
       <button id="btnExport" class="btn">CSV export</button>
       <button id="btnSeed" class="btn">Demo data</button>
-      <button id="btnApiPush" class="btn">Sync actief project</button>
-      <button id="btnApiPull" class="btn">API projecten</button>
+      <button id="btnToWelds" class="btn">Open lascontrole</button>
+      <button id="btnToCe" class="btn">Open CE dossier</button>
     </section>
 
     <section class="filters">
@@ -74,7 +67,7 @@
         <table>
           <thead>
             <tr>
-              <th>Project</th><th>Opdrachtgever</th><th>EXC</th><th>Acceptatie</th><th>Status</th><th>Assemblies</th><th>Lassen</th><th>Acties</th>
+              <th>Project</th><th>Opdrachtgever</th><th>EXC</th><th>Acceptatie</th><th>Status</th><th>Assemblies</th><th>Lassen</th><th>Laatste stap</th><th>Acties</th>
             </tr>
           </thead>
           <tbody id="tbody"></tbody>
@@ -98,22 +91,21 @@
   <script src="../js/core/workflow_shell.js"></script>
   <script>
     try{ Shell.mount(); WorkflowShell.mount(); }catch(_){ }
-
     const state = { filter: 'all', search: '' };
-
     function st(){ return window.CWS.getState(); }
     function esc(v){ return UI.esc(v ?? ''); }
-    function projects(){
+    function projectRows(){
       const s = st();
       return (s.projects.order || []).map(id => s.projects.byId[id]).filter(Boolean).map(p => ({
         ...p,
-        assemblyCount: (s.assemblies.byProject[p.id] || []).length,
-        weldCount: (s.welds.byProject[p.id] || []).length
+        assemblyCount: (s.assemblies?.byProject?.[p.id] || []).length,
+        weldCount: (s.welds?.byProject?.[p.id] || []).length,
+        ready: ((s.welds?.byProject?.[p.id] || []).length > 0) && (s.welds.byProject[p.id] || []).every(wid => String(s.welds.byId[wid]?.vtStatus || '').toLowerCase() === 'ok')
       }));
     }
     function visible(){
       const q = state.search.trim().toLowerCase();
-      return projects().filter(p => {
+      return projectRows().filter(p => {
         if(state.filter !== 'all' && String(p.status) !== state.filter) return false;
         if(!q) return true;
         return [p.nummer,p.naam,p.opdrachtgever,p.exc,p.acceptatieklasse].join(' ').toLowerCase().includes(q);
@@ -125,6 +117,7 @@
       s.ui.activeProjectId = id;
       window.CWS.setState(s);
       if(navigate) location.href = window.CWS_ROUTES.welds;
+      else render();
     }
     function projectModal(project){
       const p = project || { id:'', nummer:'', naam:'', opdrachtgever:'', exc:'EXC2', acceptatieklasse:'5817-B', status:'in_controle' };
@@ -140,7 +133,7 @@
           { key:'acceptatieklasse', label:'Acceptatieklasse', type:'select', options:(st().settings.lists.acceptatieKlassen || ['5817-B','5817-C','5817-D']) },
           { key:'status', label:'Status', type:'select', options:(st().settings.lists.projectStatussen || ['in_controle','conform','afgekeurd','locked']) }
         ],
-        onSubmit: async (values) => {
+        onSubmit: (values) => {
           const id = project?.id || ('P-' + Date.now());
           window.CWS.upsertProject({
             id,
@@ -168,13 +161,35 @@
       render();
       UI.toast('Project verwijderd');
     }
+    function renderStats(rows){
+      const totalAssemblies = rows.reduce((sum,r)=>sum + Number(r.assemblyCount||0), 0);
+      const totalWelds = rows.reduce((sum,r)=>sum + Number(r.weldCount||0), 0);
+      const ready = rows.filter(r => r.ready).length;
+      document.getElementById('stats').innerHTML = [
+        ['Projecten', rows.length],
+        ['Assemblies', totalAssemblies],
+        ['Lassen', totalWelds],
+        ['CE-ready', ready]
+      ].map(([label,val]) => `<div class="stat"><strong>${val}</strong><span>${esc(label)}</span></div>`).join('');
+    }
+    function renderActiveProject(){
+      const id = st().ui.activeProjectId || visible()[0]?.id;
+      const p = st().projects.byId[id];
+      const box = document.getElementById('activeProjectBox');
+      if(!p){ box.innerHTML = '<strong>Geen actief project</strong><p style="margin-top:6px;color:#64748b">Maak eerst een project aan of laad demo data.</p>'; return; }
+      box.innerHTML = `<strong style="font-size:18px">Actief project</strong><div style="margin-top:10px;font-size:22px;font-weight:800">${esc(p.nummer)}</div><div style="color:#64748b;margin-top:4px">${esc(p.naam)} · ${esc(p.opdrachtgever || '-')}</div><div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">${statusPill(p.status)}<span class="pill locked">${esc(p.exc || '-')}</span><span class="pill locked">${esc(p.acceptatieklasse || '-')}</span></div><div class="row-actions" style="margin-top:14px"><button class="btn" id="btnActiveToWelds">Ga naar lascontrole</button><button class="btn" id="btnActiveToCe">Ga naar CE dossier</button></div>`;
+      document.getElementById('btnActiveToWelds').onclick = () => { setActiveProject(p.id, false); location.href = window.CWS_ROUTES.welds; };
+      document.getElementById('btnActiveToCe').onclick = () => { setActiveProject(p.id, false); location.href = window.CWS_ROUTES.billing; };
+    }
     function render(){
       const rows = visible();
       document.getElementById('counter').textContent = `${rows.length} project${rows.length === 1 ? '' : 'en'}`;
+      renderStats(projectRows());
+      renderActiveProject();
       const tbody = document.getElementById('tbody');
       const cards = document.getElementById('cards');
       if(!rows.length){
-        tbody.innerHTML = `<tr><td colspan="8" class="smallmuted">Geen projecten gevonden.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" class="smallmuted">Geen projecten gevonden.</td></tr>`;
         cards.innerHTML = `<div class="card"><div class="sub">Geen projecten gevonden.</div></div>`;
         return;
       }
@@ -187,7 +202,9 @@
           <td>${statusPill(p.status)}</td>
           <td>${p.assemblyCount}</td>
           <td>${p.weldCount}</td>
+          <td>${p.ready ? '<span class="pill conform">klaar voor dossier</span>' : '<span class="pill in_controle">opbouw actief</span>'}</td>
           <td>
+            <button class="btn" data-action="select" data-id="${esc(p.id)}">Selecteer</button>
             <button class="btn" data-action="open" data-id="${esc(p.id)}">Open</button>
             <button class="btn" data-action="edit" data-id="${esc(p.id)}">Wijzig</button>
             <button class="btn" data-action="delete" data-id="${esc(p.id)}">Verwijder</button>
@@ -205,16 +222,17 @@
             <div class="box"><strong>Lassen</strong>${p.weldCount}</div>
           </div>
           <div class="row-actions">
+            <button class="btn" data-action="select" data-id="${esc(p.id)}">Selecteer</button>
             <button class="btn" data-action="open" data-id="${esc(p.id)}">Open</button>
             <button class="btn" data-action="edit" data-id="${esc(p.id)}">Wijzig</button>
-            <button class="btn" data-action="delete" data-id="${esc(p.id)}">Verwijder</button>
           </div>
         </article>`).join('');
     }
     function onAction(id, action){
       const p = st().projects.byId[id];
       if(!p) return;
-      if(action === 'open') setActiveProject(id, true);
+      if(action === 'select') setActiveProject(id, false);
+      else if(action === 'open') setActiveProject(id, true);
       else if(action === 'edit') projectModal(p);
       else if(action === 'delete') removeProject(id);
     }
@@ -227,29 +245,10 @@
     document.getElementById('btnNew').addEventListener('click', () => projectModal(null));
     document.getElementById('btnExport').addEventListener('click', () => Export.toCsv('projecten.csv', visible()));
     document.getElementById('btnSeed').addEventListener('click', () => { window.CWS.resetDemo(); render(); UI.toast('Demo data geladen'); });
-    document.getElementById('btnApiPush').addEventListener('click', async () => {
-      try{
-        const current = st().ui.activeProjectId || visible()[0]?.id;
-        if(!current) throw new Error('Geen project geselecteerd');
-        setActiveProject(current, false);
-        await window.CWSApiSync.pushActiveProject();
-        UI.toast('Actief project gesynchroniseerd naar API');
-      }catch(err){ UI.toast(err?.message || 'Sync mislukt'); }
-    });
-    document.getElementById('btnApiPull').addEventListener('click', async () => {
-      try{
-        const rows = await window.CWSApiSync.pullProjects();
-        UI.openModal({ title:'Projecten uit API', saveLabel:'Sluiten', bodyHtml:`<div style="display:grid;gap:10px">${(rows||[]).map(p => `<article style="border:1px solid #e5ebf5;border-radius:16px;padding:12px"><strong>${UI.esc(p.project_number || p.nummer || p.id)}</strong><div class="smallmuted">${UI.esc(p.name || p.naam || '')}</div></article>`).join('') || '<div class="smallmuted">Geen projecten gevonden in API.</div>'}` });
-      }catch(err){ UI.toast(err?.message || 'API ophalen mislukt'); }
-    });
-    document.getElementById('tbody').addEventListener('click', e => {
-      const btn = e.target.closest('[data-action]');
-      if(btn) onAction(btn.dataset.id, btn.dataset.action);
-    });
-    document.getElementById('cards').addEventListener('click', e => {
-      const btn = e.target.closest('[data-action]');
-      if(btn) onAction(btn.dataset.id, btn.dataset.action);
-    });
+    document.getElementById('btnToWelds').addEventListener('click', () => { const id = st().ui.activeProjectId || visible()[0]?.id; if(!id){ UI.toast('Geen project geselecteerd'); return; } setActiveProject(id, false); location.href = window.CWS_ROUTES.welds; });
+    document.getElementById('btnToCe').addEventListener('click', () => { const id = st().ui.activeProjectId || visible()[0]?.id; if(!id){ UI.toast('Geen project geselecteerd'); return; } setActiveProject(id, false); location.href = window.CWS_ROUTES.billing; });
+    document.getElementById('tbody').addEventListener('click', e => { const btn = e.target.closest('[data-action]'); if(btn) onAction(btn.dataset.id, btn.dataset.action); });
+    document.getElementById('cards').addEventListener('click', e => { const btn = e.target.closest('[data-action]'); if(btn) onAction(btn.dataset.id, btn.dataset.action); });
     UI.bindRowDblClick(document.getElementById('tbody'), id => projectModal(st().projects.byId[id]));
     if(!(st().projects.order || []).length) window.CWS.resetDemo();
     render();

@@ -94,14 +94,34 @@
     };
   }
 
+  function mergeDefaults(base, incoming){
+    if(Array.isArray(base)) return Array.isArray(incoming) ? incoming : base;
+    if(base && typeof base === "object"){
+      const out = {...base};
+      const src = (incoming && typeof incoming === "object") ? incoming : {};
+      Object.keys(base).forEach(k=>{ out[k] = mergeDefaults(base[k], src[k]); });
+      Object.keys(src).forEach(k=>{ if(!(k in out)) out[k] = src[k]; });
+      return out;
+    }
+    return incoming === undefined ? base : incoming;
+  }
+
   function load(){
     try{
       const raw = localStorage.getItem(KEY);
       if(!raw) return defaultState();
       const st = JSON.parse(raw);
-      // basic shape guard
       if(!st || !st.ui || !st.projects) return defaultState();
-      return st;
+      const merged = mergeDefaults(defaultState(), st);
+      merged.ui = merged.ui || {};
+      merged.ui.view = merged.ui.view || {};
+      merged.projects = merged.projects || { byId:{}, order:[] };
+      merged.assemblies = merged.assemblies || { byId:{}, byProject:{} };
+      merged.welds = merged.welds || { byId:{}, byProject:{} };
+      merged.documents = merged.documents || { byId:{}, byProject:{} };
+      merged.controls = merged.controls || { byWeld:{} };
+      merged.settings = merged.settings || defaultState().settings;
+      return merged;
     }catch(_){
       return defaultState();
     }

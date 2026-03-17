@@ -7,11 +7,12 @@
   <link rel="stylesheet" href="../css/theme.css" />
   <link rel="stylesheet" href="../css/workflow-rebuild.css" />
   <style>
-    .page{display:grid;gap:18px}.hero{display:flex;justify-content:space-between;gap:18px;align-items:end;flex-wrap:wrap}.hero h1{margin:0;font-size:42px;line-height:.95;letter-spacing:-.04em}.hero p{margin:8px 0 0;color:#64748b;max-width:760px}
+    .page{display:grid;gap:18px}.hero{display:flex;justify-content:space-between;gap:18px;align-items:end;flex-wrap:wrap}.hero h1{margin:0;font-size:42px;line-height:.95;letter-spacing:-.04em}.hero p{margin:8px 0 0;color:#64748b;max-width:820px}
     .toolbar,.tabs,.row-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.toolbar .input{min-width:280px}
-    .panel{background:#fff;border:1px solid #e5ebf5;border-radius:24px;box-shadow:0 12px 34px rgba(15,23,42,.05);padding:18px}.grid{display:grid;gap:16px}.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.card{background:#fff;border:1px solid #e5ebf5;border-radius:20px;padding:16px;box-shadow:0 8px 22px rgba(15,23,42,.04)}.card strong{display:block;font-size:24px}.card span{color:#64748b;font-size:13px}
-    table{width:100%;border-collapse:collapse}th,td{padding:12px 10px;border-bottom:1px solid #edf2f7;text-align:left;vertical-align:top}th{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#64748b}
-    .tab.active{background:#eef4ff;border-color:#cfe0ff;color:#2457e6}
+    .panel,.card{background:#fff;border:1px solid #e5ebf5;border-radius:24px;box-shadow:0 12px 34px rgba(15,23,42,.05)}.panel{padding:18px}.cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.card{padding:16px}.card strong{display:block;font-size:24px}.card span{color:#64748b;font-size:13px}
+    table{width:100%;border-collapse:collapse}th,td{padding:12px 10px;border-bottom:1px solid #edf2f7;text-align:left;vertical-align:top}th{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#64748b}.tab.active{background:#eef4ff;border-color:#cfe0ff;color:#2457e6}
+    .group{display:grid;gap:16px}.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    @media (max-width:980px){.cards{grid-template-columns:repeat(2,minmax(0,1fr))}.two-col{grid-template-columns:1fr}}
     @media (max-width:760px){.hero h1{font-size:34px}.toolbar{display:grid;grid-template-columns:1fr 1fr}.toolbar .input{grid-column:1/-1;min-width:0;width:100%}.cards{grid-template-columns:1fr 1fr}}
   </style>
 </head>
@@ -20,7 +21,7 @@
     <section class="hero">
       <div>
         <h1>Instellingen</h1>
-        <p>Fase 10: bedrijfsgegevens, medewerkers, certificaten, materialen, lasmethodes en keuzelijsten. Deze lijsten worden gebruikt in de popupformulieren van projecten en lascontrole.</p>
+        <p>Fase 10: bedrijfsgegevens, medewerkers, certificaten, materialen, lasmethodes en keuzelijsten. Deze lijsten voeden de popupformulieren in projecten en lascontrole.</p>
       </div>
     </section>
 
@@ -29,11 +30,12 @@
     <section class="toolbar">
       <input id="search" class="input" type="search" placeholder="Zoeken binnen instellingen" />
       <button class="btn" id="btnAdd">Nieuw item</button>
+      <button class="btn" id="btnSeed">Demo laden</button>
     </section>
 
     <section class="tabs">
       <button class="tab active" data-tab="bedrijf">Bedrijf</button>
-      <button class="tab" data-tab="werknemers">Werknemers</button>
+      <button class="tab" data-tab="werknemers">Medewerkers</button>
       <button class="tab" data-tab="certificaten">Certificaten</button>
       <button class="tab" data-tab="materialen">Materialen</button>
       <button class="tab" data-tab="lasmethodes">Lasmethodes</button>
@@ -59,27 +61,27 @@
     const state = { tab:'bedrijf', search:'' };
     function st(){ return window.CWS.getState(); }
     function q(v){ return String(v || '').toLowerCase().includes(state.search.trim().toLowerCase()); }
-    function cards(){
+    function renderCards(){
       const s = st();
       document.getElementById('cards').innerHTML = [
         ['Medewerkers', (s.settings.workers.order || []).length],
         ['Certificaten', Object.keys(s.certs.byId || {}).length],
         ['Materialen', (s.settings.lists.materials || []).length],
-        ['Processen', (s.settings.lists.processes || []).length]
+        ['Lasmethodes', (s.settings.lists.lasmethodes || []).length]
       ].map(([label,val]) => `<div class="card"><strong>${val}</strong><span>${UI.esc(label)}</span></div>`).join('');
     }
     function companyView(){
       const c = st().settings.company || {};
-      return `<table><tbody>
+      return `<div class="two-col"><table><tbody>
         <tr><th>Bedrijfsnaam</th><td>${UI.esc(c.name || '-')}</td></tr>
         <tr><th>Adres</th><td>${UI.esc(c.address || '-')}</td></tr>
         <tr><th>E-mail</th><td>${UI.esc(c.email || '-')}</td></tr>
         <tr><th>Telefoon</th><td>${UI.esc(c.phone || '-')}</td></tr>
-      </tbody></table>`;
+      </tbody></table><div class="card"><strong>Gebruik in app</strong><span style="display:block;margin-top:10px">Bedrijfsgegevens kunnen worden gebruikt in dossier-export en algemene projectmetadata.</span><div class="row-actions" style="margin-top:14px"><button class="btn" id="btnEditCompany">Bedrijf wijzigen</button></div></div></div>`;
     }
     function workersView(){
       const rows = (st().settings.workers.order || []).map(id => st().settings.workers.byId[id]).filter(Boolean).filter(w => !state.search || q([w.id,w.naam,w.rol].join(' ')));
-      return `<table><thead><tr><th>ID</th><th>Naam</th><th>Rol</th><th>Geldig tot</th><th>Acties</th></tr></thead><tbody>${rows.map(w => `<tr data-id="${UI.esc(w.id)}"><td>${UI.esc(w.id)}</td><td>${UI.esc(w.naam || '')}</td><td>${UI.esc(w.rol || '')}</td><td>${UI.esc(w.geldigTot || '')}</td><td><button class="btn" data-action="edit-worker" data-id="${UI.esc(w.id)}">Wijzig</button><button class="btn" data-action="delete-worker" data-id="${UI.esc(w.id)}">Verwijder</button></td></tr>`).join('') || '<tr><td colspan="5" class="smallmuted">Geen werknemers.</td></tr>'}</tbody></table>`;
+      return `<table><thead><tr><th>ID</th><th>Naam</th><th>Rol</th><th>Geldig tot</th><th>Acties</th></tr></thead><tbody>${rows.map(w => `<tr data-id="${UI.esc(w.id)}"><td>${UI.esc(w.id)}</td><td>${UI.esc(w.naam || '')}</td><td>${UI.esc(w.rol || '')}</td><td>${UI.esc(w.geldigTot || '')}</td><td><button class="btn" data-action="edit-worker" data-id="${UI.esc(w.id)}">Wijzig</button><button class="btn" data-action="delete-worker" data-id="${UI.esc(w.id)}">Verwijder</button></td></tr>`).join('') || '<tr><td colspan="5" class="smallmuted">Geen medewerkers.</td></tr>'}</tbody></table>`;
     }
     function certView(){
       const rows = Object.values(st().certs.byId || {}).filter(Boolean).filter(c => !state.search || q([c.id,c.type,c.name,c.ref].join(' ')));
@@ -87,62 +89,28 @@
     }
     function listTable(listKey, title){
       const rows = (st().settings.lists[listKey] || []).filter(x => !state.search || q(x));
-      return `<div class="row-actions" style="margin-bottom:10px"><span class="smallmuted">${UI.esc(title)}</span></div><table><thead><tr><th>Waarde</th><th>Acties</th></tr></thead><tbody>${rows.map((value,idx) => `<tr><td>${UI.esc(value)}</td><td><button class="btn" data-action="edit-list" data-list="${UI.esc(listKey)}" data-value="${UI.esc(value)}">Wijzig</button><button class="btn" data-action="delete-list" data-list="${UI.esc(listKey)}" data-value="${UI.esc(value)}">Verwijder</button></td></tr>`).join('') || '<tr><td colspan="2" class="smallmuted">Geen waarden.</td></tr>'}</tbody></table>`;
+      return `<div class="group"><div class="row-actions"><span class="smallmuted">${UI.esc(title)}</span><button class="btn" data-action="new-list" data-list="${UI.esc(listKey)}">Toevoegen</button></div><table><thead><tr><th>Waarde</th><th>Acties</th></tr></thead><tbody>${rows.map(value => `<tr><td>${UI.esc(value)}</td><td><button class="btn" data-action="edit-list" data-list="${UI.esc(listKey)}" data-value="${UI.esc(value)}">Wijzig</button><button class="btn" data-action="delete-list" data-list="${UI.esc(listKey)}" data-value="${UI.esc(value)}">Verwijder</button></td></tr>`).join('') || '<tr><td colspan="2" class="smallmuted">Geen waarden.</td></tr>'}</tbody></table></div>`;
     }
     function render(){
-      cards();
+      renderCards();
       const view = document.getElementById('view');
       if(state.tab === 'bedrijf') view.innerHTML = companyView();
       else if(state.tab === 'werknemers') view.innerHTML = workersView();
       else if(state.tab === 'certificaten') view.innerHTML = certView();
       else if(state.tab === 'materialen') view.innerHTML = listTable('materials', 'Materiaalsoorten');
       else if(state.tab === 'lasmethodes') view.innerHTML = listTable('lasmethodes', 'Lasmethodes / WPS labels');
-      else view.innerHTML = `<div class="grid">${listTable('processes','Processen')}<br><br>${listTable('ndoMethods','NDO methoden')}<br><br>${listTable('excKlassen','EXC klassen')}</div>`;
+      else view.innerHTML = `<div class="two-col">${listTable('processes','Processen')} ${listTable('ndoMethods','NDO methoden')} ${listTable('excKlassen','EXC klassen')} ${listTable('acceptatieKlassen','Acceptatieklassen')}</div>`;
+      const btn = document.getElementById('btnEditCompany'); if(btn) btn.onclick = editCompany;
     }
-    function editCompany(){
-      const c = st().settings.company || {};
-      UI.modalForm({ title:'Bedrijfsgegevens', submitLabel:'Opslaan', values:c, fields:[{key:'name',label:'Naam'},{key:'address',label:'Adres'},{key:'email',label:'E-mail'},{key:'phone',label:'Telefoon'}], onSubmit: values => { window.CWS.updateCompany(values); render(); UI.toast('Bedrijfsgegevens opgeslagen'); return true; } });
-    }
-    function workerModal(worker){
-      const w = worker || { id:'WKR-' + Date.now(), naam:'', rol:'Lasser', geldigTot:'' };
-      UI.modalForm({ title:worker?'Werknemer wijzigen':'Nieuwe werknemer', submitLabel:'Opslaan', values:w, fields:[{key:'id',label:'ID'},{key:'naam',label:'Naam'},{key:'rol',label:'Rol',type:'select',options:['Lasser','Inspecteur','Werkvoorbereider','Admin']},{key:'geldigTot',label:'Geldig tot'}], onSubmit: values => { window.CWS.upsertWorker(values); render(); UI.toast('Werknemer opgeslagen'); return true; } });
-    }
-    function certModal(cert){
-      const c = cert || { id:'CERT-' + Date.now(), type:'bedrijf', name:'', ref:'', validTo:'' };
-      UI.modalForm({ title:cert?'Certificaat wijzigen':'Nieuw certificaat', submitLabel:'Opslaan', values:c, fields:[{key:'id',label:'ID'},{key:'type',label:'Type',type:'select',options:['bedrijf','lassers','lascoordinator']},{key:'name',label:'Naam'},{key:'ref',label:'Referentie'},{key:'validTo',label:'Geldig tot'}], onSubmit: values => { window.CWS.upsertCert(values); render(); UI.toast('Certificaat opgeslagen'); return true; } });
-    }
-    function listModal(listKey, value){
-      UI.modalForm({ title:'Waarde bewerken', submitLabel:'Opslaan', values:{ value:value || '' }, fields:[{key:'value',label:'Waarde'}], onSubmit: values => {
-        const arr = [...(st().settings.lists[listKey] || [])];
-        if(value){ const idx = arr.indexOf(value); if(idx >= 0) arr[idx] = values.value; }
-        else arr.push(values.value);
-        window.CWS.updateList(listKey, Array.from(new Set(arr.filter(Boolean))));
-        render(); UI.toast('Lijst bijgewerkt'); return true;
-      }});
-    }
+    function editCompany(){ const c = st().settings.company || {}; UI.modalForm({ title:'Bedrijfsgegevens', submitLabel:'Opslaan', values:c, fields:[{key:'name',label:'Naam'},{key:'address',label:'Adres'},{key:'email',label:'E-mail'},{key:'phone',label:'Telefoon'}], onSubmit: values => { window.CWS.updateCompany(values); render(); UI.toast('Bedrijfsgegevens opgeslagen'); return true; } }); }
+    function workerModal(worker){ const w = worker || { id:'WKR-' + Date.now(), naam:'', rol:'Lasser', geldigTot:'' }; UI.modalForm({ title:worker?'Medewerker wijzigen':'Nieuwe medewerker', submitLabel:'Opslaan', values:w, fields:[{key:'id',label:'ID'},{key:'naam',label:'Naam'},{key:'rol',label:'Rol',type:'select',options:['Lasser','Inspecteur','Werkvoorbereider','Admin']},{key:'geldigTot',label:'Geldig tot'}], onSubmit: values => { window.CWS.upsertWorker(values); render(); UI.toast('Medewerker opgeslagen'); return true; } }); }
+    function certModal(cert){ const c = cert || { id:'CERT-' + Date.now(), type:'bedrijf', name:'', ref:'', validTo:'' }; UI.modalForm({ title:cert?'Certificaat wijzigen':'Nieuw certificaat', submitLabel:'Opslaan', values:c, fields:[{key:'id',label:'ID'},{key:'type',label:'Type',type:'select',options:['bedrijf','lassers','lascoordinator']},{key:'name',label:'Naam'},{key:'ref',label:'Referentie'},{key:'validTo',label:'Geldig tot'}], onSubmit: values => { window.CWS.upsertCert(values); render(); UI.toast('Certificaat opgeslagen'); return true; } }); }
+    function listModal(listKey, value){ UI.modalForm({ title:value ? 'Waarde wijzigen' : 'Waarde toevoegen', submitLabel:'Opslaan', values:{ value:value || '' }, fields:[{key:'value',label:'Waarde'}], onSubmit: values => { const arr = [...(st().settings.lists[listKey] || [])]; if(value){ const idx = arr.indexOf(value); if(idx >= 0) arr[idx] = values.value; } else arr.push(values.value); window.CWS.updateList(listKey, Array.from(new Set(arr.filter(Boolean)))); render(); UI.toast('Lijst bijgewerkt'); return true; }}); }
     document.getElementById('search').addEventListener('input', e => { state.search = e.target.value || ''; render(); });
     document.querySelectorAll('[data-tab]').forEach(btn => btn.addEventListener('click', () => { state.tab = btn.dataset.tab; document.querySelectorAll('[data-tab]').forEach(x => x.classList.toggle('active', x === btn)); render(); }));
-    document.getElementById('btnAdd').addEventListener('click', () => {
-      if(state.tab === 'bedrijf') editCompany();
-      else if(state.tab === 'werknemers') workerModal(null);
-      else if(state.tab === 'certificaten') certModal(null);
-      else if(state.tab === 'materialen') listModal('materials','');
-      else if(state.tab === 'lasmethodes') listModal('lasmethodes','');
-      else listModal('processes','');
-    });
-    document.getElementById('view').addEventListener('click', e => {
-      const btn = e.target.closest('[data-action]'); if(!btn) return;
-      const act = btn.dataset.action;
-      if(act === 'edit-worker') workerModal(st().settings.workers.byId[btn.dataset.id]);
-      else if(act === 'delete-worker'){ if(confirm('Werknemer verwijderen?')){ window.CWS.removeWorker(btn.dataset.id); render(); } }
-      else if(act === 'edit-cert') certModal(st().certs.byId[btn.dataset.id]);
-      else if(act === 'delete-cert'){ if(confirm('Certificaat verwijderen?')){ window.CWS.removeCert(btn.dataset.id); render(); } }
-      else if(act === 'edit-list') listModal(btn.dataset.list, btn.dataset.value);
-      else if(act === 'delete-list'){
-        const arr = (st().settings.lists[btn.dataset.list] || []).filter(x => x !== btn.dataset.value);
-        window.CWS.updateList(btn.dataset.list, arr); render();
-      }
-    });
+    document.getElementById('btnAdd').addEventListener('click', () => { if(state.tab === 'bedrijf') editCompany(); else if(state.tab === 'werknemers') workerModal(null); else if(state.tab === 'certificaten') certModal(null); else if(state.tab === 'materialen') listModal('materials',''); else if(state.tab === 'lasmethodes') listModal('lasmethodes',''); else listModal('processes',''); });
+    document.getElementById('btnSeed').addEventListener('click', () => { window.CWS.resetDemo(); render(); UI.toast('Demo data geladen'); });
+    document.getElementById('view').addEventListener('click', e => { const btn = e.target.closest('[data-action]'); if(!btn) return; const act = btn.dataset.action; if(act === 'edit-worker') workerModal(st().settings.workers.byId[btn.dataset.id]); else if(act === 'delete-worker'){ if(confirm('Medewerker verwijderen?')){ window.CWS.removeWorker(btn.dataset.id); render(); } } else if(act === 'edit-cert') certModal(st().certs.byId[btn.dataset.id]); else if(act === 'delete-cert'){ if(confirm('Certificaat verwijderen?')){ window.CWS.removeCert(btn.dataset.id); render(); } } else if(act === 'edit-list') listModal(btn.dataset.list, btn.dataset.value); else if(act === 'new-list') listModal(btn.dataset.list, ''); else if(act === 'delete-list'){ const arr = (st().settings.lists[btn.dataset.list] || []).filter(x => x !== btn.dataset.value); window.CWS.updateList(btn.dataset.list, arr); render(); } });
     if(!(st().projects.order || []).length) window.CWS.resetDemo();
     render();
   </script>
