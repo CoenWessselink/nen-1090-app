@@ -1,0 +1,45 @@
+APP AUTH BASE URL FIX – TOEPASSEN IN nen-1090-app
+
+Doel
+De app mag bij ontbrekende sessie niet meer redirecten naar:
+https://nen-1090-app.pages.dev/app/login.html
+
+Maar moet redirecten naar de marketing auth-shell:
+https://nen1090-marketing.pages.dev/app/login.html
+
+Bestanden in deze ZIP
+- .env.production
+- .env.local
+- APPLY_STEPS.txt
+
+Plaatsing
+Kopieer deze bestanden naar:
+C:\NEN1090\nen-1090-app\
+
+Belangrijk
+- .env.production is bedoeld voor productiebuilds
+- .env.local is bedoeld voor lokaal testen
+- Zorg dat Cloudflare Pages voor de app ook dezelfde environment variable heeft:
+  VITE_MARKETING_BASE_URL = https://nen1090-marketing.pages.dev
+
+Na kopiëren lokaal
+1. cd C:\NEN1090\nen-1090-app
+2. npm install
+3. npm run build
+4. git add .env.production .env.local
+5. git commit -m "Set marketing auth base URL"
+6. git push
+
+Cloudflare Pages (app-project)
+- Settings
+- Environment variables
+- Voeg toe:
+  VITE_MARKETING_BASE_URL = https://nen1090-marketing.pages.dev
+- Redeploy production
+
+Verwachte uitkomst
+Niet meer:
+https://nen-1090-app.pages.dev/app/login.html?next=%2F...
+
+Wel:
+https://nen1090-marketing.pages.dev/app/login.html?next=%2F...

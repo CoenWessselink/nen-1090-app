@@ -14,8 +14,11 @@ jobs:
       - name: Check app root
         run: curl -fL "https://nen-1090-app.pages.dev/" || exit 1
 
+      - name: Check dashboard page
+        run: curl -fL "https://nen-1090-app.pages.dev/dashboard" || exit 1
+
       - name: Check projecten page
-        run: curl -fL "https://nen-1090-app.pages.dev/layers/projecten" || exit 1
+        run: curl -fL "https://nen-1090-app.pages.dev/projecten" || exit 1
 
       - name: Check health through proxy
         run: curl -fL "https://nen-1090-app.pages.dev/api/v1/health" || exit 1
