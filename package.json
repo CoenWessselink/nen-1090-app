@@ -38,11 +38,17 @@
     "zustand": "^5.0.3"
   },
   "devDependencies": {
-    "@types/react": "^18.3.18",
-    "@types/react-dom": "^18.3.5",
+    "@playwright/test": "^1.54.2",
+    "@types/babel__core": "^7.20.5",
+    "@types/babel__generator": "^7.27.0",
+    "@types/babel__template": "^7.4.4",
+    "@types/babel__traverse": "^7.28.0",
+    "@types/estree": "^1.0.8",
+    "@types/prop-types": "^15.7.15",
+    "@types/react": "^18.3.28",
+    "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react": "^4.3.4",
     "typescript": "^5.7.3",
-    "vite": "^6.0.7",
-    "@playwright/test": "^1.54.2"
+    "vite": "^6.0.7"
   }
 }
