@@ -1,0 +1,233 @@
+{
+  "generated_at": "2026-03-18T12:21:15.958Z",
+  "base_url": "http://127.0.0.1:8001/api/v1",
+  "tenant": "demo",
+  "email": "admin@demo.com",
+  "steps": [
+    {
+      "label": "login_initial",
+      "method": "POST",
+      "url": "http://127.0.0.1:8001/api/v1/auth/login",
+      "request_headers": {},
+      "expected_statuses": [
+        "2xx"
+      ],
+      "status": "ok",
+      "http_status": 200,
+      "response": {
+        "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyYzE3NDY1Ny1hNzJmLTRmNjItODFhNy1kOGNjZmRmMjEyZWIiLCJ0ZW5hbnRfaWQiOiJhY2UyNTY5ZS0zYjg4LTRlZWMtOTE4My05OTJlOWEwNzA5NzciLCJ0ZW5hbnQiOiJkZW1vIiwicm9sZSI6InRlbmFudF9hZG1pbiIsInR5cGUiOiJhY2Nlc3MiLCJleHAiOjE3NzM4MzczNzZ9.RgkMay5PmCQ64h9srYO61276uDgJWhciRBERjjHzJPA",
+        "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyYzE3NDY1Ny1hNzJmLTRmNjItODFhNy1kOGNjZmRmMjEyZWIiLCJ0ZW5hbnRfaWQiOiJhY2UyNTY5ZS0zYjg4LTRlZWMtOTE4My05OTJlOWEwNzA5NzciLCJ0ZW5hbnQiOiJkZW1vIiwicm9sZSI6InRlbmFudF9hZG1pbiIsInR5cGUiOiJyZWZyZXNoIiwianRpIjoiMTNjYTU2YTQtZGU2MS00ODRhLWExMzItNmI5NjZiYWUwOGYzIiwiZXhwIjoxNzc1MDQ2MDc2fQ.oDlB2AqG-XHOFrdhLJvmGEyUzWGq5z7JOrNSfNwfH_E",
+        "token_type": "bearer",
+        "user": {
+          "email": "admin@demo.com",
+          "tenant": "demo",
+          "tenant_id": "ace2569e-3b88-4eec-9183-992e9a070977",
+          "role": "tenant_admin",
+          "name": "admin"
+        }
+      }
+    },
+    {
+      "label": "me_after_login",
+      "method": "GET",
+      "url": "http://127.0.0.1:8001/api/v1/auth/me",
+      "request_headers": {
+        "Authorization": "Bearer ***"
+      },
+      "expected_statuses": [
+        "2xx"
+      ],
+      "status": "ok",
+      "http_status": 200,
+      "response": {
+        "email": "admin@demo.com",
+        "tenant": "demo",
+        "role": "tenant_admin"
+      }
+    },
+    {
+      "label": "refresh_rotate",
+      "method": "POST",
+      "url": "http://127.0.0.1:8001/api/v1/auth/refresh",
+      "request_headers": {},
+      "expected_statuses": [
+        "2xx"
+      ],
+      "status": "ok",
+      "http_status": 200,
+      "response": {
+        "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyYzE3NDY1Ny1hNzJmLTRmNjItODFhNy1kOGNjZmRmMjEyZWIiLCJ0ZW5hbnRfaWQiOiJhY2UyNTY5ZS0zYjg4LTRlZWMtOTE4My05OTJlOWEwNzA5NzciLCJ0ZW5hbnQiOiJkZW1vIiwicm9sZSI6InRlbmFudF9hZG1pbiIsInR5cGUiOiJhY2Nlc3MiLCJleHAiOjE3NzM4MzczNzZ9.RgkMay5PmCQ64h9srYO61276uDgJWhciRBERjjHzJPA",
+        "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyYzE3NDY1Ny1hNzJmLTRmNjItODFhNy1kOGNjZmRmMjEyZWIiLCJ0ZW5hbnRfaWQiOiJhY2UyNTY5ZS0zYjg4LTRlZWMtOTE4My05OTJlOWEwNzA5NzciLCJ0ZW5hbnQiOiJkZW1vIiwicm9sZSI6InRlbmFudF9hZG1pbiIsInR5cGUiOiJyZWZyZXNoIiwianRpIjoiN2UwYzUyNGMtZjlhMi00OGVmLWEyYzktZWNkOGUwNTQ3YTI5IiwiZXhwIjoxNzc1MDQ2MDc2fQ.IypdSklUY2L1wpYq-uwxFJv5n96negBZGnIDYeQ-M1U",
+        "token_type": "bearer",
+        "user": {
+          "email": "admin@demo.com",
+          "tenant": "demo",
+          "tenant_id": "ace2569e-3b88-4eec-9183-992e9a070977",
+          "role": "tenant_admin",
+          "name": "admin"
+        }
+      }
+    },
+    {
+      "label": "refresh_replay_old_token_rejected",
+      "method": "POST",
+      "url": "http://127.0.0.1:8001/api/v1/auth/refresh",
+      "request_headers": {},
+      "expected_statuses": [
+        401
+      ],
+      "status": "ok",
+      "http_status": 401,
+      "response": {
+        "detail": "Refresh token revoked"
+      }
+    },
+    {
+      "label": "logout_current_session",
+      "method": "POST",
+      "url": "http://127.0.0.1:8001/api/v1/auth/logout",
+      "request_headers": {
+        "Authorization": "Bearer ***"
+      },
+      "expected_statuses": [
+        "2xx"
+      ],
+      "status": "ok",
+      "http_status": 200,
+      "response": {
+        "ok": true,
+        "message": "Je bent uitgelogd.",
+        "reset_token": null,
+        "reset_url": null
+      }
+    },
+    {
+      "label": "refresh_after_logout_rejected",
+      "method": "POST",
+      "url": "http://127.0.0.1:8001/api/v1/auth/refresh",
+      "request_headers": {},
+      "expected_statuses": [
+        401
+      ],
+      "status": "ok",
+      "http_status": 401,
+      "response": {
+        "detail": "Refresh token revoked"
+      }
+    },
+    {
+      "label": "forgot_password_request",
+      "method": "POST",
+      "url": "http://127.0.0.1:8001/api/v1/auth/reset-password/request",
+      "request_headers": {},
+      "expected_statuses": [
+        "2xx"
+      ],
+      "status": "ok",
+      "http_status": 200,
+      "response": {
+        "ok": true,
+        "message": "Als dit account bestaat, is een resetlink verstuurd.",
+        "reset_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyYzE3NDY1Ny1hNzJmLTRmNjItODFhNy1kOGNjZmRmMjEyZWIiLCJ0ZW5hbnRfaWQiOiJhY2UyNTY5ZS0zYjg4LTRlZWMtOTE4My05OTJlOWEwNzA5NzciLCJ0ZW5hbnQiOiJkZW1vIiwiZW1haWwiOiJhZG1pbkBkZW1vLmNvbSIsInR5cGUiOiJwYXNzd29yZF9yZXNldCIsImp0aSI6Ijc2MDQ3OGYxLTM4M2ItNDlhMC1iZWJlLWUyODViNjJkYzE2YyIsImV4cCI6MTc3Mzg0MDA3Nn0.tFjBHxFyqVufwEc1DNQqTxfQoB4IponItUImwxZa6L8",
+        "reset_url": "http://127.0.0.1:4173/reset-password?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyYzE3NDY1Ny1hNzJmLTRmNjItODFhNy1kOGNjZmRmMjEyZWIiLCJ0ZW5hbnRfaWQiOiJhY2UyNTY5ZS0zYjg4LTRlZWMtOTE4My05OTJlOWEwNzA5NzciLCJ0ZW5hbnQiOiJkZW1vIiwiZW1haWwiOiJhZG1pbkBkZW1vLmNvbSIsInR5cGUiOiJwYXNzd29yZF9yZXNldCIsImp0aSI6Ijc2MDQ3OGYxLTM4M2ItNDlhMC1iZWJlLWUyODViNjJkYzE2YyIsImV4cCI6MTc3Mzg0MDA3Nn0.tFjBHxFyqVufwEc1DNQqTxfQoB4IponItUImwxZa6L8"
+      }
+    },
+    {
+      "label": "reset_password_confirm",
+      "method": "POST",
+      "url": "http://127.0.0.1:8001/api/v1/auth/reset-password/confirm",
+      "request_headers": {},
+      "expected_statuses": [
+        "2xx"
+      ],
+      "status": "ok",
+      "http_status": 200,
+      "response": {
+        "ok": true,
+        "message": "Je wachtwoord is succesvol ingesteld.",
+        "reset_token": null,
+        "reset_url": null
+      }
+    },
+    {
+      "label": "login_with_new_password",
+      "method": "POST",
+      "url": "http://127.0.0.1:8001/api/v1/auth/login",
+      "request_headers": {},
+      "expected_statuses": [
+        "2xx"
+      ],
+      "status": "ok",
+      "http_status": 200,
+      "response": {
+        "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyYzE3NDY1Ny1hNzJmLTRmNjItODFhNy1kOGNjZmRmMjEyZWIiLCJ0ZW5hbnRfaWQiOiJhY2UyNTY5ZS0zYjg4LTRlZWMtOTE4My05OTJlOWEwNzA5NzciLCJ0ZW5hbnQiOiJkZW1vIiwicm9sZSI6InRlbmFudF9hZG1pbiIsInR5cGUiOiJhY2Nlc3MiLCJleHAiOjE3NzM4MzczNzd9.BDLBiY2GV9V5gW4tZ2jEcrwi9WCDlwZS0G7SxJoV-ZI",
+        "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyYzE3NDY1Ny1hNzJmLTRmNjItODFhNy1kOGNjZmRmMjEyZWIiLCJ0ZW5hbnRfaWQiOiJhY2UyNTY5ZS0zYjg4LTRlZWMtOTE4My05OTJlOWEwNzA5NzciLCJ0ZW5hbnQiOiJkZW1vIiwicm9sZSI6InRlbmFudF9hZG1pbiIsInR5cGUiOiJyZWZyZXNoIiwianRpIjoiNTc4MTA1NzgtYmI5Ny00MzhlLWFhNDctYjY2MjBhMTM3N2MzIiwiZXhwIjoxNzc1MDQ2MDc3fQ.7Yq_UY1UTng76e9E_YeLU_LLc5CfCLZ492y6-nGMrYU",
+        "token_type": "bearer",
+        "user": {
+          "email": "admin@demo.com",
+          "tenant": "demo",
+          "tenant_id": "ace2569e-3b88-4eec-9183-992e9a070977",
+          "role": "tenant_admin",
+          "name": "admin"
+        }
+      }
+    },
+    {
+      "label": "change_password_back_to_original",
+      "method": "POST",
+      "url": "http://127.0.0.1:8001/api/v1/auth/change-password",
+      "request_headers": {
+        "Authorization": "Bearer ***"
+      },
+      "expected_statuses": [
+        "2xx"
+      ],
+      "status": "ok",
+      "http_status": 200,
+      "response": {
+        "ok": true,
+        "message": "Wachtwoord gewijzigd",
+        "reset_token": null,
+        "reset_url": null
+      }
+    },
+    {
+      "label": "refresh_after_change_password_rejected",
+      "method": "POST",
+      "url": "http://127.0.0.1:8001/api/v1/auth/refresh",
+      "request_headers": {},
+      "expected_statuses": [
+        401
+      ],
+      "status": "ok",
+      "http_status": 401,
+      "response": {
+        "detail": "Refresh token revoked"
+      }
+    },
+    {
+      "label": "login_with_original_password_restored",
+      "method": "POST",
+      "url": "http://127.0.0.1:8001/api/v1/auth/login",
+      "request_headers": {},
+      "expected_statuses": [
+        "2xx"
+      ],
+      "status": "ok",
+      "http_status": 200,
+      "response": {
+        "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyYzE3NDY1Ny1hNzJmLTRmNjItODFhNy1kOGNjZmRmMjEyZWIiLCJ0ZW5hbnRfaWQiOiJhY2UyNTY5ZS0zYjg4LTRlZWMtOTE4My05OTJlOWEwNzA5NzciLCJ0ZW5hbnQiOiJkZW1vIiwicm9sZSI6InRlbmFudF9hZG1pbiIsInR5cGUiOiJhY2Nlc3MiLCJleHAiOjE3NzM4MzczNzh9.D4X-sQhA36Hi8V_quof9HrrTb_W91d5YxirHUddKocY",
+        "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyYzE3NDY1Ny1hNzJmLTRmNjItODFhNy1kOGNjZmRmMjEyZWIiLCJ0ZW5hbnRfaWQiOiJhY2UyNTY5ZS0zYjg4LTRlZWMtOTE4My05OTJlOWEwNzA5NzciLCJ0ZW5hbnQiOiJkZW1vIiwicm9sZSI6InRlbmFudF9hZG1pbiIsInR5cGUiOiJyZWZyZXNoIiwianRpIjoiYTJlODZlOWItYmE1Yi00YTE3LTliOWYtYTdlNzJiZDJlOWMyIiwiZXhwIjoxNzc1MDQ2MDc4fQ.44IXwcnbLhnNHmdaFTguyi8Prs3XtdEUFMim4STedg4",
+        "token_type": "bearer",
+        "user": {
+          "email": "admin@demo.com",
+          "tenant": "demo",
+          "tenant_id": "ace2569e-3b88-4eec-9183-992e9a070977",
+          "role": "tenant_admin",
+          "name": "admin"
+        }
+      }
+    }
+  ],
+  "overall_status": "ok"
+}

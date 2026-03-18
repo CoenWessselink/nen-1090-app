@@ -1,0 +1,13 @@
+NEN1090 PHASE 1 AUTH MERGE
+
+Uitgevoerd in deze package:
+- React app auth-routes verwijzen nu naar de centrale marketing/auth-shell
+- Protected routes sturen niet meer naar lokale app-login maar naar marketing /app/login.html
+- App probeert bij start een bestaande centrale sessie te hydreren via GET /api/v1/auth/me
+- API-calls sturen nu credentials mee zodat Pages/HttpOnly-cookie sessies ondersteund worden
+- .env.example uitgebreid met VITE_MARKETING_BASE_URL
+
+Belangrijk:
+- Deze fase houdt billing nog intact in de app; ownership wordt in fase 2 opgeschoond
+- Cookie bootstrap werkt het best in same-origin / Pages-proxy opzet
+- Losstaande app-deploys zonder gedeelde origin blijven afhankelijk van bestaande bearer-login of volgende mergefase

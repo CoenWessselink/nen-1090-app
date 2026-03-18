@@ -1,0 +1,197 @@
+import { useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Drawer } from '@/components/overlays/Drawer';
+import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
+import { Tabs } from '@/components/ui/Tabs';
+import { LoadingState } from '@/components/feedback/LoadingState';
+import { ErrorState } from '@/components/feedback/ErrorState';
+import { EmptyState } from '@/components/feedback/EmptyState';
+import { UploadDropzone } from '@/components/upload/UploadDropzone';
+import { UploadProgress } from '@/components/upload/UploadProgress';
+import type { Weld } from '@/types/domain';
+import { getWeldAttachments, getWeldDefects, getWeldInspections, resetWeldToNorm, uploadWeldAttachment } from '@/api/welds';
+import { createInspectionResult } from '@/api/inspections';
+import { reopenDefect, resolveDefect } from '@/api/defects';
+import { normalizeListResponse } from '@/utils/api';
+import { formatDateTime, toneFromStatus } from '@/utils/format';
+
+type DrawerProps = {
+  open: boolean;
+  inspection: Weld | null;
+  onClose: () => void;
+};
+
+const detailTabs = [
+  { value: 'samenvatting', label: 'Samenvatting' },
+  { value: 'inspecties', label: 'Inspecties' },
+  { value: 'defecten', label: 'Defecten' },
+  { value: 'bijlagen', label: 'Bijlagen' },
+];
+
+export function DeviationDrawer({ open, inspection, onClose }: DrawerProps) {
+  const [tab, setTab] = useState('samenvatting');
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const queryClient = useQueryClient();
+  const projectId = inspection?.project_id;
+  const weldId = inspection?.id;
+
+  const inspections = useQuery({
+    queryKey: ['weld-detail-inspections', projectId, weldId],
+    queryFn: async () => normalizeListResponse(await getWeldInspections(String(projectId), String(weldId))),
+    enabled: open && Boolean(projectId && weldId),
+  });
+  const defects = useQuery({
+    queryKey: ['weld-detail-defects', projectId, weldId],
+    queryFn: async () => normalizeListResponse(await getWeldDefects(String(projectId), String(weldId))),
+    enabled: open && Boolean(projectId && weldId),
+  });
+  const attachments = useQuery({
+    queryKey: ['weld-detail-attachments', projectId, weldId],
+    queryFn: async () => normalizeListResponse(await getWeldAttachments(String(projectId), String(weldId))),
+    enabled: open && Boolean(projectId && weldId),
+  });
+
+  const resetMutation = useMutation({
+    mutationFn: () => resetWeldToNorm(String(projectId), String(weldId)),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['welds'] }),
+  });
+  const addResultMutation = useMutation({
+    mutationFn: (inspectionId: string | number) => createInspectionResult(inspectionId, { result: 'accepted', entered_via: 'frontend' }),
+    onSuccess: () => inspections.refetch(),
+  });
+  const resolveMutation = useMutation({
+    mutationFn: (defectId: string | number) => resolveDefect(defectId),
+    onSuccess: () => defects.refetch(),
+  });
+  const reopenMutation = useMutation({
+    mutationFn: (defectId: string | number) => reopenDefect(defectId),
+    onSuccess: () => defects.refetch(),
+  });
+
+  const uploadMutation = useMutation({
+    mutationFn: async (files: File[]) => {
+      if (!projectId || !weldId) return [];
+      const uploaded = [] as Array<Record<string, unknown>>;
+      for (const [index, file] of files.entries()) {
+        const formData = new FormData();
+        formData.append('file', file);
+        uploaded.push((await uploadWeldAttachment(String(projectId), String(weldId), formData)) || {});
+        setUploadProgress(Math.round(((index + 1) / files.length) * 100));
+      }
+      return uploaded;
+    },
+    onSuccess: async () => {
+      await attachments.refetch();
+      setTimeout(() => setUploadProgress(0), 500);
+    },
+  });
+
+  const openDefects = useMemo(() => (defects.data?.items || []).filter((item) => String(item.status || '').toLowerCase() !== 'resolved'), [defects.data]);
+
+  return (
+    <Drawer open={open} onClose={onClose} title="Lasdetail & opvolging">
+      {inspection ? (
+        <div className="detail-stack">
+          <div className="detail-hero">
+            <h3>{inspection.weld_number || inspection.id}</h3>
+            <Badge tone={inspection.status === 'goedgekeurd' ? 'success' : inspection.status === 'afgekeurd' ? 'danger' : 'warning'}>
+              {inspection.status || 'Open'}
+            </Badge>
+          </div>
+          <div className="detail-grid">
+            <div><span>Lasser</span><strong>{inspection.welder_name || '—'}</strong></div>
+            <div><span>Proces</span><strong>{inspection.process || '—'}</strong></div>
+            <div><span>Project</span><strong>{inspection.project_id || '—'}</strong></div>
+            <div><span>Inspecteur</span><strong>{inspection.inspector_name || '—'}</strong></div>
+          </div>
+
+          <Tabs tabs={detailTabs} value={tab} onChange={setTab} />
+
+          {tab === 'samenvatting' ? (
+            <div className="detail-stack">
+              <div className="content-panel">
+                <h4>Statussamenvatting</h4>
+                <p>Deze drawer gebruikt project-scoped backendroutes voor inspecties, defecten en weld-bijlagen. Lokale nep-workflows zijn verwijderd.</p>
+              </div>
+              <div className="card-grid cols-3">
+                <div className="state-box"><strong>Inspecties</strong><span>{inspections.data?.total || 0} gekoppeld</span></div>
+                <div className="state-box"><strong>Defecten</strong><span>{openDefects.length} open</span></div>
+                <div className="state-box"><strong>Bijlagen</strong><span>{attachments.data?.total || 0} bestand(en)</span></div>
+              </div>
+              <div className="drawer-footer-actions">
+                <Button variant="secondary" onClick={onClose}>Sluiten</Button>
+                <Button onClick={() => resetMutation.mutate()} disabled={resetMutation.isPending}>Reset naar norm</Button>
+              </div>
+            </div>
+          ) : null}
+
+          {tab === 'inspecties' ? (
+            inspections.isLoading ? <LoadingState label="Inspecties laden..." /> : inspections.isError ? <ErrorState title="Inspecties niet geladen" description="Controleer het project-scoped inspectie-endpoint." /> : (
+              <div className="list-stack compact-list">
+                {(inspections.data?.items || []).length ? (inspections.data?.items || []).map((item) => (
+                  <div className="list-row align-start" key={String(item.id)}>
+                    <div>
+                      <strong>Inspectie {String(item.id)}</strong>
+                      <div className="list-subtle">Status: {String(item.status || item.result || 'Onbekend')}</div>
+                    </div>
+                    <div className="toolbar-cluster">
+                      <Badge tone={toneFromStatus(String(item.status || item.result || ''))}>{String(item.status || item.result || 'Open')}</Badge>
+                      <Button variant="secondary" onClick={() => addResultMutation.mutate(item.id)} disabled={addResultMutation.isPending}>Resultaat boeken</Button>
+                    </div>
+                  </div>
+                )) : <EmptyState title="Geen inspecties" description="Voor deze las zijn nog geen inspecties gekoppeld." />}
+              </div>
+            )
+          ) : null}
+
+          {tab === 'defecten' ? (
+            defects.isLoading ? <LoadingState label="Defecten laden..." /> : defects.isError ? <ErrorState title="Defecten niet geladen" description="Controleer de defectroutes van de bestaande API." /> : (
+              <div className="list-stack compact-list">
+                {(defects.data?.items || []).length ? (defects.data?.items || []).map((item) => {
+                  const isResolved = String(item.status || '').toLowerCase() === 'resolved';
+                  return (
+                    <div className="list-row align-start" key={String(item.id)}>
+                      <div>
+                        <strong>Defect {String(item.id)}</strong>
+                        <div className="list-subtle">Severity: {String(item.severity || 'Onbekend')} · Status: {String(item.status || 'Open')}</div>
+                      </div>
+                      <div className="toolbar-cluster">
+                        <Badge tone={isResolved ? 'success' : 'warning'}>{String(item.status || 'Open')}</Badge>
+                        {isResolved ? (
+                          <Button variant="secondary" onClick={() => reopenMutation.mutate(item.id)} disabled={reopenMutation.isPending}>Heropen</Button>
+                        ) : (
+                          <Button variant="secondary" onClick={() => resolveMutation.mutate(item.id)} disabled={resolveMutation.isPending}>Resolve</Button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                }) : <EmptyState title="Geen defecten" description="Voor deze las zijn geen defecten beschikbaar." />}
+              </div>
+            )
+          ) : null}
+
+          {tab === 'bijlagen' ? (
+            <div className="detail-stack">
+              <UploadDropzone onFiles={(files) => uploadMutation.mutate(files)} disabled={uploadMutation.isPending} />
+              {uploadProgress > 0 ? <UploadProgress progress={uploadProgress} /> : null}
+              {attachments.isLoading ? <LoadingState label="Bijlagen laden..." /> : attachments.isError ? <ErrorState title="Bijlagen niet geladen" description="Controleer de weld attachment-routes in de API." /> : (
+                <div className="list-stack compact-list">
+                  {(attachments.data?.items || []).length ? (attachments.data?.items || []).map((item) => (
+                    <div className="list-row" key={String(item.id)}>
+                      <div>
+                        <strong>{String(item.title || `Bijlage ${item.id}`)}</strong>
+                        <div className="list-subtle">{String(item.type || 'Document')} · {formatDateTime(item.uploaded_at)}</div>
+                      </div>
+                      <Badge tone={toneFromStatus(String(item.status || ''))}>{String(item.status || 'Actief')}</Badge>
+                    </div>
+                  )) : <EmptyState title="Geen bijlagen" description="Upload foto’s, WPS-documenten of bewijslast voor deze las." />}
+                </div>
+              )}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </Drawer>
+  );
+}
