@@ -4,27 +4,35 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+<<<<<<< HEAD
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+=======
     "dev": "node scripts/use-source-entry.mjs && vite",
     "build": "node scripts/use-source-entry.mjs && tsc -b && vite build && node scripts/prepare-release.mjs && node scripts/finalize-root-deploy.mjs",
+>>>>>>> e7c952a4 (FINAL MERGE BUILD - APP)
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit -p tsconfig.app.json",
-    "lint": "npm run typecheck",
+    "lint": "tsc --noEmit",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed --project=desktop-chromium",
+    "test:e2e:mobile": "playwright test --project=mobile-chromium",
+    "test:e2e:contracts": "playwright test tests/e2e/documents-and-settings.spec.ts tests/e2e/planning-reporting.spec.ts",
+    "test:e2e:workflows": "playwright test tests/e2e/projects-crud.spec.ts tests/e2e/auth-and-routing.spec.ts",
+<<<<<<< HEAD
+    "release:smoke": "npm run build && npm run test:e2e"
+=======
     "release:smoke": "npm run build && npm run test:e2e",
     "build:release": "node scripts/use-source-entry.mjs && tsc -b && vite build && node scripts/prepare-release.mjs && node scripts/finalize-root-deploy.mjs",
     "preview:release": "vite preview --outDir release",
     "build:static": "npm run build && node scripts/create-static-release.mjs && node scripts/verify-release.mjs",
     "preview:static": "vite preview --outDir deploy-static",
     "verify:release": "node scripts/verify-release.mjs",
-    "test:e2e": "playwright test",
-    "test:e2e:headed": "playwright test --headed --project=desktop-chromium",
-    "test:e2e:mobile": "playwright test --project=mobile-chromium",
-    "test:e2e:contracts": "playwright test tests/e2e/documents-and-settings.spec.ts tests/e2e/planning-reporting.spec.ts",
-    "test:e2e:workflows": "playwright test tests/e2e/projects-crud.spec.ts tests/e2e/auth-and-routing.spec.ts",
-    "test:e2e:local": "playwright test",
+    "test:e2e:local": "PLAYWRIGHT_CHROMIUM_PATH=${PLAYWRIGHT_CHROMIUM_PATH:-/usr/bin/chromium} playwright test",
     "test:e2e:auth": "playwright test tests/e2e/auth-hardening.spec.ts tests/e2e/auth-session-negative.spec.ts tests/e2e/auth-and-routing.spec.ts",
     "test:e2e:auth:live": "PLAYWRIGHT_LIVE_AUTH=1 playwright test tests/e2e/auth-live.spec.ts --project=desktop-chromium",
     "auth:matrix:live": "node scripts/run-live-auth-matrix.mjs",
     "auth:release:evidence": "node scripts/collect-auth-release-evidence.mjs"
+>>>>>>> e7c952a4 (FINAL MERGE BUILD - APP)
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -39,17 +47,11 @@
     "zustand": "^5.0.3"
   },
   "devDependencies": {
-    "@playwright/test": "^1.54.2",
-    "@types/babel__core": "^7.20.5",
-    "@types/babel__generator": "^7.27.0",
-    "@types/babel__template": "^7.4.4",
-    "@types/babel__traverse": "^7.20.7",
-    "@types/estree": "^1.0.8",
-    "@types/prop-types": "^15.7.15",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
     "@vitejs/plugin-react": "^4.3.4",
     "typescript": "^5.7.3",
-    "vite": "^6.0.7"
+    "vite": "^6.0.7",
+    "@playwright/test": "^1.54.2"
   }
 }

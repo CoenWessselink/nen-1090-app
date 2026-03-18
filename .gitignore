@@ -1,101 +1,26 @@
-############################################
-# OS
-############################################
-
-.DS_Store
-Thumbs.db
-desktop.ini
-
-############################################
-# Node / React / Vite
-############################################
-
 node_modules/
 dist/
-build/
-out/
-coverage/
-
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-
-.cache/
-.vite/
-
-############################################
-# Playwright
-############################################
-
+release/
+deploy-static/
 playwright-report/
 test-results/
-.playwright/
-
-############################################
-# Environment files
-############################################
-
+blob-report/
+auth-release-evidence/
+*.tsbuildinfo
 .env
 .env.*
 !.env.example
-
-############################################
-# Python / FastAPI
-############################################
-
-__pycache__/
-*.py[cod]
-*.pyo
-*.pyd
-*.pyc
-
-venv/
-.env/
-.envrc
-.venv/
-
-############################################
-# Python build
-############################################
-
-build/
-dist/
-*.egg-info/
-
-############################################
-# Logs
-############################################
-
-logs/
-*.log
-
-############################################
-# IDE
-############################################
-
+!.env.playwright.live.example
 .vscode/
 .idea/
-
-############################################
-# GitHub / CI temp
-############################################
-
+.DS_Store
+Thumbs.db
+desktop.ini
+logs/
+*.log
 tmp/
 temp/
 .cache/
-
-############################################
-# Azure
-############################################
-
-.azure/
-
-############################################
-# Misc
-############################################
-
-*.zip
-*.tar
-*.gz
-*.7z
+.wrangler/
+NEN1090_FINAL_COMPLETENESS_CHECKLIST_FILLED.txt
+PHASE1_AUTH_MERGE_NOTES.txt
