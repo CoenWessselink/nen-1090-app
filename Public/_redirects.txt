@@ -1,10 +1,1 @@
-/layers/projecten.html /projecten 301
-/layers/dashboard.html /dashboard 301
-/layers/lascontrole.html /lascontrole 301
-/layers/ce-dossier.html /ce-dossier 301
-/layers/instellingen.html /instellingen 301
-/instellingen.html /instellingen 301
-/dashboard.html /dashboard 301
-/lascontrole.html /lascontrole 301
-/projecten.html /projecten 301
 /* /index.html 200
