@@ -2,7 +2,7 @@ import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useSt
 import { useAuthStore } from '@/app/store/auth-store';
 import type { Role, SessionUser } from '@/types/domain';
 
-type AccessPermission =
+export type AccessPermission =
   | 'dashboard.read'
   | 'projects.read'
   | 'projects.write'
