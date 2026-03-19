@@ -1,5 +1,6 @@
 import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useState } from 'react';
 import { useAuthStore } from '@/app/store/auth-store';
+import { env } from '@/lib/env';
 import type { Role, SessionUser } from '@/types/domain';
 
 export type AccessPermission =
@@ -36,10 +37,8 @@ const SessionContext = createContext<SessionContextValue | null>(null);
 
 const permissionMap: Record<string, AccessPermission[]> = {
   SUPERADMIN: ['dashboard.read', 'projects.read', 'projects.write', 'welds.read', 'welds.write', 'documents.read', 'documents.write', 'settings.read', 'settings.write', 'billing.read', 'billing.manage', 'tenants.read', 'tenants.impersonate'],
-  SUPER_ADMIN: ['dashboard.read', 'projects.read', 'projects.write', 'welds.read', 'welds.write', 'documents.read', 'documents.write', 'settings.read', 'settings.write', 'billing.read', 'billing.manage', 'tenants.read', 'tenants.impersonate'],
-  ADMIN: ['dashboard.read', 'projects.read', 'projects.write', 'welds.read', 'welds.write', 'documents.read', 'documents.write', 'settings.read', 'settings.write', 'billing.read', 'tenants.read'],
   TENANTADMIN: ['dashboard.read', 'projects.read', 'projects.write', 'welds.read', 'welds.write', 'documents.read', 'documents.write', 'settings.read', 'settings.write', 'billing.read'],
-  TENANTUSER: ['dashboard.read', 'projects.read', 'welds.read', 'documents.read', 'settings.read'],
+  ADMIN: ['dashboard.read', 'projects.read', 'projects.write', 'welds.read', 'welds.write', 'documents.read', 'documents.write', 'settings.read', 'settings.write', 'billing.read'],
   PLANNER: ['dashboard.read', 'projects.read', 'projects.write', 'welds.read', 'welds.write', 'documents.read'],
   INSPECTOR: ['dashboard.read', 'projects.read', 'welds.read', 'welds.write', 'documents.read', 'documents.write'],
   USER: ['dashboard.read', 'projects.read', 'welds.read', 'documents.read'],
@@ -48,6 +47,12 @@ const permissionMap: Record<string, AccessPermission[]> = {
 
 function normalizeRole(role?: string | null): string {
   return String(role || '').replace(/[^a-zA-Z]/g, '').toUpperCase();
+}
+
+function buildCentralAuthUrl(path: string) {
+  const apiBaseUrl = String(env.apiBaseUrl || '').replace(/\/+$/, '');
+  const suffix = path.startsWith('/') ? path : `/${path}`;
+  return `${apiBaseUrl}${suffix}`;
 }
 
 export function SessionProvider({ children }: PropsWithChildren) {
@@ -69,20 +74,33 @@ export function SessionProvider({ children }: PropsWithChildren) {
       }
 
       try {
-        const response = await fetch('/api/v1/auth/me', {
+        const response = await fetch(buildCentralAuthUrl('/auth/me'), {
           credentials: 'include',
           headers: { Accept: 'application/json' },
         });
-        if (!response.ok) return;
+
+        if (!response.ok) {
+          if (!cancelled) setIsBootstrapping(false);
+          return;
+        }
+
         const me = await response.json();
-        if (cancelled || !me?.email) return;
-        setSession('__cookie_session__', {
-          email: String(me.email),
-          tenant: typeof me.tenant === 'string' ? me.tenant : undefined,
-          tenantId: me.tenant_id ?? me.tenantId,
-          role: typeof me.role === 'string' ? me.role : undefined,
-          name: typeof me.name === 'string' ? me.name : undefined,
-        }, null);
+        if (cancelled || !me?.email) {
+          if (!cancelled) setIsBootstrapping(false);
+          return;
+        }
+
+        setSession(
+          '__cookie_session__',
+          {
+            email: String(me.email),
+            tenant: typeof me.tenant === 'string' ? me.tenant : undefined,
+            tenantId: me.tenant_id ?? me.tenantId,
+            role: typeof me.role === 'string' ? me.role : undefined,
+            name: typeof me.name === 'string' ? me.name : undefined,
+          },
+          null,
+        );
       } catch {
         // no active central session available
       } finally {
