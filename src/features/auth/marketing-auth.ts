@@ -7,6 +7,8 @@ export type MarketingAuthTarget =
   | 'logout'
   | 'subscription';
 
+const DEFAULT_MARKETING_ORIGIN = 'https://nen1090-marketing-new.pages.dev';
+
 const targetPathMap: Record<MarketingAuthTarget, string> = {
   login: '/app/login',
   'forgot-password': '/app/forgot-password',
@@ -24,8 +26,7 @@ function trimTrailingSlash(value: string) {
 export function getMarketingOrigin(): string {
   const explicit = String(import.meta.env.VITE_MARKETING_BASE_URL || '').trim();
   if (explicit) return trimTrailingSlash(explicit);
-  if (typeof window !== 'undefined') return 'https://nen1090-marketing-new.pages.dev';
-  return '';
+  return DEFAULT_MARKETING_ORIGIN;
 }
 
 export function buildMarketingUrl(target: MarketingAuthTarget, options?: { next?: string; reason?: string; token?: string; query?: Record<string, string | null | undefined> }): string {

@@ -1,9 +1,8 @@
 import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useState } from 'react';
-import { getMarketingOrigin } from '@/features/auth/marketing-auth';
 import { useAuthStore } from '@/app/store/auth-store';
 import type { Role, SessionUser } from '@/types/domain';
 
-export type AccessPermission =
+type AccessPermission =
   | 'dashboard.read'
   | 'projects.read'
   | 'projects.write'
@@ -51,6 +50,27 @@ function normalizeRole(role?: string | null): string {
   return String(role || '').replace(/[^a-zA-Z]/g, '').toUpperCase();
 }
 
+function consumeMarketingHandoff() {
+  if (typeof window === 'undefined') return null;
+  const url = new URL(window.location.href);
+  const accessToken = url.searchParams.get('access_token') || '';
+  const email = url.searchParams.get('email') || '';
+  if (!accessToken || !email) return null;
+
+  const user: SessionUser = {
+    email,
+    tenant: url.searchParams.get('tenant') || 'demo',
+    tenantId: url.searchParams.get('tenant_id') || undefined,
+    role: url.searchParams.get('role') || undefined,
+    name: url.searchParams.get('name') || undefined,
+  };
+
+  const refreshToken = url.searchParams.get('refresh_token') || null;
+  ['access_token', 'refresh_token', 'email', 'tenant', 'tenant_id', 'role', 'name', 'auth_source'].forEach((key) => url.searchParams.delete(key));
+  window.history.replaceState({}, document.title, `${url.pathname}${url.search}${url.hash}`);
+  return { token: accessToken, refreshToken, user };
+}
+
 export function SessionProvider({ children }: PropsWithChildren) {
   const token = useAuthStore((state) => state.token);
   const refreshToken = useAuthStore((state) => state.refreshToken);
@@ -63,42 +83,24 @@ export function SessionProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     let cancelled = false;
 
-    async function bootstrapFromCentralAuth() {
+    function bootstrapFromHandoff() {
       if (user) {
         if (!cancelled) setIsBootstrapping(false);
         return;
       }
 
-      try {
-        const marketingOrigin = getMarketingOrigin();
-        const authMeUrl = marketingOrigin ? `${marketingOrigin}/api/v1/auth/me` : '/api/v1/auth/me';
-        const response = await fetch(authMeUrl, {
-          credentials: 'include',
-          mode: marketingOrigin ? 'cors' : 'same-origin',
-          headers: { Accept: 'application/json' },
-        });
-        if (!response.ok) return;
-        const me = await response.json();
-        if (cancelled || !me?.email) return;
-        setSession('__cookie_session__', {
-          email: String(me.email),
-          tenant: typeof me.tenant === 'string' ? me.tenant : undefined,
-          tenantId: me.tenant_id ?? me.tenantId,
-          role: typeof me.role === 'string' ? me.role : undefined,
-          name: typeof me.name === 'string' ? me.name : undefined,
-        }, null);
-      } catch {
-        // no active central session available
-      } finally {
-        if (!cancelled) setIsBootstrapping(false);
+      const handoff = consumeMarketingHandoff();
+      if (handoff) {
+        setSession(handoff.token, handoff.user, handoff.refreshToken);
       }
+      if (!cancelled) setIsBootstrapping(false);
     }
 
-    void bootstrapFromCentralAuth();
+    bootstrapFromHandoff();
     return () => {
       cancelled = true;
     };
-  }, [setSession, token, user]);
+  }, [setSession, user]);
 
   const normalizedRole = normalizeRole(user?.role);
   const permissions = permissionMap[normalizedRole] || [];
