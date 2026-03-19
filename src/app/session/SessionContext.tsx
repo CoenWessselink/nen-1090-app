@@ -1,6 +1,5 @@
 import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useState } from 'react';
 import { useAuthStore } from '@/app/store/auth-store';
-import { buildMarketingApiUrl } from '@/features/auth/marketing-auth';
 import type { Role, SessionUser } from '@/types/domain';
 
 export type AccessPermission =
@@ -51,27 +50,6 @@ function normalizeRole(role?: string | null): string {
   return String(role || '').replace(/[^a-zA-Z]/g, '').toUpperCase();
 }
 
-function normalizeUser(me: Record<string, unknown>): SessionUser | null {
-  const email = typeof me.email === 'string' ? me.email : typeof me.user === 'object' && me.user && typeof (me.user as Record<string, unknown>).email === 'string' ? String((me.user as Record<string, unknown>).email) : '';
-  if (!email) return null;
-
-  const tenantValue = typeof me.tenant === 'string'
-    ? me.tenant
-    : typeof me.tenant_name === 'string'
-      ? me.tenant_name
-      : typeof me.user === 'object' && me.user && typeof (me.user as Record<string, unknown>).tenant === 'string'
-        ? String((me.user as Record<string, unknown>).tenant)
-        : '';
-
-  return {
-    email,
-    tenant: tenantValue || 'demo',
-    tenantId: (me.tenant_id ?? me.tenantId ?? (typeof me.user === 'object' && me.user ? (me.user as Record<string, unknown>).tenantId : undefined)) as string | number | undefined,
-    role: typeof me.role === 'string' ? me.role : typeof me.user === 'object' && me.user && typeof (me.user as Record<string, unknown>).role === 'string' ? String((me.user as Record<string, unknown>).role) : undefined,
-    name: typeof me.name === 'string' ? me.name : typeof me.user === 'object' && me.user && typeof (me.user as Record<string, unknown>).name === 'string' ? String((me.user as Record<string, unknown>).name) : undefined,
-  };
-}
-
 export function SessionProvider({ children }: PropsWithChildren) {
   const token = useAuthStore((state) => state.token);
   const refreshToken = useAuthStore((state) => state.refreshToken);
@@ -91,27 +69,23 @@ export function SessionProvider({ children }: PropsWithChildren) {
       }
 
       try {
-        const response = await fetch(buildMarketingApiUrl('/auth/me'), {
+        const marketingOrigin = String(import.meta.env.VITE_MARKETING_BASE_URL || 'https://nen1090-marketing-new.pages.dev').replace(/\/+$/, '');
+        const response = await fetch(`${marketingOrigin}/api/auth/me`, {
           credentials: 'include',
           headers: { Accept: 'application/json' },
         });
-
-        if (response.status === 401) {
-          clearSession();
-          return;
-        }
-
         if (!response.ok) return;
-
-        const me = (await response.json()) as Record<string, unknown>;
-        if (cancelled) return;
-
-        const normalized = normalizeUser(me);
-        if (!normalized) return;
-
-        setSession('__cookie_session__', normalized, null);
+        const me = await response.json();
+        if (cancelled || !me?.email) return;
+        setSession('__cookie_session__', {
+          email: String(me.email),
+          tenant: typeof me.tenant === 'string' ? me.tenant : undefined,
+          tenantId: me.tenant_id ?? me.tenantId,
+          role: typeof me.role === 'string' ? me.role : undefined,
+          name: typeof me.name === 'string' ? me.name : undefined,
+        }, null);
       } catch {
-        clearSession();
+        // no active central session available
       } finally {
         if (!cancelled) setIsBootstrapping(false);
       }
@@ -121,7 +95,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
     return () => {
       cancelled = true;
     };
-  }, [clearSession, setSession, user]);
+  }, [setSession, token, user]);
 
   const normalizedRole = normalizeRole(user?.role);
   const permissions = permissionMap[normalizedRole] || [];

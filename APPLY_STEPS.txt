@@ -5,7 +5,7 @@ De app mag bij ontbrekende sessie niet meer redirecten naar:
 https://nen-1090-app.pages.dev/app/login.html
 
 Maar moet redirecten naar de marketing auth-shell:
-https://nen1090-marketing.pages.dev/app/login.html
+https://nen1090-marketing-new.pages.dev/app/login.html
 
 Bestanden in deze ZIP
 - .env.production
@@ -20,7 +20,7 @@ Belangrijk
 - .env.production is bedoeld voor productiebuilds
 - .env.local is bedoeld voor lokaal testen
 - Zorg dat Cloudflare Pages voor de app ook dezelfde environment variable heeft:
-  VITE_MARKETING_BASE_URL = https://nen1090-marketing.pages.dev
+  VITE_MARKETING_BASE_URL = https://nen1090-marketing-new.pages.dev
 
 Na kopiëren lokaal
 1. cd C:\NEN1090\nen-1090-app
@@ -34,7 +34,7 @@ Cloudflare Pages (app-project)
 - Settings
 - Environment variables
 - Voeg toe:
-  VITE_MARKETING_BASE_URL = https://nen1090-marketing.pages.dev
+  VITE_MARKETING_BASE_URL = https://nen1090-marketing-new.pages.dev
 - Redeploy production
 
 Verwachte uitkomst
@@ -42,4 +42,4 @@ Niet meer:
 https://nen-1090-app.pages.dev/app/login.html?next=%2F...
 
 Wel:
-https://nen1090-marketing.pages.dev/app/login.html?next=%2F...
+https://nen1090-marketing-new.pages.dev/app/login.html?next=%2F...

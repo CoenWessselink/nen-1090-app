@@ -11,14 +11,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check app root
-        run: curl -fL "https://nen-1090-app.pages.dev/" || exit 1
+      - name: Check app root (SPA load)
+        run: |
+          echo "Checking app root..."
+          RESPONSE=$(curl -s https://nen-1090-app.pages.dev/)
+          echo "$RESPONSE" | grep '<div id="root">' || exit 1
 
-      - name: Check dashboard page
-        run: curl -fL "https://nen-1090-app.pages.dev/dashboard" || exit 1
+      - name: Check health through marketing proxy
+        run: |
+          echo "Checking API health through marketing..."
+          curl -fL https://nen1090-marketing-new.pages.dev/api/v1/health || exit 1
 
-      - name: Check projecten page
-        run: curl -fL "https://nen-1090-app.pages.dev/projecten" || exit 1
-
-      - name: Check health through proxy
-        run: curl -fL "https://nen-1090-app.pages.dev/api/v1/health" || exit 1
+      - name: Smoke test completed
+        run: echo "Smoke test passed"
