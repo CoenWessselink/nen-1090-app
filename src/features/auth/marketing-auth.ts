@@ -8,13 +8,13 @@ export type MarketingAuthTarget =
   | 'subscription';
 
 const targetPathMap: Record<MarketingAuthTarget, string> = {
-  login: '/app/login.html',
-  'forgot-password': '/app/forgot-password.html',
-  'reset-password': '/app/reset-password.html',
-  'set-password': '/app/set-password.html',
-  'change-password': '/app/change-password.html',
-  logout: '/logout',
-  subscription: '/app/subscription.html',
+  login: '/app/login',
+  'forgot-password': '/app/forgot-password',
+  'reset-password': '/app/reset-password',
+  'set-password': '/app/set-password',
+  'change-password': '/app/change-password',
+  logout: '/app/logout',
+  subscription: '/app/subscription',
 };
 
 function trimTrailingSlash(value: string) {
@@ -24,8 +24,8 @@ function trimTrailingSlash(value: string) {
 export function getMarketingOrigin(): string {
   const explicit = String(import.meta.env.VITE_MARKETING_BASE_URL || '').trim();
   if (explicit) return trimTrailingSlash(explicit);
-  if (typeof window !== 'undefined' && window.location.hostname === 'nen1090-marketing-new.pages.dev') return window.location.origin;
-  return 'https://nen1090-marketing-new.pages.dev';
+  if (typeof window !== 'undefined') return 'https://nen1090-marketing-new.pages.dev';
+  return '';
 }
 
 export function buildMarketingUrl(target: MarketingAuthTarget, options?: { next?: string; reason?: string; token?: string; query?: Record<string, string | null | undefined> }): string {

@@ -1,4 +1,5 @@
 import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useState } from 'react';
+import { getMarketingOrigin } from '@/features/auth/marketing-auth';
 import { useAuthStore } from '@/app/store/auth-store';
 import type { Role, SessionUser } from '@/types/domain';
 
@@ -69,9 +70,11 @@ export function SessionProvider({ children }: PropsWithChildren) {
       }
 
       try {
-        const marketingOrigin = String(import.meta.env.VITE_MARKETING_BASE_URL || 'https://nen1090-marketing-new.pages.dev').replace(/\/+$/, '');
-        const response = await fetch(`${marketingOrigin}/api/auth/me`, {
+        const marketingOrigin = getMarketingOrigin();
+        const authMeUrl = marketingOrigin ? `${marketingOrigin}/api/v1/auth/me` : '/api/v1/auth/me';
+        const response = await fetch(authMeUrl, {
           credentials: 'include',
+          mode: marketingOrigin ? 'cors' : 'same-origin',
           headers: { Accept: 'application/json' },
         });
         if (!response.ok) return;
