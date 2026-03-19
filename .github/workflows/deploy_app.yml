@@ -17,6 +17,15 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Build release for Pages
+        env:
+          VITE_MARKETING_BASE_URL: https://nen1090-marketing.pages.dev
+        run: npm run build:pages
 
       - name: Install Wrangler
         run: npm install -g wrangler
@@ -26,4 +35,4 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
         run: |
-          wrangler pages deploy . --project-name=${{ vars.CF_PAGES_PROJECT_NAME }}
+          wrangler pages deploy release --project-name=${{ vars.CF_PAGES_PROJECT_NAME }}

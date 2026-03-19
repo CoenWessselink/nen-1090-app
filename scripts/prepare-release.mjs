@@ -15,5 +15,8 @@ cpSync(distDir, releaseDir, { recursive: true });
 
 const spaFallback = readFileSync(join(distDir, 'index.html'), 'utf8');
 writeFileSync(join(releaseDir, '_redirects'), '/* /index.html 200\n');
-writeFileSync(join(releaseDir, '_headers'), '/assets/*\n  Content-Type: text/javascript; charset=utf-8\n');
+writeFileSync(
+  join(releaseDir, '_headers'),
+  ['/assets/*', '  Cache-Control: public, max-age=31536000, immutable', '', '/*.html', '  Cache-Control: no-cache', ''].join('\n'),
+);
 writeFileSync(join(releaseDir, '404.html'), spaFallback);

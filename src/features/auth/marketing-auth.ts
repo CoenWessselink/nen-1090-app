@@ -7,6 +7,9 @@ export type MarketingAuthTarget =
   | 'logout'
   | 'subscription';
 
+const DEFAULT_MARKETING_ORIGIN = 'https://nen1090-marketing.pages.dev';
+const LOCAL_MARKETING_ORIGIN = 'http://127.0.0.1:8788';
+
 const targetPathMap: Record<MarketingAuthTarget, string> = {
   login: '/app/login.html',
   'forgot-password': '/app/forgot-password.html',
@@ -21,14 +24,47 @@ function trimTrailingSlash(value: string) {
   return value.replace(/\/+$/, '');
 }
 
-export function getMarketingOrigin(): string {
-  const explicit = String(import.meta.env.VITE_MARKETING_BASE_URL || '').trim();
-  if (explicit) return trimTrailingSlash(explicit);
-  if (typeof window !== 'undefined') return window.location.origin;
+function normalizeOrigin(value: string) {
+  const trimmed = String(value || '').trim();
+  if (!trimmed) return '';
+  return trimTrailingSlash(trimmed);
+}
+
+function inferLocalMarketingOrigin() {
+  if (typeof window === 'undefined') return '';
+  const host = window.location.hostname;
+  if (host === 'localhost' || host === '127.0.0.1') return LOCAL_MARKETING_ORIGIN;
   return '';
 }
 
-export function buildMarketingUrl(target: MarketingAuthTarget, options?: { next?: string; reason?: string; token?: string; query?: Record<string, string | null | undefined> }): string {
+export function getMarketingOrigin(): string {
+  const explicit = normalizeOrigin(String(import.meta.env.VITE_MARKETING_BASE_URL || ''));
+  if (explicit) return explicit;
+
+  const runtimeExplicit = typeof window !== 'undefined'
+    ? normalizeOrigin(String((window as Window & { NEN1090_MARKETING_BASE_URL?: string }).NEN1090_MARKETING_BASE_URL || ''))
+    : '';
+  if (runtimeExplicit) return runtimeExplicit;
+
+  const local = inferLocalMarketingOrigin();
+  if (local) return local;
+
+  return DEFAULT_MARKETING_ORIGIN;
+}
+
+export function getMarketingApiBase(): string {
+  return `${getMarketingOrigin()}/api`;
+}
+
+export function buildMarketingApiUrl(pathname: string): string {
+  const normalizedPath = String(pathname || '').startsWith('/') ? pathname : `/${pathname}`;
+  return `${getMarketingApiBase()}${normalizedPath}`;
+}
+
+export function buildMarketingUrl(
+  target: MarketingAuthTarget,
+  options?: { next?: string; reason?: string; token?: string; query?: Record<string, string | null | undefined> },
+): string {
   const origin = getMarketingOrigin();
   const pathname = targetPathMap[target] || targetPathMap.login;
   const url = new URL(`${origin}${pathname}`);

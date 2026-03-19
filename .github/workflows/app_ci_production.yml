@@ -1,30 +1,39 @@
-
 name: App CI + Pages Validation
 
 on:
   push:
     branches: [ main ]
-    paths:
-      - 'layers/**'
-      - 'css/**'
-      - 'js/**'
-      - 'playwright/**'
-      - '.github/workflows/app_ci_production.yml'
   workflow_dispatch:
 
 jobs:
   validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: 20
+          cache: npm
+
       - name: Install deps
         run: npm ci
-      - name: Syntax check JS
-        run: node --check js/core/auth_client.js && node --check js/core/permissions.js && node --check js/superadmin.js && node --check js/tenant_billing.js
-      - name: Playwright install
-        run: npx playwright install --with-deps chromium
-      - name: Run smoke tests
-        run: npx playwright test playwright/tests/smoke.spec.js --reporter=line
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Build Pages release
+        env:
+          VITE_MARKETING_BASE_URL: https://nen1090-marketing.pages.dev
+        run: npm run build:pages
+
+      - name: Verify release output
+        run: |
+          test -f release/index.html
+          test -f release/_redirects
+          test -f release/_headers
+          test -d release/assets

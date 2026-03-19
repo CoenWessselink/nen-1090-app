@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "node scripts/use-source-entry.mjs && vite",
     "build": "node scripts/use-source-entry.mjs && tsc -b && vite build",
+    "build:pages": "npm run build && node scripts/prepare-release.mjs",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
     "lint": "npm run typecheck",
