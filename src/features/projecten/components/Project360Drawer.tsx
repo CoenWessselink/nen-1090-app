@@ -96,6 +96,38 @@ export function Project360Drawer({ project, open, onClose, onMessage }: { projec
   const exportPdf = useCreatePdfExport(String(projectId || ''));
   const exportExcel = useCreateExcelExport(String(projectId || ''));
 
+  const availableMaterials = useMemo(
+    () => ((masterMaterialsQuery.data?.items || []) as Record<string, unknown>[]).filter((candidate) => !materials.some((item) => String(item.id) === String(candidate.id))),
+    [masterMaterialsQuery.data, materials],
+  );
+  const availableWps = useMemo(
+    () => ((masterWpsQuery.data?.items || []) as Record<string, unknown>[]).filter((candidate) => !wps.some((item) => String(item.id) === String(candidate.id))),
+    [masterWpsQuery.data, wps],
+  );
+  const availableWelders = useMemo(
+    () => ((masterWeldersQuery.data?.items || []) as Record<string, unknown>[]).filter((candidate) => !welders.some((item) => String(item.id) === String(candidate.id))),
+    [masterWeldersQuery.data, welders],
+  );
+
+  const handleAddSelection = async (kind: 'material' | 'wps' | 'welder') => {
+    if (!projectId) return;
+    const refId = kind === 'material' ? selectedMaterialId : kind === 'wps' ? selectedWpsId : selectedWelderId;
+    if (!refId) return;
+    const action = kind === 'material' ? 'add-material' : kind === 'wps' ? 'add-wps' : 'add-welder';
+    await projectSelectionMutation.mutateAsync({ action, projectId, refId });
+    if (kind === 'material') setSelectedMaterialId('');
+    if (kind === 'wps') setSelectedWpsId('');
+    if (kind === 'welder') setSelectedWelderId('');
+    onMessage(`${kind === 'material' ? 'Materiaal' : kind === 'wps' ? 'WPS' : 'Lasser'} gekoppeld aan project.`);
+  };
+
+  const handleRemoveSelection = async (kind: 'material' | 'wps' | 'welder', refId: string) => {
+    if (!projectId || !refId) return;
+    const action = kind === 'material' ? 'remove-material' : kind === 'wps' ? 'remove-wps' : 'remove-welder';
+    await projectSelectionMutation.mutateAsync({ action, projectId, refId });
+    onMessage(`${kind === 'material' ? 'Materiaal' : kind === 'wps' ? 'WPS' : 'Lasser'} verwijderd uit project.`);
+  };
+
   const assemblies = assembliesQuery.data?.items || [];
   const welds = useMemo(() => weldsQuery.data?.items || [], [weldsQuery.data]);
   const inspections = useMemo(() => inspectionsQuery.data?.items || [], [inspectionsQuery.data]);

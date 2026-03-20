@@ -1,0 +1,4 @@
+Build fix v11.1
+- Project360Drawer TypeScript compile errors opgelost
+- LascontrolePage typefouten opgelost
+- npm exec tsc -b geslaagd

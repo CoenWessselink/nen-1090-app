@@ -185,7 +185,7 @@ export function LascontrolePage() {
     <div className="page-stack">
       <PageHeader title="Lascontrole" description="Fase 2: weld-first met inspecties, defecten, audit-acties en Weld 360° voor directe afhandeling per las." />
       {message ? <InlineMessage tone="success">{message}</InlineMessage> : null}
-      <InlineMessage tone={hasProject ? 'warning' : 'success'}>{hasProject ? 'Projectscope actief. Je ziet nu projectgebonden lascontrole.' : 'Geen projectscope gekozen. Lascontrole draait nu weld-first over alle lassen binnen de tenant.'}</InlineMessage>
+      <InlineMessage tone={hasProject ? 'danger' : 'success'}>{hasProject ? 'Projectscope actief. Je ziet nu projectgebonden lascontrole.' : 'Geen projectscope gekozen. Lascontrole draait nu weld-first over alle lassen binnen de tenant.'}</InlineMessage>
 
       <Card>
         <div className="form-grid" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
@@ -263,7 +263,7 @@ export function LascontrolePage() {
             if (weldModalMode === 'edit' && activeWeld) {
               await updateWeld.mutateAsync({ weldId: activeWeld.id, payload: values });
               setMessage(`Las ${activeWeld.weld_number || activeWeld.id} bijgewerkt.`);
-              setActiveWeld({ ...activeWeld, ...values });
+              setActiveWeld({ ...activeWeld, ...values } as Weld);
             } else {
               await createWeld.mutateAsync(values);
               setMessage('Las opgeslagen.');
@@ -276,7 +276,7 @@ export function LascontrolePage() {
 
       <Modal open={!!inspectionModal} onClose={() => setInspectionModal(null)} title={inspectionModal?.mode === 'edit' ? 'Inspectie bewerken' : 'Nieuwe inspectie'} size="large">
         <InspectionForm
-          initial={inspectionModal?.item ? { ...inspectionModal.item, weld_id: inspectionModal.item.weld_id ? String(inspectionModal.item.weld_id) : '' } : undefined}
+          initial={inspectionModal?.item ? ({ ...inspectionModal.item, weld_id: inspectionModal.item.weld_id ? String(inspectionModal.item.weld_id) : '' } as Partial<Record<string, unknown>>) : undefined}
           weldOptions={weldOptions}
           templateOptions={templateOptions}
           defaultWeldId={activeWeldId}
