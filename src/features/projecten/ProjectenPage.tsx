@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Download, Eye, Filter, FolderOpen, Pencil, Plus, Trash2 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -45,6 +45,7 @@ export function ProjectenPage() {
   const pushNotification = useUiStore((state) => state.pushNotification);
   const { setProject, activeProject: currentScopedProject } = useProjectContext();
   const globalSearch = useUiStore((state) => state.globalSearch);
+  const createProjectRequestNonce = useUiStore((state) => state.createProjectRequestNonce);
 
   const [search, setSearch] = useState('');
   const [filters, setFilters] = useState(initialFilters);
@@ -93,7 +94,7 @@ export function ProjectenPage() {
       header: 'Acties',
       cell: (row) => (
         <div className="row-actions">
-          <button className="icon-button" type="button" onClick={() => setActiveProject(row)} aria-label="Openen"><Eye size={16} /></button>
+          <button className="icon-button" type="button" onClick={() => { setActiveProject(row); setModalMode(null); }} aria-label="Openen"><Eye size={16} /></button>
           <button className="icon-button" type="button" onClick={() => { setProject({ id: String(row.id), name: String(row.name || row.omschrijving || row.client_name || ''), projectnummer: String(row.projectnummer || '') }); setMessage(`Projectscope actief: ${row.projectnummer || row.id}.`); }} aria-label="Gebruik als projectscope"><FolderOpen size={16} /></button>
           <button className="icon-button" type="button" onClick={() => { setActiveProject(row); setModalMode('edit'); }} aria-label="Bewerken"><Pencil size={16} /></button>
           <button className="icon-button" type="button" onClick={() => setPendingDelete(row)} aria-label="Verwijderen"><Trash2 size={16} /></button>
@@ -103,6 +104,13 @@ export function ProjectenPage() {
   ];
 
   const activeFilterCount = Number(Boolean(filters.opdrachtgever)) + Number(filters.executionClass !== 'all') + Number(filters.status !== 'all');
+
+
+  useEffect(() => {
+    if (!createProjectRequestNonce) return;
+    setActiveProject(null);
+    setModalMode('create');
+  }, [createProjectRequestNonce]);
 
   return (
     <div className="page-stack">
@@ -166,6 +174,7 @@ export function ProjectenPage() {
               }
             }}
             selectable
+            onRowDoubleClick={(row) => { setActiveProject(row); setModalMode(null); }}
             selectedRowKeys={selectedRows}
             onToggleRow={(key) => setSelectedRows((current) => current.includes(key) ? current.filter((item) => item !== key) : [...current, key])}
             onToggleAll={() => setSelectedRows((current) => current.length === rows.length ? [] : rows.map((row) => String(row.id)))}
@@ -191,9 +200,10 @@ export function ProjectenPage() {
           isSubmitting={createProject.isPending}
           onSubmit={async (values) => {
             try {
-              await createProject.mutateAsync(values);
-              setMessage('Project aangemaakt.');
-              pushNotification({ title: 'Nieuw project aangemaakt', description: 'Het project is opgeslagen via de bestaande backend.', tone: 'success' });
+              const createdProject = await createProject.mutateAsync(values);
+              setActiveProject(createdProject);
+              setMessage('Project aangemaakt en direct geopend in Project 360°.');
+              pushNotification({ title: 'Nieuw project aangemaakt', description: 'Het project is opgeslagen, basissets zijn gekoppeld en Project 360° is direct beschikbaar.', tone: 'success' });
               setModalMode(null);
             } catch (error) {
               setMessage(error instanceof Error ? error.message : 'Project aanmaken mislukt.');

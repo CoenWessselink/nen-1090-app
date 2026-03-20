@@ -17,6 +17,7 @@ export function Topbar() {
     toggleNotificationCenter,
     notifications,
     pushNotification,
+    requestCreateProject,
   } = useUiStore();
   const session = useSession();
   const unreadCount = notifications.filter((item) => !item.read).length;
@@ -44,8 +45,9 @@ export function Topbar() {
           <Button
             variant="secondary"
             onClick={() => {
-              openCommandPalette();
-              pushNotification({ title: 'Snelactie geopend', description: 'Gebruik Ctrl+K voor globale acties en route-navigatie.', tone: 'info' });
+              navigate('/projecten');
+              requestCreateProject();
+              pushNotification({ title: 'Nieuw project', description: 'De projectwizard is geopend. Command en Nieuw zijn nu gescheiden acties.', tone: 'info' });
             }}
           >
             <Plus size={16} />

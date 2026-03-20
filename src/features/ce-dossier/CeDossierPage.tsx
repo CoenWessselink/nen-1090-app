@@ -24,7 +24,9 @@ import {
   useCreateExcelExport,
   useCreatePdfExport,
   useCreateZipExport,
+  useDownloadProjectExport,
   useProjectExports,
+  useRetryProjectExport,
 } from '@/hooks/useCompliance';
 import {
   useCreateProjectDocument,
@@ -93,6 +95,8 @@ export function CeDossierPage() {
   const exportZip = useCreateZipExport(projectId || '');
   const exportPdf = useCreatePdfExport(projectId || '');
   const exportExcel = useCreateExcelExport(projectId || '');
+  const downloadExport = useDownloadProjectExport(projectId || '');
+  const retryExport = useRetryProjectExport(projectId || '');
 
   const checklistItems = useMemo(() => toArray(checklistQuery.data, 'checklist'), [checklistQuery.data]);
   const missingItems = useMemo(() => toArray(missingItemsQuery.data, 'missing_items'), [missingItemsQuery.data]);
@@ -128,6 +132,7 @@ export function CeDossierPage() {
     if (kind === 'zip') await exportZip.mutateAsync();
     if (kind === 'pdf') await exportPdf.mutateAsync();
     if (kind === 'excel') await exportExcel.mutateAsync();
+    await exportsQuery.refetch();
     setMessage(`${kind.toUpperCase()} export gestart.`);
   }
 
@@ -180,6 +185,7 @@ export function CeDossierPage() {
                 <div><span>Missende items</span><strong>{missingItems.length}</strong></div>
                 <div><span>Documenten</span><strong>{documents.length}</strong></div>
                 <div><span>Exports</span><strong>{exportItems.length}</strong></div>
+                <div><span>Checks gereed</span><strong>{Number((complianceQuery.data as Record<string, unknown> | undefined)?.validation_summary && ((complianceQuery.data as Record<string, unknown>).validation_summary as Record<string, unknown>).completed_checks || 0)}</strong></div>
               </div>
             </>
           ) : null}
@@ -229,7 +235,9 @@ export function CeDossierPage() {
           <div className="list-stack compact-list">
             {missingItems.map((item, index) => {
               const row = item as Record<string, unknown>;
-              return <div key={index} className="list-row"><div><strong>{String(row.label || row.name || `Missing item ${index + 1}`)}</strong><div className="list-subtle">{String(row.reason || row.description || '')}</div></div><Badge tone="danger">Open</Badge></div>;
+              const severity = String(row.severity || 'danger').toLowerCase();
+              const badgeTone = severity === 'warning' ? 'warning' : 'danger';
+              return <div key={index} className="list-row"><div><strong>{String(row.label || row.name || `Missing item ${index + 1}`)}</strong><div className="list-subtle">{String(row.reason || row.description || '')}</div></div><Badge tone={badgeTone}>{severity === 'warning' ? 'Waarschuwing' : 'Blokkerend'}</Badge></div>;
             })}
           </div>
         </Card>
@@ -299,15 +307,30 @@ export function CeDossierPage() {
           {(exportItems as ExportJob[]).map((item) => (
             <div key={String(item.id)} className="list-row">
               <div>
-                <strong>{item.type || item.id}</strong>
-                <div className="list-subtle">{formatDate(item.created_at)}</div>
+                <strong>{String(item.export_type || item.type || item.id)}</strong>
+                <div className="list-subtle">{formatDate(item.created_at)}{item.bundle_type ? ` · ${String(item.bundle_type).toUpperCase()}` : ''}</div>
               </div>
               <div className="toolbar-cluster">
                 <Badge tone={tone(item.status)}>{item.status || 'Aangemaakt'}</Badge>
+                {item.retry_count ? <Badge tone="warning">Retries {String(item.retry_count)}</Badge> : null}
+                {item.error_code ? <Badge tone="danger">{String(item.error_code)}</Badge> : null}
                 {item.download_url ? (
-                  <a className="btn btn-secondary" href={String(item.download_url)} target="_blank" rel="noreferrer">
+                  <button
+                    className="btn btn-secondary"
+                    type="button"
+                    onClick={async () => {
+                      const blob = await downloadExport.mutateAsync(item.id);
+                      const extension = String(item.bundle_type || 'bin').toLowerCase() === 'excel' ? 'xlsx' : String(item.bundle_type || 'bin').toLowerCase() === 'pdf' ? 'pdf' : 'zip';
+                      if (blob) createObjectDownload(blob, `export-${String(item.id)}.${extension}`);
+                    }}
+                  >
                     <Download size={16} /> Download
-                  </a>
+                  </button>
+                ) : null}
+                {!item.download_url && (item.status === 'failed' || item.status === 'mislukt') ? (
+                  <button className="btn btn-secondary" type="button" onClick={async () => { await retryExport.mutateAsync(item.id); await exportsQuery.refetch(); setMessage('Export opnieuw gestart.'); }}>
+                    <RefreshCcw size={16} /> Opnieuw
+                  </button>
                 ) : null}
               </div>
             </div>

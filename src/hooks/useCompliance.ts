@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { createCeReport, createExcelExport, createPdfExport, createZipExport, getCeDossier, getComplianceChecklist, getComplianceMissingItems, getComplianceOverview, getProjectExports } from '@/api/ce';
+import { createCeReport, createExcelExport, createPdfExport, createZipExport, downloadProjectExport, getCeDossier, getComplianceChecklist, getComplianceMissingItems, getComplianceOverview, getProjectExports, retryProjectExport } from '@/api/ce';
 import { normalizeListResponse } from '@/utils/api';
 import type { ListParams } from '@/types/api';
 
@@ -55,3 +55,17 @@ export function useCreateCeReport(projectId: string | number) { return exportMut
 export function useCreateZipExport(projectId: string | number) { return exportMutation(projectId, createZipExport); }
 export function useCreatePdfExport(projectId: string | number) { return exportMutation(projectId, createPdfExport); }
 export function useCreateExcelExport(projectId: string | number) { return exportMutation(projectId, createExcelExport); }
+
+export function useDownloadProjectExport(projectId: string | number) {
+  return useMutation({
+    mutationFn: (exportId: string | number) => downloadProjectExport(projectId, exportId),
+  });
+}
+
+export function useRetryProjectExport(projectId: string | number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (exportId: string | number) => retryProjectExport(projectId, exportId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['project-exports', projectId] }),
+  });
+}

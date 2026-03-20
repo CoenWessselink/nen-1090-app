@@ -1,4 +1,4 @@
-import { apiRequest, listRequest, optionalRequest, uploadRequest } from '@/api/client';
+import { apiRequest, downloadRequest, listRequest, optionalRequest, uploadRequest } from '@/api/client';
 import type { CeDocument, ComplianceOverview, ExportJob } from '@/types/domain';
 import type { ListParams } from '@/types/api';
 
@@ -51,4 +51,12 @@ export function createPdfExport(projectId: string | number) {
 
 export function createExcelExport(projectId: string | number) {
   return optionalRequest<Record<string, unknown>>([`/projects/${projectId}/exports/excel`], { method: 'POST' });
+}
+
+export function downloadProjectExport(projectId: string | number, exportId: string | number) {
+  return downloadRequest(`/projects/${projectId}/exports/${exportId}/download`);
+}
+
+export function retryProjectExport(projectId: string | number, exportId: string | number) {
+  return apiRequest<Record<string, unknown>>(`/projects/${projectId}/exports/${exportId}/retry`, { method: 'POST' });
 }

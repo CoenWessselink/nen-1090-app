@@ -30,7 +30,7 @@ test('command palette gebruikt globale zoekresultaten en ce exportknoppen blijve
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ items: [{ id: 'e1', type: 'ce-report', status: 'completed', created_at: '2026-03-17T10:00:00Z' }], total: 1 }),
+        body: JSON.stringify({ items: [{ id: 'e1', export_type: 'ce-report', bundle_type: 'zip', status: 'completed', created_at: '2026-03-17T10:00:00Z', download_url: '/api/v1/projects/p1/exports/e1/download' }], total: 1 }),
       });
     }
     return route.fallback();
@@ -53,4 +53,5 @@ test('command palette gebruikt globale zoekresultaten en ce exportknoppen blijve
   await page.getByRole('button', { name: /ce rapport/i }).click();
   await expect(page.getByText(/ce rapport export gestart/i)).toBeVisible();
   await expect(page.getByText(/ce-report/i)).toBeVisible();
+  await expect(page.getByRole('button', { name: /download/i }).first()).toBeVisible();
 });

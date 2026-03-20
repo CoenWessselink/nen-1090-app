@@ -52,6 +52,11 @@ export type Inspection = {
   status?: string;
   result?: string;
   due_date?: string;
+  method?: string;
+  template_id?: string | number;
+  notes?: string;
+  remarks?: string;
+  inspector?: string;
   [key: string]: unknown;
 };
 
@@ -61,6 +66,8 @@ export type Defect = {
   weld_id?: string | number;
   status?: string;
   severity?: string;
+  defect_type?: string;
+  notes?: string;
   [key: string]: unknown;
 };
 
@@ -108,8 +115,16 @@ export type ExportJob = {
   id: string | number;
   status?: string;
   type?: string;
+  export_type?: string;
+  bundle_type?: string;
+  message?: string;
   created_at?: string;
+  completed_at?: string;
+  manifest_json?: string;
   download_url?: string;
+  retry_count?: number;
+  error_code?: string;
+  error_detail?: string;
   [key: string]: unknown;
 };
 
@@ -158,3 +173,15 @@ export type SessionUser = {
 };
 
 export type PagelessResponse<T> = T[] | { items?: T[]; data?: T[]; results?: T[] };
+
+
+export type AuditEntry = {
+  id: string | number;
+  action?: string;
+  entity?: string;
+  entity_id?: string;
+  user_id?: string;
+  created_at?: string;
+  meta?: Record<string, unknown>;
+  [key: string]: unknown;
+};

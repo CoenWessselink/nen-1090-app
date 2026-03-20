@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { CheckCircle2, Download, FileText, Pencil, Plus, SearchCheck, ShieldCheck, Trash2, Wrench } from 'lucide-react';
+import { Boxes, CheckCircle2, Download, FileText, HardHat, History, Pencil, Plus, SearchCheck, ShieldCheck, Trash2, Wrench } from 'lucide-react';
 import { Drawer } from '@/components/overlays/Drawer';
 import { Tabs } from '@/components/ui/Tabs';
 import { Button } from '@/components/ui/Button';
@@ -15,15 +15,17 @@ import { ConfirmDialog } from '@/components/confirm-dialog/ConfirmDialog';
 import { useAssemblies, useCreateAssembly, useDeleteAssembly, useUpdateAssembly } from '@/hooks/useAssemblies';
 import { useComplianceChecklist, useComplianceMissingItems, useComplianceOverview, useCreateCeReport, useCreateExcelExport, useCreatePdfExport, useCreateZipExport, useProjectExports } from '@/hooks/useCompliance';
 import { useCreateProjectDocument, useDeleteDocument, useDocumentVersions, useProjectDocuments, useUpdateDocument } from '@/hooks/useDocuments';
-import { useProjectInspections, useProjectWelds } from '@/hooks/useProjects';
+import { useMaterials, useWelders, useWps } from '@/hooks/useSettings';
+import { useProjectInspections, useProjectMaterials, useProjectSelectionMutation, useProjectWelders, useProjectWelds, useProjectWps, useProjectBulkMutation } from '@/hooks/useProjects';
+import { useProjectAudit } from '@/hooks/useProjectAudit';
 import { formatDate } from '@/utils/format';
-import type { Assembly, CeDocument, ExportJob, Inspection, Project, Weld } from '@/types/domain';
+import type { Assembly, AuditEntry, CeDocument, ExportJob, Inspection, Project, Weld } from '@/types/domain';
 import { AssemblyForm } from '@/features/projecten/components/AssemblyForm';
 
 function tone(status?: string) {
   const value = String(status || '').toLowerCase();
-  if (['vrijgegeven', 'conform', 'gereed', 'goedgekeurd', 'approved', 'resolved'].includes(value)) return 'success' as const;
-  if (['afgekeurd', 'open', 'blokkerend', 'rejected'].includes(value)) return 'danger' as const;
+  if (['vrijgegeven', 'conform', 'gereed', 'goedgekeurd', 'approved', 'resolved', 'ok'].includes(value)) return 'success' as const;
+  if (['afgekeurd', 'open', 'blokkerend', 'rejected', 'nok'].includes(value)) return 'danger' as const;
   return 'warning' as const;
 }
 
@@ -33,6 +35,23 @@ function pickArray(payload: unknown, fallbackKey?: string) {
   const source = payload as Record<string, unknown>;
   const direct = source.items || source.data || source.results || (fallbackKey ? source[fallbackKey] : undefined);
   return Array.isArray(direct) ? direct : [];
+}
+
+function renderSimpleList(items: Record<string, unknown>[], emptyTitle: string, emptyDescription: string) {
+  if (!items.length) return <EmptyState title={emptyTitle} description={emptyDescription} />;
+  return (
+    <div className="list-stack compact-list">
+      {items.map((item, index) => (
+        <div key={String(item.id || index)} className="list-row">
+          <div>
+            <strong>{String(item.code || item.name || item.title || item.id || `Record ${index + 1}`)}</strong>
+            <div className="list-subtle">{String(item.title || item.name || item.description || '')}</div>
+          </div>
+          <Badge tone="success">Gekoppeld</Badge>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export function Project360Drawer({ project, open, onClose, onMessage }: { project: Project | null; open: boolean; onClose: () => void; onMessage: (message: string) => void }) {
@@ -48,11 +67,15 @@ export function Project360Drawer({ project, open, onClose, onMessage }: { projec
   const weldsQuery = useProjectWelds(projectId, { limit: 10, search: subSearch || undefined, sort: 'weld_number' });
   const inspectionsQuery = useProjectInspections(projectId, { limit: 10, search: subSearch || undefined, sort: 'due_date' });
   const documentsQuery = useProjectDocuments(String(projectId || ''));
+  const materialsQuery = useProjectMaterials(projectId);
+  const wpsQuery = useProjectWps(projectId);
+  const weldersQuery = useProjectWelders(projectId);
   const documentVersionsQuery = useDocumentVersions(documentModal?.id);
   const complianceQuery = useComplianceOverview(projectId);
   const missingItemsQuery = useComplianceMissingItems(projectId);
   const checklistQuery = useComplianceChecklist(projectId);
   const exportsQuery = useProjectExports(projectId);
+  const auditQuery = useProjectAudit(projectId);
 
   const createAssembly = useCreateAssembly(String(projectId || ''));
   const updateAssembly = useUpdateAssembly(String(projectId || ''));
@@ -60,6 +83,14 @@ export function Project360Drawer({ project, open, onClose, onMessage }: { projec
   const createDocument = useCreateProjectDocument(String(projectId || ''));
   const updateDocument = useUpdateDocument();
   const deleteDocument = useDeleteDocument();
+  const bulkProjectAction = useProjectBulkMutation();
+  const projectSelectionMutation = useProjectSelectionMutation();
+  const masterMaterialsQuery = useMaterials();
+  const masterWpsQuery = useWps();
+  const masterWeldersQuery = useWelders();
+  const [selectedMaterialId, setSelectedMaterialId] = useState('');
+  const [selectedWpsId, setSelectedWpsId] = useState('');
+  const [selectedWelderId, setSelectedWelderId] = useState('');
   const exportCe = useCreateCeReport(String(projectId || ''));
   const exportZip = useCreateZipExport(String(projectId || ''));
   const exportPdf = useCreatePdfExport(String(projectId || ''));
@@ -69,9 +100,13 @@ export function Project360Drawer({ project, open, onClose, onMessage }: { projec
   const welds = useMemo(() => weldsQuery.data?.items || [], [weldsQuery.data]);
   const inspections = useMemo(() => inspectionsQuery.data?.items || [], [inspectionsQuery.data]);
   const documents = documentsQuery.data?.items || [];
+  const materials = useMemo(() => (materialsQuery.data?.items || []) as Record<string, unknown>[], [materialsQuery.data]);
+  const wps = useMemo(() => (wpsQuery.data?.items || []) as Record<string, unknown>[], [wpsQuery.data]);
+  const welders = useMemo(() => (weldersQuery.data?.items || []) as Record<string, unknown>[], [weldersQuery.data]);
   const missingItems = useMemo(() => pickArray(missingItemsQuery.data, 'missing_items'), [missingItemsQuery.data]);
   const checklistItems = useMemo(() => pickArray(checklistQuery.data, 'checklist'), [checklistQuery.data]);
   const exportItems = (exportsQuery.data?.items || []) as ExportJob[];
+  const auditItems = (auditQuery.data?.items || []) as AuditEntry[];
 
   const summaryCards = [
     { label: 'Assemblies', value: assembliesQuery.data?.total ?? assemblies.length },
@@ -81,6 +116,20 @@ export function Project360Drawer({ project, open, onClose, onMessage }: { projec
     { label: 'Missende items', value: missingItems.length },
   ];
 
+  const tabs = [
+    { value: 'samenvatting', label: 'Samenvatting' },
+    { value: 'assemblies', label: 'Assemblies' },
+    { value: 'welds', label: 'Welds / Lassen' },
+    { value: 'inspections', label: 'Inspecties' },
+    { value: 'documenten', label: 'Documenten' },
+    { value: 'compliance', label: 'Compliance' },
+    { value: 'exports', label: 'Exports' },
+    { value: 'materialen', label: 'Materialen' },
+    { value: 'wps', label: 'WPS' },
+    { value: 'lassers', label: 'Lassers' },
+    { value: 'historie', label: 'Historie' },
+  ];
+
   return (
     <Drawer open={open} onClose={onClose} title="Project 360°">
       {project ? (
@@ -88,65 +137,62 @@ export function Project360Drawer({ project, open, onClose, onMessage }: { projec
           <div className="detail-hero">
             <div>
               <h3>{project.name || project.omschrijving || project.projectnummer}</h3>
-              <div className="list-subtle">{project.client_name || project.opdrachtgever || '—'} · {project.execution_class || project.executieklasse || '—'}</div>
+              <div className="list-subtle">{project.client_name || project.opdrachtgever || '—'} · {project.execution_class || project.executieklasse || '—'} · {project.projectnummer || project.id}</div>
             </div>
             <Badge tone={tone(String(project.status || ''))}>{String(project.status || 'Onbekend')}</Badge>
           </div>
 
-          <Tabs
-            value={tab}
-            onChange={setTab}
-            tabs={[
-              { value: 'samenvatting', label: 'Samenvatting' },
-              { value: 'assemblies', label: 'Assemblies' },
-              { value: 'welds', label: 'Welds' },
-              { value: 'inspections', label: 'Inspecties' },
-              { value: 'documenten', label: 'Documenten' },
-              { value: 'compliance', label: 'Compliance' },
-              { value: 'exports', label: 'Exports' },
-            ]}
-          />
+          <div className="toolbar-cluster">
+            <Button variant="secondary" onClick={() => setAssemblyModal({ mode: 'create' })}><Plus size={16} /> Nieuw assembly</Button>
+            <Button variant="secondary" onClick={() => setTab('welds')}><Plus size={16} /> Nieuwe las</Button>
+            <Button variant="secondary" onClick={() => setTab('documenten')}><FileText size={16} /> Nieuw document</Button>
+          </div>
 
-          {['welds', 'inspections'].includes(tab) ? (
-            <Card>
-              <Input value={subSearch} onChange={(event) => setSubSearch(event.target.value)} placeholder="Zoek binnen projectdetail" />
-            </Card>
-          ) : null}
+          <Tabs value={tab} onChange={setTab} tabs={tabs} />
+
+          <Card>
+            <div className="section-title-row">
+              <h3><SearchCheck size={18} /> Binnen project zoeken</h3>
+            </div>
+            <Input value={subSearch} onChange={(event) => setSubSearch(event.target.value)} placeholder="Zoek binnen projectdetail" />
+          </Card>
 
           {tab === 'samenvatting' ? (
-            <>
-              <div className="content-grid-2">
-                {summaryCards.map((item) => <Card key={item.label}><div className="metric-card"><span>{item.label}</span><strong>{item.value}</strong></div></Card>)}
-              </div>
-              <div className="detail-grid">
-                <div><span>Projectnummer</span><strong>{String(project.projectnummer || project.id)}</strong></div>
-                <div><span>Startdatum</span><strong>{formatDate(project.start_date)}</strong></div>
-                <div><span>Einddatum</span><strong>{formatDate(project.end_date)}</strong></div>
-                <div><span>Opdrachtgever</span><strong>{String(project.client_name || project.opdrachtgever || '—')}</strong></div>
-              </div>
-            </>
+            <div className="content-grid-3">
+              {summaryCards.map((card) => (
+                <Card key={card.label}>
+                  <div className="stat-card-value">{card.value}</div>
+                  <div className="stat-card-label">{card.label}</div>
+                </Card>
+              ))}
+              <Card>
+                <div className="section-title-row"><h3>Projectheader</h3></div>
+                <div className="detail-grid">
+                  <div><span>Start</span><strong>{formatDate(project.start_date)}</strong></div>
+                  <div><span>Eind</span><strong>{formatDate(project.end_date)}</strong></div>
+                  <div><span>Status</span><strong>{String(project.status || '—')}</strong></div>
+                  <div><span>Opdrachtgever</span><strong>{String(project.client_name || project.opdrachtgever || '—')}</strong></div>
+                </div>
+              </Card>
+            </div>
           ) : null}
 
           {tab === 'assemblies' ? (
             <Card>
               <div className="section-title-row">
                 <h3><Wrench size={18} /> Assemblies</h3>
-                <Button onClick={() => setAssemblyModal({ mode: 'create' })}><Plus size={16} /> Nieuwe assembly</Button>
+                <Button onClick={() => setAssemblyModal({ mode: 'create' })}><Plus size={16} /> Nieuw assembly</Button>
               </div>
               {assembliesQuery.isLoading ? <LoadingState label="Assemblies laden..." /> : null}
-              {assembliesQuery.isError ? <ErrorState title="Assemblies niet geladen" description="Controleer de project-scoped assemblies endpoints in de backend." /> : null}
-              {!assembliesQuery.isLoading && !assembliesQuery.isError && !assemblies.length ? <EmptyState title="Nog geen assemblies" description="Voeg een assembly toe binnen dit project." /> : null}
-              <div className="list-stack">
-                {assemblies.map((assembly) => (
-                  <div key={String(assembly.id)} className="list-row">
-                    <div>
-                      <strong>{assembly.code || assembly.name || assembly.id}</strong>
-                      <div className="list-subtle">{assembly.name || 'Naam ontbreekt'}</div>
-                    </div>
+              {assembliesQuery.isError ? <ErrorState title="Assemblies niet geladen" description="Controleer het assemblies-contract van de backend." /> : null}
+              {!assembliesQuery.isLoading && !assemblies.length ? <EmptyState title="Geen assemblies" description="Voeg direct een assembly toe vanuit Project 360°." /> : null}
+              <div className="list-stack compact-list">
+                {assemblies.map((item) => (
+                  <div key={String(item.id)} className="list-row">
+                    <div><strong>{item.code || item.name || item.id}</strong><div className="list-subtle">{item.name || item.code || 'Assembly'}</div></div>
                     <div className="toolbar-cluster">
-                      <Badge tone={tone(assembly.status)}>{assembly.status || 'Open'}</Badge>
-                      <button className="icon-button" type="button" onClick={() => setAssemblyModal({ mode: 'edit', item: assembly })} aria-label="Assembly bewerken"><Pencil size={16} /></button>
-                      <button className="icon-button" type="button" onClick={() => setPendingDeleteAssembly(assembly)} aria-label="Assembly verwijderen"><Trash2 size={16} /></button>
+                      <Button variant="secondary" onClick={() => setAssemblyModal({ mode: 'edit', item })}><Pencil size={16} /> Bewerken</Button>
+                      <Button variant="secondary" onClick={() => setPendingDeleteAssembly(item)}><Trash2 size={16} /> Verwijderen</Button>
                     </div>
                   </div>
                 ))}
@@ -156,18 +202,14 @@ export function Project360Drawer({ project, open, onClose, onMessage }: { projec
 
           {tab === 'welds' ? (
             <Card>
-              <div className="section-title-row"><h3><ShieldCheck size={18} /> Welds</h3><Badge tone="neutral">{weldsQuery.data?.total ?? welds.length}</Badge></div>
+              <div className="section-title-row"><h3><ShieldCheck size={18} /> Welds / Lassen</h3></div>
               {weldsQuery.isLoading ? <LoadingState label="Welds laden..." /> : null}
-              {weldsQuery.isError ? <ErrorState title="Welds niet geladen" description="Controleer GET /projects/{project_id}/welds in de backend." /> : null}
-              {!weldsQuery.isLoading && !welds.length ? <EmptyState title="Geen welds" description="Nog geen welds gevonden binnen dit project." /> : null}
+              {!weldsQuery.isLoading && !welds.length ? <EmptyState title="Geen lassen" description="De weld-first flow wordt in build 2 verder uitgewerkt; gekoppelde lassen zijn hier al zichtbaar." /> : null}
               <div className="list-stack compact-list">
                 {welds.map((item: Weld) => (
                   <div key={String(item.id)} className="list-row">
-                    <div>
-                      <strong>{item.weld_number || item.id}</strong>
-                      <div className="list-subtle">{item.welder_name || 'Lasser onbekend'} · {item.location || 'Locatie onbekend'}</div>
-                    </div>
-                    <Badge tone={tone(item.status)}>{item.status || 'Open'}</Badge>
+                    <div><strong>{String(item.weld_number || item.id)}</strong><div className="list-subtle">{String(item.location || 'Locatie onbekend')} · {String(item.welder_name || item.welders || 'Lasser onbekend')}</div></div>
+                    <Badge tone={tone(item.status)}>{String(item.status || 'Open')}</Badge>
                   </div>
                 ))}
               </div>
@@ -176,21 +218,14 @@ export function Project360Drawer({ project, open, onClose, onMessage }: { projec
 
           {tab === 'inspections' ? (
             <Card>
-              <div className="section-title-row"><h3><SearchCheck size={18} /> Inspecties</h3><Badge tone="neutral">{inspectionsQuery.data?.total ?? inspections.length}</Badge></div>
+              <div className="section-title-row"><h3><CheckCircle2 size={18} /> Inspecties</h3></div>
               {inspectionsQuery.isLoading ? <LoadingState label="Inspecties laden..." /> : null}
-              {inspectionsQuery.isError ? <ErrorState title="Inspecties niet geladen" description="Controleer GET /projects/{project_id}/inspections in de backend." /> : null}
-              {!inspectionsQuery.isLoading && !inspections.length ? <EmptyState title="Geen inspecties" description="Nog geen inspecties gekoppeld aan dit project." /> : null}
+              {!inspectionsQuery.isLoading && !inspections.length ? <EmptyState title="Geen inspecties" description="Inspecties worden getoond zodra er weld-inspecties beschikbaar zijn." /> : null}
               <div className="list-stack compact-list">
                 {inspections.map((item: Inspection) => (
                   <div key={String(item.id)} className="list-row">
-                    <div>
-                      <strong>Inspectie {String(item.id)}</strong>
-                      <div className="list-subtle">Weld {String(item.weld_id || '—')} · {formatDate(item.due_date)}</div>
-                    </div>
-                    <div className="toolbar-cluster">
-                      <Badge tone={tone(item.result)}>{item.result || 'Pending'}</Badge>
-                      <Badge tone={tone(item.status)}>{item.status || 'Open'}</Badge>
-                    </div>
+                    <div><strong>{String(item.id)}</strong><div className="list-subtle">Resultaat: {String(item.result || 'Pending')}</div></div>
+                    <Badge tone={tone(item.status)}>{String(item.status || 'Open')}</Badge>
                   </div>
                 ))}
               </div>
@@ -198,91 +233,72 @@ export function Project360Drawer({ project, open, onClose, onMessage }: { projec
           ) : null}
 
           {tab === 'documenten' ? (
-            <Card>
-              <div className="section-title-row">
-                <h3><FileText size={18} /> Projectdocumenten</h3>
-              </div>
-              <UploadDropzone
-                multiple={false}
-                disabled={createDocument.isPending}
-                onFiles={async (files) => {
-                  const file = files[0];
-                  if (!file || !projectId) return;
-                  const formData = new FormData();
-                  formData.append('file', file);
-                  formData.append('project_id', String(projectId));
-                  await createDocument.mutateAsync(formData);
-                  onMessage(`Document ${file.name} geüpload.`);
-                }}
-              />
-              <div className="list-stack" style={{ marginTop: 16 }}>
+            <>
+              <Card>
+                <div className="section-title-row"><h3><FileText size={18} /> Documenten</h3></div>
+                <UploadDropzone
+                  multiple
+                  disabled={createDocument.isPending}
+                  onFiles={async (files) => {
+                    for (const file of files) {
+                      const formData = new FormData();
+                      formData.append('file', file);
+                      formData.append('title', file.name);
+                      await createDocument.mutateAsync(formData);
+                    }
+                    onMessage(`${files.length} document(en) toegevoegd aan project ${project.projectnummer || project.id}.`);
+                  }}
+                />
+              </Card>
+              <Card>
                 {documentsQuery.isLoading ? <LoadingState label="Documenten laden..." /> : null}
-                {documentsQuery.isError ? <ErrorState title="Documenten niet geladen" description="Controleer de documenten-endpoints voor dit project." /> : null}
-                {!documentsQuery.isLoading && !documents.length ? <EmptyState title="Geen documenten" description="Upload een eerste document voor dit project." /> : null}
-                {documents.map((document) => (
-                  <div key={String(document.id)} className="list-row">
-                    <div>
-                      <strong>{document.title || document.type || document.id}</strong>
-                      <div className="list-subtle">Versie {document.version || '1.0'} · {document.type || 'Document'} · {formatDate(document.uploaded_at)}</div>
+                {!documentsQuery.isLoading && !documents.length ? <EmptyState title="Geen documenten" description="Upload documenten direct in Project 360°." /> : null}
+                <div className="list-stack compact-list">
+                  {documents.map((item) => (
+                    <div key={String(item.id)} className="list-row">
+                      <div><strong>{item.title || item.id}</strong><div className="list-subtle">{item.type || 'Document'} · versie {item.version || '1.0'}</div></div>
+                      <div className="toolbar-cluster">
+                        <Button variant="secondary" onClick={() => setDocumentModal(item)}><Pencil size={16} /> Bewerken</Button>
+                        <Button variant="secondary" onClick={() => setPendingDeleteDocument(item)}><Trash2 size={16} /> Verwijderen</Button>
+                      </div>
                     </div>
-                    <div className="toolbar-cluster">
-                      <Badge tone={tone(document.status)}>{document.status || 'Actief'}</Badge>
-                      <button className="icon-button" type="button" onClick={() => setDocumentModal(document)} aria-label="Document bewerken"><Pencil size={16} /></button>
-                      <button className="icon-button" type="button" onClick={() => setPendingDeleteDocument(document)} aria-label="Document verwijderen"><Trash2 size={16} /></button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </Card>
+                  ))}
+                </div>
+              </Card>
+            </>
           ) : null}
 
           {tab === 'compliance' ? (
-            <>
+            <div className="content-grid-2">
               <Card>
-                <div className="section-title-row">
-                  <h3><CheckCircle2 size={18} /> Compliance-overzicht</h3>
-                </div>
-                {complianceQuery.isLoading ? <LoadingState label="Compliance laden..." /> : null}
-                {complianceQuery.isError ? <ErrorState title="Compliance niet geladen" description="Controleer /projects/{project_id}/compliance in de backend." /> : null}
-                {!complianceQuery.isLoading && !complianceQuery.isError ? (
-                  <>
-                    <div className="progress-shell"><div className="progress-bar" style={{ width: `${Math.min(Number(complianceQuery.data?.score || 0), 100)}%` }} /></div>
-                    <div className="detail-grid">
-                      <div><span>Score</span><strong>{Number(complianceQuery.data?.score || 0)}%</strong></div>
-                      <div><span>Missende items</span><strong>{missingItems.length}</strong></div>
-                    </div>
-                  </>
-                ) : null}
+                <div className="section-title-row"><h3><ShieldCheck size={18} /> Compliance-overzicht</h3></div>
+                {complianceQuery.isLoading ? <LoadingState label="Compliance laden..." /> : <pre className="code-block">{JSON.stringify(complianceQuery.data || {}, null, 2)}</pre>}
               </Card>
-              <div className="content-grid-2">
-                <Card>
-                  <div className="section-title-row"><h3>Checklist</h3></div>
-                  <div className="list-stack compact-list">
-                    {checklistItems.length ? checklistItems.map((item, index) => {
-                      const row = item as Record<string, unknown>;
-                      return <div key={index} className="list-row"><div><strong>{String(row.label || row.name || `Checklist item ${index + 1}`)}</strong><div className="list-subtle">{String(row.description || '')}</div></div><Badge tone={row.completed ? 'success' : 'warning'}>{row.completed ? 'Gereed' : 'Open'}</Badge></div>;
-                    }) : <EmptyState title="Geen checklist-items" description="De backend retourneerde nog geen checklist." />}
-                  </div>
-                </Card>
-                <Card>
-                  <div className="section-title-row"><h3>Missende items</h3></div>
-                  <div className="list-stack compact-list">
-                    {missingItems.length ? missingItems.map((item, index) => {
-                      const row = item as Record<string, unknown>;
-                      return <div key={index} className="list-row"><div><strong>{String(row.label || row.name || `Ontbrekend item ${index + 1}`)}</strong><div className="list-subtle">{String(row.reason || row.description || '')}</div></div><Badge tone="danger">Open</Badge></div>;
-                    }) : <EmptyState title="Geen missende items" description="Het dossier is volgens de backend compleet." />}
-                  </div>
-                </Card>
-              </div>
-            </>
+              <Card>
+                <div className="section-title-row"><h3>Checklist</h3></div>
+                <div className="list-stack compact-list">
+                  {checklistItems.length ? checklistItems.map((item, index) => {
+                    const row = item as Record<string, unknown>;
+                    return <div key={index} className="list-row"><div><strong>{String(row.label || row.name || `Checklist item ${index + 1}`)}</strong><div className="list-subtle">{String(row.description || '')}</div></div><Badge tone={row.completed ? 'success' : 'warning'}>{row.completed ? 'Gereed' : 'Open'}</Badge></div>;
+                  }) : <EmptyState title="Geen checklist-items" description="De backend retourneerde nog geen checklist." />}
+                </div>
+              </Card>
+              <Card>
+                <div className="section-title-row"><h3>Missende items</h3></div>
+                <div className="list-stack compact-list">
+                  {missingItems.length ? missingItems.map((item, index) => {
+                    const row = item as Record<string, unknown>;
+                    return <div key={index} className="list-row"><div><strong>{String(row.label || row.name || `Ontbrekend item ${index + 1}`)}</strong><div className="list-subtle">{String(row.reason || row.description || '')}</div></div><Badge tone="danger">Open</Badge></div>;
+                  }) : <EmptyState title="Geen missende items" description="Het dossier is volgens de backend compleet." />}
+                </div>
+              </Card>
+            </div>
           ) : null}
 
           {tab === 'exports' ? (
             <>
               <Card>
-                <div className="section-title-row">
-                  <h3><Download size={18} /> Exports</h3>
-                </div>
+                <div className="section-title-row"><h3><Download size={18} /> Exports</h3></div>
                 <div className="stack-actions">
                   <Button onClick={async () => { await exportCe.mutateAsync(); onMessage('CE-rapport export gestart.'); }} disabled={exportCe.isPending}>CE rapport</Button>
                   <Button variant="secondary" onClick={async () => { await exportZip.mutateAsync(); onMessage('ZIP export gestart.'); }} disabled={exportZip.isPending}>ZIP</Button>
@@ -294,7 +310,7 @@ export function Project360Drawer({ project, open, onClose, onMessage }: { projec
                 <div className="section-title-row"><h3>Exporthistorie</h3></div>
                 {exportsQuery.isLoading ? <LoadingState label="Exporthistorie laden..." /> : null}
                 {!exportsQuery.isLoading && !exportItems.length ? <EmptyState title="Nog geen exports" description="Start een export om historie op te bouwen." /> : null}
-                <div className="list-stack">
+                <div className="list-stack compact-list">
                   {exportItems.map((item) => (
                     <div key={String(item.id)} className="list-row">
                       <div><strong>{item.type || item.id}</strong><div className="list-subtle">{formatDate(item.created_at)}</div></div>
@@ -304,6 +320,111 @@ export function Project360Drawer({ project, open, onClose, onMessage }: { projec
                 </div>
               </Card>
             </>
+          ) : null}
+
+          {tab === 'materialen' ? (
+            <Card>
+              <div className="section-title-row">
+                <h3><Boxes size={18} /> Materialen</h3>
+                <div className="toolbar-cluster">
+                  <Button onClick={async () => { if (!projectId) return; await bulkProjectAction.mutateAsync({ action: 'materials', projectIds: [projectId] }); onMessage('Materiaalset toegevoegd aan project.'); }} disabled={bulkProjectAction.isPending}>Alles toevoegen</Button>
+                </div>
+              </div>
+              <div className="toolbar-cluster">
+                <select className="input" value={selectedMaterialId} onChange={(event) => setSelectedMaterialId(event.target.value)}>
+                  <option value="">Selecteer materiaal</option>
+                  {availableMaterials.map((item) => <option key={String(item.id)} value={String(item.id)}>{String(item.code || item.title || item.id)}</option>)}
+                </select>
+                <Button variant="secondary" onClick={() => handleAddSelection('material')} disabled={!selectedMaterialId || projectSelectionMutation.isPending}>Koppelen</Button>
+              </div>
+              {materialsQuery.isLoading ? <LoadingState label="Materialen laden..." /> : null}
+              {!materialsQuery.isLoading && !materials.length ? <EmptyState title="Geen materialen gekoppeld" description="Voeg losse materialen of in één klik de materiaalset toe vanuit instellingen." /> : null}
+              <div className="list-stack compact-list">
+                {materials.map((item, index) => {
+                  const row = item as Record<string, unknown>;
+                  return <div key={String(row.id || index)} className="list-row"><div><strong>{String(row.code || row.title || row.id || `Materiaal ${index + 1}`)}</strong><div className="list-subtle">{String(row.title || '')}</div></div><Button variant="secondary" onClick={() => handleRemoveSelection('material', String(row.id || ''))} disabled={projectSelectionMutation.isPending}><Trash2 size={16} /> Verwijderen</Button></div>;
+                })}
+              </div>
+            </Card>
+          ) : null}
+
+          {tab === 'wps' ? (
+            <Card>
+              <div className="section-title-row">
+                <h3><Wrench size={18} /> WPS</h3>
+                <div className="toolbar-cluster">
+                  <Button onClick={async () => { if (!projectId) return; await bulkProjectAction.mutateAsync({ action: 'wps', projectIds: [projectId] }); onMessage('WPS-set toegevoegd aan project.'); }} disabled={bulkProjectAction.isPending}>Alles toevoegen</Button>
+                </div>
+              </div>
+              <div className="toolbar-cluster">
+                <select className="input" value={selectedWpsId} onChange={(event) => setSelectedWpsId(event.target.value)}>
+                  <option value="">Selecteer WPS</option>
+                  {availableWps.map((item) => <option key={String(item.id)} value={String(item.id)}>{String(item.code || item.title || item.id)}</option>)}
+                </select>
+                <Button variant="secondary" onClick={() => handleAddSelection('wps')} disabled={!selectedWpsId || projectSelectionMutation.isPending}>Koppelen</Button>
+              </div>
+              {wpsQuery.isLoading ? <LoadingState label="WPS laden..." /> : null}
+              {!wpsQuery.isLoading && !wps.length ? <EmptyState title="Geen WPS gekoppeld" description="Voeg losse WPS of in één klik de WPS-set toe vanuit instellingen." /> : null}
+              <div className="list-stack compact-list">
+                {wps.map((item, index) => {
+                  const row = item as Record<string, unknown>;
+                  return <div key={String(row.id || index)} className="list-row"><div><strong>{String(row.code || row.title || row.id || `WPS ${index + 1}`)}</strong><div className="list-subtle">{String(row.title || '')}</div></div><Button variant="secondary" onClick={() => handleRemoveSelection('wps', String(row.id || ''))} disabled={projectSelectionMutation.isPending}><Trash2 size={16} /> Verwijderen</Button></div>;
+                })}
+              </div>
+            </Card>
+          ) : null}
+
+
+
+          {tab === 'historie' ? (
+            <Card>
+              <div className="section-title-row">
+                <h3><History size={18} /> Historie / audittrail</h3>
+                <Badge tone="neutral">{auditQuery.data?.total || auditItems.length} regels</Badge>
+              </div>
+              {auditQuery.isLoading ? <LoadingState label="Audittrail laden..." /> : null}
+              {auditQuery.isError ? <ErrorState title="Audittrail niet geladen" description="Controleer het project-auditcontract van de backend." /> : null}
+              {!auditQuery.isLoading && !auditItems.length ? <EmptyState title="Geen auditregels" description="Voor dit project zijn nog geen auditregels gevonden." /> : null}
+              <div className="list-stack compact-list">
+                {auditItems.map((item) => (
+                  <div key={String(item.id)} className="list-row">
+                    <div>
+                      <strong>{String(item.action || 'actie')}</strong>
+                      <div className="list-subtle">{String(item.entity || 'record')} · {formatDate(String(item.created_at || ''))}</div>
+                      <div className="list-subtle">{JSON.stringify(item.meta || {})}</div>
+                    </div>
+                    <Badge tone="neutral">{String(item.user_id || 'systeem')}</Badge>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          ) : null}
+
+
+          {tab === 'lassers' ? (
+            <Card>
+              <div className="section-title-row">
+                <h3><HardHat size={18} /> Lassers</h3>
+                <div className="toolbar-cluster">
+                  <Button onClick={async () => { if (!projectId) return; await bulkProjectAction.mutateAsync({ action: 'welders', projectIds: [projectId] }); onMessage('Lasserset toegevoegd aan project.'); }} disabled={bulkProjectAction.isPending}>Alles toevoegen</Button>
+                </div>
+              </div>
+              <div className="toolbar-cluster">
+                <select className="input" value={selectedWelderId} onChange={(event) => setSelectedWelderId(event.target.value)}>
+                  <option value="">Selecteer lasser</option>
+                  {availableWelders.map((item) => <option key={String(item.id)} value={String(item.id)}>{String(item.code || item.name || item.id)}</option>)}
+                </select>
+                <Button variant="secondary" onClick={() => handleAddSelection('welder')} disabled={!selectedWelderId || projectSelectionMutation.isPending}>Koppelen</Button>
+              </div>
+              {weldersQuery.isLoading ? <LoadingState label="Lassers laden..." /> : null}
+              {!weldersQuery.isLoading && !welders.length ? <EmptyState title="Geen lassers gekoppeld" description="Voeg losse lassers of in één klik de lasserset toe vanuit instellingen." /> : null}
+              <div className="list-stack compact-list">
+                {welders.map((item, index) => {
+                  const row = item as Record<string, unknown>;
+                  return <div key={String(row.id || index)} className="list-row"><div><strong>{String(row.code || row.name || row.id || `Lasser ${index + 1}`)}</strong><div className="list-subtle">{String(row.name || '')}</div></div><Button variant="secondary" onClick={() => handleRemoveSelection('welder', String(row.id || ''))} disabled={projectSelectionMutation.isPending}><Trash2 size={16} /> Verwijderen</Button></div>;
+                })}
+              </div>
+            </Card>
           ) : null}
 
           <Modal open={!!assemblyModal} onClose={() => setAssemblyModal(null)} title={assemblyModal?.mode === 'edit' ? 'Assembly bewerken' : 'Nieuwe assembly'} size="large">

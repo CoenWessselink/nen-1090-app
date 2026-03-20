@@ -29,6 +29,8 @@ export function DataTable<T>({
   total,
   onPageChange,
   rowActionsLabel = 'Acties',
+  onRowClick,
+  onRowDoubleClick,
 }: {
   columns: ColumnDef<T>[];
   rows: T[];
@@ -46,6 +48,8 @@ export function DataTable<T>({
   total?: number;
   onPageChange?: (page: number) => void;
   rowActionsLabel?: string;
+  onRowClick?: (row: T) => void;
+  onRowDoubleClick?: (row: T) => void;
 }) {
   const [internalPage, setInternalPage] = useState(page || 1);
   const [columnMenuOpen, setColumnMenuOpen] = useState(false);
@@ -100,10 +104,10 @@ export function DataTable<T>({
           const key = rowKey(row);
           const selected = selectedRowKeys?.includes(key);
           return (
-            <article key={key} className={cn('table-mobile-card', selected && 'is-selected')}>
+            <article key={key} className={cn('table-mobile-card', selected && 'is-selected')} onClick={() => onRowClick?.(row)} onDoubleClick={() => onRowDoubleClick?.(row)}>
               <div className="table-mobile-card-header">
                 {selectable ? (
-                  <button type="button" className="icon-button" onClick={() => onToggleRow?.(key)} aria-label="Selecteer rij">
+                  <button type="button" className="icon-button" onClick={(event) => { event.stopPropagation(); onToggleRow?.(key); }} aria-label="Selecteer rij">
                     {selected ? <CheckSquare2 size={16} /> : <Square size={16} />}
                   </button>
                 ) : null}
@@ -154,10 +158,10 @@ export function DataTable<T>({
             const key = rowKey(row);
             const selected = selectedRowKeys?.includes(key);
             return (
-              <tr key={key} className={selected ? 'is-selected' : ''}>
+              <tr key={key} className={selected ? 'is-selected' : ''} onClick={() => onRowClick?.(row)} onDoubleClick={() => onRowDoubleClick?.(row)}>
                 {selectable ? (
                   <td className="checkbox-column">
-                    <button type="button" className="icon-button" onClick={() => onToggleRow?.(key)} aria-label="Selecteer rij">
+                    <button type="button" className="icon-button" onClick={(event) => { event.stopPropagation(); onToggleRow?.(key); }} aria-label="Selecteer rij">
                       {selected ? <CheckSquare2 size={16} /> : <Square size={16} />}
                     </button>
                   </td>

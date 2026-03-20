@@ -5,7 +5,7 @@ function trimTrailingSlash(value: string) {
 function resolveMarketingBaseUrl(): string {
   const explicit = trimTrailingSlash(import.meta.env.VITE_MARKETING_BASE_URL || '');
   if (explicit) return explicit;
-  return 'https://nen1090-marketing.pages.dev';
+  return 'https://nen1090-marketing-new.pages.dev';
 }
 
 function resolveApiBaseUrl(marketingBaseUrl: string): string {
@@ -15,12 +15,13 @@ function resolveApiBaseUrl(marketingBaseUrl: string): string {
 }
 
 const marketingBaseUrl = resolveMarketingBaseUrl();
+const explicitApiBaseUrl = trimTrailingSlash(import.meta.env.VITE_API_BASE_URL || '');
+const fallbackApiOrigin = 'https://nen1090-api-prod-f5ddagedbrftb4ew.westeurope-01.azurewebsites.net';
+const healthBase = explicitApiBaseUrl ? explicitApiBaseUrl.replace(/\/api\/v1$/, '') : fallbackApiOrigin;
 
 export const env = {
   appName: import.meta.env.VITE_APP_NAME || 'CWS NEN-1090 Platform',
   marketingBaseUrl,
   apiBaseUrl: resolveApiBaseUrl(marketingBaseUrl),
-  healthUrl:
-    import.meta.env.VITE_HEALTH_URL ||
-    'https://nen1090-api-prod-f5ddagedbrftb4ew.westeurope-01.azurewebsites.net/health',
+  healthUrl: import.meta.env.VITE_HEALTH_URL || `${healthBase}/health`,
 };

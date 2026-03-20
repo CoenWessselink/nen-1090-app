@@ -16,6 +16,7 @@ type UiState = {
   notificationCenterOpen: boolean;
   notifications: NotificationItem[];
   toasts: NotificationItem[];
+  createProjectRequestNonce: number;
   setSidebarOpen: (open: boolean) => void;
   toggleSidebar: () => void;
   setGlobalSearch: (value: string) => void;
@@ -27,6 +28,7 @@ type UiState = {
   pushNotification: (item: Omit<NotificationItem, 'id' | 'createdAt' | 'read'>) => void;
   dismissToast: (id: string) => void;
   markNotificationRead: (id: string) => void;
+  requestCreateProject: () => void;
 };
 
 const seed = () => new Date().toISOString();
@@ -66,6 +68,7 @@ export const useUiStore = create<UiState>((set) => ({
   notificationCenterOpen: false,
   notifications: initialNotifications,
   toasts: [],
+  createProjectRequestNonce: 0,
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
   toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
   setGlobalSearch: (value) => set({ globalSearch: value }),
@@ -86,4 +89,5 @@ export const useUiStore = create<UiState>((set) => ({
     notifications: state.notifications.map((item) => item.id === id ? { ...item, read: true } : item),
     toasts: state.toasts.filter((item) => item.id !== id),
   })),
+  requestCreateProject: () => set((state) => ({ createProjectRequestNonce: state.createProjectRequestNonce + 1 })),
 }));

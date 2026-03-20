@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { conformWeld, createWeld, deleteWeld, getWeld, getWeldAttachments, getWeldCompliance, getWeldDefects, getWeldInspections, getWelds, resetWeldToNorm, updateWeld, uploadWeldAttachment } from '@/api/welds';
+import { bulkApproveWelds, conformWeld, createWeld, deleteWeld, getWeld, getWeldAttachments, getWeldCompliance, getWeldDefects, getWeldInspections, getWelds, resetWeldToNorm, updateWeld, uploadWeldAttachment } from '@/api/welds';
 import { normalizeListResponse } from '@/utils/api';
 import type { ListParams } from '@/types/api';
 import type { WeldFormValues } from '@/types/forms';
@@ -99,5 +99,16 @@ export function useUploadWeldAttachment(projectId: string | number, weldId: stri
   return useMutation({
     mutationFn: (payload: FormData) => uploadWeldAttachment(projectId, weldId, payload),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['weld-attachments', projectId, weldId] }),
+  });
+}
+
+export function useBulkApproveWelds(projectId: string | number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (weldIds: Array<string | number>) => bulkApproveWelds(projectId, weldIds),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['welds'] });
+      queryClient.invalidateQueries({ queryKey: ['inspections'] });
+    },
   });
 }
