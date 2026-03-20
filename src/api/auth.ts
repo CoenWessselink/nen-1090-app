@@ -1,4 +1,5 @@
 import { apiRequest } from '@/api/client';
+import { env } from '@/lib/env';
 import type { AuthRefreshResponse, ChangePasswordPayload, LoginPayload, LoginResponse, LogoutPayload } from '@/types/api';
 
 export function login(payload: LoginPayload) {
@@ -45,7 +46,7 @@ export function logout(payload?: LogoutPayload) {
 
 
 export async function refreshCentralSession() {
-  const response = await fetch('/api/v1/auth/refresh', {
+  const response = await fetch(`${env.apiBaseUrl}/auth/refresh`, {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },

@@ -5,13 +5,13 @@ function trimTrailingSlash(value: string) {
 function resolveMarketingBaseUrl(): string {
   const explicit = trimTrailingSlash(import.meta.env.VITE_MARKETING_BASE_URL || '');
   if (explicit) return explicit;
-  return 'https://nen1090-marketing-new.pages.dev';
+  return 'https://nen1090.nl';
 }
 
-function resolveApiBaseUrl(marketingBaseUrl: string): string {
+function resolveApiBaseUrl(_marketingBaseUrl: string): string {
   const explicit = trimTrailingSlash(import.meta.env.VITE_API_BASE_URL || '');
   if (explicit) return explicit;
-  return `${marketingBaseUrl}/api/v1`;
+  return 'https://nen1090-api-prod-f5ddagedbrftb4ew.westeurope-01.azurewebsites.net/api/v1';
 }
 
 const marketingBaseUrl = resolveMarketingBaseUrl();
