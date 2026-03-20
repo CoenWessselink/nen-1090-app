@@ -1,0 +1,23 @@
+BUILD 6 PROGRESS v11.3
+
+Werkelijk doorgevoerd in deze build:
+- Lascontrole weld-first verder aangescherpt met client-side quick filters:
+  - Alle lassen
+  - Open
+  - Met defecten
+  - Conform
+- KPI-kaarten in Lascontrole aangepast naar operationele tellingen:
+  - open inspecties
+  - actieve lassen
+  - lassen met defecten
+- Bulk accorderen in Lascontrole verbeterd zodat de terugmelding het juiste aantal geselecteerde lassen toont.
+- Nieuwe las-flow in Lascontrole verduidelijkt als dropdown-first popupflow.
+- Project 360° uitgebreid met directe lasbeheer-flow:
+  - knop "Nieuwe las" opent nu direct de weld-popup vanuit Project 360°
+  - weld-rijen zijn dubbelklikbaar voor bewerken
+  - bewerkknop toegevoegd in de weld-lijst
+  - create/update van lassen vanuit Project 360° invalideert project-welds en globale weld-lijsten
+
+Validatie:
+- npm exec tsc -b: geslaagd
+- npm run build: niet volledig aantoonbaar in deze container doordat vite hier op permissie faalt ("vite: Permission denied")

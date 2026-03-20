@@ -52,6 +52,7 @@ export function LascontrolePage() {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('all');
   const [tab, setTab] = useState('welds');
+  const [quickFilter, setQuickFilter] = useState<'all' | 'with-defects' | 'conform' | 'open'>('all');
   const [page, setPage] = useState(1);
   const [sortKey, setSortKey] = useState('inspection_date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
@@ -108,6 +109,12 @@ export function LascontrolePage() {
   const inspectionResultsQuery = useInspectionResults(inspectionModal?.item?.id);
 
   const weldRows = useMemo(() => weldsQuery.data?.items || [], [weldsQuery.data]);
+  const filteredWeldRows = useMemo(() => {
+    if (quickFilter === 'with-defects') return weldRows.filter((item) => Number(item.defect_count || 0) > 0);
+    if (quickFilter === 'conform') return weldRows.filter((item) => String(item.status || '').toLowerCase() === 'conform');
+    if (quickFilter === 'open') return weldRows.filter((item) => ['open', 'pending', 'in-controle'].includes(String(item.status || '').toLowerCase()));
+    return weldRows;
+  }, [quickFilter, weldRows]);
   const inspectionRows = useMemo(() => inspectionsQuery.data?.items || [], [inspectionsQuery.data]);
   const defectRows = useMemo(() => defectsQuery.data?.items || [], [defectsQuery.data]);
   const weldOptions = useMemo(
@@ -213,9 +220,9 @@ export function LascontrolePage() {
       </Card>
 
       <div className="card-grid cols-3">
-        <Card><div className="metric-card"><span>Open inspecties</span><strong>{inspectionsQuery.data?.total ?? inspectionRows.length}</strong></div></Card>
-        <Card><div className="metric-card"><span>Actieve lassen</span><strong>{weldsQuery.data?.total ?? weldRows.length}</strong></div></Card>
-        <Card><div className="metric-card"><span>Open defecten</span><strong>{defectsQuery.data?.total ?? defectRows.length}</strong></div></Card>
+        <Card><div className="metric-card"><span>Open inspecties</span><strong>{inspectionRows.filter((item) => String(item.status || '').toLowerCase() !== 'approved').length}</strong></div></Card>
+        <Card><div className="metric-card"><span>Actieve lassen</span><strong>{weldRows.length}</strong></div></Card>
+        <Card><div className="metric-card"><span>Lassen met defecten</span><strong>{weldRows.filter((item) => Number(item.defect_count || 0) > 0).length}</strong></div></Card>
       </div>
 
       <Card>
@@ -225,13 +232,13 @@ export function LascontrolePage() {
       {tab === 'welds' ? (
         <Card>
           <DataTableToolbar
-            left={<span className="badge badge-neutral">Dubbelklik opent Weld 360°</span>}
-            center={<span className="badge badge-warning">{weldRows.filter((item) => Number(item.defect_count || 0) > 0).length} met defecten</span>}
-            right={<div className="stack-actions"><Button variant="secondary" disabled={!selectedWeldIds.length || !projectId || bulkApproveWelds.isPending} onClick={async () => { if (!projectId || !selectedWeldIds.length) return; await bulkApproveWelds.mutateAsync(selectedWeldIds); setSelectedWeldIds([]); setMessage(`${selectedWeldIds.length} lassen in 1 klik geaccordeerd.`); }}><CheckCheck size={16} /> Alles accorderen</Button><Button onClick={() => { setWeldModalMode('create'); setWeldModal(true); }}><Plus size={16} /> Nieuwe las</Button></div>}
+            left={<div className="stack-actions"><span className="badge badge-neutral">Dubbelklik opent Weld 360°</span><button type="button" className={`badge ${quickFilter === 'all' ? 'badge-success' : 'badge-neutral'}`} onClick={() => setQuickFilter('all')}>Alle lassen</button><button type="button" className={`badge ${quickFilter === 'open' ? 'badge-warning' : 'badge-neutral'}`} onClick={() => setQuickFilter('open')}>Open</button><button type="button" className={`badge ${quickFilter === 'with-defects' ? 'badge-danger' : 'badge-neutral'}`} onClick={() => setQuickFilter('with-defects')}>Met defecten</button><button type="button" className={`badge ${quickFilter === 'conform' ? 'badge-success' : 'badge-neutral'}`} onClick={() => setQuickFilter('conform')}>Conform</button></div>}
+            center={<span className="badge badge-warning">{filteredWeldRows.filter((item) => Number(item.defect_count || 0) > 0).length} met defecten</span>}
+            right={<div className="stack-actions"><Button variant="secondary" disabled={!selectedWeldIds.length || !projectId || bulkApproveWelds.isPending} onClick={async () => { if (!projectId || !selectedWeldIds.length) return; const count = selectedWeldIds.length; await bulkApproveWelds.mutateAsync(selectedWeldIds); setSelectedWeldIds([]); setMessage(`${count} lassen in 1 klik geaccordeerd.`); }}><CheckCheck size={16} /> Alles accorderen</Button><Button onClick={() => { setWeldModalMode('create'); setWeldModal(true); }}><Plus size={16} /> Nieuwe las</Button></div>}
           />
           {weldsQuery.isLoading ? <LoadingState label="Lassen laden..." /> : null}
           {weldsQuery.isError ? <ErrorState title="Lassen niet geladen" description="Controleer GET /projects/{project_id}/welds of de globale /welds fallback endpoint in de backend." /> : null}
-          {!weldsQuery.isLoading && !weldsQuery.isError ? <DataTable columns={weldColumns} rows={weldRows} rowKey={(row) => String(row.id)} empty={<EmptyState title="Geen lassen" description="Maak een las aan of verfijn het filter." />} selectable={Boolean(projectId)} selectedRowKeys={selectedWeldIds} onToggleRow={(key) => setSelectedWeldIds((current) => current.includes(key) ? current.filter((item) => item !== key) : [...current, key])} onToggleAll={() => setSelectedWeldIds((current) => current.length === weldRows.length ? [] : weldRows.map((row) => String(row.id)))} onRowDoubleClick={(row) => setActiveWeld(row)} page={page} pageSize={limit} total={totalForActiveTab} onPageChange={setPage} /> : null}
+          {!weldsQuery.isLoading && !weldsQuery.isError ? <DataTable columns={weldColumns} rows={filteredWeldRows} rowKey={(row) => String(row.id)} empty={<EmptyState title="Geen lassen" description="Maak een las aan of verfijn het filter." />} selectable={Boolean(projectId)} selectedRowKeys={selectedWeldIds} onToggleRow={(key) => setSelectedWeldIds((current) => current.includes(key) ? current.filter((item) => item !== key) : [...current, key])} onToggleAll={() => setSelectedWeldIds((current) => current.length === filteredWeldRows.length ? [] : filteredWeldRows.map((row) => String(row.id)))} onRowDoubleClick={(row) => setActiveWeld(row)} page={page} pageSize={limit} total={tab === 'welds' ? filteredWeldRows.length : totalForActiveTab} onPageChange={setPage} /> : null}
         </Card>
       ) : null}
 
@@ -266,7 +273,7 @@ export function LascontrolePage() {
               setActiveWeld({ ...activeWeld, ...values } as Weld);
             } else {
               await createWeld.mutateAsync(values);
-              setMessage('Las opgeslagen.');
+              setMessage('Las opgeslagen via dropdown-first popupflow.');
               pushNotification({ title: 'Las opgeslagen', description: 'Nieuwe las is opgeslagen via de bestaande backend.', tone: 'success' });
             }
             setWeldModal(false);

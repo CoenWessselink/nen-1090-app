@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Boxes, CheckCircle2, Download, FileText, HardHat, History, Pencil, Plus, SearchCheck, ShieldCheck, Trash2, Wrench } from 'lucide-react';
 import { Drawer } from '@/components/overlays/Drawer';
 import { Tabs } from '@/components/ui/Tabs';
@@ -17,10 +18,13 @@ import { useComplianceChecklist, useComplianceMissingItems, useComplianceOvervie
 import { useCreateProjectDocument, useDeleteDocument, useDocumentVersions, useProjectDocuments, useUpdateDocument } from '@/hooks/useDocuments';
 import { useMaterials, useWelders, useWps } from '@/hooks/useSettings';
 import { useProjectInspections, useProjectMaterials, useProjectSelectionMutation, useProjectWelders, useProjectWelds, useProjectWps, useProjectBulkMutation } from '@/hooks/useProjects';
+import { useCreateWeld, useUpdateWeld } from '@/hooks/useWelds';
 import { useProjectAudit } from '@/hooks/useProjectAudit';
 import { formatDate } from '@/utils/format';
 import type { Assembly, AuditEntry, CeDocument, ExportJob, Inspection, Project, Weld } from '@/types/domain';
 import { AssemblyForm } from '@/features/projecten/components/AssemblyForm';
+import { WeldForm } from '@/features/lascontrole/components/WeldForm';
+import type { WeldFormValues } from '@/types/forms';
 
 function tone(status?: string) {
   const value = String(status || '').toLowerCase();
@@ -61,6 +65,7 @@ export function Project360Drawer({ project, open, onClose, onMessage }: { projec
   const [documentModal, setDocumentModal] = useState<CeDocument | null>(null);
   const [pendingDeleteAssembly, setPendingDeleteAssembly] = useState<Assembly | null>(null);
   const [pendingDeleteDocument, setPendingDeleteDocument] = useState<CeDocument | null>(null);
+  const [weldModal, setWeldModal] = useState<{ mode: 'create' | 'edit'; item?: Weld } | null>(null);
   const projectId = project?.id;
 
   const assembliesQuery = useAssemblies(String(projectId || ''));
@@ -91,6 +96,9 @@ export function Project360Drawer({ project, open, onClose, onMessage }: { projec
   const [selectedMaterialId, setSelectedMaterialId] = useState('');
   const [selectedWpsId, setSelectedWpsId] = useState('');
   const [selectedWelderId, setSelectedWelderId] = useState('');
+  const queryClient = useQueryClient();
+  const createWeld = useCreateWeld();
+  const updateWeld = useUpdateWeld(String(projectId || ''));
   const exportCe = useCreateCeReport(String(projectId || ''));
   const exportZip = useCreateZipExport(String(projectId || ''));
   const exportPdf = useCreatePdfExport(String(projectId || ''));
@@ -175,7 +183,7 @@ export function Project360Drawer({ project, open, onClose, onMessage }: { projec
 
           <div className="toolbar-cluster">
             <Button variant="secondary" onClick={() => setAssemblyModal({ mode: 'create' })}><Plus size={16} /> Nieuw assembly</Button>
-            <Button variant="secondary" onClick={() => setTab('welds')}><Plus size={16} /> Nieuwe las</Button>
+            <Button variant="secondary" onClick={() => { setTab('welds'); setWeldModal({ mode: 'create' }); }}><Plus size={16} /> Nieuwe las</Button>
             <Button variant="secondary" onClick={() => setTab('documenten')}><FileText size={16} /> Nieuw document</Button>
           </div>
 
@@ -233,14 +241,20 @@ export function Project360Drawer({ project, open, onClose, onMessage }: { projec
 
           {tab === 'welds' ? (
             <Card>
-              <div className="section-title-row"><h3><ShieldCheck size={18} /> Welds / Lassen</h3></div>
+              <div className="section-title-row">
+                <h3><ShieldCheck size={18} /> Welds / Lassen</h3>
+                <Button onClick={() => setWeldModal({ mode: 'create' })}><Plus size={16} /> Nieuwe las</Button>
+              </div>
               {weldsQuery.isLoading ? <LoadingState label="Welds laden..." /> : null}
-              {!weldsQuery.isLoading && !welds.length ? <EmptyState title="Geen lassen" description="De weld-first flow wordt in build 2 verder uitgewerkt; gekoppelde lassen zijn hier al zichtbaar." /> : null}
+              {!weldsQuery.isLoading && !welds.length ? <EmptyState title="Geen lassen" description="Voeg een las direct toe vanuit Project 360° via de popup-flow." /> : null}
               <div className="list-stack compact-list">
                 {welds.map((item: Weld) => (
-                  <div key={String(item.id)} className="list-row">
+                  <div key={String(item.id)} className="list-row" onDoubleClick={() => setWeldModal({ mode: 'edit', item })}>
                     <div><strong>{String(item.weld_number || item.id)}</strong><div className="list-subtle">{String(item.location || 'Locatie onbekend')} · {String(item.welder_name || item.welders || 'Lasser onbekend')}</div></div>
-                    <Badge tone={tone(item.status)}>{String(item.status || 'Open')}</Badge>
+                    <div className="toolbar-cluster">
+                      <Badge tone={tone(item.status)}>{String(item.status || 'Open')}</Badge>
+                      <Button variant="secondary" onClick={() => setWeldModal({ mode: 'edit', item })}><Pencil size={16} /> Bewerken</Button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -457,6 +471,37 @@ export function Project360Drawer({ project, open, onClose, onMessage }: { projec
               </div>
             </Card>
           ) : null}
+
+          <Modal open={!!weldModal} onClose={() => setWeldModal(null)} title={weldModal?.mode === 'edit' ? 'Las bewerken' : 'Nieuwe las'} size="large">
+            <WeldForm
+              initial={weldModal?.item ? ({
+                project_id: String(weldModal.item.project_id || projectId || ''),
+                weld_number: String(weldModal.item.weld_number || ''),
+                assembly_id: String(weldModal.item.assembly_id || ''),
+                wps_id: String(weldModal.item.wps_id || ''),
+                welder_name: String(weldModal.item.welder_name || ''),
+                process: String(weldModal.item.process || '135'),
+                location: String(weldModal.item.location || ''),
+                status: String(weldModal.item.status || 'open'),
+              } satisfies Partial<WeldFormValues>) : undefined}
+              defaultProjectId={String(projectId || '')}
+              submitLabel={weldModal?.mode === 'edit' ? 'Las bijwerken' : 'Las opslaan'}
+              isSubmitting={createWeld.isPending || updateWeld.isPending}
+              onSubmit={async (values) => {
+                if (!projectId) return;
+                if (weldModal?.mode === 'edit' && weldModal.item) {
+                  await updateWeld.mutateAsync({ weldId: weldModal.item.id, payload: values });
+                  onMessage(`Las ${weldModal.item.weld_number || weldModal.item.id} bijgewerkt.`);
+                } else {
+                  await createWeld.mutateAsync(values);
+                  onMessage('Nieuwe las opgeslagen vanuit Project 360°.');
+                }
+                await queryClient.invalidateQueries({ queryKey: ['project-welds', projectId] });
+                await queryClient.invalidateQueries({ queryKey: ['welds'] });
+                setWeldModal(null);
+              }}
+            />
+          </Modal>
 
           <Modal open={!!assemblyModal} onClose={() => setAssemblyModal(null)} title={assemblyModal?.mode === 'edit' ? 'Assembly bewerken' : 'Nieuwe assembly'} size="large">
             <AssemblyForm
