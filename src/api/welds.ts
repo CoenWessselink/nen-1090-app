@@ -1,4 +1,5 @@
-import { apiRequest, listRequest, optionalRequest, resolveProjectScopedPath, uploadRequest } from '@/api/client';
+import { apiRequest, optionalRequest, resolveProjectScopedPath, uploadRequest } from '@/api/client';
+import { withQuery } from '@/utils/api';
 import type { ListParams } from '@/types/api';
 import type { CeDocument, ComplianceOverview, Defect, Inspection, Weld } from '@/types/domain';
 import type { WeldFormValues } from '@/types/forms';
@@ -7,6 +8,7 @@ function mapWeldPayload(payload: WeldFormValues) {
   return {
     weld_no: payload.weld_number,
     location: payload.location,
+    assembly_id: payload.assembly_id || null,
     wps: payload.wps_id || null,
     process: payload.process || null,
     welders: payload.welder_name || null,
@@ -14,22 +16,25 @@ function mapWeldPayload(payload: WeldFormValues) {
   };
 }
 
-export function getWelds(params?: ListParams) {
+export async function getWelds(params?: ListParams) {
   const projectId = params?.project_id || params?.projectId;
-  return listRequest<Weld[] | { items?: Weld[]; data?: Weld[]; results?: Weld[]; total?: number; page?: number; limit?: number }>(
-    resolveProjectScopedPath(projectId, `/projects/${projectId}/welds`, '/welds'),
-    params,
-  );
+  return await optionalRequest<Weld[] | { items?: Weld[]; data?: Weld[]; results?: Weld[]; total?: number; page?: number; limit?: number }>([
+    withQuery(resolveProjectScopedPath(projectId, `/projects/${projectId}/welds`, '/welds'), params),
+    withQuery('/welds', params),
+  ]) || { items: [] };
 }
 
 export function getWeld(projectId: string | number, weldId: string | number) {
   return apiRequest<Weld>(`/projects/${projectId}/welds/${weldId}`);
 }
 
-export function createWeld(payload: WeldFormValues) {
+export async function createWeld(payload: WeldFormValues) {
   const projectId = payload.project_id;
-  const path = resolveProjectScopedPath(projectId, `/projects/${projectId}/welds`, '/welds');
-  return apiRequest<Weld>(path, { method: 'POST', body: JSON.stringify(mapWeldPayload(payload)) });
+  const body = JSON.stringify(mapWeldPayload(payload));
+  return await optionalRequest<Weld>([
+    resolveProjectScopedPath(projectId, `/projects/${projectId}/welds`, '/welds'),
+    '/welds',
+  ], { method: 'POST', body }) as Weld;
 }
 
 export function updateWeld(projectId: string | number, weldId: string | number, payload: WeldFormValues) {
@@ -67,7 +72,6 @@ export function resetWeldToNorm(projectId: string | number, weldId: string | num
 export function conformWeld(projectId: string | number, weldId: string | number) {
   return apiRequest<Record<string, unknown>>(`/projects/${projectId}/welds/${weldId}/conform`, { method: 'POST' });
 }
-
 
 export function bulkApproveWelds(projectId: string | number, weldIds: Array<string | number>) {
   return apiRequest<Record<string, unknown>>(`/projects/${projectId}/welds/bulk-approve`, { method: 'POST', body: JSON.stringify({ weld_ids: weldIds }) });

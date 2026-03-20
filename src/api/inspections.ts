@@ -1,21 +1,25 @@
-import { apiRequest, listRequest, optionalRequest, resolveProjectScopedPath, uploadRequest } from '@/api/client';
+import { apiRequest, listRequest, optionalRequest, uploadRequest } from '@/api/client';
+import { withQuery } from '@/utils/api';
 import type { Inspection } from '@/types/domain';
 import type { ListParams } from '@/types/api';
 
-export function getInspections(params?: ListParams) {
+export async function getInspections(params?: ListParams) {
   const projectId = params?.project_id || params?.projectId;
-  return listRequest<Inspection[] | { items?: Inspection[] }>(
-    resolveProjectScopedPath(projectId, `/projects/${projectId}/inspections`, '/inspections'),
-    params,
-  );
+  return await optionalRequest<Inspection[] | { items?: Inspection[] }>([
+    withQuery(projectId ? `/projects/${projectId}/inspections` : '/inspections', params),
+    withQuery('/inspections', params),
+  ]) || { items: [] };
 }
 
 export function getInspection(inspectionId: string | number) {
   return apiRequest<Inspection>(`/inspections/${inspectionId}`);
 }
 
-export function createInspection(projectId: string | number, weldId: string | number, payload: Record<string, unknown>) {
-  return apiRequest<Inspection>(`/projects/${projectId}/welds/${weldId}/inspections`, { method: 'POST', body: JSON.stringify(payload) });
+export async function createInspection(projectId: string | number, weldId: string | number, payload: Record<string, unknown>) {
+  return await optionalRequest<Inspection>([
+    `/projects/${projectId}/welds/${weldId}/inspections`,
+    '/inspections',
+  ], { method: 'POST', body: JSON.stringify({ ...payload, project_id: projectId, weld_id: weldId }) }) as Inspection;
 }
 
 export function updateInspection(inspectionId: string | number, payload: Record<string, unknown>) {

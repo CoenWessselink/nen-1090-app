@@ -1,9 +1,24 @@
 import { apiRequest, listRequest, optionalRequest } from '@/api/client';
+import { withQuery } from '@/utils/api';
 import type { ListParams } from '@/types/api';
 import type { Assembly, CeDocument, ComplianceOverview, ExportJob, Inspection, Project, Weld } from '@/types/domain';
-import type { ProjectFormValues } from '@/types/forms';
+import type { ProjectAssemblyDraft, ProjectFormValues } from '@/types/forms';
 
 export type ProjectSelectionItem = Record<string, unknown>;
+
+function normalizeProjectRecord(payload: Record<string, unknown>): Project {
+  return {
+    ...payload,
+    id: String(payload.id || payload.project_id || ''),
+    projectnummer: String(payload.projectnummer || payload.code || payload.project_number || ''),
+    name: String(payload.name || payload.omschrijving || ''),
+    client_name: String(payload.client_name || payload.client || payload.opdrachtgever || ''),
+    execution_class: String(payload.execution_class || payload.exc || payload.executieklasse || ''),
+    status: String(payload.status || 'concept'),
+    start_date: String(payload.start_date || ''),
+    end_date: String(payload.end_date || ''),
+  };
+}
 
 export function getProjects(params?: ListParams) {
   return listRequest<Project[] | { items?: Project[]; data?: Project[]; results?: Project[]; total?: number; page?: number; limit?: number }>('/projects', params);
@@ -13,16 +28,25 @@ export function getProject(projectId: string | number) {
   return apiRequest<Project>(`/projects/${projectId}`);
 }
 
-export function getProjectAssemblies(projectId: string | number, params?: ListParams) {
-  return listRequest<Assembly[] | { items?: Assembly[] }>(`/projects/${projectId}/assemblies`, params);
+export async function getProjectAssemblies(projectId: string | number, params?: ListParams) {
+  return await optionalRequest<Assembly[] | { items?: Assembly[] }>([
+    withQuery(`/projects/${projectId}/assemblies`, params),
+    withQuery('/assemblies', { ...(params || {}), project_id: String(projectId) }),
+  ]) || { items: [] };
 }
 
-export function getProjectWelds(projectId: string | number, params?: ListParams) {
-  return listRequest<Weld[] | { items?: Weld[] }>(`/projects/${projectId}/welds`, params);
+export async function getProjectWelds(projectId: string | number, params?: ListParams) {
+  return await optionalRequest<Weld[] | { items?: Weld[] }>([
+    withQuery(`/projects/${projectId}/welds`, params),
+    withQuery('/welds', { ...(params || {}), project_id: String(projectId) }),
+  ]) || { items: [] };
 }
 
-export function getProjectInspections(projectId: string | number, params?: ListParams) {
-  return listRequest<Inspection[] | { items?: Inspection[] }>(`/projects/${projectId}/inspections`, params);
+export async function getProjectInspections(projectId: string | number, params?: ListParams) {
+  return await optionalRequest<Inspection[] | { items?: Inspection[] }>([
+    withQuery(`/projects/${projectId}/inspections`, params),
+    withQuery('/inspections', { ...(params || {}), project_id: String(projectId) }),
+  ]) || { items: [] };
 }
 
 export function getProjectDocuments(projectId: string | number, params?: ListParams) {
@@ -98,8 +122,8 @@ export function addProjectWelders(projectId: string | number) {
   ], { method: 'POST' });
 }
 
-export function createProject(payload: ProjectFormValues) {
-  return apiRequest<Project>('/projects', {
+export async function createProject(payload: ProjectFormValues) {
+  const response = await apiRequest<Record<string, unknown>>('/projects', {
     method: 'POST',
     body: JSON.stringify({
       code: payload.projectnummer,
@@ -111,6 +135,10 @@ export function createProject(payload: ProjectFormValues) {
       end_date: payload.end_date || null,
     }),
   });
+  if (response.id) return normalizeProjectRecord(response);
+  if (response.ok && response.id) return normalizeProjectRecord(response);
+  if (response.ok && response.project_id) return normalizeProjectRecord(response);
+  throw new Error('Project aangemaakt, maar backend gaf geen geldig project-object terug.');
 }
 
 export function updateProject(id: string | number, payload: ProjectFormValues) {
@@ -132,6 +160,19 @@ export function deleteProject(id: string | number) {
   return apiRequest<void>(`/projects/${id}`, { method: 'DELETE' });
 }
 
+export function createProjectAssembly(projectId: string | number, payload: ProjectAssemblyDraft) {
+  return apiRequest<Assembly>(`/projects/${projectId}/assemblies`, {
+    method: 'POST',
+    body: JSON.stringify({
+      code: payload.code,
+      name: payload.name,
+      drawing_no: payload.drawing_no || null,
+      revision: payload.revision || null,
+      status: payload.status || 'open',
+      notes: payload.notes || null,
+    }),
+  });
+}
 
 export function addProjectMaterialLink(projectId: string | number, materialId: string | number) {
   return apiRequest<Record<string, unknown>>(`/projects/${projectId}/materials`, {

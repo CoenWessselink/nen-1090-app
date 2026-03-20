@@ -1,3 +1,26 @@
+export type ProjectAssemblyDraft = {
+  temp_id: string;
+  code: string;
+  name: string;
+  drawing_no?: string;
+  revision?: string;
+  status?: string;
+  notes?: string;
+};
+
+export type ProjectWeldDraft = {
+  temp_id: string;
+  weld_number: string;
+  assembly_temp_id?: string;
+  assembly_id?: string;
+  wps_id?: string;
+  welder_name?: string;
+  process?: string;
+  location: string;
+  status: string;
+  photos?: File[];
+};
+
 export type ProjectFormValues = {
   projectnummer: string;
   name: string;
@@ -13,6 +36,8 @@ export type ProjectFormValues = {
   apply_materials?: boolean;
   apply_wps?: boolean;
   apply_welders?: boolean;
+  assemblies?: ProjectAssemblyDraft[];
+  welds?: ProjectWeldDraft[];
 };
 
 export type WeldFormValues = {

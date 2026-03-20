@@ -6,12 +6,10 @@ import {
   addProjectWelders,
   addProjectWps,
   addProjectWpsLink,
-  removeProjectMaterialLink,
-  removeProjectWelderLink,
-  removeProjectWpsLink,
   applyProjectInspectionTemplate,
   approveAllProject,
   createProject,
+  createProjectAssembly,
   deleteProject,
   getProject,
   getProjectAssemblies,
@@ -21,8 +19,12 @@ import {
   getProjectSelectedWelders,
   getProjectSelectedWps,
   getProjectWelds,
+  removeProjectMaterialLink,
+  removeProjectWelderLink,
+  removeProjectWpsLink,
   updateProject,
 } from '@/api/projects';
+import { createWeld, uploadWeldAttachment } from '@/api/welds';
 import { normalizeListResponse } from '@/utils/api';
 import type { ListParams } from '@/types/api';
 import type { ProjectFormValues } from '@/types/forms';
@@ -95,9 +97,40 @@ export function useCreateProject() {
       if (payload.apply_materials) await addProjectMaterials(project.id);
       if (payload.apply_wps) await addProjectWps(project.id);
       if (payload.apply_welders) await addProjectWelders(project.id);
+
+      const assemblyMap = new Map<string, string>();
+      for (const assembly of payload.assemblies || []) {
+        if (!assembly.code.trim() || !assembly.name.trim()) continue;
+        const createdAssembly = await createProjectAssembly(project.id, assembly);
+        assemblyMap.set(assembly.temp_id, String(createdAssembly.id));
+      }
+
+      for (const weld of payload.welds || []) {
+        if (!weld.weld_number.trim()) continue;
+        const createdWeld = await createWeld({
+          project_id: String(project.id),
+          weld_number: weld.weld_number,
+          assembly_id: weld.assembly_temp_id ? assemblyMap.get(weld.assembly_temp_id) || '' : (weld.assembly_id || ''),
+          wps_id: weld.wps_id,
+          welder_name: weld.welder_name,
+          process: weld.process,
+          location: weld.location,
+          status: weld.status || 'concept',
+        });
+        for (const photo of weld.photos || []) {
+          const formData = new FormData();
+          formData.append('files', photo);
+          await uploadWeldAttachment(project.id, createdWeld.id, formData);
+        }
+      }
       return project;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['projects'] }),
+    onSuccess: (project) => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['project-assemblies', project.id] });
+      queryClient.invalidateQueries({ queryKey: ['project-welds', project.id] });
+      queryClient.invalidateQueries({ queryKey: ['welds'] });
+    },
   });
 }
 
@@ -148,7 +181,6 @@ export function useProjectBulkMutation() {
     },
   });
 }
-
 
 export function useProjectSelectionMutation() {
   const queryClient = useQueryClient();
