@@ -96,19 +96,6 @@ export function Project360Drawer({ project, open, onClose, onMessage }: { projec
   const exportPdf = useCreatePdfExport(String(projectId || ''));
   const exportExcel = useCreateExcelExport(String(projectId || ''));
 
-  const availableMaterials = useMemo(
-    () => ((masterMaterialsQuery.data?.items || []) as Record<string, unknown>[]).filter((candidate) => !materials.some((item) => String(item.id) === String(candidate.id))),
-    [masterMaterialsQuery.data, materials],
-  );
-  const availableWps = useMemo(
-    () => ((masterWpsQuery.data?.items || []) as Record<string, unknown>[]).filter((candidate) => !wps.some((item) => String(item.id) === String(candidate.id))),
-    [masterWpsQuery.data, wps],
-  );
-  const availableWelders = useMemo(
-    () => ((masterWeldersQuery.data?.items || []) as Record<string, unknown>[]).filter((candidate) => !welders.some((item) => String(item.id) === String(candidate.id))),
-    [masterWeldersQuery.data, welders],
-  );
-
   const handleAddSelection = async (kind: 'material' | 'wps' | 'welder') => {
     if (!projectId) return;
     const refId = kind === 'material' ? selectedMaterialId : kind === 'wps' ? selectedWpsId : selectedWelderId;
@@ -135,6 +122,18 @@ export function Project360Drawer({ project, open, onClose, onMessage }: { projec
   const materials = useMemo(() => (materialsQuery.data?.items || []) as Record<string, unknown>[], [materialsQuery.data]);
   const wps = useMemo(() => (wpsQuery.data?.items || []) as Record<string, unknown>[], [wpsQuery.data]);
   const welders = useMemo(() => (weldersQuery.data?.items || []) as Record<string, unknown>[], [weldersQuery.data]);
+  const availableMaterials = useMemo(
+    () => ((masterMaterialsQuery.data?.items || []) as Record<string, unknown>[]).filter((candidate: Record<string, unknown>) => !materials.some((item: Record<string, unknown>) => String(item.id) === String(candidate.id))),
+    [masterMaterialsQuery.data, materials],
+  );
+  const availableWps = useMemo(
+    () => ((masterWpsQuery.data?.items || []) as Record<string, unknown>[]).filter((candidate: Record<string, unknown>) => !wps.some((item: Record<string, unknown>) => String(item.id) === String(candidate.id))),
+    [masterWpsQuery.data, wps],
+  );
+  const availableWelders = useMemo(
+    () => ((masterWeldersQuery.data?.items || []) as Record<string, unknown>[]).filter((candidate: Record<string, unknown>) => !welders.some((item: Record<string, unknown>) => String(item.id) === String(candidate.id))),
+    [masterWeldersQuery.data, welders],
+  );
   const missingItems = useMemo(() => pickArray(missingItemsQuery.data, 'missing_items'), [missingItemsQuery.data]);
   const checklistItems = useMemo(() => pickArray(checklistQuery.data, 'checklist'), [checklistQuery.data]);
   const exportItems = (exportsQuery.data?.items || []) as ExportJob[];
