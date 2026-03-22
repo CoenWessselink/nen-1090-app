@@ -29,6 +29,23 @@ import { normalizeListResponse } from '@/utils/api';
 import type { ListParams } from '@/types/api';
 import type { ProjectFormValues } from '@/types/forms';
 
+type ProjectCreateWarning = {
+  step: string;
+  message: string;
+};
+
+type ProjectCreateSummary = {
+  assemblies_created: number;
+  welds_created: number;
+  photos_uploaded: number;
+  warnings: ProjectCreateWarning[];
+};
+
+type ProjectCreateResult = Record<string, unknown> & {
+  id: string | number;
+  create_summary: ProjectCreateSummary;
+};
+
 export function useProjects(params?: ListParams) {
   return useQuery({
     queryKey: ['projects', params],
@@ -88,42 +105,108 @@ export function useProjectWelders(projectId?: string | number) {
   return useProjectSelectionQuery('project-welders', projectId, getProjectSelectedWelders);
 }
 
+function addWarning(warnings: ProjectCreateWarning[], step: string, error: unknown) {
+  const message = error instanceof Error ? error.message : String(error || 'Onbekende fout');
+  warnings.push({ step, message });
+}
+
 export function useCreateProject() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: ProjectFormValues) => {
+    mutationFn: async (payload: ProjectFormValues): Promise<ProjectCreateResult> => {
       const project = await createProject(payload);
-      if (payload.inspection_template_id) await applyProjectInspectionTemplate(project.id, payload.inspection_template_id);
-      if (payload.apply_materials) await addProjectMaterials(project.id);
-      if (payload.apply_wps) await addProjectWps(project.id);
-      if (payload.apply_welders) await addProjectWelders(project.id);
+      const warnings: ProjectCreateWarning[] = [];
+      let assembliesCreated = 0;
+      let weldsCreated = 0;
+      let photosUploaded = 0;
+
+      if (payload.inspection_template_id) {
+        try {
+          await applyProjectInspectionTemplate(project.id, payload.inspection_template_id);
+        } catch (error) {
+          addWarning(warnings, 'inspection_template', error);
+        }
+      }
+      if (payload.apply_materials) {
+        try {
+          await addProjectMaterials(project.id);
+        } catch (error) {
+          addWarning(warnings, 'materials', error);
+        }
+      }
+      if (payload.apply_wps) {
+        try {
+          await addProjectWps(project.id);
+        } catch (error) {
+          addWarning(warnings, 'wps', error);
+        }
+      }
+      if (payload.apply_welders) {
+        try {
+          await addProjectWelders(project.id);
+        } catch (error) {
+          addWarning(warnings, 'welders', error);
+        }
+      }
 
       const assemblyMap = new Map<string, string>();
       for (const assembly of payload.assemblies || []) {
-        if (!assembly.code.trim() || !assembly.name.trim()) continue;
-        const createdAssembly = await createProjectAssembly(project.id, assembly);
-        assemblyMap.set(assembly.temp_id, String(createdAssembly.id));
+        if (!assembly.code.trim() && !assembly.name.trim()) continue;
+        if (!assembly.code.trim() || !assembly.name.trim()) {
+          warnings.push({
+            step: 'assembly_validation',
+            message: `Assembly ${assembly.code || assembly.name || assembly.temp_id} is overgeslagen omdat code of naam ontbreekt.`,
+          });
+          continue;
+        }
+        try {
+          const createdAssembly = await createProjectAssembly(project.id, assembly);
+          assemblyMap.set(assembly.temp_id, String(createdAssembly.id));
+          assembliesCreated += 1;
+        } catch (error) {
+          addWarning(warnings, `assembly:${assembly.code || assembly.temp_id}`, error);
+        }
       }
 
       for (const weld of payload.welds || []) {
         if (!weld.weld_number.trim()) continue;
-        const createdWeld = await createWeld({
-          project_id: String(project.id),
-          weld_number: weld.weld_number,
-          assembly_id: weld.assembly_temp_id ? assemblyMap.get(weld.assembly_temp_id) || '' : (weld.assembly_id || ''),
-          wps_id: weld.wps_id,
-          welder_name: weld.welder_name,
-          process: weld.process,
-          location: weld.location,
-          status: weld.status || 'concept',
-        });
-        for (const photo of weld.photos || []) {
-          const formData = new FormData();
-          formData.append('files', photo);
-          await uploadWeldAttachment(project.id, createdWeld.id, formData);
+        const resolvedAssemblyId = weld.assembly_temp_id ? assemblyMap.get(weld.assembly_temp_id) || '' : (weld.assembly_id || '');
+        try {
+          const createdWeld = await createWeld({
+            project_id: String(project.id),
+            weld_number: weld.weld_number,
+            assembly_id: resolvedAssemblyId,
+            wps_id: weld.wps_id,
+            welder_name: weld.welder_name,
+            process: weld.process,
+            location: weld.location,
+            status: weld.status || 'concept',
+          });
+          weldsCreated += 1;
+          for (const photo of weld.photos || []) {
+            try {
+              const formData = new FormData();
+              formData.append('files', photo);
+              await uploadWeldAttachment(project.id, createdWeld.id, formData);
+              photosUploaded += 1;
+            } catch (error) {
+              addWarning(warnings, `weld_photo:${weld.weld_number}`, error);
+            }
+          }
+        } catch (error) {
+          addWarning(warnings, `weld:${weld.weld_number}`, error);
         }
       }
-      return project;
+
+      return {
+        ...project,
+        create_summary: {
+          assemblies_created: assembliesCreated,
+          welds_created: weldsCreated,
+          photos_uploaded: photosUploaded,
+          warnings,
+        },
+      };
     },
     onSuccess: (project) => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });

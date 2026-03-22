@@ -18,7 +18,7 @@ import { useComplianceChecklist, useComplianceMissingItems, useComplianceOvervie
 import { useCreateProjectDocument, useDeleteDocument, useDocumentVersions, useProjectDocuments, useUpdateDocument } from '@/hooks/useDocuments';
 import { useMaterials, useWelders, useWps } from '@/hooks/useSettings';
 import { useProjectInspections, useProjectMaterials, useProjectSelectionMutation, useProjectWelders, useProjectWelds, useProjectWps, useProjectBulkMutation } from '@/hooks/useProjects';
-import { useCreateWeld, useUpdateWeld } from '@/hooks/useWelds';
+import { useCopyWeld, useCreateWeld, useUpdateWeld } from '@/hooks/useWelds';
 import { useProjectAudit } from '@/hooks/useProjectAudit';
 import { formatDate } from '@/utils/format';
 import type { Assembly, AuditEntry, CeDocument, ExportJob, Inspection, Project, Weld } from '@/types/domain';
@@ -98,6 +98,7 @@ export function Project360Drawer({ project, open, onClose, onMessage }: { projec
   const [selectedWelderId, setSelectedWelderId] = useState('');
   const queryClient = useQueryClient();
   const createWeld = useCreateWeld();
+  const copyWeld = useCopyWeld(String(projectId || ''));
   const updateWeld = useUpdateWeld(String(projectId || ''));
   const exportCe = useCreateCeReport(String(projectId || ''));
   const exportZip = useCreateZipExport(String(projectId || ''));
@@ -146,6 +147,12 @@ export function Project360Drawer({ project, open, onClose, onMessage }: { projec
   const checklistItems = useMemo(() => pickArray(checklistQuery.data, 'checklist'), [checklistQuery.data]);
   const exportItems = (exportsQuery.data?.items || []) as ExportJob[];
   const auditItems = (auditQuery.data?.items || []) as AuditEntry[];
+  const liveValidationItems = [
+    { label: 'Assemblies', status: assembliesQuery.isError ? 'error' : assemblies.length ? 'success' : 'warning', detail: assembliesQuery.isError ? 'Niet geladen' : assemblies.length ? `${assemblies.length} geladen` : 'Nog geen assemblies' },
+    { label: 'Lassen', status: weldsQuery.isError ? 'error' : welds.length ? 'success' : 'warning', detail: weldsQuery.isError ? 'Niet geladen' : welds.length ? `${welds.length} geladen` : 'Nog geen lassen' },
+    { label: 'Documenten', status: documentsQuery.isError ? 'error' : documents.length ? 'success' : 'warning', detail: documentsQuery.isError ? 'Niet geladen' : documents.length ? `${documents.length} zichtbaar` : 'Nog geen documenten' },
+    { label: 'Audittrail', status: auditQuery.isError ? 'error' : auditItems.length ? 'success' : 'warning', detail: auditQuery.isError ? 'Niet geladen' : auditItems.length ? `${auditItems.length} regels` : 'Nog geen auditregels' },
+  ] as const;
 
   const summaryCards = [
     { label: 'Assemblies', value: assembliesQuery.data?.total ?? assemblies.length },
@@ -185,6 +192,16 @@ export function Project360Drawer({ project, open, onClose, onMessage }: { projec
             <Button variant="secondary" onClick={() => setAssemblyModal({ mode: 'create' })}><Plus size={16} /> Nieuw assembly</Button>
             <Button variant="secondary" onClick={() => { setTab('welds'); setWeldModal({ mode: 'create' }); }}><Plus size={16} /> Nieuwe las</Button>
             <Button variant="secondary" onClick={() => setTab('documenten')}><FileText size={16} /> Nieuw document</Button>
+            <Button variant="secondary" onClick={async () => {
+              await Promise.all([
+                queryClient.invalidateQueries({ queryKey: ['project-assemblies', projectId] }),
+                queryClient.invalidateQueries({ queryKey: ['project-welds', projectId] }),
+                queryClient.invalidateQueries({ queryKey: ['project-inspections', projectId] }),
+                queryClient.invalidateQueries({ queryKey: ['project-documents', String(projectId || '')] }),
+                queryClient.invalidateQueries({ queryKey: ['project-audit', projectId] }),
+              ]);
+              onMessage('Project 360° live data opnieuw geladen.');
+            }}>Herladen</Button>
           </div>
 
           <Tabs value={tab} onChange={setTab} tabs={tabs} />
@@ -204,6 +221,17 @@ export function Project360Drawer({ project, open, onClose, onMessage }: { projec
                   <div className="stat-card-label">{card.label}</div>
                 </Card>
               ))}
+              <Card>
+                <div className="section-title-row"><h3>Live validatie</h3></div>
+                <div className="list-stack compact-list">
+                  {liveValidationItems.map((item) => (
+                    <div key={item.label} className="list-row">
+                      <div><strong>{item.label}</strong><div className="list-subtle">{item.detail}</div></div>
+                      <Badge tone={item.status === 'success' ? 'success' : item.status === 'error' ? 'danger' : 'warning'}>{item.status === 'success' ? 'OK' : item.status === 'error' ? 'Fout' : 'Open'}</Badge>
+                    </div>
+                  ))}
+                </div>
+              </Card>
               <Card>
                 <div className="section-title-row"><h3>Projectheader</h3></div>
                 <div className="detail-grid">
@@ -253,6 +281,10 @@ export function Project360Drawer({ project, open, onClose, onMessage }: { projec
                     <div><strong>{String(item.weld_number || item.id)}</strong><div className="list-subtle">{String(item.location || 'Locatie onbekend')} · {String(item.welder_name || item.welders || 'Lasser onbekend')}</div></div>
                     <div className="toolbar-cluster">
                       <Badge tone={tone(item.status)}>{String(item.status || 'Open')}</Badge>
+                      <Button variant="secondary" onClick={async () => {
+                        const copy = await copyWeld.mutateAsync({ weldId: item.id, weldNumber: `${String(item.weld_number || item.id)}-kopie` });
+                        onMessage(`Las ${item.weld_number || item.id} gekopieerd als ${copy.weld_number || copy.id}.`);
+                      }} disabled={copyWeld.isPending}><Plus size={16} /> Kopiëren</Button>
                       <Button variant="secondary" onClick={() => setWeldModal({ mode: 'edit', item })}><Pencil size={16} /> Bewerken</Button>
                     </div>
                   </div>

@@ -1,4 +1,4 @@
-import { apiRequest, listRequest, optionalRequest, uploadRequest } from '@/api/client';
+import { apiRequest, downloadRequest, optionalRequest, uploadRequest } from '@/api/client';
 import { withQuery } from '@/utils/api';
 import type { Inspection } from '@/types/domain';
 import type { ListParams } from '@/types/api';
@@ -38,11 +38,28 @@ export function createInspectionResult(inspectionId: string | number, payload: R
   return apiRequest<Record<string, unknown>>(`/inspections/${inspectionId}/results`, { method: 'POST', body: JSON.stringify(payload) });
 }
 
+export function getInspectionAttachments(inspectionId: string | number) {
+  return optionalRequest<Record<string, unknown>>([
+    `/inspections/${inspectionId}/attachments`,
+    `/inspections/${inspectionId}/documents`,
+  ]) || Promise.resolve({ items: [] });
+}
+
 export function uploadInspectionAttachment(inspectionId: string | number, payload: FormData) {
   return optionalRequest<Record<string, unknown>>([
     `/inspections/${inspectionId}/attachments`,
     `/inspections/${inspectionId}/documents`,
   ], { method: 'POST', body: payload });
+}
+
+export function downloadInspectionAttachment(inspectionId: string | number, attachmentId: string | number) {
+  return downloadRequest(`/inspections/${inspectionId}/attachments/${attachmentId}/download`);
+}
+
+export function getInspectionAudit(inspectionId: string | number) {
+  return optionalRequest<Record<string, unknown>>([
+    `/inspections/${inspectionId}/audit`,
+  ]) || Promise.resolve({ items: [] });
 }
 
 export function approveInspection(inspectionId: string | number) {

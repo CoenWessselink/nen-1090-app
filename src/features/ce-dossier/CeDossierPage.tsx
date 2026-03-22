@@ -25,6 +25,8 @@ import {
   useCreatePdfExport,
   useCreateZipExport,
   useDownloadProjectExport,
+  useProjectExportManifest,
+  useProjectExportPreview,
   useProjectExports,
   useRetryProjectExport,
 } from '@/hooks/useCompliance';
@@ -79,6 +81,7 @@ export function CeDossierPage() {
   const [pendingDelete, setPendingDelete] = useState<CeDocument | null>(null);
   const [uploadQueue, setUploadQueue] = useState<UploadQueueItem[]>([]);
   const [exportDrawerOpen, setExportDrawerOpen] = useState(false);
+  const [activeExport, setActiveExport] = useState<ExportJob | null>(null);
 
   const complianceQuery = useComplianceOverview(projectId);
   const ceDossierQuery = useCeDossier(projectId);
@@ -87,6 +90,8 @@ export function CeDossierPage() {
   const documentsQuery = useProjectDocuments(projectId, search ? { search } : undefined);
   const versionsQuery = useDocumentVersions(activeDocument?.id);
   const exportsQuery = useProjectExports(projectId);
+  const exportPreviewQuery = useProjectExportPreview(projectId);
+  const exportManifestQuery = useProjectExportManifest(projectId, activeExport?.id);
   const createDocument = useCreateProjectDocument(projectId);
   const updateDocument = useUpdateDocument();
   const deleteDocument = useDeleteDocument();
@@ -103,6 +108,10 @@ export function CeDossierPage() {
   const ceDossierSections = useMemo(() => toArray(ceDossierQuery.data, 'sections'), [ceDossierQuery.data]);
   const documents = documentsQuery.data?.items || [];
   const exportItems = exportsQuery.data?.items || [];
+  const previewSummary = (exportPreviewQuery.data || {}) as Record<string, unknown>;
+  const previewCompleteness = toArray(previewSummary.completeness, 'completeness');
+  const previewWelds = toArray(previewSummary.welds, 'welds');
+  const exportManifest = (exportManifestQuery.data?.manifest || exportManifestQuery.data || {}) as Record<string, unknown>;
   const versionItems = versionsQuery.data?.items || [];
 
   async function handleFiles(files: File[]) {
@@ -243,6 +252,41 @@ export function CeDossierPage() {
         </Card>
       </div>
 
+      <div className="content-grid-2">
+        <Card>
+          <div className="section-title-row"><h3><Eye size={18} /> Export-preview</h3></div>
+          {exportPreviewQuery.isLoading ? <LoadingState label="Export-preview laden..." /> : null}
+          {exportPreviewQuery.isError ? <ErrorState title="Preview niet geladen" description="Controleer /projects/{project_id}/exports/preview." /> : null}
+          {!exportPreviewQuery.isLoading && !exportPreviewQuery.isError ? (
+            <>
+              <div className="detail-grid">
+                <div><span>Export gereed</span><strong>{previewSummary.ready_for_export ? 'Ja' : 'Nee'}</strong></div>
+                <div><span>Assemblies</span><strong>{toArray(previewSummary.assemblies, 'assemblies').length}</strong></div>
+                <div><span>Lassen</span><strong>{previewWelds.length}</strong></div>
+                <div><span>Inspecties</span><strong>{toArray(previewSummary.inspection_results, 'inspection_results').length}</strong></div>
+              </div>
+              <div className="list-stack compact-list" style={{ marginTop: 16 }}>
+                {previewCompleteness.length ? previewCompleteness.slice(0, 6).map((item, index) => {
+                  const row = item as Record<string, unknown>;
+                  return <div key={index} className="list-row"><div><strong>{String(row.label || row.name || `Check ${index + 1}`)}</strong><div className="list-subtle">{String(row.detail || row.description || '')}</div></div><Badge tone={tone(String(row.status || 'open'))}>{String(row.status || 'Open')}</Badge></div>;
+                }) : <EmptyState title="Geen preview-details" description="De backend retourneerde nog geen completeness-overzicht." />}
+              </div>
+            </>
+          ) : null}
+        </Card>
+
+        <Card>
+          <div className="section-title-row"><h3>Live exportstatus</h3></div>
+          <div className="detail-grid">
+            <div><span>Totaal jobs</span><strong>{exportItems.length}</strong></div>
+            <div><span>Actief</span><strong>{(exportItems as ExportJob[]).filter((item) => ['queued', 'running', 'processing'].includes(String(item.status || '').toLowerCase())).length}</strong></div>
+            <div><span>Mislukt</span><strong>{(exportItems as ExportJob[]).filter((item) => ['failed', 'mislukt', 'error'].includes(String(item.status || '').toLowerCase())).length}</strong></div>
+            <div><span>Gereed</span><strong>{(exportItems as ExportJob[]).filter((item) => String(item.status || '').toLowerCase() === 'completed').length}</strong></div>
+          </div>
+          <div className="list-subtle" style={{ marginTop: 12 }}>Lopende exports verversen automatisch totdat de job gereed of mislukt is.</div>
+        </Card>
+      </div>
+
       <Card>
         <div className="section-title-row"><h3><FileText size={18} /> Documentbeheer</h3></div>
         <UploadDropzone multiple disabled={!projectId || createDocument.isPending} onFiles={(files) => { void handleFiles(files); }} />
@@ -314,6 +358,9 @@ export function CeDossierPage() {
                 <Badge tone={tone(item.status)}>{item.status || 'Aangemaakt'}</Badge>
                 {item.retry_count ? <Badge tone="warning">Retries {String(item.retry_count)}</Badge> : null}
                 {item.error_code ? <Badge tone="danger">{String(item.error_code)}</Badge> : null}
+                <button className="btn btn-secondary" type="button" onClick={() => setActiveExport(item)}>
+                  <Eye size={16} /> Manifest
+                </button>
                 {item.download_url ? (
                   <button
                     className="btn btn-secondary"
@@ -387,6 +434,33 @@ export function CeDossierPage() {
         }}
         onClose={() => setPendingDelete(null)}
       />
+
+      <Modal open={!!activeExport} onClose={() => setActiveExport(null)} title="Export manifest" size="large">
+        {activeExport ? (
+          <div className="detail-stack">
+            <div className="list-row">
+              <div>
+                <strong>{String(activeExport.export_type || activeExport.type || activeExport.id)}</strong>
+                <div className="list-subtle">{formatDate(activeExport.created_at)}{activeExport.bundle_type ? ` · ${String(activeExport.bundle_type).toUpperCase()}` : ''}</div>
+              </div>
+              <Badge tone={tone(activeExport.status)}>{activeExport.status || 'Aangemaakt'}</Badge>
+            </div>
+            {exportManifestQuery.isLoading ? <LoadingState label="Manifest laden..." /> : null}
+            {exportManifestQuery.isError ? <ErrorState title="Manifest niet geladen" description="Controleer /projects/{project_id}/exports/{export_id}/manifest." /> : null}
+            {!exportManifestQuery.isLoading && !exportManifestQuery.isError ? (
+              <>
+                <div className="detail-grid">
+                  <div><span>Bestanden</span><strong>{toArray(exportManifest.files, 'files').length}</strong></div>
+                  <div><span>Export gereed</span><strong>{exportManifest.ready_for_export ? 'Ja' : 'Nee'}</strong></div>
+                  <div><span>Downloadnaam</span><strong>{String(exportManifest.download_name || '—')}</strong></div>
+                  <div><span>ZIP-naam</span><strong>{String(exportManifest.zip_name || '—')}</strong></div>
+                </div>
+                <pre className="code-block">{JSON.stringify(exportManifestQuery.data || {}, null, 2)}</pre>
+              </>
+            ) : null}
+          </div>
+        ) : null}
+      </Modal>
 
       <ExportCenterDrawer
         open={exportDrawerOpen}

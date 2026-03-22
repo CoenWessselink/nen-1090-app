@@ -60,3 +60,11 @@ export function downloadProjectExport(projectId: string | number, exportId: stri
 export function retryProjectExport(projectId: string | number, exportId: string | number) {
   return apiRequest<Record<string, unknown>>(`/projects/${projectId}/exports/${exportId}/retry`, { method: 'POST' });
 }
+
+export function getProjectExportPreview(projectId: string | number) {
+  return apiRequest<Record<string, unknown>>(`/projects/${projectId}/exports/preview`);
+}
+
+export function getProjectExportManifest(projectId: string | number, exportId: string | number) {
+  return apiRequest<Record<string, unknown>>(`/projects/${projectId}/exports/${exportId}/manifest`);
+}

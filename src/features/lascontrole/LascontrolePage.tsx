@@ -21,7 +21,7 @@ import { ProjectScopePicker } from '@/components/project-scope/ProjectScopePicke
 import { useUiStore } from '@/app/store/ui-store';
 import { useApproveInspection, useCreateInspection, useDeleteInspection, useInspectionResults, useInspections, useSaveInspectionResult, useUpdateInspection, useUploadInspectionAttachment } from '@/hooks/useInspections';
 import { useCreateDefect, useDefects, useDeleteDefect, useReopenDefect, useResolveDefect, useUpdateDefect } from '@/hooks/useDefects';
-import { useBulkApproveWelds, useConformWeld, useCreateWeld, useUpdateWeld, useUploadWeldAttachment, useWeldAttachments, useWeldCompliance, useWeldDefects, useWeldInspections, useWelds } from '@/hooks/useWelds';
+import { useBulkApproveWelds, useConformWeld, useCopyWeld, useCreateWeld, useUpdateWeld, useUploadWeldAttachment, useWeldAttachments, useWeldCompliance, useWeldDefects, useWeldInspections, useWelds } from '@/hooks/useWelds';
 import { useInspectionTemplates } from '@/hooks/useSettings';
 import { resetWeldToNorm } from '@/api/welds';
 import { WeldForm } from '@/features/lascontrole/components/WeldForm';
@@ -82,6 +82,7 @@ export function LascontrolePage() {
   const inspectionTemplates = useInspectionTemplates(Boolean(projectId || true));
   const createWeld = useCreateWeld();
   const updateWeld = useUpdateWeld(activeWeld?.project_id || projectId || '');
+  const copyWeld = useCopyWeld(projectId || activeWeld?.project_id || '');
   const conformWeld = useConformWeld(activeWeld?.project_id || projectId || '');
   const bulkApproveWelds = useBulkApproveWelds(projectId || '');
   const createInspection = useCreateInspection(projectId || activeWeld?.project_id || '');
@@ -150,7 +151,7 @@ export function LascontrolePage() {
     { key: 'location', header: 'Locatie', sortable: true, cell: (row) => row.location || '—' },
     { key: 'inspection_date', header: 'Datum', sortable: true, cell: (row) => formatDate(row.inspection_date) },
     { key: 'status', header: 'Status', sortable: true, cell: (row) => <Badge tone={tone(row.status)}>{row.status || 'Open'}</Badge> },
-    { key: 'actions', header: 'Acties', cell: (row) => <div className="row-actions"><button className="icon-button" type="button" onClick={() => setActiveWeld(row)} aria-label="Details"><Eye size={16} /></button><button className="icon-button" type="button" onClick={() => { setActiveWeld(row); setWeldModalMode('edit'); setWeldModal(true); }} aria-label="Bewerken"><Pencil size={16} /></button><button className="icon-button" type="button" onClick={async () => { const copy = await createWeld.mutateAsync({ project_id: String(row.project_id || projectId || ''), weld_number: `${String(row.weld_number || row.id)}-kopie`, assembly_id: String(row.assembly_id || ''), wps_id: String(row.wps_id || ''), welder_name: String(row.welder_name || ''), process: String(row.process || ''), location: String(row.location || ''), status: String(row.status || 'concept') }); setMessage(`Las ${row.weld_number || row.id} gekopieerd als ${copy.weld_number || copy.id}.`); }} aria-label="Kopiëren"><Plus size={16} /></button></div> },
+    { key: 'actions', header: 'Acties', cell: (row) => <div className="row-actions"><button className="icon-button" type="button" onClick={() => setActiveWeld(row)} aria-label="Details"><Eye size={16} /></button><button className="icon-button" type="button" onClick={() => { setActiveWeld(row); setWeldModalMode('edit'); setWeldModal(true); }} aria-label="Bewerken"><Pencil size={16} /></button><button className="icon-button" type="button" onClick={async () => { const copy = await copyWeld.mutateAsync({ weldId: row.id, weldNumber: `${String(row.weld_number || row.id)}-kopie` }); setMessage(`Las ${row.weld_number || row.id} gekopieerd als ${copy.weld_number || copy.id}.`); }} aria-label="Kopiëren"><Plus size={16} /></button></div> },
   ];
 
   const inspectionColumns: ColumnDef<Inspection>[] = [

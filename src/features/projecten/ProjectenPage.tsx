@@ -201,9 +201,25 @@ export function ProjectenPage() {
           onSubmit={async (values) => {
             try {
               const createdProject = await createProject.mutateAsync(values);
+              const summary = (createdProject as { create_summary?: { assemblies_created?: number; welds_created?: number; photos_uploaded?: number; warnings?: Array<{ message?: string }> } }).create_summary;
+              const warningCount = summary?.warnings?.length || 0;
+              const description = [
+                `Assemblies: ${summary?.assemblies_created ?? 0}`,
+                `Lassen: ${summary?.welds_created ?? 0}`,
+                `Foto's: ${summary?.photos_uploaded ?? 0}`,
+                `Waarschuwingen: ${warningCount}`,
+              ].join(' · ');
               setActiveProject(createdProject);
-              setMessage('Project aangemaakt en direct geopend in Project 360°.');
-              pushNotification({ title: 'Nieuw project aangemaakt', description: 'Het project is opgeslagen, basissets zijn gekoppeld en Project 360° is direct beschikbaar.', tone: 'success' });
+              setMessage(
+                warningCount
+                  ? `Project aangemaakt met aandachtspunten. ${description}`
+                  : `Project aangemaakt en direct geopend in Project 360°. ${description}`,
+              );
+              pushNotification({
+                title: warningCount ? 'Project aangemaakt met waarschuwingen' : 'Nieuw project aangemaakt',
+                description,
+                tone: warningCount ? 'warning' : 'success',
+              });
               setModalMode(null);
             } catch (error) {
               setMessage(error instanceof Error ? error.message : 'Project aanmaken mislukt.');

@@ -37,6 +37,12 @@ export async function createWeld(payload: WeldFormValues) {
   ], { method: 'POST', body }) as Weld;
 }
 
+export function copyWeld(projectId: string | number, weldId: string | number, weldNumber?: string) {
+  return optionalRequest<Weld>([
+    `/projects/${projectId}/welds/${weldId}/copy`,
+  ], { method: 'POST', body: JSON.stringify(weldNumber ? { weld_number: weldNumber, weld_no: weldNumber } : {}) }) as Promise<Weld>;
+}
+
 export function updateWeld(projectId: string | number, weldId: string | number, payload: WeldFormValues) {
   return apiRequest<Weld>(`/projects/${projectId}/welds/${weldId}`, { method: 'PUT', body: JSON.stringify(mapWeldPayload(payload)) });
 }

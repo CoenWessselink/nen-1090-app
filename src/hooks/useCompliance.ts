@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { createCeReport, createExcelExport, createPdfExport, createZipExport, downloadProjectExport, getCeDossier, getComplianceChecklist, getComplianceMissingItems, getComplianceOverview, getProjectExports, retryProjectExport } from '@/api/ce';
+import { createCeReport, createExcelExport, createPdfExport, createZipExport, downloadProjectExport, getCeDossier, getComplianceChecklist, getComplianceMissingItems, getComplianceOverview, getProjectExportManifest, getProjectExportPreview, getProjectExports, retryProjectExport } from '@/api/ce';
 import { normalizeListResponse } from '@/utils/api';
 import type { ListParams } from '@/types/api';
 
@@ -40,6 +40,11 @@ export function useProjectExports(projectId?: string | number, params?: ListPara
     queryKey: ['project-exports', projectId, params],
     queryFn: async () => normalizeListResponse(await getProjectExports(String(projectId), params)),
     enabled: Boolean(projectId),
+    refetchInterval: (query) => {
+      const items = (((query.state.data as { items?: Array<Record<string, unknown>> } | undefined)?.items) || []);
+      const hasRunning = items.some((item) => ['queued', 'running', 'processing'].includes(String(item.status || '').toLowerCase()));
+      return hasRunning ? 3000 : false;
+    },
   });
 }
 
@@ -67,5 +72,22 @@ export function useRetryProjectExport(projectId: string | number) {
   return useMutation({
     mutationFn: (exportId: string | number) => retryProjectExport(projectId, exportId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['project-exports', projectId] }),
+  });
+}
+
+export function useProjectExportPreview(projectId?: string | number) {
+  return useQuery({
+    queryKey: ['project-export-preview', projectId],
+    queryFn: () => getProjectExportPreview(String(projectId)),
+    enabled: Boolean(projectId),
+    staleTime: 30_000,
+  });
+}
+
+export function useProjectExportManifest(projectId?: string | number, exportId?: string | number) {
+  return useQuery({
+    queryKey: ['project-export-manifest', projectId, exportId],
+    queryFn: () => getProjectExportManifest(String(projectId), String(exportId)),
+    enabled: Boolean(projectId && exportId),
   });
 }

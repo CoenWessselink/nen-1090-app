@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { bulkApproveWelds, conformWeld, createWeld, deleteWeld, getWeld, getWeldAttachments, getWeldCompliance, getWeldDefects, getWeldInspections, getWelds, resetWeldToNorm, updateWeld, uploadWeldAttachment } from '@/api/welds';
+import { bulkApproveWelds, conformWeld, copyWeld, createWeld, deleteWeld, getWeld, getWeldAttachments, getWeldCompliance, getWeldDefects, getWeldInspections, getWelds, resetWeldToNorm, updateWeld, uploadWeldAttachment } from '@/api/welds';
 import { normalizeListResponse } from '@/utils/api';
 import type { ListParams } from '@/types/api';
 import type { WeldFormValues } from '@/types/forms';
@@ -56,6 +56,18 @@ export function useCreateWeld() {
   return useMutation({
     mutationFn: (payload: WeldFormValues) => createWeld(payload),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['welds'] }),
+  });
+}
+
+export function useCopyWeld(projectId: string | number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ weldId, weldNumber }: { weldId: string | number; weldNumber?: string }) => copyWeld(projectId, weldId, weldNumber),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['welds'] });
+      queryClient.invalidateQueries({ queryKey: ['project-welds', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['weld', projectId, variables.weldId] });
+    },
   });
 }
 

@@ -135,9 +135,9 @@ export async function createProject(payload: ProjectFormValues) {
       end_date: payload.end_date || null,
     }),
   });
-  if (response.id) return normalizeProjectRecord(response);
-  if (response.ok && response.id) return normalizeProjectRecord(response);
-  if (response.ok && response.project_id) return normalizeProjectRecord(response);
+  const candidate = (response.project && typeof response.project === 'object' ? response.project : response.data && typeof response.data === 'object' ? response.data : response) as Record<string, unknown>;
+  if (candidate.id || candidate.project_id) return normalizeProjectRecord(candidate);
+  if (response.ok && (response.id || response.project_id)) return normalizeProjectRecord(response);
   throw new Error('Project aangemaakt, maar backend gaf geen geldig project-object terug.');
 }
 
