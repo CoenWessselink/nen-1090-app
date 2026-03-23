@@ -15,9 +15,11 @@ export function getInspection(inspectionId: string | number) {
   return apiRequest<Inspection>(`/inspections/${inspectionId}`);
 }
 
-export async function createInspection(projectId: string | number, weldId: string | number, payload: Record<string, unknown>) {
+export async function createInspection(projectId: string | number | undefined, weldId: string | number, payload: Record<string, unknown>) {
+  const projectPath = projectId ? `/projects/${projectId}/welds/${weldId}/inspections` : null;
   return await optionalRequest<Inspection>([
-    `/projects/${projectId}/welds/${weldId}/inspections`,
+    `/welds/${weldId}/inspection`,
+    ...(projectPath ? [projectPath] : []),
     '/inspections',
   ], { method: 'POST', body: JSON.stringify({ ...payload, project_id: projectId, weld_id: weldId }) }) as Inspection;
 }

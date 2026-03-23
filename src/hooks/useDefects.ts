@@ -10,10 +10,10 @@ export function useDefects(params?: ListParams) {
   });
 }
 
-export function useCreateDefect(projectId: string | number) {
+export function useCreateDefect() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ weldId, payload }: { weldId: string | number; payload: Record<string, unknown> }) => createDefect(projectId, weldId, payload),
+    mutationFn: ({ projectId, weldId, payload }: { projectId: string | number; weldId: string | number; payload: Record<string, unknown> }) => createDefect(projectId, weldId, payload),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['defects'] }),
   });
 }

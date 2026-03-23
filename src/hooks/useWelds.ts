@@ -114,10 +114,10 @@ export function useUploadWeldAttachment(projectId: string | number, weldId: stri
   });
 }
 
-export function useBulkApproveWelds(projectId: string | number) {
+export function useBulkApproveWelds() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (weldIds: Array<string | number>) => bulkApproveWelds(projectId, weldIds),
+    mutationFn: ({ projectId, weldIds }: { projectId: string | number; weldIds: Array<string | number> }) => bulkApproveWelds(projectId, weldIds),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['welds'] });
       queryClient.invalidateQueries({ queryKey: ['inspections'] });

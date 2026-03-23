@@ -34,10 +34,10 @@ export function useInspectionAudit(inspectionId?: string | number) {
   });
 }
 
-export function useCreateInspection(projectId: string | number) {
+export function useCreateInspection() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ weldId, payload }: { weldId: string | number; payload: Record<string, unknown> }) => createInspection(projectId, weldId, payload),
+    mutationFn: ({ projectId, weldId, payload }: { projectId?: string | number; weldId: string | number; payload: Record<string, unknown> }) => createInspection(projectId, weldId, payload),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['inspections'] }),
   });
 }
