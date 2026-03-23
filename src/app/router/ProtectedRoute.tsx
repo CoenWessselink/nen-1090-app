@@ -1,7 +1,6 @@
 import { PropsWithChildren } from 'react';
-import { useLocation } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useSession } from '@/app/session/SessionContext';
-import { buildAppReturnTo, redirectToMarketing } from '@/features/auth/marketing-auth';
 
 export function ProtectedRoute({ children }: PropsWithChildren) {
   const location = useLocation();
@@ -12,9 +11,8 @@ export function ProtectedRoute({ children }: PropsWithChildren) {
   }
 
   if (!session.isAuthenticated) {
-    const from = buildAppReturnTo(`${location.pathname}${location.search}${location.hash}`);
-    redirectToMarketing('login', { next: from, reason: 'Log in om verder te werken in het platform.' });
-    return null;
+    const from = `${location.pathname}${location.search}${location.hash}`;
+    return <Navigate to="/login" replace state={{ from, reason: 'Log in om verder te werken in het platform.' }} />;
   }
 
   return <>{children}</>;

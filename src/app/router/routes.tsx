@@ -4,7 +4,6 @@ import { AppShell } from '@/app/layout/AppShell';
 import { ProtectedRoute } from '@/app/router/ProtectedRoute';
 import { RoleGuard } from '@/app/router/RoleGuard';
 import { ProjectScopedRoute } from '@/app/router/ProjectScopedRoute';
-import { AuthRedirectPage } from '@/features/auth/AuthRedirectPage';
 import { DashboardPage } from '@/features/dashboard/DashboardPage';
 import { ProjectenPage } from '@/features/projecten/ProjectenPage';
 import { LascontrolePage } from '@/features/lascontrole/LascontrolePage';
@@ -14,6 +13,11 @@ import { RapportagePage } from '@/features/rapportage/RapportagePage';
 import { InstellingenPage } from '@/features/instellingen/InstellingenPage';
 import { SuperadminPage } from '@/features/superadmin/SuperadminPage';
 import { BillingPage } from '@/features/billing/BillingPage';
+import { LoginPage } from '@/features/auth/LoginPage';
+import { ForgotPasswordPage } from '@/features/auth/ForgotPasswordPage';
+import { ResetPasswordPage } from '@/features/auth/ResetPasswordPage';
+import { LogoutPage } from '@/features/auth/LogoutPage';
+import { ChangePasswordPage } from '@/features/auth/ChangePasswordPage';
 
 export type AppRouteMeta = {
   path: string;
@@ -83,7 +87,6 @@ export const appRouteMeta: AppRouteMeta[] = [
     showInSidebar: true,
     keywords: ['billing', 'mollie', 'betaling', 'subscription'],
   },
-
   {
     path: '/instellingen',
     label: 'Instellingen',
@@ -104,22 +107,16 @@ export const appRouteMeta: AppRouteMeta[] = [
 ];
 
 export const routerConfig = [
-  {
-    path: '/login',
-    element: <AuthRedirectPage target="login" title="Inloggen via centrale auth" description="De app gebruikt vanaf fase 1 de marketing/auth-shell als enige publieke login." includeNext={false} />,
-  },
-  {
-    path: '/forgot-password',
-    element: <AuthRedirectPage target="forgot-password" title="Wachtwoord reset aanvragen" description="Deze flow draait voortaan in de centrale marketing/auth-shell." includeNext={false} />,
-  },
-  {
-    path: '/reset-password',
-    element: <AuthRedirectPage target="reset-password" title="Nieuw wachtwoord instellen" description="Resetlinks landen voortaan in de centrale marketing/auth-shell." includeNext={false} />,
-  },
-  {
-    path: '/logout',
-    element: <AuthRedirectPage target="logout" title="Uitloggen via centrale auth" description="Uitloggen wordt centraal afgehandeld zodat app en marketing dezelfde sessielaag gebruiken." includeNext={false} />,
-  },
+  { path: '/login', element: <LoginPage /> },
+  { path: '/forgot-password', element: <ForgotPasswordPage /> },
+  { path: '/reset-password', element: <ResetPasswordPage /> },
+  { path: '/logout', element: <LogoutPage /> },
+  { path: '/change-password', element: <ChangePasswordPage /> },
+  { path: '/app/login', element: <Navigate to="/login" replace /> },
+  { path: '/app/forgot-password', element: <Navigate to="/forgot-password" replace /> },
+  { path: '/app/reset-password', element: <Navigate to="/reset-password" replace /> },
+  { path: '/app/logout', element: <Navigate to="/logout" replace /> },
+  { path: '/app/change-password', element: <Navigate to="/change-password" replace /> },
   {
     path: '/',
     element: (
@@ -144,19 +141,8 @@ export const routerConfig = [
       { path: 'ce-dossier', element: <CeDossierPage /> },
       { path: 'planning', element: <PlanningPage /> },
       { path: 'rapportage', element: <RapportagePage /> },
+      { path: 'billing', element: <BillingPage /> },
       { path: 'instellingen', element: <InstellingenPage /> },
-      {
-        path: 'change-password',
-        element: <AuthRedirectPage target="change-password" title="Wachtwoord wijzigen" description="Beveiligingsinstellingen verlopen in fase 1 via de centrale marketing/auth-shell." includeNext={false} />,
-      },
-      {
-        path: 'billing',
-        element: (
-          <RoleGuard allow={['SUPERADMIN', 'ADMIN', 'TenantAdmin']}>
-            <BillingPage />
-          </RoleGuard>
-        ),
-      },
       {
         path: 'superadmin',
         element: (
@@ -167,5 +153,5 @@ export const routerConfig = [
       },
     ],
   },
-  { path: '*', element: <Navigate to="/" replace /> },
+  { path: '*', element: <Navigate to="/dashboard" replace /> },
 ];
