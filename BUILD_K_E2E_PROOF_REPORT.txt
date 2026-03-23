@@ -1,0 +1,53 @@
+BUILD K – E2E PROOF REPORT
+Datum: 2026-03-22
+
+Samenvatting:
+Deze fase was bedoeld als laatste release-gate: E2E + proof-run.
+
+Reëel resultaat in deze omgeving:
+- Volledige bewijsrun NIET volledig afgerond.
+- Oorzaak ligt in de container/tooling-omgeving, niet in een specifiek bewezen app-bestand.
+
+Wat wel objectief is vastgesteld:
+- package.json bevat werkende E2E scripts:
+  - test:e2e
+  - test:e2e:mobile
+  - test:e2e:auth
+  - test:e2e:auth:live
+- playwright.config.ts is aanwezig
+- kritische specs bestaan voor:
+  - auth/routing
+  - projecten CRUD
+  - CE-dossier/documenten
+  - globale zoek/export
+  - responsive shell
+- bestaande dist-map is aanwezig
+
+Feitelijke uitvoerresultaten in deze container:
+1. Buildpoging via vite faalde op ontbrekende Rollup optional dependency:
+   Error: Cannot find module @rollup/rollup-linux-x64-gnu
+2. Fallback via lokale statische SPA-server is gestart.
+3. Playwright-run gestart op geselecteerde release-gate tests.
+4. Chromium navigatie in deze container faalde op:
+   page.goto: net::ERR_BLOCKED_BY_ADMINISTRATOR
+
+Daarom is het volgende NIET eerlijk bewezen in deze container:
+- volledige Playwright pass
+- 0 console errors
+- 0 network errors
+- volledige live app workflow tegen de echte deployment
+
+Aanbevolen exacte eindrun op de gebruikersmachine:
+- cd C:\NEN1090\nen-1090-app
+- npm ci
+- npm run build
+- npx playwright test tests/e2e/auth-and-routing.spec.ts tests/e2e/projects-crud.spec.ts tests/e2e/documents-and-settings.spec.ts tests/e2e/global-search-and-export.spec.ts tests/e2e/responsive-shell.spec.ts
+
+Optionele live auth proof:
+- set PLAYWRIGHT_LIVE_AUTH=1
+- set PLAYWRIGHT_BASE_URL=https://nen-1090-app.pages.dev
+- set VITE_API_BASE_URL=https://nen1090-api-prod-f5ddagedbrftb4ew.westeurope-01.azurewebsites.net/api/v1
+- npm run test:e2e:auth:live
+
+Definitieve status:
+- Bouw K = voorbereid, onderzocht, maar NIET volledig hard bewezen in deze container.
