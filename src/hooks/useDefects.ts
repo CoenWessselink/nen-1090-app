@@ -3,10 +3,11 @@ import { createDefect, deleteDefect, getDefects, reopenDefect, resolveDefect, up
 import { normalizeListResponse } from '@/utils/api';
 import type { ListParams } from '@/types/api';
 
-export function useDefects(params?: ListParams) {
+export function useDefects(params?: ListParams, enabled = true) {
   return useQuery({
     queryKey: ['defects', params],
     queryFn: async () => normalizeListResponse(await getDefects(params)),
+    enabled,
   });
 }
 

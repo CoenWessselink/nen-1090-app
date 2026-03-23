@@ -77,9 +77,9 @@ export function LascontrolePage() {
   };
 
   const weldsQuery = useWelds(sharedParams);
-  const inspectionsQuery = useInspections(sharedParams);
-  const defectsQuery = useDefects(sharedParams);
-  const inspectionTemplates = useInspectionTemplates(Boolean(projectId || true));
+  const inspectionsQuery = useInspections(sharedParams, tab === 'inspections');
+  const defectsQuery = useDefects(sharedParams, tab === 'defects');
+  const inspectionTemplates = useInspectionTemplates(Boolean(inspectionModal));
   const createWeld = useCreateWeld();
   const updateWeld = useUpdateWeld(activeWeld?.project_id || projectId || '');
   const copyWeld = useCopyWeld(projectId || activeWeld?.project_id || '');
@@ -221,7 +221,7 @@ export function LascontrolePage() {
       </Card>
 
       <div className="card-grid cols-3">
-        <Card><div className="metric-card"><span>Open inspecties</span><strong>{inspectionRows.filter((item) => String(item.status || '').toLowerCase() !== 'approved').length}</strong></div></Card>
+        <Card><div className="metric-card"><span>Open inspecties</span><strong>{inspectionsQuery.data ? inspectionRows.filter((item) => String(item.status || '').toLowerCase() !== 'approved').length : '—'}</strong></div></Card>
         <Card><div className="metric-card"><span>Actieve lassen</span><strong>{weldRows.length}</strong></div></Card>
         <Card><div className="metric-card"><span>Lassen met defecten</span><strong>{weldRows.filter((item) => Number(item.defect_count || 0) > 0).length}</strong></div></Card>
       </div>

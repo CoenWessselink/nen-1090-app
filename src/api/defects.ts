@@ -24,7 +24,9 @@ export function createDefect(projectId: string | number, weldId: string | number
 }
 
 export function updateDefect(defectId: string | number, payload: Record<string, unknown>) {
-  return optionalRequest<Defect>([`/weld-defects/${defectId}`], { method: 'PUT', body: JSON.stringify(payload) });
+  return optionalRequest<Defect>([
+    `/weld-defects/${defectId}`,
+  ], { method: 'PUT', body: JSON.stringify(payload) });
 }
 
 export function resolveDefect(defectId: string | number) {

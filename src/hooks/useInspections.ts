@@ -3,10 +3,11 @@ import { approveInspection, createInspection, createInspectionResult, deleteInsp
 import { normalizeListResponse } from '@/utils/api';
 import type { ListParams } from '@/types/api';
 
-export function useInspections(params?: ListParams) {
+export function useInspections(params?: ListParams, enabled = true) {
   return useQuery({
     queryKey: ['inspections', params],
     queryFn: async () => normalizeListResponse(await getInspections(params)),
+    enabled,
   });
 }
 
@@ -37,7 +38,7 @@ export function useInspectionAudit(inspectionId?: string | number) {
 export function useCreateInspection() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ projectId, weldId, payload }: { projectId?: string | number; weldId: string | number; payload: Record<string, unknown> }) => createInspection(projectId, weldId, payload),
+    mutationFn: ({ projectId, weldId, payload }: { projectId?: string | number; weldId: string | number; payload: Record<string, unknown> }) => createInspection(String(projectId || ''), weldId, payload),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['inspections'] }),
   });
 }
