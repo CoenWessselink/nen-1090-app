@@ -1,0 +1,35 @@
+GPT HANDOFF – NEN1090 BLOCK A/B
+
+DELIVERABLES ALREADY PRODUCED
+1. API patch zip:
+   - NEN10900_API_BLOCK_A_PATCH.zip
+2. App patch zip:
+   - NEN1090_APP_BLOCK_B_PATCH.zip
+3. Push command files:
+   - API_PUSH_COMMANDS.txt
+   - APP_PUSH_COMMANDS.txt
+
+SUMMARY
+Block A solves backend stability issues:
+- missing dashboard/audit/export endpoints
+- lascontrole list hardening
+
+Block B solves frontend alignment issues:
+- standardized API contracts
+- cleaner dashboard summary consumption
+- stricter weld/documents API return types
+- direct blob download for documents
+
+FILES INCLUDED IN APP PATCH
+- src/api/dashboard.ts
+- src/api/welds.ts
+- src/api/documents.ts
+- src/types/api.ts
+- src/types/domain.ts
+- src/utils/api.ts
+- src/features/dashboard/DashboardPage.tsx
+
+REMAINING AFTER APPLY
+- Push both repos
+- Test live app
+- Continue with Block C and D

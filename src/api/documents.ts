@@ -1,6 +1,6 @@
 import { apiRequest, downloadRequest, listRequest, optionalRequest, uploadRequest } from '@/api/client';
+import type { ApiListResponse, ListParams } from '@/types/api';
 import type { CeDocument } from '@/types/domain';
-import type { ListParams } from '@/types/api';
 
 export function uploadAttachment(payload: FormData) {
   return optionalRequest<Record<string, unknown>>(['/attachments/upload'], { method: 'POST', body: payload });
@@ -19,7 +19,7 @@ export function downloadAttachment(attachmentId: string | number) {
 }
 
 export function getProjectDocuments(projectId: string | number, params?: ListParams) {
-  return listRequest<CeDocument[] | { items?: CeDocument[] }>(`/projects/${projectId}/documents`, params);
+  return listRequest<ApiListResponse<CeDocument>>(`/projects/${projectId}/documents`, params);
 }
 
 export function createProjectDocument(projectId: string | number, payload: FormData | Record<string, unknown>) {
@@ -40,12 +40,9 @@ export function deleteDocument(documentId: string | number) {
 }
 
 export function getDocumentVersions(documentId: string | number) {
-  return optionalRequest<CeDocument[] | { items?: CeDocument[] }>([`/documents/${documentId}/versions`]);
+  return optionalRequest<ApiListResponse<CeDocument>>([`/documents/${documentId}/versions`]);
 }
 
 export function downloadDocument(documentId: string | number) {
-  return optionalRequest<Blob>([
-    `/documents/${documentId}/download`,
-    `/attachments/${documentId}/download`,
-  ]);
+  return downloadRequest(`/documents/${documentId}/download`);
 }

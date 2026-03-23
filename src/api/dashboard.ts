@@ -1,23 +1,23 @@
-import { apiRequest, listRequest, optionalRequest } from '@/api/client';
-import type { DashboardSummary, ExportJob, Inspection, Defect } from '@/types/domain';
-import type { PaginatedApiResponse } from '@/types/api';
+import { listRequest, optionalRequest } from '@/api/client';
+import type { ApiListResponse } from '@/types/api';
+import type { AuditEntry, DashboardSummary, ExportJob, Inspection, Defect } from '@/types/domain';
 
 export function getDashboardSummary() {
   return optionalRequest<DashboardSummary>(['/dashboard/summary']);
 }
 
 export function getRecentExports() {
-  return optionalRequest<PaginatedApiResponse<ExportJob> | ExportJob[]>(['/exports/recent']);
+  return optionalRequest<ApiListResponse<ExportJob>>(['/exports/recent']);
 }
 
 export function getRecentAudit() {
-  return optionalRequest<Array<Record<string, unknown>> | { items?: Array<Record<string, unknown>> }>(['/audit/recent']);
+  return optionalRequest<ApiListResponse<AuditEntry>>(['/audit/recent']);
 }
 
 export function getPendingInspections() {
-  return listRequest<PaginatedApiResponse<Inspection> | Inspection[]>('/inspections', { status: 'pending', limit: 10 });
+  return listRequest<ApiListResponse<Inspection>>('/inspections', { status: 'pending', limit: 10 });
 }
 
 export function getOpenDefects() {
-  return listRequest<PaginatedApiResponse<Defect> | Defect[]>('/weld-defects', { status: 'open', limit: 10 });
+  return listRequest<ApiListResponse<Defect>>('/weld-defects', { status: 'open', limit: 10 });
 }

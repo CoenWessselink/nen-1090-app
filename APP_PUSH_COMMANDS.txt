@@ -1,0 +1,16 @@
+APP PUSH COMMANDS
+
+LOCAL REPO:
+C:\NEN1090\nen-1090-app
+
+1. Pak NEN1090_APP_BLOCK_B_PATCH.zip uit.
+2. Kopieer de inhoud over de repo heen.
+3. Run:
+
+cd C:\NEN1090\nen-1090-app
+git checkout -b fix/block-b-app-alignment
+git add src/api/dashboard.ts src/api/welds.ts src/api/documents.ts src/types/api.ts src/types/domain.ts src/utils/api.ts src/features/dashboard/DashboardPage.tsx
+git commit -m "fix(app): block b api alignment and dashboard contract cleanup"
+git push -u origin fix/block-b-app-alignment
+
+4. Open daarna een PR naar main.

@@ -1,6 +1,6 @@
 import { apiRequest, optionalRequest, resolveProjectScopedPath, uploadRequest } from '@/api/client';
 import { withQuery } from '@/utils/api';
-import type { ListParams } from '@/types/api';
+import type { ApiListResponse, ListParams } from '@/types/api';
 import type { CeDocument, ComplianceOverview, Defect, Inspection, Weld } from '@/types/domain';
 import type { WeldFormValues } from '@/types/forms';
 
@@ -18,10 +18,10 @@ function mapWeldPayload(payload: WeldFormValues) {
 
 export async function getWelds(params?: ListParams) {
   const projectId = params?.project_id || params?.projectId;
-  return await optionalRequest<Weld[] | { items?: Weld[]; data?: Weld[]; results?: Weld[]; total?: number; page?: number; limit?: number }>([
+  return await optionalRequest<ApiListResponse<Weld>>([
     withQuery(resolveProjectScopedPath(projectId, `/projects/${projectId}/welds`, '/welds'), params),
     withQuery('/welds', params),
-  ]) || { items: [] };
+  ]) || { items: [], total: 0, page: 1, limit: params?.limit || params?.pageSize || 25 };
 }
 
 export function getWeld(projectId: string | number, weldId: string | number) {
@@ -52,15 +52,15 @@ export function deleteWeld(projectId: string | number, weldId: string | number) 
 }
 
 export function getWeldInspections(projectId: string | number, weldId: string | number) {
-  return apiRequest<Inspection[] | { items?: Inspection[] }>(`/projects/${projectId}/welds/${weldId}/inspections`);
+  return apiRequest<ApiListResponse<Inspection>>(`/projects/${projectId}/welds/${weldId}/inspections`);
 }
 
 export function getWeldDefects(projectId: string | number, weldId: string | number) {
-  return apiRequest<Defect[] | { items?: Defect[] }>(`/projects/${projectId}/welds/${weldId}/defects`);
+  return apiRequest<ApiListResponse<Defect>>(`/projects/${projectId}/welds/${weldId}/defects`);
 }
 
 export function getWeldAttachments(projectId: string | number, weldId: string | number) {
-  return apiRequest<CeDocument[] | { items?: CeDocument[] }>(`/projects/${projectId}/welds/${weldId}/attachments`);
+  return apiRequest<ApiListResponse<CeDocument>>(`/projects/${projectId}/welds/${weldId}/attachments`);
 }
 
 export function uploadWeldAttachment(projectId: string | number, weldId: string | number, payload: FormData) {

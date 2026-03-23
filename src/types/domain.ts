@@ -33,15 +33,18 @@ export type Weld = {
   project_name?: string;
   wps_id?: string;
   weld_number?: string;
+  weld_no?: string;
   welder_name?: string;
   process?: string;
   inspector_name?: string;
   inspection_date?: string;
+  inspection_status?: string;
   location?: string;
   status?: string;
   defect_count?: number;
   ndt_required?: boolean;
   created_at?: string;
+  updated_at?: string;
   [key: string]: unknown;
 };
 
@@ -77,9 +80,18 @@ export type CeDocument = {
   type?: string;
   status?: string;
   version?: string;
+  project_id?: string | number;
   project_name?: string;
   uploaded_at?: string;
   download_url?: string;
+  preview_url?: string;
+  filename?: string;
+  mime_type?: string;
+  size_bytes?: number;
+  uploaded_filename?: string;
+  tags?: string[];
+  notes?: string | null;
+  has_file?: boolean;
   [key: string]: unknown;
 };
 
@@ -87,6 +99,9 @@ export type ComplianceOverview = {
   score?: number;
   missing_items?: Array<Record<string, unknown>>;
   checklist?: Array<Record<string, unknown>>;
+  inspection_count?: number;
+  defect_count?: number;
+  attachments_count?: number;
   [key: string]: unknown;
 };
 
@@ -113,6 +128,7 @@ export type ReportItem = {
 
 export type ExportJob = {
   id: string | number;
+  project_id?: string | number;
   status?: string;
   type?: string;
   export_type?: string;
@@ -120,11 +136,12 @@ export type ExportJob = {
   message?: string;
   created_at?: string;
   completed_at?: string;
+  manifest?: Record<string, unknown> | null;
   manifest_json?: string;
-  download_url?: string;
+  download_url?: string | null;
   retry_count?: number;
-  error_code?: string;
-  error_detail?: string;
+  error_code?: string | null;
+  error_detail?: string | null;
   [key: string]: unknown;
 };
 
@@ -147,11 +164,8 @@ export type BillingStatus = {
 export type DashboardSummary = {
   open_projects?: number;
   open_weld_defects?: number;
-  open_defects?: number;
-  pending_inspections?: number;
-  ce_dossier_progress?: number;
-  dossier_ready?: number;
-  recent_activity?: Array<Record<string, unknown>>;
+  open_inspections?: number;
+  ce_dossier_ready?: number;
   [key: string]: unknown;
 };
 
@@ -174,13 +188,14 @@ export type SessionUser = {
 
 export type PagelessResponse<T> = T[] | { items?: T[]; data?: T[]; results?: T[] };
 
-
 export type AuditEntry = {
   id: string | number;
+  title?: string;
   action?: string;
   entity?: string;
   entity_id?: string;
   user_id?: string;
+  status?: string;
   created_at?: string;
   meta?: Record<string, unknown>;
   [key: string]: unknown;

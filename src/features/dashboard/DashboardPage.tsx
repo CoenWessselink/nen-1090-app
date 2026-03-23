@@ -25,24 +25,20 @@ export function DashboardPage() {
   const weldRows = welds.data?.items || [];
   const derivedDefects = weldRows.filter((item) => Number(item.defect_count || 0) > 0).length;
   const summaryData = summary.data || {};
-  const defects = Number(summaryData.open_weld_defects ?? summaryData.open_defects ?? openDefects.data?.total ?? derivedDefects ?? 0);
-  const readyDossiers = Number(summaryData.dossier_ready ?? summaryData.ce_dossier_progress ?? 0);
-  const pendingCount = Number(summaryData.pending_inspections ?? pendingInspections.data?.total ?? 0);
-  const activityRows = Array.isArray(summaryData.recent_activity) && summaryData.recent_activity.length
-    ? summaryData.recent_activity
-    : recentAudit.data?.length
-      ? recentAudit.data
-      : weldRows;
+  const defects = Number(summaryData.open_weld_defects ?? openDefects.data?.total ?? derivedDefects ?? 0);
+  const readyDossiers = Number(summaryData.ce_dossier_ready ?? recentExports.data?.total ?? 0);
+  const pendingCount = Number(summaryData.open_inspections ?? pendingInspections.data?.total ?? 0);
+  const activityRows = recentAudit.data?.length ? recentAudit.data : weldRows;
 
   return (
     <div className="page-stack">
-      <PageHeader title="Dashboard" description="Realtime enterprise-overzicht op basis van bestaande backend-endpoints en nieuwe aggregaten waar beschikbaar." />
+      <PageHeader title="Dashboard" description="Realtime enterprise-overzicht op basis van de gestandaardiseerde API-contracten." />
       <KpiStrip
         items={[
           { title: 'Open projecten', value: Number(summaryData.open_projects ?? projects.data?.total ?? projectRows.length), meta: 'GET /dashboard/summary of /projects' },
-          { title: 'Open lasdefecten', value: defects, meta: 'GET /weld-defects?status=open' },
-          { title: 'Open inspecties', value: pendingCount, meta: 'GET /inspections?status=pending' },
-          { title: 'CE dossier gereed', value: readyDossiers, meta: 'Dashboard summary / compliance' },
+          { title: 'Open lasdefecten', value: defects, meta: 'GET /dashboard/summary of /weld-defects?status=open' },
+          { title: 'Open inspecties', value: pendingCount, meta: 'GET /dashboard/summary of /inspections?status=pending' },
+          { title: 'CE dossier gereed', value: readyDossiers, meta: 'GET /dashboard/summary of /exports/recent' },
           { title: 'API-status', value: health.data ? 'Verbonden' : health.isError ? 'Fout' : 'Controleren', meta: 'Bestaande omgeving' },
         ]}
       />
@@ -54,7 +50,7 @@ export function DashboardPage() {
             <Badge tone="neutral">Live</Badge>
           </div>
           {projects.isLoading ? <LoadingState label="Projecten laden..." /> : null}
-          {projects.isError ? <ErrorState title="Projecten niet geladen" description="Controleer of /projects bereikbaar is via de bestaande backend." /> : null}
+          {projects.isError ? <ErrorState title="Projecten niet geladen" description="Controleer of /projects bereikbaar is via de backend." /> : null}
           {!projects.isLoading && !projects.isError ? (
             <div className="list-stack">
               {projectRows.slice(0, 6).map((project) => (
@@ -84,7 +80,7 @@ export function DashboardPage() {
             {weldRows.slice(0, 5).map((weld) => (
               <div className="list-row" key={String(weld.id)}>
                 <div>
-                  <strong>{weld.wps_id || `Las ${weld.id}`}</strong>
+                  <strong>{weld.weld_number || weld.weld_no || `Las ${weld.id}`}</strong>
                   <div className="list-subtle">{weld.location || 'Locatie onbekend'}</div>
                 </div>
                 <Badge tone={toneFromStatus(String(weld.status || ''))}>{String(weld.status || 'Onbekend')}</Badge>
@@ -105,7 +101,7 @@ export function DashboardPage() {
                 <div className="timeline-item" key={String((item as Record<string, unknown>).id || index)}>
                   <div className="timeline-dot" />
                   <div>
-                    <strong>{String((item as Record<string, unknown>).title || (item as Record<string, unknown>).action || (item as Record<string, unknown>).wps_id || `Activiteit ${index + 1}`)}</strong>
+                    <strong>{String((item as Record<string, unknown>).title || (item as Record<string, unknown>).action || (item as Record<string, unknown>).weld_number || `Activiteit ${index + 1}`)}</strong>
                     <div className="list-subtle">{String((item as Record<string, unknown>).location || (item as Record<string, unknown>).description || '')} · {formatDatetime((item as Record<string, unknown>).created_at as string | undefined)}</div>
                   </div>
                 </div>

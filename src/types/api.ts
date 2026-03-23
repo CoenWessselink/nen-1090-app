@@ -32,7 +32,6 @@ export type LoginResponse = {
   [key: string]: unknown;
 };
 
-
 export type AuthRefreshResponse = {
   access_token?: string;
   refresh_token?: string;
