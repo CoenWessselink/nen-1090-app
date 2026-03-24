@@ -1,92 +1,66 @@
-import { optionalRequest, downloadRequest } from '@/api/client';
-import { buildQueryString } from '@/utils/api';
+import { apiRequest, listRequest } from '@/api/client';
 import type { Inspection } from '@/types/domain';
 import type { ListParams } from '@/types/api';
 
-export async function getInspections(params?: ListParams) {
-  return (
-    await optionalRequest<Inspection[] | { items?: Inspection[] }>([
-      `/inspections${buildQueryString(params)}`,
-    ])
-  ) || [];
+export function getInspections(params?: ListParams) {
+  const weldId = (params as Record<string, unknown> | undefined)?.weld_id;
+  const query = weldId ? ({ weld_id: String(weldId) } as ListParams) : undefined;
+  return listRequest<Inspection[]>('/inspections', query);
 }
 
-export function getInspection(inspectionId: string | number) {
-  return optionalRequest<Inspection>([`/inspections/${inspectionId}`]) as Promise<Inspection>;
+export async function getInspection(inspectionId: string | number) {
+  const rows = await getInspections();
+  const match = rows.find((item) => String(item.id) === String(inspectionId));
+  if (!match) throw new Error('Inspectie niet gevonden in huidige API-response.');
+  return match;
 }
 
-export async function createInspection(projectId: string | number | undefined, weldId: string | number, payload: Record<string, unknown>) {
-  return (
-    await optionalRequest<Inspection>([
-      '/inspections',
-      `/welds/${weldId}/inspection`,
-    ], {
-      method: 'POST',
-      body: JSON.stringify({ ...payload, project_id: projectId || null, weld_id: weldId }),
-    })
-  ) as Inspection;
+export function createInspection(projectId: string | number | undefined, weldId: string | number, payload: Record<string, unknown>) {
+  return apiRequest<Record<string, unknown>>('/inspections', {
+    method: 'POST',
+    body: JSON.stringify({ ...payload, project_id: projectId, weld_id: weldId }),
+  });
 }
 
 export function updateInspection(inspectionId: string | number, payload: Record<string, unknown>) {
-  return optionalRequest<Inspection>([`/inspections/${inspectionId}`], {
-    method: 'PUT',
-    body: JSON.stringify(payload),
-  }) as Promise<Inspection>;
+  return apiRequest<Record<string, unknown>>('/inspections', {
+    method: 'POST',
+    body: JSON.stringify({ ...payload, id: inspectionId }),
+  });
 }
 
-export function deleteInspection(inspectionId: string | number) {
-  return optionalRequest<void>([`/inspections/${inspectionId}`], { method: 'DELETE' }) as Promise<void>;
+export function deleteInspection(_inspectionId: string | number) {
+  throw new Error('Verwijderen van inspecties wordt niet ondersteund door de huidige live API.');
 }
 
-export function getInspectionResults(inspectionId: string | number) {
-  return optionalRequest<Record<string, unknown>>([
-    `/inspections/${inspectionId}/results`,
-    `/inspections/${inspectionId}`,
-  ]) || Promise.resolve({});
+export async function getInspectionResults(_inspectionId: string | number) {
+  return {};
 }
 
-export function createInspectionResult(inspectionId: string | number, payload: Record<string, unknown>) {
-  return optionalRequest<Record<string, unknown>>([
-    `/inspections/${inspectionId}/results`,
-    `/inspections/${inspectionId}`,
-  ], { method: 'POST', body: JSON.stringify(payload) }) as Promise<Record<string, unknown>>;
+export function createInspectionResult(_inspectionId: string | number, _payload: Record<string, unknown>) {
+  throw new Error('Inspectieresultaten opslaan wordt niet ondersteund door de huidige live API.');
 }
 
-export function getInspectionAttachments(inspectionId: string | number) {
-  return optionalRequest<Record<string, unknown>>([
-    `/inspections/${inspectionId}/attachments`,
-    `/inspections/${inspectionId}/documents`,
-  ]) || Promise.resolve({ items: [] });
+export async function getInspectionAttachments(_inspectionId: string | number) {
+  return { items: [] };
 }
 
-export function uploadInspectionAttachment(inspectionId: string | number, payload: FormData) {
-  return optionalRequest<Record<string, unknown>>([
-    `/inspections/${inspectionId}/attachments`,
-    `/inspections/${inspectionId}/documents`,
-    '/photos',
-  ], { method: 'POST', body: payload }) as Promise<Record<string, unknown>>;
+export function uploadInspectionAttachment(_inspectionId: string | number, _payload: FormData) {
+  throw new Error('Inspectiebijlagen uploaden wordt niet ondersteund door de huidige live API.');
 }
 
-export function downloadInspectionAttachment(inspectionId: string | number, attachmentId: string | number) {
-  return downloadRequest(`/inspections/${inspectionId}/attachments/${attachmentId}/download`);
+export function downloadInspectionAttachment(_inspectionId: string | number, _attachmentId: string | number) {
+  throw new Error('Inspectiebijlagen downloaden wordt niet ondersteund door de huidige live API.');
 }
 
-export function getInspectionAudit(inspectionId: string | number) {
-  return optionalRequest<Record<string, unknown>>([
-    `/inspections/${inspectionId}/audit`,
-  ]) || Promise.resolve({ items: [] });
+export async function getInspectionAudit(_inspectionId: string | number) {
+  return { items: [] };
 }
 
-export function approveInspection(inspectionId: string | number) {
-  return optionalRequest<Record<string, unknown>>([
-    `/inspections/${inspectionId}/approve`,
-    `/inspections/${inspectionId}/conform`,
-  ], { method: 'POST' }) as Promise<Record<string, unknown>>;
+export function approveInspection(_inspectionId: string | number) {
+  throw new Error('Inspecties accorderen wordt niet ondersteund door de huidige live API.');
 }
 
-export function uploadInspectionPhoto(inspectionId: string | number, payload: FormData) {
-  return optionalRequest<Record<string, unknown>>([
-    `/inspections/${inspectionId}/photos`,
-    '/photos',
-  ], { method: 'POST', body: payload }) as Promise<Record<string, unknown>>;
+export function uploadInspectionPhoto(_inspectionId: string | number, _payload: FormData) {
+  throw new Error('Inspectiefoto uploaden wordt niet ondersteund door de huidige live API.');
 }
