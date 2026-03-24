@@ -108,19 +108,11 @@ function displayWeldNumber(row: Weld | Record<string, unknown>) {
 }
 
 function displayWelder(row: Weld | Record<string, unknown>) {
-  return String(
-    (row as { welder_name?: unknown }).welder_name ??
-      (row as { welders?: unknown }).welders ??
-      '—',
-  );
+  return String((row as { welder_name?: unknown }).welder_name ?? (row as { welders?: unknown }).welders ?? '—');
 }
 
 function displayWps(row: Weld | Record<string, unknown>) {
-  return String(
-    (row as { wps_id?: unknown }).wps_id ??
-      (row as { wps?: unknown }).wps ??
-      '—',
-  );
+  return String((row as { wps_id?: unknown }).wps_id ?? (row as { wps?: unknown }).wps ?? '—');
 }
 
 export function LascontrolePage() {
@@ -752,7 +744,9 @@ export function LascontrolePage() {
             <ErrorState title="Lassen niet geladen" description="Controleer /welds of de projectfallback." />
           ) : null}
 
-          {!globalWeldsQuery.isLoading && !projectWeldsQuery.isLoading && !(globalWeldsQuery.isError && !projectWeldRows.length) ? (
+          {!globalWeldsQuery.isLoading &&
+          !projectWeldsQuery.isLoading &&
+          !(globalWeldsQuery.isError && !projectWeldRows.length) ? (
             <DataTable
               columns={weldColumns}
               rows={weldRows}
@@ -799,10 +793,7 @@ export function LascontrolePage() {
           {inspectionsQuery.isLoading ? <LoadingState label="Inspecties laden..." /> : null}
 
           {inspectionsQuery.isError ? (
-            <ErrorState
-              title="Inspecties niet geladen"
-              description="Controleer de inspectie-endpoints voor het actieve project."
-            />
+            <ErrorState title="Inspecties niet geladen" description="Controleer de inspectie-endpoints voor het actieve project." />
           ) : null}
 
           {!inspectionsQuery.isLoading && !inspectionsQuery.isError ? (
@@ -844,10 +835,7 @@ export function LascontrolePage() {
           {defectsQuery.isLoading ? <LoadingState label="Defecten laden..." /> : null}
 
           {defectsQuery.isError ? (
-            <ErrorState
-              title="Defecten niet geladen"
-              description="Controleer de defect-endpoints voor het actieve project."
-            />
+            <ErrorState title="Defecten niet geladen" description="Controleer de defect-endpoints voor het actieve project." />
           ) : null}
 
           {!defectsQuery.isLoading && !defectsQuery.isError ? (
@@ -1227,12 +1215,12 @@ export function LascontrolePage() {
                 {(weldWorkflowAttachments.data?.items || []).map((item: CeDocument) => (
                   <div key={String(item.id)} className="list-row">
                     <div>
-                      <strong>{item.title || item.id}</strong>
+                      <strong>{String(item.title || item.id || '')}</strong>
                       <div className="list-subtle">
-                        Versie {item.version || '1.0'} · {item.type || 'Bestand'}
+                        Versie {String(item.version || '1.0')} · {String(item.type || 'Bestand')}
                       </div>
                     </div>
-                    <Badge tone={tone(item.status)}>{item.status || 'Actief'}</Badge>
+                    <Badge tone={tone(item.status)}>{String(item.status || 'Actief')}</Badge>
                   </div>
                 ))}
               </div>
