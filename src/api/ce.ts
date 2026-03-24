@@ -1,228 +1,182 @@
-import { apiRequest, downloadRequest, optionalRequest } from '@/api/client';
-import { withQuery } from '@/utils/api';
+import { optionalRequest } from '@/api/client';
 import type { CeDocument, ComplianceOverview, ExportJob } from '@/types/domain';
 import type { ListParams } from '@/types/api';
 
-type LooseRecord = Record<string, unknown>;
-
-function asArray(value: unknown): unknown[] {
-  return Array.isArray(value) ? value : [];
-}
-
-function asObject(value: unknown): LooseRecord {
-  return value && typeof value === 'object' && !Array.isArray(value) ? (value as LooseRecord) : {};
-}
-
-function normalizeComplianceOverview(payload: unknown): ComplianceOverview {
-  const source = asObject(payload);
-  const validationSummary = asObject(source.validation_summary);
-  const checklist = asArray(source.checklist);
-  const missingItems = asArray(source.missing_items);
-
-  return {
-    ...(source as ComplianceOverview),
-    score: Number(source.score ?? source.compliance_score ?? source.percentage ?? 0),
-    validation_summary: {
-      ...validationSummary,
-      completed_checks: Number(validationSummary.completed_checks ?? checklist.filter((item) => asObject(item).completed).length),
-      total_checks: Number(validationSummary.total_checks ?? checklist.length),
-    },
-    checklist,
-    missing_items: missingItems,
-  } as ComplianceOverview;
-}
-
-function normalizeChecklist(payload: unknown): LooseRecord {
-  const source = asObject(payload);
-  if (Array.isArray(source.checklist)) return source;
-  if (Array.isArray(source.items)) return { checklist: source.items };
-  if (Array.isArray(source.data)) return { checklist: source.data };
-  if (Array.isArray(payload)) return { checklist: payload as unknown[] };
-  return { checklist: [] };
-}
-
-function normalizeMissingItems(payload: unknown): LooseRecord {
-  const source = asObject(payload);
-  if (Array.isArray(source.missing_items)) return source;
-  if (Array.isArray(source.items)) return { missing_items: source.items };
-  if (Array.isArray(source.data)) return { missing_items: source.data };
-  if (Array.isArray(payload)) return { missing_items: payload as unknown[] };
-  return { missing_items: [] };
-}
-
-function normalizeCeDossier(payload: unknown): LooseRecord {
-  const source = asObject(payload);
-  if (Array.isArray(source.sections)) return source;
-  const checklist = asArray(source.checklist);
-  const missingItems = asArray(source.missing_items);
-  const sections = [
-    { id: 'checklist', label: 'Checklist', completed: checklist.length > 0 && missingItems.length === 0, description: `${checklist.length} checklist-items` },
-    { id: 'missing', label: 'Missende items', completed: missingItems.length === 0, description: `${missingItems.length} open punten` },
-  ];
-  return { ...source, sections };
-}
-
-function normalizeListPayload<T>(payload: unknown): { items: T[]; total: number; page: number; limit: number } {
-  if (Array.isArray(payload)) {
-    return { items: payload as T[], total: payload.length, page: 1, limit: payload.length || 25 };
-  }
-  const source = asObject(payload);
-  const items = (source.items || source.data || source.results || source.rows || []) as T[];
-  return {
-    items: Array.isArray(items) ? items : [],
-    total: Number(source.total ?? source.count ?? (Array.isArray(items) ? items.length : 0)),
-    page: Number(source.page ?? 1),
-    limit: Number(source.limit ?? 25),
-  };
+function documentRowsFromCeExport(payload: Record<string, unknown>): CeDocument[] {
+  const photos = Array.isArray(payload.photos) ? (payload.photos as Array<Record<string, unknown>>) : [];
+  return photos.map((photo, index) => ({
+    id: String(photo.id || `photo-${index}`),
+    title: String(photo.name || `Foto ${index + 1}`),
+    type: String(photo.mime || 'photo'),
+    version: '1.0',
+    status: 'Actief',
+    uploaded_at: typeof photo.captured_at === 'string' ? photo.captured_at : undefined,
+  })) as CeDocument[];
 }
 
 export async function getCeDocuments(params?: ListParams) {
   const projectId = params?.project_id || params?.projectId;
-  return (await optionalRequest<unknown>([
-    withQuery(projectId ? `/projects/${projectId}/documents` : '/documents', params),
-    withQuery('/documents', { ...params, project_id: projectId || params?.project_id }),
-  ])) || { items: [] };
+  if (!projectId) return [];
+  const payload = await optionalRequest<Record<string, unknown>>([`/ce_export/${projectId}`]);
+  if (!payload || typeof payload !== 'object') return [];
+  return documentRowsFromCeExport(payload);
 }
 
 export function uploadDocument(_payload: FormData) {
-  return Promise.resolve({ ok: false });
+  return Promise.resolve({ ok: false, reason: 'Upload niet beschikbaar op de huidige API.' });
 }
 
 export async function getComplianceOverview(projectId: string | number) {
-  const payload =
-    (await optionalRequest<unknown>([
-      `/projects/${projectId}/compliance`,
-      `/projects/${projectId}/ce-dossier`,
-      `/compliance/projects/${projectId}`,
-      `/compliance/${projectId}`,
-    ])) || {};
-  return normalizeComplianceOverview(payload);
+  const payload = await optionalRequest<Record<string, unknown>>([`/ce_export/${projectId}`]);
+  if (!payload || typeof payload !== 'object') {
+    return { score: 0, checklist: [], missing_items: [] } as ComplianceOverview;
+  }
+
+  const counts = ((payload as Record<string, unknown>).counts || {}) as Record<string, unknown>;
+  const ready = Boolean((payload as Record<string, unknown>).ready_for_export);
+  const assemblies = Number(counts.assemblies || 0);
+  const welds = Number(counts.welds || 0);
+  const inspections = Number(counts.inspections || 0);
+
+  return {
+    score: ready ? 100 : Math.round(([assemblies > 0, welds > 0, inspections > 0].filter(Boolean).length / 3) * 100),
+    validation_summary: {
+      completed_checks: [assemblies > 0, welds > 0, inspections > 0].filter(Boolean).length,
+      total_checks: 3,
+    },
+    checklist: [
+      { label: 'Assemblies aanwezig', completed: assemblies > 0 },
+      { label: 'Lassen aanwezig', completed: welds > 0 },
+      { label: 'Inspecties aanwezig', completed: inspections > 0 },
+    ],
+    missing_items: [
+      ...(assemblies > 0 ? [] : [{ label: 'Assemblies ontbreken', severity: 'warning' }]),
+      ...(welds > 0 ? [] : [{ label: 'Lassen ontbreken', severity: 'warning' }]),
+      ...(inspections > 0 ? [] : [{ label: 'Inspecties ontbreken', severity: 'warning' }]),
+    ],
+  } as ComplianceOverview;
 }
 
 export async function getComplianceMissingItems(projectId: string | number) {
-  const payload =
-    (await optionalRequest<unknown>([
-      `/projects/${projectId}/compliance/missing-items`,
-      `/projects/${projectId}/missing-items`,
-      `/projects/${projectId}/ce-dossier/missing-items`,
-      `/projects/${projectId}/compliance`,
-    ])) || {};
-  return normalizeMissingItems(payload);
+  const overview = await getComplianceOverview(projectId);
+  return { items: (overview as Record<string, unknown>).missing_items || [] };
 }
 
 export async function getComplianceChecklist(projectId: string | number) {
-  const payload =
-    (await optionalRequest<unknown>([
-      `/projects/${projectId}/compliance/checklist`,
-      `/projects/${projectId}/checklist`,
-      `/projects/${projectId}/ce-dossier/checklist`,
-      `/projects/${projectId}/compliance`,
-    ])) || {};
-  return normalizeChecklist(payload);
+  const overview = await getComplianceOverview(projectId);
+  return { items: (overview as Record<string, unknown>).checklist || [] };
 }
 
 export async function getCeDossier(projectId: string | number) {
-  const payload =
-    (await optionalRequest<unknown>([
-      `/projects/${projectId}/ce-dossier`,
-      `/projects/${projectId}/compliance`,
-      `/projects/${projectId}`,
-    ])) || {};
-  return normalizeCeDossier(payload);
+  const payload = await optionalRequest<Record<string, unknown>>([`/ce_export/${projectId}`]);
+  if (!payload || typeof payload !== 'object') return { sections: [] };
+
+  const source = payload as Record<string, unknown>;
+  const project = (source.project || {}) as Record<string, unknown>;
+  const counts = (source.counts || {}) as Record<string, unknown>;
+
+  return {
+    sections: [
+      {
+        id: 'project',
+        label: `Project ${String(project.project_number || project.name || project.id || projectId)}`,
+        description: String(project.name || ''),
+        completed: true,
+      },
+      {
+        id: 'assemblies',
+        label: 'Assemblies',
+        description: `${Number(counts.assemblies || 0)} assemblies`,
+        completed: Number(counts.assemblies || 0) > 0,
+      },
+      {
+        id: 'welds',
+        label: 'Lassen',
+        description: `${Number(counts.welds || 0)} lassen`,
+        completed: Number(counts.welds || 0) > 0,
+      },
+      {
+        id: 'inspections',
+        label: 'Inspecties',
+        description: `${Number(counts.inspections || 0)} inspecties`,
+        completed: Number(counts.inspections || 0) > 0,
+      },
+    ],
+    raw: payload,
+  };
 }
 
-export async function getProjectExports(projectId: string | number, params?: ListParams) {
-  const payload =
-    (await optionalRequest<unknown>([
-      withQuery(`/projects/${projectId}/exports`, params),
-      withQuery('/exports', { ...params, project_id: projectId }),
-      withQuery(`/projects/${projectId}/export-history`, params),
-    ])) || { items: [] };
-  return normalizeListPayload<ExportJob>(payload);
+export async function getProjectExports(projectId: string | number, _params?: ListParams) {
+  const payload = await optionalRequest<Record<string, unknown>>([`/ce_export/${projectId}`]);
+  if (!payload || typeof payload !== 'object') return [];
+  return [{
+    id: String(projectId),
+    export_type: 'ce_export',
+    bundle_type: 'json',
+    status: Boolean((payload as Record<string, unknown>).ready_for_export) ? 'completed' : 'open',
+    created_at: String((payload as Record<string, unknown>).generated_at || new Date().toISOString()),
+    download_url: '',
+  }] as ExportJob[];
 }
 
 export function createCeReport(projectId: string | number) {
-  return optionalRequest<Record<string, unknown>>(
-    [
-      `/projects/${projectId}/exports/ce-report`,
-      `/projects/${projectId}/exports/pdf`,
-      `/exports/ce-report`,
-      `/exports/pdf`,
-    ],
-    { method: 'POST', body: JSON.stringify({ project_id: projectId }) },
-  );
+  return Promise.resolve({ ok: true, project_id: projectId, mode: 'ce_export_view' });
 }
 
 export function createZipExport(projectId: string | number) {
-  return optionalRequest<Record<string, unknown>>(
-    [
-      `/projects/${projectId}/exports/zip`,
-      `/exports/zip`,
-    ],
-    { method: 'POST', body: JSON.stringify({ project_id: projectId }) },
-  );
+  return Promise.resolve({ ok: false, project_id: projectId, reason: 'ZIP export niet beschikbaar op de huidige API.' });
 }
 
 export function createPdfExport(projectId: string | number) {
-  return optionalRequest<Record<string, unknown>>(
-    [
-      `/projects/${projectId}/exports/pdf`,
-      `/exports/pdf`,
-    ],
-    { method: 'POST', body: JSON.stringify({ project_id: projectId }) },
-  );
+  return Promise.resolve({ ok: false, project_id: projectId, reason: 'PDF export niet beschikbaar op de huidige API.' });
 }
 
 export function createExcelExport(projectId: string | number) {
-  return optionalRequest<Record<string, unknown>>(
-    [
-      `/projects/${projectId}/exports/excel`,
-      `/exports/excel`,
-    ],
-    { method: 'POST', body: JSON.stringify({ project_id: projectId }) },
-  );
+  return Promise.resolve({ ok: false, project_id: projectId, reason: 'Excel export niet beschikbaar op de huidige API.' });
 }
 
-export async function downloadProjectExport(projectId: string | number, exportId: string | number) {
-  for (const path of [
-    `/projects/${projectId}/exports/${exportId}/download`,
-    `/exports/${exportId}/download`,
-  ]) {
-    try {
-      return await downloadRequest(path);
-    } catch {
-      continue;
-    }
-  }
-  throw new Error('Exportdownload niet beschikbaar.');
+export function downloadProjectExport(projectId: string | number, exportId: string | number) {
+  const payload = {
+    ok: false,
+    project_id: String(projectId),
+    export_id: String(exportId),
+    reason: 'Download niet beschikbaar op de huidige API.',
+  };
+  return Promise.resolve(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }));
 }
 
 export function retryProjectExport(projectId: string | number, exportId: string | number) {
-  return optionalRequest<Record<string, unknown>>(
-    [
-      `/projects/${projectId}/exports/${exportId}/retry`,
-      `/exports/${exportId}/retry`,
-    ],
-    { method: 'POST', body: JSON.stringify({ project_id: projectId }) },
-  );
+  return Promise.resolve({ ok: false, project_id: projectId, export_id: exportId, reason: 'Retry niet beschikbaar op de huidige API.' });
 }
 
 export async function getProjectExportPreview(projectId: string | number) {
-  return (
-    (await optionalRequest<Record<string, unknown>>([
-      `/projects/${projectId}/exports/preview`,
-      `/projects/${projectId}/compliance`,
-      `/projects/${projectId}/ce-dossier`,
-    ])) || {}
-  );
+  const payload = await optionalRequest<Record<string, unknown>>([`/ce_export/${projectId}`]);
+  if (!payload || typeof payload !== 'object') return {};
+  const source = payload as Record<string, unknown>;
+  return {
+    ready_for_export: Boolean(source.ready_for_export),
+    assemblies: Array.isArray(source.assemblies) ? source.assemblies : [],
+    welds: Array.isArray(source.welds) ? source.welds : [],
+    inspection_results: Array.isArray(source.inspections) ? source.inspections : [],
+    completeness: [
+      { label: 'Project aanwezig', status: source.project ? 'completed' : 'open' },
+      { label: 'Assemblies', status: Array.isArray(source.assemblies) && source.assemblies.length ? 'completed' : 'open' },
+      { label: 'Lassen', status: Array.isArray(source.welds) && source.welds.length ? 'completed' : 'open' },
+      { label: 'Inspecties', status: Array.isArray(source.inspections) && source.inspections.length ? 'completed' : 'open' },
+    ],
+  };
 }
 
 export async function getProjectExportManifest(projectId: string | number, exportId: string | number) {
-  return (
-    (await optionalRequest<Record<string, unknown>>([
-      `/projects/${projectId}/exports/${exportId}/manifest`,
-      `/exports/${exportId}/manifest`,
-      `/projects/${projectId}/exports/${exportId}`,
-    ])) || {}
-  );
+  const payload = await optionalRequest<Record<string, unknown>>([`/ce_export/${projectId}`]);
+  return {
+    manifest: {
+      id: String(exportId),
+      project_id: String(projectId),
+      ready_for_export: Boolean((payload || {}).ready_for_export),
+      files: [],
+      download_name: `ce-export-${String(projectId)}.json`,
+      zip_name: `ce-export-${String(projectId)}.zip`,
+    },
+  };
 }

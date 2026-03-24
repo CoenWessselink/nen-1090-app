@@ -1,5 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { createCeReport, createExcelExport, createPdfExport, createZipExport, downloadProjectExport, getCeDossier, getComplianceChecklist, getComplianceMissingItems, getComplianceOverview, getProjectExportManifest, getProjectExportPreview, getProjectExports, retryProjectExport } from '@/api/ce';
+import {
+  createCeReport,
+  createExcelExport,
+  createPdfExport,
+  createZipExport,
+  downloadProjectExport,
+  getCeDossier,
+  getComplianceChecklist,
+  getComplianceMissingItems,
+  getComplianceOverview,
+  getProjectExportManifest,
+  getProjectExportPreview,
+  getProjectExports,
+  retryProjectExport,
+} from '@/api/ce';
 import { normalizeListResponse } from '@/utils/api';
 import type { ListParams } from '@/types/api';
 
@@ -40,11 +54,6 @@ export function useProjectExports(projectId?: string | number, params?: ListPara
     queryKey: ['project-exports', projectId, params],
     queryFn: async () => normalizeListResponse(await getProjectExports(String(projectId), params)),
     enabled: Boolean(projectId),
-    refetchInterval: (query) => {
-      const items = (((query.state.data as { items?: Array<Record<string, unknown>> } | undefined)?.items) || []);
-      const hasRunning = items.some((item) => ['queued', 'running', 'processing'].includes(String(item.status || '').toLowerCase()));
-      return hasRunning ? 3000 : false;
-    },
   });
 }
 
