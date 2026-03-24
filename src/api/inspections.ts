@@ -1,27 +1,33 @@
 import { apiRequest, downloadRequest, optionalRequest, uploadRequest } from '@/api/client';
 import { withQuery } from '@/utils/api';
 import type { Inspection } from '@/types/domain';
-import type { ListParams } from '@/types/api';
+import type { ApiListResponse, ListParams } from '@/types/api';
 
 export async function getInspections(params?: ListParams) {
   const projectId = params?.project_id || params?.projectId;
-  return await optionalRequest<Inspection[] | { items?: Inspection[] }>([
-    withQuery(projectId ? `/projects/${projectId}/inspections` : '/inspections', params),
-    withQuery('/inspections', params),
-  ]) || { items: [] };
+  return (
+    (await optionalRequest<ApiListResponse<Inspection> | Inspection[]>([
+      withQuery(projectId ? `/projects/${projectId}/inspections` : '/inspections', params),
+      withQuery('/inspections', params),
+    ])) || { items: [], total: 0, page: 1, limit: params?.limit || params?.pageSize || 25 }
+  );
 }
 
 export function getInspection(inspectionId: string | number) {
   return apiRequest<Inspection>(`/inspections/${inspectionId}`);
 }
 
-export async function createInspection(projectId: string | number | undefined, weldId: string | number, payload: Record<string, unknown>) {
+export async function createInspection(
+  projectId: string | number | undefined,
+  weldId: string | number,
+  payload: Record<string, unknown>,
+) {
   const projectPath = projectId ? `/projects/${projectId}/welds/${weldId}/inspections` : null;
-  return await optionalRequest<Inspection>([
-    `/welds/${weldId}/inspection`,
+  return (await optionalRequest<Inspection>([
     ...(projectPath ? [projectPath] : []),
+    `/welds/${weldId}/inspection`,
     '/inspections',
-  ], { method: 'POST', body: JSON.stringify({ ...payload, project_id: projectId, weld_id: weldId }) }) as Inspection;
+  ], { method: 'POST', body: JSON.stringify({ ...payload, project_id: projectId, weld_id: weldId }) })) as Inspection;
 }
 
 export function updateInspection(inspectionId: string | number, payload: Record<string, unknown>) {
@@ -37,7 +43,10 @@ export function getInspectionResults(inspectionId: string | number) {
 }
 
 export function createInspectionResult(inspectionId: string | number, payload: Record<string, unknown>) {
-  return apiRequest<Record<string, unknown>>(`/inspections/${inspectionId}/results`, { method: 'POST', body: JSON.stringify(payload) });
+  return apiRequest<Record<string, unknown>>(`/inspections/${inspectionId}/results`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
 }
 
 export function getInspectionAttachments(inspectionId: string | number) {

@@ -17,71 +17,57 @@ import {
 } from '@/api/welds';
 import { normalizeListResponse } from '@/utils/api';
 import type { ListParams } from '@/types/api';
-import type { WeldFormValues } from '@/types/forms';
-import { useAuthStore } from '@/app/store/auth-store';
 
 export function useWelds(params?: ListParams, enabled = true) {
-  const token = useAuthStore((state) => state.token);
-
   return useQuery({
-    queryKey: ['welds', params, token],
+    queryKey: ['welds', params],
     queryFn: async () => normalizeListResponse(await getWelds(params)),
-    enabled: Boolean(token) && enabled,
+    enabled,
     staleTime: 1000 * 30,
   });
 }
 
 export function useWeld(projectId?: string | number, weldId?: string | number) {
-  const token = useAuthStore((state) => state.token);
-
   return useQuery({
-    queryKey: ['weld', projectId, weldId, token],
+    queryKey: ['weld', projectId, weldId],
     queryFn: () => getWeld(String(projectId), String(weldId)),
-    enabled: Boolean(token) && Boolean(projectId) && Boolean(weldId),
+    enabled: Boolean(projectId) && Boolean(weldId),
     staleTime: 1000 * 30,
   });
 }
 
 export function useWeldInspections(projectId?: string | number, weldId?: string | number) {
-  const token = useAuthStore((state) => state.token);
-
   return useQuery({
-    queryKey: ['weld-inspections', projectId, weldId, token],
+    queryKey: ['weld-inspections', projectId, weldId],
     queryFn: async () => normalizeListResponse(await getWeldInspections(String(projectId), String(weldId))),
-    enabled: Boolean(token) && Boolean(projectId) && Boolean(weldId),
+    enabled: Boolean(projectId) && Boolean(weldId),
     staleTime: 1000 * 30,
   });
 }
 
 export function useWeldDefects(projectId?: string | number, weldId?: string | number) {
-  const token = useAuthStore((state) => state.token);
-
   return useQuery({
-    queryKey: ['weld-defects', projectId, weldId, token],
+    queryKey: ['weld-defects', projectId, weldId],
     queryFn: async () => normalizeListResponse(await getWeldDefects(String(projectId), String(weldId))),
-    enabled: Boolean(token) && Boolean(projectId) && Boolean(weldId),
+    enabled: Boolean(projectId) && Boolean(weldId),
     staleTime: 1000 * 30,
   });
 }
 
 export function useWeldAttachments(projectId?: string | number, weldId?: string | number) {
-  const token = useAuthStore((state) => state.token);
-
   return useQuery({
-    queryKey: ['weld-attachments', projectId, weldId, token],
+    queryKey: ['weld-attachments', projectId, weldId],
     queryFn: async () => normalizeListResponse(await getWeldAttachments(String(projectId), String(weldId))),
-    enabled: Boolean(token) && Boolean(projectId) && Boolean(weldId),
+    enabled: Boolean(projectId) && Boolean(weldId),
     staleTime: 1000 * 30,
   });
 }
 
 export function useWeldCompliance(projectId?: string | number, weldId?: string | number) {
-  const token = useAuthStore((state) => state.token);
-
   return useQuery({
-    queryKey: ['weld-compliance', projectId, weldId, token],
+    queryKey: ['weld-compliance', projectId, weldId],
     queryFn: () => getWeldCompliance(String(projectId), String(weldId)),
-    enabled: Boolean(token) && Boolean(projectId) && Boolean(weldId),
+    enabled: Boolean(projectId) && Boolean(weldId),
     staleTime: 1000 * 30,
   });
 }
@@ -89,7 +75,7 @@ export function useWeldCompliance(projectId?: string | number, weldId?: string |
 export function useCreateWeld() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (payload: WeldFormValues) => createWeld(payload),
+    mutationFn: (payload: any) => createWeld(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['welds'] });
       queryClient.invalidateQueries({ queryKey: ['project-welds'] });
@@ -113,7 +99,7 @@ export function useCopyWeld(projectId: string | number) {
 export function useUpdateWeld(projectId: string | number) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ weldId, payload }: { weldId: string | number; payload: WeldFormValues }) =>
+    mutationFn: ({ weldId, payload }: { weldId: string | number; payload: any }) =>
       updateWeld(projectId, weldId, payload),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['welds'] });

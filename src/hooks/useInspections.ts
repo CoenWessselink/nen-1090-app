@@ -1,49 +1,52 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { approveInspection, createInspection, createInspectionResult, deleteInspection, downloadInspectionAttachment, getInspectionAttachments, getInspectionAudit, getInspectionResults, getInspections, updateInspection, uploadInspectionAttachment } from '@/api/inspections';
+import {
+  approveInspection,
+  createInspection,
+  createInspectionResult,
+  deleteInspection,
+  downloadInspectionAttachment,
+  getInspectionAttachments,
+  getInspectionAudit,
+  getInspectionResults,
+  getInspections,
+  updateInspection,
+  uploadInspectionAttachment,
+} from '@/api/inspections';
 import { normalizeListResponse } from '@/utils/api';
 import type { ListParams } from '@/types/api';
-import { useAuthStore } from '@/app/store/auth-store';
 
 export function useInspections(params?: ListParams, enabled = true) {
-  const token = useAuthStore((state) => state.token);
-
   return useQuery({
-    queryKey: ['inspections', params, token],
+    queryKey: ['inspections', params],
     queryFn: async () => normalizeListResponse(await getInspections(params)),
-    enabled: Boolean(token) && enabled,
+    enabled,
     staleTime: 1000 * 30,
   });
 }
 
 export function useInspectionResults(inspectionId?: string | number) {
-  const token = useAuthStore((state) => state.token);
-
   return useQuery({
-    queryKey: ['inspection-results', inspectionId, token],
+    queryKey: ['inspection-results', inspectionId],
     queryFn: () => getInspectionResults(String(inspectionId)),
-    enabled: Boolean(token) && Boolean(inspectionId),
+    enabled: Boolean(inspectionId),
     staleTime: 1000 * 30,
   });
 }
 
 export function useInspectionAttachments(inspectionId?: string | number) {
-  const token = useAuthStore((state) => state.token);
-
   return useQuery({
-    queryKey: ['inspection-attachments', inspectionId, token],
+    queryKey: ['inspection-attachments', inspectionId],
     queryFn: async () => normalizeListResponse(await getInspectionAttachments(String(inspectionId))),
-    enabled: Boolean(token) && Boolean(inspectionId),
+    enabled: Boolean(inspectionId),
     staleTime: 1000 * 30,
   });
 }
 
 export function useInspectionAudit(inspectionId?: string | number) {
-  const token = useAuthStore((state) => state.token);
-
   return useQuery({
-    queryKey: ['inspection-audit', inspectionId, token],
+    queryKey: ['inspection-audit', inspectionId],
     queryFn: async () => normalizeListResponse(await getInspectionAudit(String(inspectionId))),
-    enabled: Boolean(token) && Boolean(inspectionId),
+    enabled: Boolean(inspectionId),
     staleTime: 1000 * 30,
   });
 }
@@ -51,7 +54,8 @@ export function useInspectionAudit(inspectionId?: string | number) {
 export function useCreateInspection() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ projectId, weldId, payload }: { projectId?: string | number; weldId: string | number; payload: Record<string, unknown> }) => createInspection(String(projectId || ''), weldId, payload),
+    mutationFn: ({ projectId, weldId, payload }: { projectId?: string | number; weldId: string | number; payload: Record<string, unknown> }) =>
+      createInspection(String(projectId || ''), weldId, payload),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['inspections'] }),
   });
 }
@@ -59,7 +63,8 @@ export function useCreateInspection() {
 export function useUpdateInspection() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ inspectionId, payload }: { inspectionId: string | number; payload: Record<string, unknown> }) => updateInspection(inspectionId, payload),
+    mutationFn: ({ inspectionId, payload }: { inspectionId: string | number; payload: Record<string, unknown> }) =>
+      updateInspection(inspectionId, payload),
     onSuccess: (_data, vars) => {
       queryClient.invalidateQueries({ queryKey: ['inspections'] });
       queryClient.invalidateQueries({ queryKey: ['inspection-results', vars.inspectionId] });
@@ -79,7 +84,8 @@ export function useDeleteInspection() {
 export function useSaveInspectionResult() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ inspectionId, payload }: { inspectionId: string | number; payload: Record<string, unknown> }) => createInspectionResult(inspectionId, payload),
+    mutationFn: ({ inspectionId, payload }: { inspectionId: string | number; payload: Record<string, unknown> }) =>
+      createInspectionResult(inspectionId, payload),
     onSuccess: (_data, vars) => {
       queryClient.invalidateQueries({ queryKey: ['inspection-results', vars.inspectionId] });
       queryClient.invalidateQueries({ queryKey: ['inspection-audit', vars.inspectionId] });
@@ -103,7 +109,8 @@ export function useApproveInspection() {
 export function useUploadInspectionAttachment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ inspectionId, formData }: { inspectionId: string | number; formData: FormData }) => uploadInspectionAttachment(inspectionId, formData),
+    mutationFn: ({ inspectionId, formData }: { inspectionId: string | number; formData: FormData }) =>
+      uploadInspectionAttachment(inspectionId, formData),
     onSuccess: (_data, vars) => {
       queryClient.invalidateQueries({ queryKey: ['inspections'] });
       queryClient.invalidateQueries({ queryKey: ['inspection-results', vars.inspectionId] });
@@ -115,6 +122,7 @@ export function useUploadInspectionAttachment() {
 
 export function useDownloadInspectionAttachment() {
   return useMutation({
-    mutationFn: ({ inspectionId, attachmentId }: { inspectionId: string | number; attachmentId: string | number }) => downloadInspectionAttachment(inspectionId, attachmentId),
+    mutationFn: ({ inspectionId, attachmentId }: { inspectionId: string | number; attachmentId: string | number }) =>
+      downloadInspectionAttachment(inspectionId, attachmentId),
   });
 }
