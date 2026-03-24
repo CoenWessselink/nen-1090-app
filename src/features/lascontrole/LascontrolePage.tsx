@@ -1,5 +1,16 @@
 import { useMemo, useState } from 'react';
-import { CheckCheck, Eye, Paperclip, Pencil, Plus, ShieldAlert, ShieldCheck, Trash2, UploadCloud, Wrench } from 'lucide-react';
+import {
+  CheckCheck,
+  Eye,
+  Paperclip,
+  Pencil,
+  Plus,
+  ShieldAlert,
+  ShieldCheck,
+  Trash2,
+  UploadCloud,
+  Wrench,
+} from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card } from '@/components/ui/Card';
@@ -63,7 +74,7 @@ import { useProjectContext } from '@/context/ProjectContext';
 function tone(value?: string) {
   const status = String(value || '').toLowerCase();
   if (['goedgekeurd', 'approved', 'accepted', 'resolved', 'conform'].includes(status)) return 'success' as const;
-  if (['afgekeurd', 'rejected', 'open', 'repair-required'].includes(status)) return 'danger' as const;
+  if (['afgekeurd', 'rejected', 'repair-required'].includes(status)) return 'danger' as const;
   return 'neutral' as const;
 }
 
@@ -71,6 +82,45 @@ function isoLabel(value?: string) {
   const normalized = String(value || '').toUpperCase();
   if (!normalized) return '—';
   return `ISO 5817 ${normalized}`;
+}
+
+function normalizedStatus(value?: string) {
+  const raw = String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/_/g, '-');
+
+  if (!raw) return '';
+  if (raw === 'pending') return 'open';
+  if (raw === 'in controle' || raw === 'in-controle' || raw === 'in-control') return 'in-controle';
+  if (raw === 'approved' || raw === 'accepted' || raw === 'ok') return 'conform';
+  if (raw === 'rejected' || raw === 'repair-required') return 'afgekeurd';
+  return raw;
+}
+
+function displayWeldNumber(row: Weld | Record<string, unknown>) {
+  return String(
+    (row as { weld_number?: unknown }).weld_number ??
+      (row as { weld_no?: unknown }).weld_no ??
+      (row as { id?: unknown }).id ??
+      '',
+  );
+}
+
+function displayWelder(row: Weld | Record<string, unknown>) {
+  return String(
+    (row as { welder_name?: unknown }).welder_name ??
+      (row as { welders?: unknown }).welders ??
+      '—',
+  );
+}
+
+function displayWps(row: Weld | Record<string, unknown>) {
+  return String(
+    (row as { wps_id?: unknown }).wps_id ??
+      (row as { wps?: unknown }).wps ??
+      '—',
+  );
 }
 
 export function LascontrolePage() {
@@ -83,7 +133,7 @@ export function LascontrolePage() {
   const [tab, setTab] = useState('welds');
   const [quickFilter, setQuickFilter] = useState<'all' | 'with-defects' | 'conform' | 'open'>('all');
   const [page, setPage] = useState(1);
-  const [sortKey, setSortKey] = useState('inspection_date');
+  const [sortKey, setSortKey] = useState('updated_at');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [weldModalMode, setWeldModalMode] = useState<'create' | 'edit'>('create');
   const [weldModal, setWeldModal] = useState(false);
@@ -96,28 +146,41 @@ export function LascontrolePage() {
 
   const mergedSearch = [search, globalSearch].filter(Boolean).join(' ').trim();
 
-  const baseParams = {
+  const weldBaseParams = {
     page,
     limit,
     search: mergedSearch || undefined,
     sort: sortKey,
     direction: sortDirection,
-    status: status !== 'all' ? status : undefined,
   };
 
-  const weldListParams = {
-    ...baseParams,
-    project_id: undefined,
-  };
-
-  const scopedListParams = {
-    ...baseParams,
+  const scopedBaseParams = {
+    page,
+    limit,
+    search: mergedSearch || undefined,
+    sort: sortKey,
+    direction: sortDirection,
     project_id: hasProject ? projectId || undefined : undefined,
   };
 
-  const weldsQuery = useWelds(weldListParams);
-  const inspectionsQuery = useInspections(scopedListParams, tab === 'inspections');
-  const defectsQuery = useDefects(scopedListParams, tab === 'defects');
+  const globalWeldsQuery = useWelds(
+    {
+      ...weldBaseParams,
+      project_id: undefined,
+    },
+    true,
+  );
+
+  const projectWeldsQuery = useWelds(
+    {
+      ...weldBaseParams,
+      project_id: hasProject ? projectId || undefined : undefined,
+    },
+    hasProject && Boolean(projectId),
+  );
+
+  const inspectionsQuery = useInspections(scopedBaseParams, tab === 'inspections');
+  const defectsQuery = useDefects(scopedBaseParams, tab === 'defects');
   const inspectionTemplates = useInspectionTemplates(Boolean(inspectionModal));
 
   const createWeld = useCreateWeld();
@@ -144,7 +207,10 @@ export function LascontrolePage() {
   const resetToNorm = useMutation({
     mutationFn: ({ projectId: currentProjectId, weldId }: { projectId: string | number; weldId: string | number }) =>
       resetWeldToNorm(currentProjectId, weldId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['welds'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['welds'] });
+      queryClient.invalidateQueries({ queryKey: ['project-welds'] });
+    },
   });
 
   const weldWorkflowInspections = useWeldInspections(activeWeld?.project_id || projectId, activeWeld?.id);
@@ -154,28 +220,47 @@ export function LascontrolePage() {
   const uploadWeldAttachment = useUploadWeldAttachment(activeWeld?.project_id || projectId || '', activeWeld?.id || '');
   const inspectionResultsQuery = useInspectionResults(inspectionModal?.item?.id);
 
-  const weldRows = useMemo(() => weldsQuery.data?.items || [], [weldsQuery.data]);
-  const filteredWeldRows = useMemo(() => {
-    if (quickFilter === 'with-defects') return weldRows.filter((item) => Number(item.defect_count || 0) > 0);
-    if (quickFilter === 'conform') return weldRows.filter((item) => String(item.status || '').toLowerCase() === 'conform');
-    if (quickFilter === 'open') {
-      return weldRows.filter((item) =>
-        ['open', 'pending', 'in-controle'].includes(String(item.status || '').toLowerCase()),
-      );
+  const globalWeldRows = useMemo(() => globalWeldsQuery.data?.items || [], [globalWeldsQuery.data]);
+  const projectWeldRows = useMemo(() => projectWeldsQuery.data?.items || [], [projectWeldsQuery.data]);
+
+  const sourceWeldRows = useMemo(() => {
+    if (globalWeldRows.length > 0) return globalWeldRows;
+    if (hasProject && projectWeldRows.length > 0) return projectWeldRows;
+    return globalWeldRows;
+  }, [globalWeldRows, projectWeldRows, hasProject]);
+
+  const weldRows = useMemo(() => {
+    let rows = [...sourceWeldRows];
+
+    if (status !== 'all') {
+      rows = rows.filter((item) => {
+        const current = normalizedStatus(item.status);
+        if (status === 'open') return ['open', 'in-controle'].includes(current);
+        return current === normalizedStatus(status);
+      });
     }
-    return weldRows;
-  }, [quickFilter, weldRows]);
+
+    if (quickFilter === 'with-defects') {
+      rows = rows.filter((item) => Number(item.defect_count || 0) > 0);
+    } else if (quickFilter === 'conform') {
+      rows = rows.filter((item) => normalizedStatus(item.status) === 'conform');
+    } else if (quickFilter === 'open') {
+      rows = rows.filter((item) => ['open', 'in-controle'].includes(normalizedStatus(item.status)));
+    }
+
+    return rows;
+  }, [sourceWeldRows, status, quickFilter]);
 
   const inspectionRows = useMemo(() => inspectionsQuery.data?.items || [], [inspectionsQuery.data]);
   const defectRows = useMemo(() => defectsQuery.data?.items || [], [defectsQuery.data]);
 
   const weldOptions = useMemo(
     () =>
-      weldRows.map((row) => ({
+      sourceWeldRows.map((row) => ({
         id: String(row.id),
-        label: `${row.weld_number || row.id} · ${row.location || 'Onbekende locatie'}`,
+        label: `${displayWeldNumber(row)} · ${row.location || 'Onbekende locatie'}`,
       })),
-    [weldRows],
+    [sourceWeldRows],
   );
 
   const templateOptions = useMemo(() => inspectionTemplates.data?.items || [], [inspectionTemplates.data]);
@@ -212,7 +297,7 @@ export function LascontrolePage() {
       key: 'weld_number',
       header: 'Lasnummer',
       sortable: true,
-      cell: (row) => <strong>{row.weld_number || row.id}</strong>,
+      cell: (row) => <strong>{displayWeldNumber(row)}</strong>,
     },
     {
       key: 'project_name',
@@ -225,7 +310,7 @@ export function LascontrolePage() {
       key: 'welder_name',
       header: 'Lasser',
       sortable: true,
-      cell: (row) => row.welder_name || '—',
+      cell: (row) => displayWelder(row),
     },
     {
       key: 'process',
@@ -281,9 +366,9 @@ export function LascontrolePage() {
               }
               const copy = await copyWeld.mutateAsync({
                 weldId: row.id,
-                weldNumber: `${String(row.weld_number || row.id)}-kopie`,
+                weldNumber: `${displayWeldNumber(row)}-kopie`,
               });
-              setMessage(`Las ${row.weld_number || row.id} gekopieerd als ${copy.weld_number || copy.id}.`);
+              setMessage(`Las ${displayWeldNumber(row)} gekopieerd als ${copy.weld_number || copy.id}.`);
             }}
             aria-label="Kopiëren"
           >
@@ -438,24 +523,31 @@ export function LascontrolePage() {
     },
   ];
 
+  const weldTotal =
+    globalWeldRows.length > 0
+      ? (globalWeldsQuery.data?.total ?? globalWeldRows.length)
+      : hasProject
+        ? (projectWeldsQuery.data?.total ?? projectWeldRows.length)
+        : (globalWeldsQuery.data?.total ?? globalWeldRows.length);
+
   const totalForActiveTab =
     tab === 'welds'
-      ? (weldsQuery.data?.total ?? weldRows.length)
+      ? (status === 'all' && quickFilter === 'all' ? weldTotal : weldRows.length)
       : tab === 'inspections'
         ? (inspectionsQuery.data?.total ?? inspectionRows.length)
         : (defectsQuery.data?.total ?? defectRows.length);
 
   const openInspectionsCount = useMemo(() => {
     if (!inspectionsQuery.data) return 0;
-    return inspectionRows.filter((item) => String(item.status || '').toLowerCase() !== 'approved').length;
+    return inspectionRows.filter((item) => normalizedStatus(item.status) !== 'conform').length;
   }, [inspectionRows, inspectionsQuery.data]);
 
   const activeWeldFormInitial: Partial<WeldFormValues> | undefined = activeWeld
     ? {
         project_id: String(activeWeld.project_id || ''),
-        weld_number: String(activeWeld.weld_number || ''),
-        wps_id: String(activeWeld.wps_id || ''),
-        welder_name: String(activeWeld.welder_name || ''),
+        weld_number: String(activeWeld.weld_number || (activeWeld as Record<string, unknown>).weld_no || ''),
+        wps_id: String(activeWeld.wps_id || (activeWeld as Record<string, unknown>).wps || ''),
+        welder_name: String(activeWeld.welder_name || (activeWeld as Record<string, unknown>).welders || ''),
         process: String(activeWeld.process || '135'),
         location: String(activeWeld.location || ''),
         status: String(activeWeld.status || 'open'),
@@ -466,21 +558,21 @@ export function LascontrolePage() {
     <div className="page-stack">
       <PageHeader
         title="Lascontrole"
-        description="Fase 2: weld-first met inspecties, defecten, audit-acties en Weld 360° voor directe afhandeling per las."
+        description="Weld-first overzicht met projectfallback, inspecties, defecten en Weld 360°."
       />
 
       {message ? <InlineMessage tone="success">{message}</InlineMessage> : null}
 
       <InlineMessage tone={hasProject ? 'neutral' : 'success'}>
         {hasProject
-          ? 'Projectscope actief. Lassen blijven tenant-breed zichtbaar; inspecties, defecten en acties gebruiken het actieve project.'
-          : 'Geen projectscope gekozen. Lascontrole draait nu weld-first over alle lassen binnen de tenant.'}
+          ? 'Projectscope actief. Als de tenantbrede lassenlijst leeg is, gebruikt Lascontrole automatisch de projectlijst als fallback.'
+          : 'Geen projectscope gekozen. Lascontrole draait tenantbreed over alle lassen.'}
       </InlineMessage>
 
       <Card>
         <div className="form-grid" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
           <div style={{ gridColumn: '1 / -1' }}>
-            <ProjectScopePicker description="Lascontrole gebruikt een projectscope voor acties en detailafhandeling, terwijl de hoofdlijst van lassen tenant-breed beschikbaar blijft voor snelle opvolging." />
+            <ProjectScopePicker description="Projectscope wordt gebruikt voor acties en fallbackweergave van lassen." />
           </div>
 
           <Input
@@ -500,11 +592,9 @@ export function LascontrolePage() {
             }}
           >
             <option value="all">Alle statussen</option>
-            <option value="open">Open</option>
-            <option value="pending">Pending</option>
-            <option value="approved">Approved</option>
-            <option value="resolved">Resolved</option>
+            <option value="open">Open / in-controle</option>
             <option value="conform">Conform</option>
+            <option value="afgekeurd">Afgekeurd</option>
           </Select>
 
           <Select
@@ -514,10 +604,10 @@ export function LascontrolePage() {
               setPage(1);
             }}
           >
-            <option value="inspection_date">Sorteer op datum</option>
+            <option value="updated_at">Sorteer op gewijzigd</option>
+            <option value="created_at">Sorteer op aangemaakt</option>
             <option value="status">Sorteer op status</option>
             <option value="weld_number">Sorteer op lasnummer</option>
-            <option value="due_date">Sorteer op planning</option>
           </Select>
 
           <Select value={sortDirection} onChange={(event) => setSortDirection(event.target.value as 'asc' | 'desc')}>
@@ -545,7 +635,7 @@ export function LascontrolePage() {
         <Card>
           <div className="metric-card">
             <span>Lassen met defecten</span>
-            <strong>{weldRows.filter((item) => Number(item.defect_count || 0) > 0).length}</strong>
+            <strong>{sourceWeldRows.filter((item) => Number(item.defect_count || 0) > 0).length}</strong>
           </div>
         </Card>
       </div>
@@ -607,7 +697,7 @@ export function LascontrolePage() {
             }
             center={
               <span className="badge badge-warning">
-                {filteredWeldRows.filter((item) => Number(item.defect_count || 0) > 0).length} met defecten
+                {weldRows.filter((item) => Number(item.defect_count || 0) > 0).length} met defecten
               </span>
             }
             right={
@@ -618,7 +708,7 @@ export function LascontrolePage() {
                   onClick={async () => {
                     if (!selectedWeldIds.length) return;
 
-                    const selectedRows = weldRows.filter((row) => selectedWeldIds.includes(String(row.id)));
+                    const selectedRows = sourceWeldRows.filter((row) => selectedWeldIds.includes(String(row.id)));
                     const grouped = selectedRows.reduce<Record<string, Array<string | number>>>((acc, row) => {
                       const key = String(row.project_id || '');
                       if (!key) return acc;
@@ -656,18 +746,23 @@ export function LascontrolePage() {
             }
           />
 
-          {weldsQuery.isLoading ? <LoadingState label="Lassen laden..." /> : null}
+          {globalWeldsQuery.isLoading || projectWeldsQuery.isLoading ? <LoadingState label="Lassen laden..." /> : null}
 
-          {weldsQuery.isError ? (
-            <ErrorState title="Lassen niet geladen" description="Controleer GET /welds of de backend-lijstendpoint." />
+          {globalWeldsQuery.isError && !projectWeldRows.length ? (
+            <ErrorState title="Lassen niet geladen" description="Controleer /welds of de projectfallback." />
           ) : null}
 
-          {!weldsQuery.isLoading && !weldsQuery.isError ? (
+          {!globalWeldsQuery.isLoading && !projectWeldsQuery.isLoading && !(globalWeldsQuery.isError && !projectWeldRows.length) ? (
             <DataTable
               columns={weldColumns}
-              rows={filteredWeldRows}
+              rows={weldRows}
               rowKey={(row) => String(row.id)}
-              empty={<EmptyState title="Geen lassen" description="Maak een las aan of verfijn het filter." />}
+              empty={
+                <EmptyState
+                  title="Geen lassen"
+                  description="Maak een las aan of verfijn het filter. Bij actieve projectscope wordt automatisch op projectniveau teruggevallen."
+                />
+              }
               selectable
               selectedRowKeys={selectedWeldIds}
               onToggleRow={(key) =>
@@ -677,13 +772,13 @@ export function LascontrolePage() {
               }
               onToggleAll={() =>
                 setSelectedWeldIds((current) =>
-                  current.length === filteredWeldRows.length ? [] : filteredWeldRows.map((row) => String(row.id)),
+                  current.length === weldRows.length ? [] : weldRows.map((row) => String(row.id)),
                 )
               }
               onRowDoubleClick={(row) => setActiveWeld(row)}
               page={page}
               pageSize={limit}
-              total={quickFilter === 'all' ? totalForActiveTab : filteredWeldRows.length}
+              total={totalForActiveTab}
               onPageChange={setPage}
             />
           ) : null}
@@ -706,7 +801,7 @@ export function LascontrolePage() {
           {inspectionsQuery.isError ? (
             <ErrorState
               title="Inspecties niet geladen"
-              description="Controleer GET /projects/{project_id}/inspections of /inspections."
+              description="Controleer de inspectie-endpoints voor het actieve project."
             />
           ) : null}
 
@@ -721,7 +816,7 @@ export function LascontrolePage() {
                   description={
                     hasProject
                       ? 'Maak een inspectie aan binnen het gekozen project.'
-                      : 'Kies eerst een projectscope om inspecties projectgebonden te bekijken.'
+                      : 'Kies eerst een projectscope om inspecties te bekijken.'
                   }
                 />
               }
@@ -751,7 +846,7 @@ export function LascontrolePage() {
           {defectsQuery.isError ? (
             <ErrorState
               title="Defecten niet geladen"
-              description="Controleer GET /projects/{project_id}/weld-defects of /weld-defects."
+              description="Controleer de defect-endpoints voor het actieve project."
             />
           ) : null}
 
@@ -766,7 +861,7 @@ export function LascontrolePage() {
                   description={
                     hasProject
                       ? 'Maak een defect aan binnen het gekozen project.'
-                      : 'Kies eerst een projectscope om defecten projectgebonden te bekijken.'
+                      : 'Kies eerst een projectscope om defecten te bekijken.'
                   }
                 />
               }
@@ -794,11 +889,15 @@ export function LascontrolePage() {
           onSubmit={async (values) => {
             if (weldModalMode === 'edit' && activeWeld) {
               await updateWeld.mutateAsync({ weldId: activeWeld.id, payload: values });
-              setMessage(`Las ${activeWeld.weld_number || activeWeld.id} bijgewerkt.`);
+              setMessage(`Las ${displayWeldNumber(activeWeld)} bijgewerkt.`);
               setActiveWeld({ ...activeWeld, ...values } as Weld);
             } else {
-              await createWeld.mutateAsync(values);
-              setMessage('Las opgeslagen via dropdown-first popupflow.');
+              const created = await createWeld.mutateAsync(values);
+              setTab('welds');
+              setStatus('all');
+              setQuickFilter('all');
+              setPage(1);
+              setMessage(`Las ${created.weld_number || (created as Record<string, unknown>).weld_no || created.id} opgeslagen.`);
               pushNotification({
                 title: 'Las opgeslagen',
                 description: 'Nieuwe las is opgeslagen via de bestaande backend.',
@@ -854,7 +953,7 @@ export function LascontrolePage() {
               await saveInspectionResult.mutateAsync({ inspectionId: inspectionModal.item.id, payload: resultPayload });
               setMessage(`Inspectie ${inspectionModal.item.id} bijgewerkt.`);
             } else {
-              const selectedWeld = weldRows.find((row) => String(row.id) === String(values.weld_id)) || activeWeld;
+              const selectedWeld = sourceWeldRows.find((row) => String(row.id) === String(values.weld_id)) || activeWeld;
               const targetProjectId = selectedWeld?.project_id ? String(selectedWeld.project_id) : projectId || undefined;
 
               if (!targetProjectId) {
@@ -936,7 +1035,7 @@ export function LascontrolePage() {
               await updateDefect.mutateAsync({ defectId: defectModal.item.id, payload: values });
               setMessage(`Defect ${defectModal.item.id} bijgewerkt.`);
             } else {
-              const selectedWeld = weldRows.find((row) => String(row.id) === String(values.weld_id)) || activeWeld;
+              const selectedWeld = sourceWeldRows.find((row) => String(row.id) === String(values.weld_id)) || activeWeld;
               const targetProjectId = selectedWeld?.project_id ? String(selectedWeld.project_id) : projectId;
 
               if (!targetProjectId) {
@@ -962,9 +1061,9 @@ export function LascontrolePage() {
           <div className="detail-stack">
             <div className="detail-hero">
               <div>
-                <h3>{activeWeld.weld_number || activeWeld.id}</h3>
+                <h3>{displayWeldNumber(activeWeld)}</h3>
                 <div className="list-subtle">
-                  {activeWeld.welder_name || 'Lasser onbekend'} · {activeWeld.location || 'Locatie onbekend'}
+                  {displayWelder(activeWeld)} · {activeWeld.location || 'Locatie onbekend'}
                 </div>
               </div>
               <Badge tone={tone(activeWeld.status)}>{activeWeld.status || 'Open'}</Badge>
@@ -986,11 +1085,11 @@ export function LascontrolePage() {
               </div>
               <div>
                 <span>WPS</span>
-                <strong>{activeWeld.wps_id || '—'}</strong>
+                <strong>{displayWps(activeWeld)}</strong>
               </div>
               <div>
                 <span>Inspecteur</span>
-                <strong>{activeWeld.inspector_name || '—'}</strong>
+                <strong>{activeWeld.inspector_name || (activeWeld as Record<string, unknown>).inspector || '—'}</strong>
               </div>
               <div>
                 <span>Datum</span>
@@ -1014,7 +1113,7 @@ export function LascontrolePage() {
                 disabled={!activeWeldProjectId || conformWeld.isPending}
                 onClick={async () => {
                   await conformWeld.mutateAsync(activeWeld.id);
-                  setMessage(`Las ${activeWeld.weld_number || activeWeld.id} conform gezet.`);
+                  setMessage(`Las ${displayWeldNumber(activeWeld)} conform gezet.`);
                   setActiveWeld({ ...activeWeld, status: 'conform' });
                 }}
               >
@@ -1029,7 +1128,7 @@ export function LascontrolePage() {
                     throw new Error('Project ontbreekt voor reset to norm.');
                   }
                   await resetToNorm.mutateAsync({ projectId: targetProjectId, weldId: activeWeld.id });
-                  setMessage(`Las ${activeWeld.weld_number || activeWeld.id} terug naar norm gezet.`);
+                  setMessage(`Las ${displayWeldNumber(activeWeld)} terug naar norm gezet.`);
                   setActiveWeld({ ...activeWeld, status: 'open' });
                 }}
               >
@@ -1149,7 +1248,7 @@ export function LascontrolePage() {
                   formData.append('files', file);
 
                   await uploadWeldAttachment.mutateAsync(formData);
-                  setMessage(`Bijlage ${file.name} toegevoegd aan las ${activeWeld.weld_number || activeWeld.id}.`);
+                  setMessage(`Bijlage ${file.name} toegevoegd aan las ${displayWeldNumber(activeWeld)}.`);
                 }}
               />
 
