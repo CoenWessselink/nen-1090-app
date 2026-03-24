@@ -46,6 +46,8 @@ type ProjectCreateResult = Record<string, unknown> & {
   create_summary: ProjectCreateSummary;
 };
 
+type SelectionQueryFn = (projectId: string | number) => Promise<Record<string, unknown>[] | null>;
+
 export function useProjects(params?: ListParams) {
   return useQuery({
     queryKey: ['projects', params],
@@ -85,10 +87,10 @@ export function useProjectInspections(projectId?: string | number, params?: List
   });
 }
 
-function useProjectSelectionQuery(queryKey: string, projectId?: string | number, queryFn?: (projectId: string | number) => Promise<Record<string, unknown>[] | null>) {
+function useProjectSelectionQuery(queryKey: string, projectId?: string | number, queryFn?: SelectionQueryFn) {
   return useQuery({
     queryKey: [queryKey, projectId],
-    queryFn: async () => ({ items: (await queryFn?.(String(projectId))) || [] }),
+    queryFn: async () => ({ items: projectId && queryFn ? (await queryFn(projectId)) || [] : [] }),
     enabled: Boolean(projectId && queryFn),
   });
 }
@@ -114,7 +116,7 @@ export function useCreateProject() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (payload: ProjectFormValues): Promise<ProjectCreateResult> => {
-      const project = await createProject(payload);
+      const project = await createProject(payload) as ProjectCreateResult;
       const warnings: ProjectCreateWarning[] = [];
       let assembliesCreated = 0;
       let weldsCreated = 0;
@@ -160,7 +162,7 @@ export function useCreateProject() {
           continue;
         }
         try {
-          const createdAssembly = await createProjectAssembly(project.id, assembly);
+          const createdAssembly = await createProjectAssembly(project.id, assembly) as { id: string | number };
           assemblyMap.set(assembly.temp_id, String(createdAssembly.id));
           assembliesCreated += 1;
         } catch (error) {
@@ -181,7 +183,7 @@ export function useCreateProject() {
             process: weld.process,
             location: weld.location,
             status: weld.status || 'concept',
-          });
+          }) as { id: string | number };
           weldsCreated += 1;
           for (const photo of weld.photos || []) {
             try {

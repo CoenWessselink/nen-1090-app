@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { AlertTriangle, RefreshCcw } from 'lucide-react';
+import { RefreshCcw } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -10,7 +10,7 @@ import { ProjectScopePicker } from '@/components/project-scope/ProjectScopePicke
 import { useProjectContext } from '@/context/ProjectContext';
 import { useCeDossier } from '@/hooks/useCompliance';
 
-function asArray(value: unknown) {
+function asArray(value: unknown): unknown[] {
   return Array.isArray(value) ? value : [];
 }
 
@@ -27,13 +27,11 @@ export function CeDossierPage() {
 
   return (
     <div className="page-stack">
-      <PageHeader title="CE Dossier" description="Vereenvoudigd CE-overzicht op basis van de huidige live API (/api/v1/ce_export/{project_id})." />
+      <PageHeader title="CE Dossier" description="Vereenvoudigd CE-overzicht op basis van de huidige live API (/api/v1/ce_export/{projectId})." />
 
-      {!hasProject ? (
-        <InlineMessage tone="danger">Selecteer eerst een project om het CE-overzicht te laden.</InlineMessage>
-      ) : null}
+      {!hasProject ? <InlineMessage tone="danger">Selecteer eerst een project om het CE-overzicht te laden.</InlineMessage> : null}
 
-      <ProjectScopePicker description="Deze versie gebruikt uitsluitend het live endpoint /api/v1/ce_export/{project_id}. Niet-beschikbare compliance- en exportjob-endpoints zijn uitgeschakeld." />
+      <ProjectScopePicker description="Deze versie gebruikt uitsluitend het live endpoint /api/v1/ce_export/{projectId}. Niet-beschikbare compliance- en exportjob-endpoints zijn uitgeschakeld." />
 
       <Card>
         <div className="toolbar-cluster">
@@ -47,10 +45,7 @@ export function CeDossierPage() {
 
       {ceQuery.isError ? (
         <InlineMessage tone="danger">
-          <span className="inline-flex items-center gap-2">
-            <AlertTriangle size={16} />
-            <span>Het live endpoint <strong>/api/v1/ce_export/&#123;project_id&#125;</strong> geeft momenteel een fout of bestaat niet op de live API.</span>
-          </span>
+          Het live endpoint /api/v1/ce_export/{projectId} geeft momenteel een fout of bestaat niet op de live API.
         </InlineMessage>
       ) : null}
 

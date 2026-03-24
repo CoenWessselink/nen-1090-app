@@ -13,13 +13,13 @@ import { RapportagePage } from '@/features/rapportage/RapportagePage';
 import { InstellingenPage } from '@/features/instellingen/InstellingenPage';
 import { SuperadminPage } from '@/features/superadmin/SuperadminPage';
 import { BillingPage } from '@/features/billing/BillingPage';
-import LoginPage, { LoginPage as NamedLoginPage } from '@/features/auth/LoginPage';
+import LoginPage from '@/features/auth/LoginPage';
 import { ForgotPasswordPage } from '@/features/auth/ForgotPasswordPage';
 import { ResetPasswordPage } from '@/features/auth/ResetPasswordPage';
 import { LogoutPage } from '@/features/auth/LogoutPage';
 import { ChangePasswordPage } from '@/features/auth/ChangePasswordPage';
 
-const Login = NamedLoginPage || LoginPage;
+const Login = LoginPage;
 
 export type AppRouteMeta = {
   path: string;
@@ -65,18 +65,22 @@ export const routerConfig = [
       { index: true, element: <Navigate to="/dashboard" replace /> },
       { path: 'dashboard', element: <DashboardPage /> },
       { path: 'projecten', element: <ProjectenPage /> },
-      { path: 'projecten/:projectId', element: <ProjectScopedRoute />, children: [
-        { index: true, element: <ProjectenPage /> },
-        { path: 'welds', element: <LascontrolePage /> },
-        { path: 'ce-dossier', element: <CeDossierPage /> },
-      ]},
+      {
+        path: 'projecten/:projectId',
+        element: <ProjectScopedRoute />,
+        children: [
+          { index: true, element: <ProjectenPage /> },
+          { path: 'welds', element: <LascontrolePage /> },
+          { path: 'ce-dossier', element: <CeDossierPage /> },
+        ],
+      },
       { path: 'lascontrole', element: <LascontrolePage /> },
       { path: 'ce-dossier', element: <CeDossierPage /> },
       { path: 'planning', element: <PlanningPage /> },
       { path: 'rapportage', element: <RapportagePage /> },
       { path: 'billing', element: <BillingPage /> },
       { path: 'instellingen', element: <InstellingenPage /> },
-      { path: 'superadmin', element: <RoleGuard allow={['SUPERADMIN','ADMIN']}><SuperadminPage /></RoleGuard> },
+      { path: 'superadmin', element: <RoleGuard allow={['SUPERADMIN', 'ADMIN']}><SuperadminPage /></RoleGuard> },
     ],
   },
   { path: '*', element: <Navigate to="/dashboard" replace /> },
