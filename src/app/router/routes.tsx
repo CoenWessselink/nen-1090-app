@@ -134,7 +134,10 @@ export const routerConfig = [
         children: [
           { index: true, element: <ProjectenPage /> },
           { path: 'welds', element: <LascontrolePage /> },
+          { path: 'lascontrole', element: <Navigate to="../welds" replace /> },
           { path: 'ce-dossier', element: <CeDossierPage /> },
+          { path: 'documents', element: <Navigate to="../ce-dossier" replace /> },
+          { path: 'exports', element: <Navigate to="../ce-dossier" replace /> },
         ],
       },
       { path: 'lascontrole', element: <LascontrolePage /> },
