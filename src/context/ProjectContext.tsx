@@ -19,14 +19,41 @@ type ProjectContextValue = {
 
 const ProjectContext = createContext<ProjectContextValue | undefined>(undefined);
 
+function normalizeProjectId(value: unknown): string {
+  if (value == null) return '';
+  const raw = String(value).trim();
+  if (!raw) return '';
+
+  let decoded = raw;
+  try {
+    decoded = decodeURIComponent(raw);
+  } catch {
+    decoded = raw;
+  }
+
+  if (!decoded || decoded === '{id}' || /%7bid%7d/i.test(raw)) return '';
+  if (/[{}]/.test(decoded)) return '';
+  return decoded;
+}
+
+function normalizeProject(project: ActiveProject | null): ActiveProject | null {
+  if (!project) return null;
+  const id = normalizeProjectId(project.id);
+  if (!id) return null;
+  return {
+    id,
+    name: project.name,
+    projectnummer: project.projectnummer,
+  };
+}
+
 function readInitialProject(): ActiveProject | null {
   if (typeof window === 'undefined') return null;
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as ActiveProject;
-    if (!parsed?.id) return null;
-    return { id: String(parsed.id), name: parsed.name, projectnummer: parsed.projectnummer };
+    return normalizeProject(parsed);
   } catch {
     return null;
   }
@@ -44,14 +71,17 @@ export function ProjectProvider({ children }: PropsWithChildren) {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(activeProject));
   }, [activeProject]);
 
-  const value = useMemo<ProjectContextValue>(() => ({
-    activeProject,
-    projectId: activeProject?.id ? String(activeProject.id) : '',
-    projectLabel: activeProject?.projectnummer || activeProject?.name || activeProject?.id || 'Geen project geselecteerd',
-    hasProject: Boolean(activeProject?.id),
-    setProject: (project) => setActiveProject(project ? { ...project, id: String(project.id) } : null),
-    clearProject: () => setActiveProject(null),
-  }), [activeProject]);
+  const value = useMemo<ProjectContextValue>(
+    () => ({
+      activeProject,
+      projectId: activeProject?.id ? String(activeProject.id) : '',
+      projectLabel: activeProject?.projectnummer || activeProject?.name || activeProject?.id || 'Geen project geselecteerd',
+      hasProject: Boolean(activeProject?.id),
+      setProject: (project) => setActiveProject(normalizeProject(project)),
+      clearProject: () => setActiveProject(null),
+    }),
+    [activeProject],
+  );
 
   return <ProjectContext.Provider value={value}>{children}</ProjectContext.Provider>;
 }
