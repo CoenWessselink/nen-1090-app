@@ -2,12 +2,16 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createDefect, deleteDefect, getDefects, reopenDefect, resolveDefect, updateDefect } from '@/api/defects';
 import { normalizeListResponse } from '@/utils/api';
 import type { ListParams } from '@/types/api';
+import { useAuthStore } from '@/app/store/auth-store';
 
 export function useDefects(params?: ListParams, enabled = true) {
+  const token = useAuthStore((state) => state.token);
+
   return useQuery({
-    queryKey: ['defects', params],
+    queryKey: ['defects', params, token],
     queryFn: async () => normalizeListResponse(await getDefects(params)),
-    enabled,
+    enabled: Boolean(token) && enabled,
+    staleTime: 1000 * 30,
   });
 }
 

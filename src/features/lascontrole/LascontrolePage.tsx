@@ -116,8 +116,8 @@ export function LascontrolePage() {
   };
 
   const weldsQuery = useWelds(weldListParams);
-  const inspectionsQuery = useInspections(scopedListParams, tab === 'inspections' || hasProject);
-  const defectsQuery = useDefects(scopedListParams, tab === 'defects' || hasProject);
+  const inspectionsQuery = useInspections(scopedListParams, tab === 'inspections');
+  const defectsQuery = useDefects(scopedListParams, tab === 'defects');
   const inspectionTemplates = useInspectionTemplates(Boolean(inspectionModal));
 
   const createWeld = useCreateWeld();

@@ -2,36 +2,49 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { approveInspection, createInspection, createInspectionResult, deleteInspection, downloadInspectionAttachment, getInspectionAttachments, getInspectionAudit, getInspectionResults, getInspections, updateInspection, uploadInspectionAttachment } from '@/api/inspections';
 import { normalizeListResponse } from '@/utils/api';
 import type { ListParams } from '@/types/api';
+import { useAuthStore } from '@/app/store/auth-store';
 
 export function useInspections(params?: ListParams, enabled = true) {
+  const token = useAuthStore((state) => state.token);
+
   return useQuery({
-    queryKey: ['inspections', params],
+    queryKey: ['inspections', params, token],
     queryFn: async () => normalizeListResponse(await getInspections(params)),
-    enabled,
+    enabled: Boolean(token) && enabled,
+    staleTime: 1000 * 30,
   });
 }
 
 export function useInspectionResults(inspectionId?: string | number) {
+  const token = useAuthStore((state) => state.token);
+
   return useQuery({
-    queryKey: ['inspection-results', inspectionId],
+    queryKey: ['inspection-results', inspectionId, token],
     queryFn: () => getInspectionResults(String(inspectionId)),
-    enabled: Boolean(inspectionId),
+    enabled: Boolean(token) && Boolean(inspectionId),
+    staleTime: 1000 * 30,
   });
 }
 
 export function useInspectionAttachments(inspectionId?: string | number) {
+  const token = useAuthStore((state) => state.token);
+
   return useQuery({
-    queryKey: ['inspection-attachments', inspectionId],
+    queryKey: ['inspection-attachments', inspectionId, token],
     queryFn: async () => normalizeListResponse(await getInspectionAttachments(String(inspectionId))),
-    enabled: Boolean(inspectionId),
+    enabled: Boolean(token) && Boolean(inspectionId),
+    staleTime: 1000 * 30,
   });
 }
 
 export function useInspectionAudit(inspectionId?: string | number) {
+  const token = useAuthStore((state) => state.token);
+
   return useQuery({
-    queryKey: ['inspection-audit', inspectionId],
+    queryKey: ['inspection-audit', inspectionId, token],
     queryFn: async () => normalizeListResponse(await getInspectionAudit(String(inspectionId))),
-    enabled: Boolean(inspectionId),
+    enabled: Boolean(token) && Boolean(inspectionId),
+    staleTime: 1000 * 30,
   });
 }
 
