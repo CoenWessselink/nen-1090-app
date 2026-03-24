@@ -64,7 +64,7 @@ function tone(value?: string) {
   const status = String(value || '').toLowerCase();
   if (['goedgekeurd', 'approved', 'accepted', 'resolved', 'conform'].includes(status)) return 'success' as const;
   if (['afgekeurd', 'rejected', 'open', 'repair-required'].includes(status)) return 'danger' as const;
-  return 'warning' as const;
+  return 'neutral' as const;
 }
 
 function isoLabel(value?: string) {
@@ -471,7 +471,7 @@ export function LascontrolePage() {
 
       {message ? <InlineMessage tone="success">{message}</InlineMessage> : null}
 
-      <InlineMessage tone={hasProject ? 'warning' : 'success'}>
+      <InlineMessage tone={hasProject ? 'neutral' : 'success'}>
         {hasProject
           ? 'Projectscope actief. Lassen blijven tenant-breed zichtbaar; inspecties, defecten en acties gebruiken het actieve project.'
           : 'Geen projectscope gekozen. Lascontrole draait nu weld-first over alle lassen binnen de tenant.'}
