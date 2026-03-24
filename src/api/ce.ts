@@ -1,13 +1,80 @@
-import { apiRequest, downloadRequest, listRequest, optionalRequest, uploadRequest } from '@/api/client';
+import { downloadRequest, optionalRequest, uploadRequest } from '@/api/client';
+import { withQuery } from '@/utils/api';
 import type { CeDocument, ComplianceOverview, ExportJob } from '@/types/domain';
 import type { ListParams } from '@/types/api';
 
-export function getCeDocuments(params?: ListParams) {
-  if (params?.project_id || params?.projectId) {
-    const projectId = params.project_id || params.projectId;
-    return listRequest<CeDocument[] | { items?: CeDocument[]; data?: CeDocument[]; results?: CeDocument[] }>(`/projects/${projectId}/documents`, params);
+type ListLike<T> = T[] | { items?: T[]; data?: T[]; results?: T[] };
+
+function emptyList<T>(params?: ListParams): { items: T[]; total: number; page: number; limit: number } {
+  return {
+    items: [],
+    total: 0,
+    page: Number(params?.page || 1),
+    limit: Number(params?.limit || params?.pageSize || 25),
+  };
+}
+
+function buildExportPayload(projectId: string | number, kind: 'ce' | 'zip' | 'pdf' | 'excel') {
+  if (kind === 'ce') {
+    return {
+      project_id: projectId,
+      export_type: 'ce-report',
+      bundle_type: 'zip',
+      report_type: 'ce',
+      kind: 'ce-report',
+    };
   }
-  return listRequest<CeDocument[] | { items?: CeDocument[]; data?: CeDocument[]; results?: CeDocument[] }>('/documents', params);
+
+  if (kind === 'zip') {
+    return {
+      project_id: projectId,
+      export_type: 'zip',
+      bundle_type: 'zip',
+      report_type: 'zip',
+      kind: 'zip',
+    };
+  }
+
+  if (kind === 'pdf') {
+    return {
+      project_id: projectId,
+      export_type: 'pdf',
+      bundle_type: 'pdf',
+      report_type: 'pdf',
+      kind: 'pdf',
+    };
+  }
+
+  return {
+    project_id: projectId,
+    export_type: 'excel',
+    bundle_type: 'excel',
+    report_type: 'excel',
+    kind: 'excel',
+  };
+}
+
+function defaultComplianceOverview(): ComplianceOverview {
+  return {
+    score: 0,
+    checklist: [],
+    missing_items: [],
+    validation_summary: {
+      completed_checks: 0,
+      total_checks: 0,
+    },
+  } as ComplianceOverview;
+}
+
+export function getCeDocuments(params?: ListParams) {
+  const projectId = params?.project_id || params?.projectId;
+  return (
+    optionalRequest<ListLike<CeDocument>>(
+      projectId
+        ? [withQuery(`/projects/${projectId}/documents`, params), withQuery('/documents', params)]
+        : [withQuery('/documents', params)],
+    ) || Promise.resolve(emptyList<CeDocument>(params))
+  );
 }
 
 export function uploadDocument(payload: FormData) {
@@ -17,54 +84,125 @@ export function uploadDocument(payload: FormData) {
   });
 }
 
-export function getComplianceOverview(projectId: string | number) {
-  return apiRequest<ComplianceOverview>(`/projects/${projectId}/compliance`);
+export async function getComplianceOverview(projectId: string | number) {
+  return (
+    (await optionalRequest<ComplianceOverview>([
+      `/projects/${projectId}/compliance`,
+      `/projects/${projectId}/ce-dossier`,
+    ])) || defaultComplianceOverview()
+  );
 }
 
-export function getComplianceMissingItems(projectId: string | number) {
-  return optionalRequest<Record<string, unknown>>([`/projects/${projectId}/compliance/missing-items`]);
+export async function getComplianceMissingItems(projectId: string | number) {
+  return (
+    (await optionalRequest<Record<string, unknown>>([
+      `/projects/${projectId}/compliance/missing-items`,
+      `/projects/${projectId}/compliance/missing_items`,
+      `/projects/${projectId}/ce-dossier/missing-items`,
+    ])) || { items: [], missing_items: [] }
+  );
 }
 
-export function getComplianceChecklist(projectId: string | number) {
-  return optionalRequest<Record<string, unknown>>([`/projects/${projectId}/compliance/checklist`]);
+export async function getComplianceChecklist(projectId: string | number) {
+  return (
+    (await optionalRequest<Record<string, unknown>>([
+      `/projects/${projectId}/compliance/checklist`,
+      `/projects/${projectId}/ce-dossier/checklist`,
+    ])) || { items: [], checklist: [] }
+  );
 }
 
-export function getCeDossier(projectId: string | number) {
-  return optionalRequest<Record<string, unknown>>([`/projects/${projectId}/ce-dossier`]);
+export async function getCeDossier(projectId: string | number) {
+  return (
+    (await optionalRequest<Record<string, unknown>>([
+      `/projects/${projectId}/ce-dossier`,
+      `/projects/${projectId}/compliance`,
+    ])) || { sections: [] }
+  );
 }
 
-export function getProjectExports(projectId: string | number, params?: ListParams) {
-  return listRequest<ExportJob[] | { items?: ExportJob[] }>(`/projects/${projectId}/exports`, params);
+export async function getProjectExports(projectId: string | number, params?: ListParams) {
+  return (
+    (await optionalRequest<ListLike<ExportJob>>([
+      withQuery(`/projects/${projectId}/exports`, params),
+      withQuery('/exports', { ...(params || {}), project_id: projectId }),
+    ])) || emptyList<ExportJob>(params)
+  );
 }
 
-export function createCeReport(projectId: string | number) {
-  return apiRequest<Record<string, unknown>>(`/projects/${projectId}/exports/ce-report`, { method: 'POST' });
+export async function createCeReport(projectId: string | number) {
+  return (
+    (await optionalRequest<Record<string, unknown>>(
+      [
+        `/projects/${projectId}/exports/ce-report`,
+        `/projects/${projectId}/exports/zip`,
+        '/exports',
+      ],
+      { method: 'POST', body: JSON.stringify(buildExportPayload(projectId, 'ce')) },
+    )) || { queued: false }
+  );
 }
 
-export function createZipExport(projectId: string | number) {
-  return apiRequest<Record<string, unknown>>(`/projects/${projectId}/exports/zip`, { method: 'POST' });
+export async function createZipExport(projectId: string | number) {
+  return (
+    (await optionalRequest<Record<string, unknown>>(
+      [`/projects/${projectId}/exports/zip`, '/exports'],
+      { method: 'POST', body: JSON.stringify(buildExportPayload(projectId, 'zip')) },
+    )) || { queued: false }
+  );
 }
 
-export function createPdfExport(projectId: string | number) {
-  return apiRequest<Record<string, unknown>>(`/projects/${projectId}/exports/pdf`, { method: 'POST' });
+export async function createPdfExport(projectId: string | number) {
+  return (
+    (await optionalRequest<Record<string, unknown>>(
+      [`/projects/${projectId}/exports/pdf`, '/exports'],
+      { method: 'POST', body: JSON.stringify(buildExportPayload(projectId, 'pdf')) },
+    )) || { queued: false }
+  );
 }
 
-export function createExcelExport(projectId: string | number) {
-  return optionalRequest<Record<string, unknown>>([`/projects/${projectId}/exports/excel`], { method: 'POST' });
+export async function createExcelExport(projectId: string | number) {
+  return (
+    (await optionalRequest<Record<string, unknown>>(
+      [`/projects/${projectId}/exports/excel`, '/exports'],
+      { method: 'POST', body: JSON.stringify(buildExportPayload(projectId, 'excel')) },
+    )) || { queued: false }
+  );
 }
 
 export function downloadProjectExport(projectId: string | number, exportId: string | number) {
   return downloadRequest(`/projects/${projectId}/exports/${exportId}/download`);
 }
 
-export function retryProjectExport(projectId: string | number, exportId: string | number) {
-  return apiRequest<Record<string, unknown>>(`/projects/${projectId}/exports/${exportId}/retry`, { method: 'POST' });
+export async function retryProjectExport(projectId: string | number, exportId: string | number) {
+  return (
+    (await optionalRequest<Record<string, unknown>>(
+      [`/projects/${projectId}/exports/${exportId}/retry`, `/exports/${exportId}/retry`],
+      { method: 'POST' },
+    )) || { queued: false }
+  );
 }
 
-export function getProjectExportPreview(projectId: string | number) {
-  return apiRequest<Record<string, unknown>>(`/projects/${projectId}/exports/preview`);
+export async function getProjectExportPreview(projectId: string | number) {
+  return (
+    (await optionalRequest<Record<string, unknown>>([
+      `/projects/${projectId}/exports/preview`,
+      `/projects/${projectId}/ce-dossier`,
+      `/projects/${projectId}/compliance`,
+    ])) || {}
+  );
 }
 
-export function getProjectExportManifest(projectId: string | number, exportId: string | number) {
-  return apiRequest<Record<string, unknown>>(`/projects/${projectId}/exports/${exportId}/manifest`);
+export async function getProjectExportManifest(projectId: string | number, exportId: string | number) {
+  return (
+    (await optionalRequest<Record<string, unknown>>([
+      `/projects/${projectId}/exports/${exportId}/manifest`,
+      `/projects/${projectId}/exports/${exportId}`,
+      `/exports/${exportId}`,
+    ])) || { manifest: { files: [] } }
+  );
+}
+
+export function uploadProjectExportAttachment(payload: FormData) {
+  return uploadRequest<Record<string, unknown>>('/attachments/upload', payload);
 }

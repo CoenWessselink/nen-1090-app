@@ -2,12 +2,17 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createDefect, deleteDefect, getDefects, reopenDefect, resolveDefect, updateDefect } from '@/api/defects';
 import { normalizeListResponse } from '@/utils/api';
 import type { ListParams } from '@/types/api';
+import { useAuthStore } from '@/app/store/auth-store';
 
 export function useDefects(params?: ListParams, enabled = true) {
+  const token = useAuthStore((state) => state.token);
+  const user = useAuthStore((state) => state.user);
+  const hasSession = Boolean(token || user);
+
   return useQuery({
-    queryKey: ['defects', params],
+    queryKey: ['defects', params, token, user?.tenantId, user?.email],
     queryFn: async () => normalizeListResponse(await getDefects(params)),
-    enabled,
+    enabled: hasSession && enabled,
     staleTime: 1000 * 30,
   });
 }
@@ -15,8 +20,15 @@ export function useDefects(params?: ListParams, enabled = true) {
 export function useCreateDefect() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ projectId, weldId, payload }: { projectId: string | number; weldId: string | number; payload: Record<string, unknown> }) =>
-      createDefect(projectId, weldId, payload),
+    mutationFn: ({
+      projectId,
+      weldId,
+      payload,
+    }: {
+      projectId: string | number;
+      weldId: string | number;
+      payload: Record<string, unknown>;
+    }) => createDefect(projectId, weldId, payload),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['defects'] }),
   });
 }

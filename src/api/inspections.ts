@@ -1,15 +1,15 @@
-import { apiRequest, downloadRequest, optionalRequest, uploadRequest } from '@/api/client';
+import { apiRequest, downloadRequest, optionalRequest } from '@/api/client';
 import { withQuery } from '@/utils/api';
 import type { Inspection } from '@/types/domain';
-import type { ApiListResponse, ListParams } from '@/types/api';
+import type { ListParams } from '@/types/api';
 
 export async function getInspections(params?: ListParams) {
   const projectId = params?.project_id || params?.projectId;
   return (
-    (await optionalRequest<ApiListResponse<Inspection> | Inspection[]>([
+    (await optionalRequest<Inspection[] | { items?: Inspection[]; data?: Inspection[]; results?: Inspection[] }>([
       withQuery(projectId ? `/projects/${projectId}/inspections` : '/inspections', params),
       withQuery('/inspections', params),
-    ])) || { items: [], total: 0, page: 1, limit: params?.limit || params?.pageSize || 25 }
+    ])) || { items: [] }
   );
 }
 
@@ -27,7 +27,10 @@ export async function createInspection(
     ...(projectPath ? [projectPath] : []),
     `/welds/${weldId}/inspection`,
     '/inspections',
-  ], { method: 'POST', body: JSON.stringify({ ...payload, project_id: projectId, weld_id: weldId }) })) as Inspection;
+  ], {
+    method: 'POST',
+    body: JSON.stringify({ ...payload, project_id: projectId, weld_id: weldId }),
+  })) as Inspection;
 }
 
 export function updateInspection(inspectionId: string | number, payload: Record<string, unknown>) {
@@ -50,17 +53,19 @@ export function createInspectionResult(inspectionId: string | number, payload: R
 }
 
 export function getInspectionAttachments(inspectionId: string | number) {
-  return optionalRequest<Record<string, unknown>>([
-    `/inspections/${inspectionId}/attachments`,
-    `/inspections/${inspectionId}/documents`,
-  ]) || Promise.resolve({ items: [] });
+  return (
+    optionalRequest<Record<string, unknown>>([
+      `/inspections/${inspectionId}/attachments`,
+      `/inspections/${inspectionId}/documents`,
+    ]) || Promise.resolve({ items: [] })
+  );
 }
 
 export function uploadInspectionAttachment(inspectionId: string | number, payload: FormData) {
-  return optionalRequest<Record<string, unknown>>([
-    `/inspections/${inspectionId}/attachments`,
-    `/inspections/${inspectionId}/documents`,
-  ], { method: 'POST', body: payload });
+  return optionalRequest<Record<string, unknown>>(
+    [`/inspections/${inspectionId}/attachments`, `/inspections/${inspectionId}/documents`],
+    { method: 'POST', body: payload },
+  );
 }
 
 export function downloadInspectionAttachment(inspectionId: string | number, attachmentId: string | number) {
@@ -68,18 +73,16 @@ export function downloadInspectionAttachment(inspectionId: string | number, atta
 }
 
 export function getInspectionAudit(inspectionId: string | number) {
-  return optionalRequest<Record<string, unknown>>([
-    `/inspections/${inspectionId}/audit`,
-  ]) || Promise.resolve({ items: [] });
+  return optionalRequest<Record<string, unknown>>([`/inspections/${inspectionId}/audit`]) || Promise.resolve({ items: [] });
 }
 
 export function approveInspection(inspectionId: string | number) {
-  return optionalRequest<Record<string, unknown>>([
-    `/inspections/${inspectionId}/approve`,
-    `/inspections/${inspectionId}/conform`,
-  ], { method: 'POST' });
+  return optionalRequest<Record<string, unknown>>(
+    [`/inspections/${inspectionId}/approve`, `/inspections/${inspectionId}/conform`],
+    { method: 'POST' },
+  );
 }
 
 export function uploadInspectionPhoto(inspectionId: string | number, payload: FormData) {
-  return uploadRequest<Record<string, unknown>>(`/inspections/${inspectionId}/photos`, payload);
+  return apiRequest<Record<string, unknown>>(`/inspections/${inspectionId}/photos`, { method: 'POST', body: payload });
 }

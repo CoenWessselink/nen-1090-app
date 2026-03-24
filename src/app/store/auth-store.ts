@@ -34,10 +34,14 @@ function isSupportedToken(value: unknown): value is string {
 }
 
 function loadInitialState(): Pick<AuthState, 'token' | 'refreshToken' | 'user' | 'impersonation'> {
-  if (typeof window === 'undefined') return { token: null, refreshToken: null, user: null, impersonation: null };
+  if (typeof window === 'undefined') {
+    return { token: null, refreshToken: null, user: null, impersonation: null };
+  }
 
   const raw = window.localStorage.getItem(storageKey);
-  if (!raw) return { token: null, refreshToken: null, user: null, impersonation: null };
+  if (!raw) {
+    return { token: null, refreshToken: null, user: null, impersonation: null };
+  }
 
   try {
     const parsed = JSON.parse(raw) as Pick<AuthState, 'token' | 'refreshToken' | 'user' | 'impersonation'>;
