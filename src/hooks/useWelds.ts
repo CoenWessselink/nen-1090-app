@@ -4,12 +4,43 @@ import { normalizeListResponse } from '@/utils/api';
 import type { ListParams } from '@/types/api';
 import type { WeldFormValues } from '@/types/forms';
 import { useAuthStore } from '@/app/store/auth-store';
-export function useWelds(params?: ListParams, enabled = true) { const token = useAuthStore((s) => s.token); const user = useAuthStore((s) => s.user); const hasSession = Boolean(token || user); return useQuery({ queryKey: ['welds', params, token, user?.tenantId, user?.email], queryFn: async () => normalizeListResponse(await getWelds(params)), enabled: hasSession && enabled, staleTime: 1000 * 30 }); }
-export function useWeld(projectId?: string | number, weldId?: string | number) { const token = useAuthStore((s) => s.token); const user = useAuthStore((s) => s.user); const hasSession = Boolean(token || user); return useQuery({ queryKey: ['weld', projectId, weldId, token, user?.tenantId, user?.email], queryFn: async () => await getWeld(String(projectId), String(weldId)), enabled: hasSession && Boolean(projectId) && Boolean(weldId), staleTime: 1000 * 30 }); }
-export function useWeldInspections(projectId?: string | number, weldId?: string | number) { const token = useAuthStore((s) => s.token); const user = useAuthStore((s) => s.user); const hasSession = Boolean(token || user); return useQuery({ queryKey: ['weld-inspections', projectId, weldId, token, user?.tenantId, user?.email], queryFn: async () => normalizeListResponse(await getWeldInspections(String(projectId), String(weldId))), enabled: hasSession && Boolean(projectId) && Boolean(weldId), staleTime: 1000 * 30 }); }
-export function useWeldDefects(projectId?: string | number, weldId?: string | number) { const token = useAuthStore((s) => s.token); const user = useAuthStore((s) => s.user); const hasSession = Boolean(token || user); return useQuery({ queryKey: ['weld-defects', projectId, weldId, token, user?.tenantId, user?.email], queryFn: async () => normalizeListResponse(await getWeldDefects(String(projectId), String(weldId))), enabled: hasSession && Boolean(projectId) && Boolean(weldId), staleTime: 1000 * 30 }); }
-export function useWeldAttachments(projectId?: string | number, weldId?: string | number) { const token = useAuthStore((s) => s.token); const user = useAuthStore((s) => s.user); const hasSession = Boolean(token || user); return useQuery({ queryKey: ['weld-attachments', projectId, weldId, token, user?.tenantId, user?.email], queryFn: async () => normalizeListResponse(await getWeldAttachments(String(projectId), String(weldId))), enabled: hasSession && Boolean(projectId) && Boolean(weldId), staleTime: 1000 * 30 }); }
-export function useWeldCompliance(projectId?: string | number, weldId?: string | number) { const token = useAuthStore((s) => s.token); const user = useAuthStore((s) => s.user); const hasSession = Boolean(token || user); return useQuery({ queryKey: ['weld-compliance', projectId, weldId, token, user?.tenantId, user?.email], queryFn: async () => await getWeldCompliance(String(projectId), String(weldId)), enabled: hasSession && Boolean(projectId) && Boolean(weldId), staleTime: 1000 * 30 }); }
+
+export function useWelds(params?: ListParams, enabled = true) {
+  const token = useAuthStore((s) => s.token);
+  const user = useAuthStore((s) => s.user);
+  const hasSession = Boolean(token || user);
+  return useQuery({ queryKey: ['welds', params, token, user?.tenantId, user?.email], queryFn: async () => normalizeListResponse(await getWelds(params)), enabled: hasSession && enabled, staleTime: 1000 * 30 });
+}
+export function useWeld(projectId?: string | number, weldId?: string | number) {
+  const token = useAuthStore((s) => s.token);
+  const user = useAuthStore((s) => s.user);
+  const hasSession = Boolean(token || user);
+  return useQuery({ queryKey: ['weld', projectId, weldId, token, user?.tenantId, user?.email], queryFn: async () => await getWeld(String(projectId), String(weldId)), enabled: hasSession && Boolean(projectId) && Boolean(weldId), staleTime: 1000 * 30 });
+}
+export function useWeldInspections(projectId?: string | number, weldId?: string | number) {
+  const token = useAuthStore((s) => s.token);
+  const user = useAuthStore((s) => s.user);
+  const hasSession = Boolean(token || user);
+  return useQuery({ queryKey: ['weld-inspections', projectId, weldId, token, user?.tenantId, user?.email], queryFn: async () => normalizeListResponse(await getWeldInspections(String(projectId), String(weldId))), enabled: hasSession && Boolean(projectId) && Boolean(weldId), staleTime: 1000 * 30 });
+}
+export function useWeldDefects(projectId?: string | number, weldId?: string | number) {
+  const token = useAuthStore((s) => s.token);
+  const user = useAuthStore((s) => s.user);
+  const hasSession = Boolean(token || user);
+  return useQuery({ queryKey: ['weld-defects', projectId, weldId, token, user?.tenantId, user?.email], queryFn: async () => normalizeListResponse(await getWeldDefects(String(projectId), String(weldId))), enabled: hasSession && Boolean(projectId) && Boolean(weldId), staleTime: 1000 * 30 });
+}
+export function useWeldAttachments(projectId?: string | number, weldId?: string | number) {
+  const token = useAuthStore((s) => s.token);
+  const user = useAuthStore((s) => s.user);
+  const hasSession = Boolean(token || user);
+  return useQuery({ queryKey: ['weld-attachments', projectId, weldId, token, user?.tenantId, user?.email], queryFn: async () => normalizeListResponse(await getWeldAttachments(String(projectId), String(weldId))), enabled: hasSession && Boolean(projectId) && Boolean(weldId), staleTime: 1000 * 30 });
+}
+export function useWeldCompliance(projectId?: string | number, weldId?: string | number) {
+  const token = useAuthStore((s) => s.token);
+  const user = useAuthStore((s) => s.user);
+  const hasSession = Boolean(token || user);
+  return useQuery({ queryKey: ['weld-compliance', projectId, weldId, token, user?.tenantId, user?.email], queryFn: async () => await getWeldCompliance(String(projectId), String(weldId)), enabled: hasSession && Boolean(projectId) && Boolean(weldId), staleTime: 1000 * 30 });
+}
 export function useCreateWeld() { const qc = useQueryClient(); return useMutation({ mutationFn: async (payload: WeldFormValues) => await createWeld(payload), onSuccess: async () => { await qc.invalidateQueries({ queryKey: ['welds'] }); await qc.invalidateQueries({ queryKey: ['project-welds'] }); } }); }
 export function useCopyWeld(projectId: string | number) { const qc = useQueryClient(); return useMutation({ mutationFn: async ({ weldId, weldNumber }: { weldId: string | number; weldNumber?: string }) => await copyWeld(projectId, weldId, weldNumber), onSuccess: async (_d, v) => { await qc.invalidateQueries({ queryKey: ['welds'] }); await qc.invalidateQueries({ queryKey: ['project-welds', projectId] }); await qc.invalidateQueries({ queryKey: ['weld', projectId, v.weldId] }); } }); }
 export function useUpdateWeld(projectId: string | number) { const qc = useQueryClient(); return useMutation({ mutationFn: async ({ weldId, payload }: { weldId: string | number; payload: WeldFormValues }) => await updateWeld(projectId, weldId, payload), onSuccess: async (_d, v) => { await qc.invalidateQueries({ queryKey: ['welds'] }); await qc.invalidateQueries({ queryKey: ['project-welds', projectId] }); await qc.invalidateQueries({ queryKey: ['weld', projectId, v.weldId] }); } }); }

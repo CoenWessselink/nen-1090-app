@@ -71,6 +71,18 @@ import type { WeldFormValues } from '@/types/forms';
 import { formatDate } from '@/utils/format';
 import { useProjectContext } from '@/context/ProjectContext';
 
+function textOf(value: unknown, fallback = '—'): string {
+  if (value == null) return fallback;
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed.length ? trimmed : fallback;
+  }
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return String(value);
+  }
+  return fallback;
+}
+
 function tone(value?: string) {
   const status = String(value || '').toLowerCase();
   if (['goedgekeurd', 'approved', 'accepted', 'resolved', 'conform'].includes(status)) return 'success' as const;
@@ -99,20 +111,20 @@ function normalizedStatus(value?: string) {
 }
 
 function displayWeldNumber(row: Weld | Record<string, unknown>) {
-  return String(
+  return textOf(
     (row as { weld_number?: unknown }).weld_number ??
       (row as { weld_no?: unknown }).weld_no ??
-      (row as { id?: unknown }).id ??
-      '',
+      (row as { id?: unknown }).id,
+    '',
   );
 }
 
 function displayWelder(row: Weld | Record<string, unknown>) {
-  return String((row as { welder_name?: unknown }).welder_name ?? (row as { welders?: unknown }).welders ?? '—');
+  return textOf((row as { welder_name?: unknown }).welder_name ?? (row as { welders?: unknown }).welders);
 }
 
 function displayWps(row: Weld | Record<string, unknown>) {
-  return String((row as { wps_id?: unknown }).wps_id ?? (row as { wps?: unknown }).wps ?? '—');
+  return textOf((row as { wps_id?: unknown }).wps_id ?? (row as { wps?: unknown }).wps);
 }
 
 export function LascontrolePage() {
@@ -250,7 +262,7 @@ export function LascontrolePage() {
     () =>
       sourceWeldRows.map((row) => ({
         id: String(row.id),
-        label: `${displayWeldNumber(row)} · ${row.location || 'Onbekende locatie'}`,
+        label: `${displayWeldNumber(row)} · ${textOf(row.location, 'Onbekende locatie')}`,
       })),
     [sourceWeldRows],
   );
@@ -295,7 +307,7 @@ export function LascontrolePage() {
       key: 'project_name',
       header: 'Project',
       sortable: true,
-      cell: (row) => row.project_name || '—',
+      cell: (row) => textOf(row.project_name),
       hiddenByDefault: false,
     },
     {
@@ -308,13 +320,13 @@ export function LascontrolePage() {
       key: 'process',
       header: 'Proces',
       sortable: true,
-      cell: (row) => row.process || '—',
+      cell: (row) => textOf(row.process),
     },
     {
       key: 'location',
       header: 'Locatie',
       sortable: true,
-      cell: (row) => row.location || '—',
+      cell: (row) => textOf(row.location),
     },
     {
       key: 'inspection_date',
@@ -326,7 +338,7 @@ export function LascontrolePage() {
       key: 'status',
       header: 'Status',
       sortable: true,
-      cell: (row) => <Badge tone={tone(row.status)}>{row.status || 'Open'}</Badge>,
+      cell: (row) => <Badge tone={tone(row.status)}>{textOf(row.status, 'Open')}</Badge>,
     },
     {
       key: 'actions',
@@ -360,7 +372,7 @@ export function LascontrolePage() {
                 weldId: row.id,
                 weldNumber: `${displayWeldNumber(row)}-kopie`,
               });
-              setMessage(`Las ${displayWeldNumber(row)} gekopieerd als ${copy.weld_number || copy.id}.`);
+              setMessage(`Las ${displayWeldNumber(row)} gekopieerd als ${textOf(copy.weld_number || copy.id, '')}.`);
             }}
             aria-label="Kopiëren"
           >
@@ -388,7 +400,7 @@ export function LascontrolePage() {
       key: 'inspector',
       header: 'Inspecteur',
       sortable: true,
-      cell: (row) => String(row.inspector || '—'),
+      cell: (row) => textOf(row.inspector),
     },
     {
       key: 'due_date',
@@ -400,13 +412,13 @@ export function LascontrolePage() {
       key: 'result',
       header: 'Resultaat',
       sortable: true,
-      cell: (row) => row.result || '—',
+      cell: (row) => textOf(row.result),
     },
     {
       key: 'status',
       header: 'Status',
       sortable: true,
-      cell: (row) => <Badge tone={tone(row.status)}>{row.status || 'Open'}</Badge>,
+      cell: (row) => <Badge tone={tone(row.status)}>{textOf(row.status, 'Open')}</Badge>,
     },
     {
       key: 'actions',
@@ -458,7 +470,7 @@ export function LascontrolePage() {
       key: 'defect_type',
       header: 'Type',
       sortable: true,
-      cell: (row) => String(row.defect_type || '—'),
+      cell: (row) => textOf(row.defect_type),
     },
     {
       key: 'severity',
@@ -470,7 +482,7 @@ export function LascontrolePage() {
       key: 'status',
       header: 'Status',
       sortable: true,
-      cell: (row) => <Badge tone={tone(row.status)}>{row.status || 'Open'}</Badge>,
+      cell: (row) => <Badge tone={tone(row.status)}>{textOf(row.status, 'Open')}</Badge>,
     },
     {
       key: 'actions',
@@ -537,12 +549,12 @@ export function LascontrolePage() {
   const activeWeldFormInitial: Partial<WeldFormValues> | undefined = activeWeld
     ? {
         project_id: String(activeWeld.project_id || ''),
-        weld_number: String(activeWeld.weld_number || (activeWeld as Record<string, unknown>).weld_no || ''),
-        wps_id: String(activeWeld.wps_id || (activeWeld as Record<string, unknown>).wps || ''),
-        welder_name: String(activeWeld.welder_name || (activeWeld as Record<string, unknown>).welders || ''),
-        process: String(activeWeld.process || '135'),
-        location: String(activeWeld.location || ''),
-        status: String(activeWeld.status || 'open'),
+        weld_number: textOf(activeWeld.weld_number || (activeWeld as Record<string, unknown>).weld_no, ''),
+        wps_id: textOf(activeWeld.wps_id || (activeWeld as Record<string, unknown>).wps, ''),
+        welder_name: textOf(activeWeld.welder_name || (activeWeld as Record<string, unknown>).welders, ''),
+        process: textOf(activeWeld.process, '135'),
+        location: textOf(activeWeld.location, ''),
+        status: textOf(activeWeld.status, 'open'),
       }
     : undefined;
 
@@ -885,7 +897,7 @@ export function LascontrolePage() {
               setStatus('all');
               setQuickFilter('all');
               setPage(1);
-              setMessage(`Las ${created.weld_number || (created as Record<string, unknown>).weld_no || created.id} opgeslagen.`);
+              setMessage(`Las ${textOf(created.weld_number || (created as Record<string, unknown>).weld_no || created.id, '')} opgeslagen.`);
               pushNotification({
                 title: 'Las opgeslagen',
                 description: 'Nieuwe las is opgeslagen via de bestaande backend.',
@@ -909,10 +921,10 @@ export function LascontrolePage() {
               ? ({
                   ...inspectionModal.item,
                   weld_id: inspectionModal.item.weld_id ? String(inspectionModal.item.weld_id) : '',
-                  notes: String(
+                  notes: textOf(
                     (inspectionModal.item as Record<string, unknown>).notes ||
-                      (inspectionModal.item as Record<string, unknown>).remarks ||
-                      '',
+                      (inspectionModal.item as Record<string, unknown>).remarks,
+                    '',
                   ),
                 } as Partial<Record<string, unknown>>)
               : undefined
@@ -926,7 +938,7 @@ export function LascontrolePage() {
               (item) => String(item.id) === String(values.template_id || ''),
             ) as Record<string, unknown> | undefined;
 
-            const templateItems = Array.isArray(selectedTemplate?.items_json) ? selectedTemplate?.items_json : [];
+            const templateItems = Array.isArray(selectedTemplate?.items_json) ? selectedTemplate.items_json : [];
 
             const resultPayload = {
               result: values.result,
@@ -1007,10 +1019,10 @@ export function LascontrolePage() {
               ? {
                   ...defectModal.item,
                   weld_id: defectModal.item.weld_id ? String(defectModal.item.weld_id) : '',
-                  notes: String(
+                  notes: textOf(
                     (defectModal.item as Record<string, unknown>).notes ||
-                      (defectModal.item as Record<string, unknown>).description ||
-                      '',
+                      (defectModal.item as Record<string, unknown>).description,
+                    '',
                   ),
                 }
               : undefined
@@ -1051,10 +1063,10 @@ export function LascontrolePage() {
               <div>
                 <h3>{displayWeldNumber(activeWeld)}</h3>
                 <div className="list-subtle">
-                  {displayWelder(activeWeld)} · {activeWeld.location || 'Locatie onbekend'}
+                  {displayWelder(activeWeld)} · {textOf(activeWeld.location, 'Locatie onbekend')}
                 </div>
               </div>
-              <Badge tone={tone(activeWeld.status)}>{activeWeld.status || 'Open'}</Badge>
+              <Badge tone={tone(activeWeld.status)}>{textOf(activeWeld.status, 'Open')}</Badge>
             </div>
 
             <div className="kpi-strip">
@@ -1069,7 +1081,7 @@ export function LascontrolePage() {
             <div className="detail-grid">
               <div>
                 <span>Proces</span>
-                <strong>{activeWeld.process || '—'}</strong>
+                <strong>{textOf(activeWeld.process)}</strong>
               </div>
               <div>
                 <span>WPS</span>
@@ -1077,7 +1089,7 @@ export function LascontrolePage() {
               </div>
               <div>
                 <span>Inspecteur</span>
-                <strong>{activeWeld.inspector_name || (activeWeld as Record<string, unknown>).inspector || '—'}</strong>
+                <strong>{textOf(activeWeld.inspector_name || (activeWeld as Record<string, unknown>).inspector)}</strong>
               </div>
               <div>
                 <span>Datum</span>
@@ -1156,10 +1168,10 @@ export function LascontrolePage() {
                       <div>
                         <strong>{String(item.id)}</strong>
                         <div className="list-subtle">
-                          {item.result || 'Pending'} · {formatDate(item.due_date)}
+                          {textOf(item.result, 'Pending')} · {formatDate(item.due_date)}
                         </div>
                       </div>
-                      <Badge tone={tone(item.status)}>{item.status || 'Open'}</Badge>
+                      <Badge tone={tone(item.status)}>{textOf(item.status, 'Open')}</Badge>
                     </div>
                   ))}
                 </div>
@@ -1188,10 +1200,10 @@ export function LascontrolePage() {
                       <div>
                         <strong>{String(item.id)}</strong>
                         <div className="list-subtle">
-                          {isoLabel(item.severity)} · {String(item.defect_type || 'Onbekend type')}
+                          {isoLabel(item.severity)} · {textOf(item.defect_type, 'Onbekend type')}
                         </div>
                       </div>
-                      <Badge tone={tone(item.status)}>{item.status || 'Open'}</Badge>
+                      <Badge tone={tone(item.status)}>{textOf(item.status, 'Open')}</Badge>
                     </div>
                   ))}
                 </div>
@@ -1215,12 +1227,12 @@ export function LascontrolePage() {
                 {(weldWorkflowAttachments.data?.items || []).map((item: CeDocument) => (
                   <div key={String(item.id)} className="list-row">
                     <div>
-                      <strong>{String(item.title || item.id || '')}</strong>
+                      <strong>{textOf(item.title || item.id, '')}</strong>
                       <div className="list-subtle">
-                        Versie {String(item.version || '1.0')} · {String(item.type || 'Bestand')}
+                        Versie {textOf(item.version, '1.0')} · {textOf(item.type, 'Bestand')}
                       </div>
                     </div>
-                    <Badge tone={tone(item.status)}>{String(item.status || 'Actief')}</Badge>
+                    <Badge tone={tone(textOf(item.status, 'Actief'))}>{textOf(item.status, 'Actief')}</Badge>
                   </div>
                 ))}
               </div>
