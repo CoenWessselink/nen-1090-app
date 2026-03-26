@@ -1,4 +1,4 @@
-import { apiRequest, downloadRequest, optionalRequest, uploadRequest } from '@/api/client';
+import { apiRequest, downloadRequest, optionalRequest } from '@/api/client';
 import { withQuery } from '@/utils/api';
 import type { ApiListResponse, ListParams } from '@/types/api';
 import type { CeDocument } from '@/types/domain';
@@ -12,8 +12,15 @@ function emptyList(params?: ListParams): ApiListResponse<CeDocument> {
   } as ApiListResponse<CeDocument>;
 }
 
+function cloneFormData(input: FormData, extra: Record<string, string> = {}) {
+  const payload = new FormData();
+  for (const [key, value] of input.entries()) payload.append(key, value);
+  Object.entries(extra).forEach(([key, value]) => payload.append(key, value));
+  return payload;
+}
+
 export function uploadAttachment(payload: FormData) {
-  return optionalRequest<Record<string, unknown>>(['/attachments/upload'], { method: 'POST', body: payload });
+  return optionalRequest<Record<string, unknown>>(['/documents/upload'], { method: 'POST', body: payload });
 }
 
 export function getAttachment(attachmentId: string | number) {
@@ -41,8 +48,14 @@ export function createProjectDocument(projectId: string | number, payload: FormD
   if (payload instanceof FormData) {
     return (
       optionalRequest<Record<string, unknown>>(
-        [`/projects/${projectId}/documents`, '/attachments/upload'],
-        { method: 'POST', body: payload },
+        [
+          `/projects/${projectId}/documents`,
+          '/documents/upload',
+        ],
+        {
+          method: 'POST',
+          body: cloneFormData(payload, { project_id: String(projectId) }),
+        },
       ) || Promise.resolve({})
     );
   }

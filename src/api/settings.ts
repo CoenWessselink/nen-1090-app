@@ -1,7 +1,17 @@
-import { apiRequest, listRequest } from '@/api/client';
+import { apiRequest, listRequest, optionalRequest } from '@/api/client';
 import type { Tenant } from '@/types/domain';
 
-export type MasterDataItem = Record<string, unknown>;
+type MasterDataItem = Record<string, unknown>;
+type MasterDataListResponse =
+  | MasterDataItem[]
+  | {
+      items?: MasterDataItem[];
+      data?: MasterDataItem[];
+      results?: MasterDataItem[];
+      total?: number;
+      page?: number;
+      limit?: number;
+    };
 
 type TenantListResponse =
   | Tenant[]
@@ -14,23 +24,40 @@ type TenantListResponse =
       limit?: number;
     };
 
-type MasterDataListResponse =
-  | MasterDataItem[]
-  | {
-      items?: MasterDataItem[];
-      data?: MasterDataItem[];
-      results?: MasterDataItem[];
-      total?: number;
-      page?: number;
-      limit?: number;
-    };
+function normalizeItems(payload: MasterDataListResponse | null | undefined): MasterDataItem[] {
+  if (!payload) return [];
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload.items)) return payload.items;
+  if (Array.isArray(payload.data)) return payload.data;
+  if (Array.isArray(payload.results)) return payload.results;
+  return [];
+}
 
 export function getTenants() {
   return listRequest<TenantListResponse>('/platform/tenants');
 }
 
-export function getSettings() {
-  return apiRequest<Record<string, unknown>>('/settings');
+export async function getSettings() {
+  const [wps, materials, welders, inspectionTemplates] = await Promise.all([
+    optionalRequest<MasterDataListResponse>(['/settings/wps']),
+    optionalRequest<MasterDataListResponse>(['/settings/materials']),
+    optionalRequest<MasterDataListResponse>(['/settings/welders']),
+    optionalRequest<MasterDataListResponse>(['/settings/inspection-templates']),
+  ]);
+
+  return {
+    wps: normalizeItems(wps),
+    materials: normalizeItems(materials),
+    welders: normalizeItems(welders),
+    inspection_templates: normalizeItems(inspectionTemplates),
+    contracts: {
+      settings_root: false,
+      settings_wps: Boolean(wps),
+      settings_materials: Boolean(materials),
+      settings_welders: Boolean(welders),
+      settings_inspection_templates: Boolean(inspectionTemplates),
+    },
+  } satisfies Record<string, unknown>;
 }
 
 export function getWps() {
@@ -46,7 +73,7 @@ export function createWps(payload: Record<string, unknown>) {
 
 export function updateWps(wpsId: string | number, payload: Record<string, unknown>) {
   return apiRequest<MasterDataItem>(`/settings/wps/${wpsId}`, {
-    method: 'PUT',
+    method: 'PATCH',
     body: JSON.stringify(payload),
   });
 }
@@ -70,7 +97,7 @@ export function createMaterial(payload: Record<string, unknown>) {
 
 export function updateMaterial(materialId: string | number, payload: Record<string, unknown>) {
   return apiRequest<MasterDataItem>(`/settings/materials/${materialId}`, {
-    method: 'PUT',
+    method: 'PATCH',
     body: JSON.stringify(payload),
   });
 }
@@ -94,7 +121,7 @@ export function createWelder(payload: Record<string, unknown>) {
 
 export function updateWelder(welderId: string | number, payload: Record<string, unknown>) {
   return apiRequest<MasterDataItem>(`/settings/welders/${welderId}`, {
-    method: 'PUT',
+    method: 'PATCH',
     body: JSON.stringify(payload),
   });
 }
@@ -118,7 +145,7 @@ export function createInspectionTemplate(payload: Record<string, unknown>) {
 
 export function updateInspectionTemplate(templateId: string | number, payload: Record<string, unknown>) {
   return apiRequest<MasterDataItem>(`/settings/inspection-templates/${templateId}`, {
-    method: 'PUT',
+    method: 'PATCH',
     body: JSON.stringify(payload),
   });
 }

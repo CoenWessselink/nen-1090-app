@@ -1,31 +1,121 @@
-import { apiRequest, listRequest, uploadRequest } from '@/api/client';
+import { apiRequest, optionalRequest } from '@/api/client';
 import type { ListParams } from '@/types/api';
 
-export function getComplianceOverview(_projectId: string | number) {
-  return Promise.resolve({ score: 0, checklist: [], missing_items: [] });
+function emptyListPayload() {
+  return { items: [], total: 0, page: 1, limit: 25 };
 }
-export function getComplianceMissingItems(_projectId: string | number) {
-  return Promise.resolve({ items: [] });
+
+export async function getComplianceOverview(projectId: string | number) {
+  return (
+    (await optionalRequest<Record<string, unknown>>([
+      `/projects/${projectId}/compliance`,
+      `/ce_export/${projectId}`,
+    ])) || { score: 0, checklist: [], missing_items: [] }
+  );
 }
-export function getComplianceChecklist(_projectId: string | number) {
-  return Promise.resolve({ items: [] });
+
+export async function getComplianceMissingItems(projectId: string | number) {
+  return (
+    (await optionalRequest<Record<string, unknown>>([
+      `/projects/${projectId}/compliance/missing-items`,
+      `/ce_export/${projectId}`,
+    ])) || { items: [], missing_items: [] }
+  );
 }
+
+export async function getComplianceChecklist(projectId: string | number) {
+  return (
+    (await optionalRequest<Record<string, unknown>>([
+      `/projects/${projectId}/compliance/checklist`,
+      `/ce_export/${projectId}`,
+    ])) || { items: [], checklist: [] }
+  );
+}
+
 export async function getCeDossier(projectId: string | number) {
-  return apiRequest<Record<string, unknown>>(`/ce_export/${projectId}`);
+  return (
+    (await optionalRequest<Record<string, unknown>>([
+      `/projects/${projectId}/ce-dossier`,
+      `/ce_export/${projectId}`,
+    ])) || { project_id: String(projectId), sections: [], items: [] }
+  );
 }
-export function getCeDocuments(params?: ListParams) {
-  const projectId = params?.project_id || params?.projectId;
-  return listRequest<Record<string, unknown>[]>('/documents', projectId ? { ...params, project_id: String(projectId) } : params);
+
+export async function getCeDocuments(_params?: ListParams) {
+  return emptyListPayload();
 }
-export function uploadDocument(payload: FormData) {
-  return uploadRequest<Record<string, unknown>>('/documents', payload);
+
+export async function uploadDocument(payload: FormData) {
+  return apiRequest<Record<string, unknown>>('/documents/upload', { method: 'POST', body: payload });
 }
-export function getProjectExports(_projectId: string | number) { return Promise.resolve([]); }
-export async function createCeReport(_projectId: string | number) { throw new Error('Exportjobs worden niet ondersteund door de huidige live API. Gebruik /ce_export.'); }
-export async function createZipExport(_projectId: string | number) { throw new Error('ZIP-export wordt niet ondersteund door de huidige live API.'); }
-export async function createPdfExport(_projectId: string | number) { throw new Error('PDF-export wordt niet ondersteund door de huidige live API.'); }
-export async function createExcelExport(_projectId: string | number) { throw new Error('Excel-export wordt niet ondersteund door de huidige live API.'); }
-export async function downloadProjectExport(_projectId: string | number, _exportId: string | number) { throw new Error('Download van exportjobs wordt niet ondersteund door de huidige live API.'); }
-export async function retryProjectExport(_projectId: string | number, _exportId: string | number) { throw new Error('Retry van exportjobs wordt niet ondersteund door de huidige live API.'); }
-export async function getProjectExportPreview(projectId: string | number) { return getCeDossier(projectId); }
-export async function getProjectExportManifest(projectId: string | number, _exportId: string | number) { return getCeDossier(projectId); }
+
+export async function getProjectExports(projectId: string | number) {
+  return (
+    (await optionalRequest<Record<string, unknown> | { items?: Record<string, unknown>[] }>([
+      `/projects/${projectId}/exports`,
+    ])) || emptyListPayload()
+  );
+}
+
+export async function createCeReport(projectId: string | number) {
+  return (
+    (await optionalRequest<Record<string, unknown>>([
+      `/projects/${projectId}/exports/ce-report`,
+    ], { method: 'POST' })) || { unsupported: true, type: 'ce-report', project_id: String(projectId) }
+  );
+}
+
+export async function createZipExport(projectId: string | number) {
+  return (
+    (await optionalRequest<Record<string, unknown>>([
+      `/projects/${projectId}/exports/zip`,
+    ], { method: 'POST' })) || { unsupported: true, type: 'zip', project_id: String(projectId) }
+  );
+}
+
+export async function createPdfExport(projectId: string | number) {
+  return (
+    (await optionalRequest<Record<string, unknown>>([
+      `/projects/${projectId}/exports/pdf`,
+    ], { method: 'POST' })) || { unsupported: true, type: 'pdf', project_id: String(projectId) }
+  );
+}
+
+export async function createExcelExport(projectId: string | number) {
+  return (
+    (await optionalRequest<Record<string, unknown>>([
+      `/projects/${projectId}/exports/excel`,
+    ], { method: 'POST' })) || { unsupported: true, type: 'excel', project_id: String(projectId) }
+  );
+}
+
+export async function downloadProjectExport(_projectId: string | number, exportId: string | number) {
+  return apiRequest<Record<string, unknown>>(`/projects/exports/${exportId}/download`);
+}
+
+export async function retryProjectExport(projectId: string | number, exportId: string | number) {
+  return (
+    (await optionalRequest<Record<string, unknown>>([
+      `/projects/${projectId}/exports/${exportId}/retry`,
+      `/ops/projects/${projectId}/exports/${exportId}/retry`,
+    ], { method: 'POST' })) || { unsupported: true, export_id: String(exportId), project_id: String(projectId) }
+  );
+}
+
+export async function getProjectExportPreview(projectId: string | number) {
+  return (
+    (await optionalRequest<Record<string, unknown>>([
+      `/projects/${projectId}/exports/preview`,
+      `/ce_export/${projectId}`,
+    ])) || { project_id: String(projectId), preview: [] }
+  );
+}
+
+export async function getProjectExportManifest(projectId: string | number, exportId: string | number) {
+  return (
+    (await optionalRequest<Record<string, unknown>>([
+      `/projects/${projectId}/exports/${exportId}/manifest`,
+      `/ce_export/${projectId}`,
+    ])) || { project_id: String(projectId), export_id: String(exportId), manifest: [] }
+  );
+}

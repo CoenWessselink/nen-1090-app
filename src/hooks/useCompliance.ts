@@ -1,5 +1,19 @@
-import { useQuery } from '@tanstack/react-query';
-import { getCeDossier, getComplianceChecklist, getComplianceMissingItems, getComplianceOverview } from '@/api/ce';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import {
+  createCeReport,
+  createExcelExport,
+  createPdfExport,
+  createZipExport,
+  downloadProjectExport,
+  getCeDossier,
+  getComplianceChecklist,
+  getComplianceMissingItems,
+  getComplianceOverview,
+  getProjectExportManifest,
+  getProjectExportPreview,
+  getProjectExports,
+  retryProjectExport,
+} from '@/api/ce';
 
 export function useComplianceOverview(projectId?: string | number) {
   return useQuery({
@@ -37,35 +51,46 @@ export function useCeDossier(projectId?: string | number) {
   });
 }
 
-export function useProjectExports(_projectId?: string | number) {
+export function useProjectExports(projectId?: string | number) {
   return useQuery({
-    queryKey: ['project-exports-disabled'],
-    queryFn: async () => ({ items: [], total: 0, page: 1, pageSize: 25 }),
+    queryKey: ['project-exports', projectId],
+    queryFn: async () => getProjectExports(String(projectId)),
+    enabled: Boolean(projectId),
     staleTime: 30_000,
   });
 }
 
-export function useCreateCeReport(_projectId: string | number) {
-  return { mutateAsync: async () => { throw new Error('Niet ondersteund door live API.'); }, isPending: false } as const;
+export function useCreateCeReport(projectId: string | number) {
+  return useMutation({ mutationFn: () => createCeReport(projectId) });
 }
-export function useCreateZipExport(_projectId: string | number) {
-  return { mutateAsync: async () => { throw new Error('Niet ondersteund door live API.'); }, isPending: false } as const;
+export function useCreateZipExport(projectId: string | number) {
+  return useMutation({ mutationFn: () => createZipExport(projectId) });
 }
-export function useCreatePdfExport(_projectId: string | number) {
-  return { mutateAsync: async () => { throw new Error('Niet ondersteund door live API.'); }, isPending: false } as const;
+export function useCreatePdfExport(projectId: string | number) {
+  return useMutation({ mutationFn: () => createPdfExport(projectId) });
 }
-export function useCreateExcelExport(_projectId: string | number) {
-  return { mutateAsync: async () => { throw new Error('Niet ondersteund door live API.'); }, isPending: false } as const;
+export function useCreateExcelExport(projectId: string | number) {
+  return useMutation({ mutationFn: () => createExcelExport(projectId) });
 }
-export function useDownloadProjectExport(_projectId: string | number) {
-  return { mutateAsync: async () => { throw new Error('Niet ondersteund door live API.'); }, isPending: false } as const;
+export function useDownloadProjectExport(projectId: string | number) {
+  return useMutation({ mutationFn: (exportId: string | number) => downloadProjectExport(projectId, exportId) });
 }
-export function useRetryProjectExport(_projectId: string | number) {
-  return { mutateAsync: async () => { throw new Error('Niet ondersteund door live API.'); }, isPending: false } as const;
+export function useRetryProjectExport(projectId: string | number) {
+  return useMutation({ mutationFn: (exportId: string | number) => retryProjectExport(projectId, exportId) });
 }
 export function useProjectExportPreview(projectId?: string | number) {
-  return useCeDossier(projectId);
+  return useQuery({
+    queryKey: ['project-export-preview', projectId],
+    queryFn: () => getProjectExportPreview(String(projectId)),
+    enabled: Boolean(projectId),
+    staleTime: 30_000,
+  });
 }
-export function useProjectExportManifest(projectId?: string | number) {
-  return useCeDossier(projectId);
+export function useProjectExportManifest(projectId?: string | number, exportId?: string | number) {
+  return useQuery({
+    queryKey: ['project-export-manifest', projectId, exportId],
+    queryFn: () => getProjectExportManifest(String(projectId), String(exportId)),
+    enabled: Boolean(projectId && exportId),
+    staleTime: 30_000,
+  });
 }
