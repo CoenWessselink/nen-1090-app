@@ -14,13 +14,14 @@ import { LoadingState } from '@/components/feedback/LoadingState';
 import { UploadDropzone } from '@/components/upload/UploadDropzone';
 import { ConfirmDialog } from '@/components/confirm-dialog/ConfirmDialog';
 import { useAssemblies, useCreateAssembly, useDeleteAssembly, useUpdateAssembly } from '@/hooks/useAssemblies';
-import { useComplianceChecklist, useComplianceMissingItems, useComplianceOverview, useCreateCeReport, useCreateExcelExport, useCreatePdfExport, useCreateZipExport, useProjectExports } from '@/hooks/useCompliance';
+import { useComplianceChecklist, useComplianceMissingItems, useComplianceOverview, useCreateCeReport, useCreateExcelExport, useCreatePdfExport, useCreateZipExport, useProjectExports, useCeDossier } from '@/hooks/useCompliance';
 import { useCreateProjectDocument, useDeleteDocument, useDocumentVersions, useProjectDocuments, useUpdateDocument } from '@/hooks/useDocuments';
 import { useMaterials, useWelders, useWps } from '@/hooks/useSettings';
 import { useProjectInspections, useProjectMaterials, useProjectSelectionMutation, useProjectWelders, useProjectWelds, useProjectWps, useProjectBulkMutation } from '@/hooks/useProjects';
 import { useCopyWeld, useCreateWeld, useUpdateWeld } from '@/hooks/useWelds';
 import { useProjectAudit } from '@/hooks/useProjectAudit';
 import { formatDate } from '@/utils/format';
+import { CeChecklistCard, CeDossierStructureCard, CeMissingItemsCard, CeStatusPanel, CeDataGroupsCard, asArray, asRecord, asText } from '@/features/ce-dossier/components/CeDossierBlocks';
 import type { Assembly, AuditEntry, CeDocument, ExportJob, Inspection, Project, Weld } from '@/types/domain';
 import { AssemblyForm } from '@/features/projecten/components/AssemblyForm';
 import { WeldForm } from '@/features/lascontrole/components/WeldForm';
@@ -79,6 +80,7 @@ export function Project360Drawer({ project, open, onClose, onMessage }: { projec
   const complianceQuery = useComplianceOverview(projectId);
   const missingItemsQuery = useComplianceMissingItems(projectId);
   const checklistQuery = useComplianceChecklist(projectId);
+  const ceDossierQuery = useCeDossier(projectId);
   const exportsQuery = useProjectExports(projectId);
   const auditQuery = useProjectAudit(projectId);
 
@@ -145,6 +147,17 @@ export function Project360Drawer({ project, open, onClose, onMessage }: { projec
   );
   const missingItems = useMemo(() => pickArray(missingItemsQuery.data, 'missing_items'), [missingItemsQuery.data]);
   const checklistItems = useMemo(() => pickArray(checklistQuery.data, 'checklist'), [checklistQuery.data]);
+  const ceDossier = useMemo(() => asRecord(ceDossierQuery.data), [ceDossierQuery.data]);
+  const ceProject = useMemo(() => asRecord(ceDossier.project || project || {}), [ceDossier, project]);
+  const ceCounts = useMemo(() => asRecord(ceDossier.counts), [ceDossier]);
+  const ceAssemblies = useMemo(() => asArray<Record<string, unknown>>(ceDossier.assemblies), [ceDossier]);
+  const ceWelds = useMemo(() => asArray<Record<string, unknown>>(ceDossier.welds), [ceDossier]);
+  const ceInspections = useMemo(() => asArray<Record<string, unknown>>(ceDossier.inspections), [ceDossier]);
+  const ceDocuments = useMemo(() => asArray<Record<string, unknown>>(ceDossier.documents), [ceDossier]);
+  const cePhotos = useMemo(() => asArray<Record<string, unknown>>(ceDossier.photos), [ceDossier]);
+  const ceStatus = asText(ceDossier.status || (complianceQuery.data as Record<string, unknown> | undefined)?.status, 'in behandeling');
+  const ceScore = Number(ceDossier.score || (complianceQuery.data as Record<string, unknown> | undefined)?.score || 0);
+  const ceSource = asText(ceDossier.source, 'assembled-live-api');
   const exportItems = (exportsQuery.data?.items || []) as ExportJob[];
   const auditItems = (auditQuery.data?.items || []) as AuditEntry[];
   const liveValidationItems = [
@@ -346,30 +359,37 @@ export function Project360Drawer({ project, open, onClose, onMessage }: { projec
           ) : null}
 
           {tab === 'compliance' ? (
-            <div className="content-grid-2">
-              <Card>
-                <div className="section-title-row"><h3><ShieldCheck size={18} /> Compliance-overzicht</h3></div>
-                {complianceQuery.isLoading ? <LoadingState label="Compliance laden..." /> : <pre className="code-block">{JSON.stringify(complianceQuery.data || {}, null, 2)}</pre>}
-              </Card>
-              <Card>
-                <div className="section-title-row"><h3>Checklist</h3></div>
-                <div className="list-stack compact-list">
-                  {checklistItems.length ? checklistItems.map((item, index) => {
-                    const row = item as Record<string, unknown>;
-                    return <div key={index} className="list-row"><div><strong>{String(row.label || row.name || `Checklist item ${index + 1}`)}</strong><div className="list-subtle">{String(row.description || '')}</div></div><Badge tone={row.completed ? 'success' : 'warning'}>{row.completed ? 'Gereed' : 'Open'}</Badge></div>;
-                  }) : <EmptyState title="Geen checklist-items" description="De backend retourneerde nog geen checklist." />}
-                </div>
-              </Card>
-              <Card>
-                <div className="section-title-row"><h3>Missende items</h3></div>
-                <div className="list-stack compact-list">
-                  {missingItems.length ? missingItems.map((item, index) => {
-                    const row = item as Record<string, unknown>;
-                    return <div key={index} className="list-row"><div><strong>{String(row.label || row.name || `Ontbrekend item ${index + 1}`)}</strong><div className="list-subtle">{String(row.reason || row.description || '')}</div></div><Badge tone="danger">Open</Badge></div>;
-                  }) : <EmptyState title="Geen missende items" description="Het dossier is volgens de backend compleet." />}
-                </div>
-              </Card>
-            </div>
+            <>
+              {ceDossierQuery.isLoading || complianceQuery.isLoading ? <LoadingState label="Compliance laden..." /> : null}
+              <CeStatusPanel
+                project={ceProject}
+                status={ceStatus}
+                score={ceScore}
+                readyForExport={Boolean(ceDossier.ready_for_export || (complianceQuery.data as Record<string, unknown> | undefined)?.ready_for_export)}
+                source={ceSource}
+                missingCount={missingItems.length}
+              />
+              <div className="content-grid-2">
+                <CeChecklistCard checklist={checklistItems as Record<string, unknown>[]} title="Compliance-checklist" />
+                <CeMissingItemsCard missingItems={missingItems as Record<string, unknown>[]} title="Openstaande compliance-acties" />
+              </div>
+              <div className="content-grid-2">
+                <CeDossierStructureCard
+                  counts={ceCounts}
+                  assemblies={ceAssemblies}
+                  welds={ceWelds}
+                  inspections={ceInspections}
+                  documents={ceDocuments}
+                  photos={cePhotos}
+                />
+                <CeDataGroupsCard
+                  assemblies={ceAssemblies}
+                  welds={ceWelds}
+                  inspections={ceInspections}
+                  documents={ceDocuments}
+                />
+              </div>
+            </>
           ) : null}
 
           {tab === 'exports' ? (
