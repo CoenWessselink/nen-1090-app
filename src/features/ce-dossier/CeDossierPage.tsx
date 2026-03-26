@@ -6,37 +6,28 @@ type Props = {
 };
 
 const CeDossierPage: React.FC<Props> = ({ projectId, dossierData }) => {
-
   const handleDownload = () => {
-    // ✅ FIX: correct Blob creation instead of invalid cast
     const blob = new Blob(
       [JSON.stringify(dossierData, null, 2)],
       { type: "application/json" }
     );
 
     const url = URL.createObjectURL(blob);
-
     const a = document.createElement("a");
     a.href = url;
     a.download = `ce-dossier-${projectId}.json`;
     a.click();
-
     URL.revokeObjectURL(url);
   };
 
   return (
-    <div style={{ padding: 20 }}>
+    <div>
       <h1>CE Dossier</h1>
-
-      <button onClick={handleDownload}>
-        Download CE dossier
-      </button>
-
-      <pre style={{ marginTop: 20 }}>
-        {JSON.stringify(dossierData, null, 2)}
-      </pre>
+      <button onClick={handleDownload}>Download</button>
     </div>
   );
 };
 
+// ✅ FIX: both named and default export
+export { CeDossierPage };
 export default CeDossierPage;
