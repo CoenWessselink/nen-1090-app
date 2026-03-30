@@ -17,7 +17,12 @@
     "test:e2e:workflows": "playwright test tests/e2e/projects-crud.spec.ts tests/e2e/auth-and-routing.spec.ts",
     "test:e2e:local": "playwright test",
     "test:e2e:auth": "playwright test tests/e2e/auth-hardening.spec.ts tests/e2e/auth-session-negative.spec.ts tests/e2e/auth-and-routing.spec.ts",
-    "test:e2e:auth:live": "PLAYWRIGHT_LIVE_AUTH=1 playwright test tests/e2e/auth-live.spec.ts --project=desktop-chromium"
+    "test:e2e:auth:live": "PLAYWRIGHT_LIVE_AUTH=1 playwright test tests/e2e/auth-live.spec.ts --project=desktop-chromium",
+    "test:laag1": "playwright test -c playwright.layer1.config.ts",
+    "test:laag2": "playwright test -c playwright.layer2.config.ts",
+    "test:laag3a": "playwright test -c playwright.layer3a.config.ts",
+    "test:laag3b": "PLAYWRIGHT_LIVE_AUTH=1 playwright test -c playwright.layer3b.config.ts",
+    "test:release": "npm run test:laag1 && npm run test:laag2 && npm run test:laag3a && npm run test:laag3b"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
