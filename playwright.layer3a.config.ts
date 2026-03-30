@@ -1,2 +1,17 @@
 import { createLayerConfig } from "./playwright.layer-common";
-export default createLayerConfig(["**/e2e/auth-and-routing.spec.ts", "**/e2e/billing-and-superadmin.spec.ts", "**/e2e/documents-and-settings.spec.ts", "**/e2e/global-search-and-export.spec.ts", "**/e2e/global-search-and-impersonation.spec.ts", "**/e2e/impersonation-exit.spec.ts", "**/e2e/planning-reporting.spec.ts", "**/e2e/projects-crud.spec.ts", "**/e2e/responsive-shell.spec.ts", "**/e2e/settings-crud-and-rbac.spec.ts", "**/e2e/weld-flow.spec.ts"]);
+
+export default createLayerConfig([
+  "auth-and-routing.spec.ts",
+  "billing-and-superadmin.spec.ts",
+  "documents-and-settings.spec.ts",
+  "global-search-and-export.spec.ts",
+  "global-search-and-impersonation.spec.ts",
+  "impersonation-exit.spec.ts",
+  "planning-reporting.spec.ts",
+  "projects-crud.spec.ts",
+  "responsive-shell.spec.ts",
+  "settings-crud-and-rbac.spec.ts",
+  "weld-flow.spec.ts",
+], {
+  grepInvert: /@e2e-live/,
+});
