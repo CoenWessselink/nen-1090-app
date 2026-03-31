@@ -69,6 +69,7 @@ import type { CeDocument, Defect, Inspection, Weld } from '@/types/domain';
 import type { WeldFormValues } from '@/types/forms';
 import { formatDate } from '@/utils/format';
 import { ProjectContextTabs, resolveProjectContextTab } from '@/features/projecten/components/ProjectContextTabs';
+import { ProjectWorkspaceActionBar } from '@/features/projecten/components/ProjectWorkspaceActionBar';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 
 function textOf(value: unknown, fallback = '—'): string {
@@ -663,6 +664,17 @@ export function LascontrolePage() {
       {message ? <InlineMessage tone="success">{message}</InlineMessage> : null}
 
       {hasProject ? <ProjectContextTabs projectId={projectId} value={currentProjectTab} /> : null}
+
+      {hasProject ? (
+        <ProjectWorkspaceActionBar
+          onCreateProject={() => navigate('/projecten?intent=create-project')}
+          onCreateAssembly={() => navigate(`/projecten/${projectId}/overzicht?intent=create-assembly`)}
+          onCreateWeld={() => {
+            setWeldModalMode('create');
+            setWeldModal(true);
+          }}
+        />
+      ) : null}
 
       <InlineMessage tone={hasProject ? 'neutral' : 'danger'}>
         {hasProject

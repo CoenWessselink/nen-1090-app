@@ -7,7 +7,7 @@ import { ConfirmActionDialog } from '@/components/dialogs/ConfirmActionDialog';
 import { useProjectBulkMutation } from '@/hooks/useProjects';
 
 const actionMeta = {
-  approve: { label: 'Approve all', icon: BadgeCheck, description: 'Alle welds/controles naar conform waar de backend dit ondersteunt.' },
+  approve: { label: 'Alles accorderen', icon: BadgeCheck, description: 'Zet inspectiechecks op akkoord, accordeert onderliggende lassen en zet projectstatus waar nodig naar gereed.' },
   template: { label: 'Inspectietemplate toepassen', icon: ShieldCheck, description: 'Standaard inspectietemplate op de geselecteerde projecten toepassen.' },
   materials: { label: 'Materialen toevoegen', icon: Boxes, description: 'Projectmaterialen vanuit settings toevoegen aan de geselecteerde projecten.' },
   wps: { label: 'WPS toevoegen', icon: Wrench, description: 'Beschikbare WPS records bulk koppelen aan de geselecteerde projecten.' },
@@ -49,8 +49,12 @@ export function BulkActionsBar({ projectIds, onDone }: { projectIds: Array<strin
         onClose={() => setPendingAction(null)}
         onConfirm={async () => {
           if (!pendingAction) return;
-          await bulkMutation.mutateAsync({ action: pendingAction, projectIds: uniqueProjectIds });
-          const message = `${actionMeta[pendingAction].label} uitgevoerd voor ${uniqueProjectIds.length} project(en).`;
+          const result = await bulkMutation.mutateAsync({ action: pendingAction, projectIds: uniqueProjectIds });
+          const approveMeta = pendingAction === 'approve' && result && typeof result === 'object' ? result as Record<string, unknown> : null;
+          const detail = approveMeta
+            ? ` ${Number(approveMeta.approvedWelds || 0)} lassen akkoord, ${Number(approveMeta.projectsMarkedReady || 0)} project(en) op gereed.`
+            : '';
+          const message = `${actionMeta[pendingAction].label} uitgevoerd voor ${uniqueProjectIds.length} project(en).${detail}`;
           onDone?.(message);
           setPendingAction(null);
         }}

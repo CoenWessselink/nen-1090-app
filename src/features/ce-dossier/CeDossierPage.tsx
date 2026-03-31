@@ -3,6 +3,8 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Download, RefreshCcw, FileArchive, FileSpreadsheet, FileText } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { Input } from '@/components/ui/Input';
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { InlineMessage } from '@/components/feedback/InlineMessage';
 import { LoadingState } from '@/components/feedback/LoadingState';
@@ -41,6 +43,7 @@ import {
 import { CePdfLayoutCard } from '@/features/ce-dossier/components/CePdfBlocks';
 import type { ExportJob } from '@/types/domain';
 import { ProjectContextTabs, resolveProjectContextTab } from '@/features/projecten/components/ProjectContextTabs';
+import { ProjectWorkspaceActionBar } from '@/features/projecten/components/ProjectWorkspaceActionBar';
 
 type LocalExportRecord = ExportJob & { local_only?: boolean };
 
@@ -70,6 +73,7 @@ export function CeDossierPage() {
   const [selectedExportId, setSelectedExportId] = useState<string | number | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | number | null>(null);
   const [retryingId, setRetryingId] = useState<string | number | null>(null);
+  const [ceSearch, setCeSearch] = useState('');
   const currentProjectTab = projectId ? resolveProjectContextTab(location.pathname) : 'ce-dossier';
 
   const overviewQuery = useComplianceOverview(projectId);
@@ -117,6 +121,30 @@ export function CeDossierPage() {
     });
     return Array.from(map.values()).sort((a, b) => new Date(String(b.created_at || 0)).getTime() - new Date(String(a.created_at || 0)).getTime());
   }, [exportsQuery.data, localExports]);
+
+  const normalizedCeSearch = ceSearch.trim().toLowerCase();
+
+  const filteredChecklist = useMemo(() => checklist.filter((item) => {
+    if (!normalizedCeSearch) return true;
+    return JSON.stringify(item).toLowerCase().includes(normalizedCeSearch);
+  }), [checklist, normalizedCeSearch]);
+
+  const filteredMissingItems = useMemo(() => missingItems.filter((item) => {
+    if (!normalizedCeSearch) return true;
+    return JSON.stringify(item).toLowerCase().includes(normalizedCeSearch);
+  }), [missingItems, normalizedCeSearch]);
+
+  const filteredExportItems = useMemo(() => exportItems.filter((item) => {
+    if (!normalizedCeSearch) return true;
+    return JSON.stringify(item).toLowerCase().includes(normalizedCeSearch);
+  }), [exportItems, normalizedCeSearch]);
+
+  const ceKpis = [
+    { label: 'Ontbrekend', value: filteredMissingItems.length },
+    { label: 'Checklist', value: filteredChecklist.length },
+    { label: 'Exports', value: filteredExportItems.length },
+    { label: 'Dekkingsgraad', value: `${Math.max(0, Math.round(Number(overview.score || dossier.score || 0)))}%` },
+  ];
 
   const selectedExport = useMemo(() => exportItems.find((item) => String(item.id) === String(selectedExportId)) || null, [exportItems, selectedExportId]);
   const manifestQuery = useProjectExportManifest(projectId, selectedExport?.id);
@@ -209,11 +237,34 @@ export function CeDossierPage() {
 
       {message ? <InlineMessage tone="success">{message}</InlineMessage> : null}
       <ProjectContextTabs projectId={projectId} value={currentProjectTab} />
+
+      <ProjectWorkspaceActionBar
+        onCreateProject={() => navigate('/projecten?intent=create-project')}
+        onCreateAssembly={() => navigate(`/projecten/${projectId}/overzicht?intent=create-assembly`)}
+        onCreateWeld={() => navigate(`/projecten/${projectId}/overzicht?intent=create-weld`)}
+      />
+
+      <Card>
+        <Input value={ceSearch} onChange={(event) => setCeSearch(event.target.value)} placeholder="Filter op ontbrekende onderdelen, checklist of exports" />
+      </Card>
+
       {isLoading ? <LoadingState label="CE dossier laden..." /> : null}
       {isError ? <ErrorState title="CE dossier niet geladen" description="De CE/compliance-data voor dit project kon niet worden opgehaald." /> : null}
 
       {!isLoading && !isError ? (
         <>
+          <div className="grid-3">
+            {ceKpis.map((item) => (
+              <Card key={item.label}>
+                <div className="stat-card">
+                  <div className="stat-label">{item.label}</div>
+                  <div className="stat-value">{item.value}</div>
+                  <div className="stat-meta">Gelijkgetrokken KPI-structuur voor het CE-dossier.</div>
+                </div>
+              </Card>
+            ))}
+          </div>
+
           <CeStatusPanel
             project={project}
             status={asText(overview.status || dossier.status, 'In behandeling')}
@@ -224,8 +275,8 @@ export function CeDossierPage() {
           />
 
           <div className="content-grid-2">
-            <CeMissingItemsCard missingItems={missingItems} />
-            <CeChecklistCard checklist={checklist} />
+            <CeMissingItemsCard missingItems={filteredMissingItems} />
+            <CeChecklistCard checklist={filteredChecklist} />
           </div>
 
           <div className="content-grid-2">
@@ -260,7 +311,7 @@ export function CeDossierPage() {
           </div>
 
           <CeExportHistoryCard
-            items={exportItems}
+            items={filteredExportItems}
             selectedExportId={selectedExportId}
             onSelect={(item) => setSelectedExportId(item.id)}
             onDownload={handleDownload}

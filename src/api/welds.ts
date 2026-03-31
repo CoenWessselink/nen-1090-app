@@ -1,4 +1,4 @@
-import { apiRequest, listRequest } from '@/api/client';
+import { apiRequest, listRequest, optionalRequest } from '@/api/client';
 import type { ApiListResponse, ListParams } from '@/types/api';
 import type { CeDocument, ComplianceOverview, Defect, Inspection, Weld } from '@/types/domain';
 import type { WeldFormValues } from '@/types/forms';
@@ -119,16 +119,22 @@ export async function getWeldCompliance(projectId: string | number, weldId: stri
 }
 
 export async function resetWeldToNorm(projectId: string | number, weldId: string | number) {
+  const direct = await optionalRequest<Record<string, unknown>>([`/projects/${projectId}/welds/${weldId}/reset-to-norm`], { method: 'POST' });
+  if (direct) return direct;
   const current = await getWeld(projectId, weldId);
-  return await updateWeld(projectId, weldId, { project_id: String(current.project_id || projectId || ''), weld_number: String(current.weld_number || current.weld_no || ''), assembly_id: String(current.assembly_id || ''), wps_id: String(current.wps_id || current.wps || ''), welder_name: String(current.welder_name || current.welders || ''), process: String(current.process || '135'), location: String(current.location || ''), status: 'conform' });
+  return await updateWeld(projectId, weldId, { project_id: String(current.project_id || projectId || ''), weld_number: String(current.weld_number || current.weld_no || ''), assembly_id: String(current.assembly_id || ''), wps_id: String(current.wps_id || current.wps || ''), welder_name: String(current.welder_name || current.welders || ''), process: String(current.process || '135'), location: String(current.location || ''), status: 'concept' });
 }
 
 export async function conformWeld(projectId: string | number, weldId: string | number) {
+  const direct = await optionalRequest<Record<string, unknown>>([`/projects/${projectId}/welds/${weldId}/conform`], { method: 'POST' });
+  if (direct) return direct;
   const current = await getWeld(projectId, weldId);
   return await updateWeld(projectId, weldId, { project_id: String(current.project_id || projectId || ''), weld_number: String(current.weld_number || current.weld_no || ''), assembly_id: String(current.assembly_id || ''), wps_id: String(current.wps_id || current.wps || ''), welder_name: String(current.welder_name || current.welders || ''), process: String(current.process || '135'), location: String(current.location || ''), status: 'conform' });
 }
 
 export async function bulkApproveWelds(projectId: string | number, weldIds: Array<string | number>) {
+  const direct = await optionalRequest<Record<string, unknown>>([`/projects/${projectId}/welds/bulk-approve`], { method: 'POST', body: JSON.stringify({ weld_ids: weldIds }) });
+  if (direct) return { ok: true, count: Number(direct.approved || direct.count || weldIds.length), items: weldIds };
   const results = [];
   for (const weldId of weldIds) results.push(await conformWeld(projectId, weldId));
   return { ok: true, count: results.length, items: results };

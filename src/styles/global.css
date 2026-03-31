@@ -155,6 +155,22 @@ pre { margin: 0; white-space: pre-wrap; word-break: break-word; }
 .project-context-tabs-search {
   width: min(100%, 420px);
 }
+
+.project-workspace-actionbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.project-workspace-actionbar-copy {
+  display: grid;
+  gap: 4px;
+}
+.project-workspace-actionbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
 .card-grid {
   display: grid;
   gap: 20px;
@@ -317,6 +333,10 @@ pre { margin: 0; white-space: pre-wrap; word-break: break-word; }
   .search-shell { order: 2; max-width: none; width: 100%; }
   .topbar-actions { width: 100%; justify-content: space-between; }
   .page-header, .detail-hero { flex-direction: column; align-items: flex-start; }
+  .project-workspace-actionbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
   .grid-3, .kpi-strip, .content-grid-2, .two-column-grid, .detail-grid, .checklist-grid, .quick-actions-grid, .dashboard-kpi-grid, .card-grid.cols-3 { grid-template-columns: 1fr; }
   .page-canvas { padding-bottom: 92px; }
   .profile-pill { min-width: 0; flex: 1; }

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Download, Eye, Filter, Pencil, Plus, Trash2 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card } from '@/components/ui/Card';
@@ -38,6 +38,7 @@ function toneFromStatus(status: string) {
 
 export function ProjectenPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const createProject = useCreateProject();
   const updateProject = useUpdateProject();
   const deleteProject = useDeleteProject();
@@ -110,6 +111,25 @@ export function ProjectenPage() {
     setModalMode('create');
   }, [createProjectRequestNonce]);
 
+  useEffect(() => {
+    const queryIntent = new URLSearchParams(location.search).get('intent');
+    const stateIntent = (location.state as { intent?: string } | null)?.intent;
+    const intent = stateIntent || queryIntent;
+    if (intent !== 'create-project') return;
+
+    setEditingProject(null);
+    setModalMode('create');
+
+    if (stateIntent) {
+      navigate(location.pathname + location.search, { replace: true, state: null });
+      return;
+    }
+
+    if (queryIntent) {
+      navigate(location.pathname, { replace: true });
+    }
+  }, [location.pathname, location.search, location.state, navigate]);
+
   return (
     <div className="page-stack">
       <PageHeader title="Projecten" description="Operationele projecthub met directe doorgang naar Project 360, assemblies, lassen, documenten en historie." />
@@ -171,7 +191,7 @@ export function ProjectenPage() {
               }
             }}
             selectable
-            onRowDoubleClick={openProject}
+            onRowDoubleClick={(row) => { setEditingProject(row); setModalMode('edit'); }}
             selectedRowKeys={selectedRows}
             onToggleRow={(key) => setSelectedRows((current) => current.includes(key) ? current.filter((item) => item !== key) : [...current, key])}
             onToggleAll={() => setSelectedRows((current) => current.length === rows.length ? [] : rows.map((row) => String(row.id)))}

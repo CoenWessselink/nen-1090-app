@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Boxes, ClipboardCheck, Eye, FileText, History, Paperclip, Pencil, Plus, ShieldCheck, ShieldAlert, Trash2, Upload } from 'lucide-react';
@@ -26,6 +26,7 @@ import { uploadWeldAttachment as uploadWeldAttachmentRequest } from '@/api/welds
 import type { WeldFormValues } from '@/types/forms';
 import { formatDate } from '@/utils/format';
 import { ProjectContextTabs, resolveProjectContextTab } from '@/features/projecten/components/ProjectContextTabs';
+import { ProjectWorkspaceActionBar } from '@/features/projecten/components/ProjectWorkspaceActionBar';
 
 function textOf(value: unknown, fallback = '—') {
   if (value == null) return fallback;
@@ -56,6 +57,7 @@ export function Project360Page() {
   const location = useLocation();
   const currentPath = location.pathname;
   const currentTab = resolveProjectContextTab(currentPath);
+  const currentIntent = new URLSearchParams(location.search).get('intent');
 
   const [message, setMessage] = useState<string | null>(null);
   const [subSearch, setSubSearch] = useState('');
@@ -157,6 +159,22 @@ export function Project360Page() {
 
   const goToTab = (value: string) => navigate(`/projecten/${projectId}/${value}`);
 
+
+  useEffect(() => {
+    if (!currentIntent) return;
+
+    if (currentIntent === 'create-assembly') {
+      setAssemblyModal({ mode: 'create' });
+    }
+
+    if (currentIntent === 'create-weld') {
+      setWeldModal({ mode: 'create' });
+    }
+
+    navigate(currentPath, { replace: true });
+  }, [currentIntent, currentPath, navigate]);
+
+
   const handleDocumentUpload = async (files: File[], extra: Record<string, string> = {}) => {
     try {
       for (const file of files) {
@@ -186,8 +204,7 @@ export function Project360Page() {
         description="Volledige projectinterne werkcontainer voor overzicht, assemblies, lassen, lascontrole, documenten en historie."
       >
         <Button variant="secondary" onClick={() => navigate('/projecten')}>Terug naar projecten</Button>
-        <Button variant="secondary" onClick={() => setAssemblyModal({ mode: 'create' })}><Plus size={16} /> Nieuwe assembly</Button>
-        <Button onClick={() => setWeldModal({ mode: 'create' })}><Plus size={16} /> Nieuwe las</Button>
+        <Button variant="secondary" onClick={() => navigate('/projecten')}>Projectlijst</Button>
       </PageHeader>
 
       {message ? <InlineMessage tone="success">{message}</InlineMessage> : null}
@@ -200,8 +217,6 @@ export function Project360Page() {
           </div>
           <div className="row-actions">
             <Badge tone={statusTone(String(project.status || ''))}>{textOf(project.status, 'Open')}</Badge>
-            <Button variant="secondary" onClick={() => goToTab('lascontrole')}><ClipboardCheck size={16} /> Lascontrole</Button>
-            <Button variant="secondary" onClick={() => navigate(`/projecten/${projectId}/ce-dossier`)}><ShieldCheck size={16} /> CE Dossier</Button>
           </div>
         </div>
         <div className="divider" />
@@ -216,11 +231,17 @@ export function Project360Page() {
         <div className="list-subtle">Projectvoortgang binnen Fase 2 werkstroom: {progressPercent}% van de kernonderdelen is gevuld of afgerond.</div>
       </Card>
 
-      <ProjectContextTabs
-        projectId={projectId}
-        value={currentTab}
-        searchSlot={<Input value={subSearch} onChange={(event) => setSubSearch(event.target.value)} placeholder="Zoek binnen deze projectcontext" />}
+      <ProjectContextTabs projectId={projectId} value={currentTab} />
+
+      <ProjectWorkspaceActionBar
+        onCreateProject={() => navigate('/projecten?intent=create-project')}
+        onCreateAssembly={() => setAssemblyModal({ mode: 'create' })}
+        onCreateWeld={() => setWeldModal({ mode: 'create' })}
       />
+
+      <Card>
+        <Input value={subSearch} onChange={(event) => setSubSearch(event.target.value)} placeholder="Zoek binnen deze projectcontext" />
+      </Card>
 
       {currentTab === 'overzicht' ? (
         <>
