@@ -13,7 +13,7 @@ function mapWeldPayload(payload: WeldFormValues & { id?: string | number }) {
     process: payload.process || null,
     welders: payload.welder_name || null,
     wps: payload.wps_id || null,
-    status: payload.status || 'open',
+    status: payload.status || 'conform',
   };
 }
 
@@ -66,7 +66,7 @@ export async function copyWeld(projectId: string | number, weldId: string | numb
     welder_name: String(source.welder_name || source.welders || ''),
     process: String(source.process || '135'),
     location: String(source.location || ''),
-    status: String(source.status || 'open'),
+    status: String(source.status || 'conform'),
   });
 }
 
@@ -120,7 +120,7 @@ export async function getWeldCompliance(projectId: string | number, weldId: stri
 
 export async function resetWeldToNorm(projectId: string | number, weldId: string | number) {
   const current = await getWeld(projectId, weldId);
-  return await updateWeld(projectId, weldId, { project_id: String(current.project_id || projectId || ''), weld_number: String(current.weld_number || current.weld_no || ''), assembly_id: String(current.assembly_id || ''), wps_id: String(current.wps_id || current.wps || ''), welder_name: String(current.welder_name || current.welders || ''), process: String(current.process || '135'), location: String(current.location || ''), status: 'open' });
+  return await updateWeld(projectId, weldId, { project_id: String(current.project_id || projectId || ''), weld_number: String(current.weld_number || current.weld_no || ''), assembly_id: String(current.assembly_id || ''), wps_id: String(current.wps_id || current.wps || ''), welder_name: String(current.welder_name || current.welders || ''), process: String(current.process || '135'), location: String(current.location || ''), status: 'conform' });
 }
 
 export async function conformWeld(projectId: string | number, weldId: string | number) {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { FormField } from '@/components/forms/FormField';
+import { UploadDropzone } from '@/components/upload/UploadDropzone';
 import { useAssemblies } from '@/hooks/useAssemblies';
 import { useProjects } from '@/hooks/useProjects';
 import { useWelders, useWps } from '@/hooks/useSettings';
@@ -40,9 +41,10 @@ export function WeldForm({
   initial?: Partial<WeldFormValues>;
   defaultProjectId?: string;
   submitLabel?: string;
-  onSubmit: (values: WeldFormValues) => Promise<void> | void;
+  onSubmit: (values: WeldFormValues, files: File[]) => Promise<void> | void;
   isSubmitting?: boolean;
 }) {
+  const [files, setFiles] = useState<File[]>([]);
   const projectId = defaultProjectId || initial?.project_id || '';
   const projectLocked = Boolean(defaultProjectId);
   const projects = useProjects({ page: 1, limit: 200 });
@@ -66,7 +68,7 @@ export function WeldForm({
       welder_name: initial?.welder_name || '',
       process: initial?.process || '135',
       location: initial?.location || '',
-      status: initial?.status || 'open',
+      status: initial?.status || 'conform',
     },
   });
 
@@ -79,12 +81,18 @@ export function WeldForm({
       welder_name: initial?.welder_name || '',
       process: initial?.process || '135',
       location: initial?.location || '',
-      status: initial?.status || 'open',
+      status: initial?.status || 'conform',
     });
   }, [defaultProjectId, initial, projectId, reset]);
 
+  const totalSizeLabel = useMemo(() => {
+    const total = files.reduce((sum, file) => sum + file.size, 0);
+    if (!total) return 'Geen bijlagen geselecteerd';
+    return `${files.length} bestand(en) geselecteerd · ${(total / 1024 / 1024).toFixed(2)} MB`;
+  }, [files]);
+
   return (
-    <form className="form-grid" onSubmit={handleSubmit(async (values) => onSubmit(values))}>
+    <form className="form-grid" onSubmit={handleSubmit(async (values) => onSubmit(values, files))}>
       <div className="two-column-grid">
         <FormField label="Project" error={errors.project_id?.message}>
           {projectLocked ? (
@@ -143,13 +151,43 @@ export function WeldForm({
         </FormField>
         <FormField label="Status" error={errors.status?.message}>
           <Select {...register('status')}>
-            <option value="open">Open</option>
-            <option value="in-controle">In controle</option>
             <option value="conform">Conform</option>
-            <option value="afgekeurd">Afgekeurd</option>
+            <option value="in-controle">In behandeling</option>
+            <option value="defect">Defect</option>
+            <option value="afgekeurd">Niet conform</option>
           </Select>
         </FormField>
       </div>
+
+      <div className="content-panel">
+        <div className="section-title-row">
+          <h3>Foto's en documenten</h3>
+        </div>
+        <div className="list-subtle">Voeg direct foto's, keuringsbladen of andere bewijsstukken toe aan deze las.</div>
+        <UploadDropzone onFiles={(incoming) => setFiles((current) => [...current, ...incoming])} disabled={isSubmitting} />
+        <div className="list-subtle">{totalSizeLabel}</div>
+        {files.length ? (
+          <div className="list-stack compact-list">
+            {files.map((file, index) => (
+              <div key={`${file.name}-${index}`} className="list-row">
+                <div>
+                  <strong>{file.name}</strong>
+                  <div className="list-subtle">{file.type || 'Bestand'} · {(file.size / 1024 / 1024).toFixed(2)} MB</div>
+                </div>
+                <button
+                  type="button"
+                  className="icon-button"
+                  onClick={() => setFiles((current) => current.filter((_, currentIndex) => currentIndex !== index))}
+                  aria-label="Verwijder bestand"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </div>
+
       <div className="form-actions">
         <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Opslaan...' : (submitLabel || 'Las opslaan')}</Button>
       </div>

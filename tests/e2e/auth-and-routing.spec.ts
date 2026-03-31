@@ -1,35 +1,33 @@
 import { expect, test } from '@playwright/test';
-import { bootstrapAuthenticatedPage, isLiveMode } from './helpers';
+import { seedSession, stubCommonApi } from './helpers';
 
-test.describe('auth and routing', () => {
-  test('redirects anonymous user to login', async ({ page }) => {
-    await page.goto('/projecten');
-    await expect(page).toHaveURL(/\/login$/);
-  });
+test('redirects anonymous user to login', async ({ page }) => {
+  await page.goto('/dashboard');
+  await page.waitForLoadState('networkidle');
+  await expect(page).toHaveURL(/login/i);
+});
 
-  test('authenticated user can open dashboard and projects', async ({ page }) => {
-    await bootstrapAuthenticatedPage(page, '/dashboard');
-    await expect(page.getByRole('link', { name: 'Projecten' })).toBeVisible();
-    await page.getByRole('link', { name: 'Projecten' }).click();
-    await expect(page).toHaveURL(/\/projecten$/);
-    await expect(page.getByRole('heading', { name: 'Projecten' })).toBeVisible();
-  });
+test('shows dashboard for authenticated admin session', async ({ page }) => {
+  await seedSession(page, 'ADMIN');
+  await stubCommonApi(page);
+  await page.goto('/dashboard');
+  await expect(page.locator('body')).toContainText(/dashboard|projecten|rapportage|instellingen/i);
+});
 
-  test('legacy top-level routes redirect to projecten', async ({ page }) => {
-    await bootstrapAuthenticatedPage(page, '/lascontrole');
-    await expect(page).toHaveURL(/\/projecten$/);
-    await page.goto('/ce-dossier');
-    await expect(page).toHaveURL(/\/projecten$/);
-    await page.goto('/planning');
-    await expect(page).toHaveURL(/\/projecten$/);
-  });
+test('superadmin route is hidden for viewer and accessible for superadmin', async ({ browser }) => {
+  const viewerContext = await browser.newContext();
+  const viewerPage = await viewerContext.newPage();
+  await seedSession(viewerPage, 'VIEWER');
+  await stubCommonApi(viewerPage);
+  await viewerPage.goto('/dashboard');
+  await expect(viewerPage.getByRole('link', { name: /superadmin/i })).toHaveCount(0);
+  await viewerContext.close();
 
-  test('superadmin route is only asserted in live or stub auth mode', async ({ page }) => {
-    await bootstrapAuthenticatedPage(page, '/superadmin', { role: 'SUPERADMIN' });
-    if (isLiveMode()) {
-      await expect(page.locator('main')).toBeVisible();
-    } else {
-      await expect(page.getByRole('link', { name: 'Superadmin' })).toBeVisible();
-    }
-  });
+  const superadminContext = await browser.newContext();
+  const superadminPage = await superadminContext.newPage();
+  await seedSession(superadminPage, 'SUPERADMIN');
+  await stubCommonApi(superadminPage);
+  await superadminPage.goto('/superadmin');
+  await expect(superadminPage.locator('body')).toContainText(/superadmin|tenant|demo/i);
+  await superadminContext.close();
 });

@@ -1,4 +1,5 @@
 import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useState } from 'react';
+import { refreshCentralSession, refreshSession } from '@/api/auth';
 import { useAuthStore } from '@/app/store/auth-store';
 import type { Role, SessionUser } from '@/types/domain';
 
@@ -78,6 +79,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
   const impersonation = useAuthStore((state) => state.impersonation);
   const clearSession = useAuthStore((state) => state.clearSession);
   const setSession = useAuthStore((state) => state.setSession);
+  const updateToken = useAuthStore((state) => state.updateToken);
   const [isBootstrapping, setIsBootstrapping] = useState(Boolean(typeof window !== 'undefined' && !user));
 
   useEffect(() => {
@@ -101,6 +103,49 @@ export function SessionProvider({ children }: PropsWithChildren) {
       cancelled = true;
     };
   }, [setSession, user]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    let cancelled = false;
+
+    async function refreshExistingSession() {
+      try {
+        const payload = refreshToken && refreshToken !== '__cookie_session__'
+          ? await refreshSession(refreshToken)
+          : await refreshCentralSession();
+
+        if (cancelled || !payload.access_token) return;
+
+        const refreshedUser: SessionUser = {
+          email: payload.user?.email || user.email,
+          tenant: payload.user?.tenant || user.tenant,
+          tenantId: payload.user?.tenant_id || user.tenantId,
+          role: payload.user?.role || user.role,
+          name: payload.user?.name || user.name,
+        };
+
+        const nextToken = refreshToken && refreshToken !== '__cookie_session__' ? payload.access_token : '__cookie_session__';
+        const nextRefreshToken = refreshToken && refreshToken !== '__cookie_session__' ? payload.refresh_token || refreshToken : null;
+        setSession(nextToken, refreshedUser, nextRefreshToken);
+        if (nextToken !== '__cookie_session__') updateToken(nextToken);
+      } catch {
+        // Laat de bestaande sessie staan; de API-client handelt een echte 401 af.
+      }
+    }
+
+    const interval = window.setInterval(refreshExistingSession, 10 * 60 * 1000);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') void refreshExistingSession();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [refreshToken, setSession, updateToken, user]);
 
   const normalizedRole = normalizeRole(user?.role);
   const permissions = permissionMap[normalizedRole] || [];

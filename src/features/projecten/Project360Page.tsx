@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Boxes, ClipboardCheck, Eye, FileText, History, Paperclip, Pencil, Plus, ShieldCheck, ShieldAlert, Trash2, Upload } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { Tabs } from '@/components/ui/Tabs';
 import { EmptyState } from '@/components/feedback/EmptyState';
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { LoadingState } from '@/components/feedback/LoadingState';
@@ -22,18 +22,10 @@ import { useConformWeld, useCreateWeld, useDeleteWeld, useUpdateWeld, useWeldAtt
 import { AssemblyForm } from '@/features/projecten/components/AssemblyForm';
 import { WeldForm } from '@/features/lascontrole/components/WeldForm';
 import type { Assembly, AuditEntry, CeDocument, Weld } from '@/types/domain';
+import { uploadWeldAttachment as uploadWeldAttachmentRequest } from '@/api/welds';
 import type { WeldFormValues } from '@/types/forms';
 import { formatDate } from '@/utils/format';
-
-const tabs = [
-  { value: 'overzicht', label: 'Overzicht' },
-  { value: 'assemblies', label: 'Assemblies' },
-  { value: 'lassen', label: 'Lassen' },
-  { value: 'lascontrole', label: 'Lascontrole' },
-  { value: 'documenten', label: 'Documenten' },
-  { value: 'ce-dossier', label: 'CE Dossier' },
-  { value: 'historie', label: 'Historie' },
-];
+import { ProjectContextTabs, resolveProjectContextTab } from '@/features/projecten/components/ProjectContextTabs';
 
 function textOf(value: unknown, fallback = '—') {
   if (value == null) return fallback;
@@ -48,16 +40,6 @@ function statusTone(status?: string) {
   return 'warning' as const;
 }
 
-function routeTab(pathname: string) {
-  if (pathname.endsWith('/assemblies') || pathname.includes('/assemblies/')) return 'assemblies';
-  if (pathname.endsWith('/lassen') || pathname.includes('/lassen/')) return 'lassen';
-  if (pathname.endsWith('/lascontrole')) return 'lascontrole';
-  if (pathname.endsWith('/documenten')) return 'documenten';
-  if (pathname.endsWith('/ce-dossier')) return 'ce-dossier';
-  if (pathname.endsWith('/historie')) return 'historie';
-  return 'overzicht';
-}
-
 function complianceLabel(data: Record<string, unknown> | null | undefined) {
   return textOf(data?.status ?? data?.state ?? data?.result, 'In controle');
 }
@@ -68,11 +50,12 @@ function listCount(data: { items?: unknown[] } | undefined) {
 
 export function Project360Page() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const params = useParams<{ projectId?: string; assemblyId?: string; weldId?: string }>();
   const projectId = params.projectId || '';
   const location = useLocation();
   const currentPath = location.pathname;
-  const currentTab = routeTab(currentPath);
+  const currentTab = resolveProjectContextTab(currentPath);
 
   const [message, setMessage] = useState<string | null>(null);
   const [subSearch, setSubSearch] = useState('');
@@ -174,13 +157,14 @@ export function Project360Page() {
 
   const goToTab = (value: string) => navigate(`/projecten/${projectId}/${value}`);
 
-  const handleDocumentUpload = async (files: File[]) => {
+  const handleDocumentUpload = async (files: File[], extra: Record<string, string> = {}) => {
     try {
       for (const file of files) {
         const payload = new FormData();
         payload.append('files', file);
         payload.append('title', documentTitle || file.name);
         payload.append('notes', documentNotes);
+        Object.entries(extra).forEach(([key, value]) => payload.append(key, value));
         await createDocument.mutateAsync(payload);
       }
       setDocumentTitle('');
@@ -232,13 +216,11 @@ export function Project360Page() {
         <div className="list-subtle">Projectvoortgang binnen Fase 2 werkstroom: {progressPercent}% van de kernonderdelen is gevuld of afgerond.</div>
       </Card>
 
-      <Card>
-        <div className="section-title-row">
-          <h3>Project 360 tabs</h3>
-          <Input value={subSearch} onChange={(event) => setSubSearch(event.target.value)} placeholder="Zoek binnen deze projectcontext" />
-        </div>
-        <Tabs tabs={tabs} value={currentTab} onChange={goToTab} />
-      </Card>
+      <ProjectContextTabs
+        projectId={projectId}
+        value={currentTab}
+        searchSlot={<Input value={subSearch} onChange={(event) => setSubSearch(event.target.value)} placeholder="Zoek binnen deze projectcontext" />}
+      />
 
       {currentTab === 'overzicht' ? (
         <>
@@ -424,16 +406,21 @@ export function Project360Page() {
               filteredWelds.length ? (
                 <div className="list-stack compact-list">
                   {filteredWelds.map((weld) => (
-                    <div key={String(weld.id)} className="list-row">
+                    <div
+                      key={String(weld.id)}
+                      className="list-row list-row-button"
+                      onClick={() => navigate(`/projecten/${projectId}/lassen/${String(weld.id)}`)}
+                      onDoubleClick={() => setWeldModal({ mode: 'edit', item: weld })}
+                    >
                       <div>
                         <strong>{textOf(weld.weld_number || weld.weld_no, `Las ${weld.id}`)}</strong>
-                        <div className="list-subtle">{textOf(weld.location)} · {textOf(weld.welder_name)} · {textOf(weld.status)}</div>
+                        <div className="list-subtle">{textOf(weld.location)} · {textOf(weld.welder_name)} · {textOf(weld.status, 'Conform')}</div>
                       </div>
                       <div className="row-actions">
-                        <button className="icon-button" type="button" onClick={() => navigate(`/projecten/${projectId}/lassen/${String(weld.id)}`)} aria-label="Open las"><Eye size={16} /></button>
-                        <button className="icon-button" type="button" onClick={() => setWeldModal({ mode: 'edit', item: weld })} aria-label="Bewerk las"><Pencil size={16} /></button>
-                        <button className="icon-button" type="button" onClick={() => setPendingConformWeld(weld)} aria-label="Zet conform"><ShieldCheck size={16} /></button>
-                        <button className="icon-button" type="button" onClick={() => setPendingDeleteWeld(weld)} aria-label="Verwijder las"><Trash2 size={16} /></button>
+                        <button className="icon-button" type="button" onClick={(event) => { event.stopPropagation(); navigate(`/projecten/${projectId}/lassen/${String(weld.id)}`); }} aria-label="Open las"><Eye size={16} /></button>
+                        <button className="icon-button" type="button" onClick={(event) => { event.stopPropagation(); setWeldModal({ mode: 'edit', item: weld }); }} aria-label="Bewerk las"><Pencil size={16} /></button>
+                        <button className="icon-button" type="button" onClick={(event) => { event.stopPropagation(); setPendingConformWeld(weld); }} aria-label="Zet conform"><ShieldCheck size={16} /></button>
+                        <button className="icon-button" type="button" onClick={(event) => { event.stopPropagation(); setPendingDeleteWeld(weld); }} aria-label="Verwijder las"><Trash2 size={16} /></button>
                       </div>
                     </div>
                   ))}
@@ -634,16 +621,24 @@ export function Project360Page() {
       <Modal open={!!assemblyModal} onClose={() => setAssemblyModal(null)} title={assemblyModal?.mode === 'edit' ? 'Assembly bewerken' : 'Nieuwe assembly'} size="large">
         <AssemblyForm
           initial={assemblyModal?.item}
-          isSubmitting={createAssembly.isPending || updateAssembly.isPending}
-          onSubmit={async (values) => {
+          isSubmitting={createAssembly.isPending || updateAssembly.isPending || createDocument.isPending}
+          onSubmit={async (values, files) => {
             try {
+              let assemblyId = assemblyModal?.item?.id;
               if (assemblyModal?.mode === 'edit' && assemblyModal.item) {
-                await updateAssembly.mutateAsync({ assemblyId: assemblyModal.item.id, payload: values });
+                const updated = await updateAssembly.mutateAsync({ assemblyId: assemblyModal.item.id, payload: values });
+                assemblyId = updated.id || assemblyModal.item.id;
                 setMessage('Assembly bijgewerkt.');
               } else {
-                await createAssembly.mutateAsync(values);
+                const created = await createAssembly.mutateAsync(values);
+                assemblyId = created.id;
                 setMessage('Assembly toegevoegd aan project.');
               }
+
+              if (files.length && assemblyId) {
+                await handleDocumentUpload(files, { assembly_id: String(assemblyId), relation_type: 'assembly' });
+              }
+
               setAssemblyModal(null);
             } catch (error) {
               setMessage(error instanceof Error ? error.message : 'Assembly opslaan mislukt.');
@@ -662,19 +657,32 @@ export function Project360Page() {
             welder_name: weldModal.item.welder_name || '',
             process: weldModal.item.process || '135',
             location: weldModal.item.location || '',
-            status: weldModal.item.status || 'open',
+            status: weldModal.item.status || 'conform',
           } : undefined}
           defaultProjectId={String(projectId)}
           isSubmitting={createWeld.isPending || updateWeld.isPending}
-          onSubmit={async (values: WeldFormValues) => {
+          onSubmit={async (values: WeldFormValues, files) => {
             try {
+              let weldId = weldModal?.item?.id;
               if (weldModal?.mode === 'edit' && weldModal.item) {
-                await updateWeld.mutateAsync({ weldId: weldModal.item.id, payload: values });
+                const updated = await updateWeld.mutateAsync({ weldId: weldModal.item.id, payload: values });
+                weldId = updated.id || weldModal.item.id;
                 setMessage('Las bijgewerkt.');
               } else {
-                await createWeld.mutateAsync(values);
+                const created = await createWeld.mutateAsync(values);
+                weldId = created && typeof created === 'object' && 'id' in created ? (created as { id?: string | number }).id : undefined;
                 setMessage('Las toegevoegd aan project.');
               }
+
+              if (files.length && weldId) {
+                for (const file of files) {
+                  const payload = new FormData();
+                  payload.append('files', file);
+                  await uploadWeldAttachmentRequest(projectId, weldId, payload);
+                }
+                await queryClient.invalidateQueries({ queryKey: ['weld-attachments', projectId, weldId] });
+              }
+
               setWeldModal(null);
             } catch (error) {
               setMessage(error instanceof Error ? error.message : 'Las opslaan mislukt.');

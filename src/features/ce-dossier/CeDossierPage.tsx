@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { Download, RefreshCcw } from 'lucide-react';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Download, RefreshCcw, FileArchive, FileSpreadsheet, FileText } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/Button';
 import { ErrorState } from '@/components/feedback/ErrorState';
@@ -40,6 +40,7 @@ import {
 } from '@/features/ce-dossier/components/CeExportBlocks';
 import { CePdfLayoutCard } from '@/features/ce-dossier/components/CePdfBlocks';
 import type { ExportJob } from '@/types/domain';
+import { ProjectContextTabs, resolveProjectContextTab } from '@/features/projecten/components/ProjectContextTabs';
 
 type LocalExportRecord = ExportJob & { local_only?: boolean };
 
@@ -62,12 +63,14 @@ function makeLocalExport(kind: CeExportKind, payload: unknown): LocalExportRecor
 
 export function CeDossierPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { projectId = '' } = useParams<{ projectId?: string }>();
   const [message, setMessage] = useState<string | null>(null);
   const [localExports, setLocalExports] = useState<LocalExportRecord[]>([]);
   const [selectedExportId, setSelectedExportId] = useState<string | number | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | number | null>(null);
   const [retryingId, setRetryingId] = useState<string | number | null>(null);
+  const currentProjectTab = projectId ? resolveProjectContextTab(location.pathname) : 'ce-dossier';
 
   const overviewQuery = useComplianceOverview(projectId);
   const missingItemsQuery = useComplianceMissingItems(projectId);
@@ -112,7 +115,7 @@ export function CeDossierPage() {
       const key = String(item.id || `${item.type || item.export_type || 'export'}-${index}`);
       map.set(key, item);
     });
-    return Array.from(map.values()).sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
+    return Array.from(map.values()).sort((a, b) => new Date(String(b.created_at || 0)).getTime() - new Date(String(a.created_at || 0)).getTime());
   }, [exportsQuery.data, localExports]);
 
   const selectedExport = useMemo(() => exportItems.find((item) => String(item.id) === String(selectedExportId)) || null, [exportItems, selectedExportId]);
@@ -201,11 +204,11 @@ export function CeDossierPage() {
     <div className="page-stack">
       <PageHeader title="CE Dossier" description="Projectgebonden compliance-overzicht, ontbrekende onderdelen en exportacties.">
         <Button variant="secondary" onClick={() => navigate(`/projecten/${projectId}/overzicht`)}>Terug naar Project 360</Button>
-        <Button variant="secondary" onClick={() => navigate(`/projecten/${projectId}/documenten`)}>Documenten</Button>
         <Button onClick={() => handleExport('pdf')}><Download size={16} /> Snelle PDF-export</Button>
       </PageHeader>
 
       {message ? <InlineMessage tone="success">{message}</InlineMessage> : null}
+      <ProjectContextTabs projectId={projectId} value={currentProjectTab} />
       {isLoading ? <LoadingState label="CE dossier laden..." /> : null}
       {isError ? <ErrorState title="CE dossier niet geladen" description="De CE/compliance-data voor dit project kon niet worden opgehaald." /> : null}
 

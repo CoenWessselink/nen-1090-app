@@ -228,10 +228,16 @@ export async function getComplianceChecklist(projectId: string | number) {
 
 export async function getCeDossier(projectId: string | number) {
   const fallbackPayload = await buildFallbackCeDossier(projectId);
-  const livePayload = await optionalRequest<Record<string, unknown>>([
-    `/projects/${projectId}/ce-dossier`,
-    `/ce_export/${projectId}`,
-  ]);
+  let livePayload: Record<string, unknown> | null = null;
+
+  try {
+    livePayload = await optionalRequest<Record<string, unknown>>([
+      `/projects/${projectId}/ce-dossier`,
+      `/ce_export/${projectId}`,
+    ]);
+  } catch {
+    livePayload = null;
+  }
 
   return mergeCePayload(livePayload, fallbackPayload);
 }
@@ -245,11 +251,15 @@ export async function uploadDocument(payload: FormData) {
 }
 
 export async function getProjectExports(projectId: string | number) {
-  return (
-    (await optionalRequest<Record<string, unknown> | { items?: Record<string, unknown>[] }>([
-      `/projects/${projectId}/exports`,
-    ])) || emptyListPayload()
-  );
+  try {
+    return (
+      (await optionalRequest<Record<string, unknown> | { items?: Record<string, unknown>[] }>([
+        `/projects/${projectId}/exports`,
+      ])) || emptyListPayload()
+    );
+  } catch {
+    return emptyListPayload();
+  }
 }
 
 export async function createCeReport(projectId: string | number) {

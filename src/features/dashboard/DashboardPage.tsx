@@ -40,7 +40,7 @@ export function DashboardPage() {
     <div className="page-stack">
       <PageHeader title="Dashboard" description="Operationeel overzicht met directe navigatie naar projecten, lassen en vervolgstappen." />
 
-      <div className="content-grid-4">
+      <div className="dashboard-kpi-grid">
         {kpis.map((item) => (
           <button key={item.title} type="button" className="card stat-card card-button" onClick={item.onClick}>
             <div className="stat-label">{item.title}</div>
@@ -49,6 +49,17 @@ export function DashboardPage() {
           </button>
         ))}
       </div>
+
+      <Card className="dashboard-action-bar">
+        <div className="dashboard-action-bar-copy">
+          <strong>Snelle acties</strong>
+          <div className="list-subtle">Direct onder de KPI's: start meteen een nieuw project of registreer een nieuwe las.</div>
+        </div>
+        <div className="dashboard-action-bar-actions">
+          <button type="button" className="btn btn-secondary" onClick={() => navigate('/projecten')}>Nieuw project</button>
+          <button type="button" className="btn btn-primary" onClick={() => navigate('/projecten')}>Nieuwe las</button>
+        </div>
+      </Card>
 
       <div className="content-grid-2">
         <Card>

@@ -61,14 +61,15 @@ import {
   useWelds,
 } from '@/hooks/useWelds';
 import { useInspectionTemplates } from '@/hooks/useSettings';
-import { resetWeldToNorm } from '@/api/welds';
+import { resetWeldToNorm, uploadWeldAttachment as uploadWeldAttachmentRequest } from '@/api/welds';
 import { WeldForm } from '@/features/lascontrole/components/WeldForm';
 import { InspectionForm } from '@/features/lascontrole/components/InspectionForm';
 import { DefectForm } from '@/features/lascontrole/components/DefectForm';
 import type { CeDocument, Defect, Inspection, Weld } from '@/types/domain';
 import type { WeldFormValues } from '@/types/forms';
 import { formatDate } from '@/utils/format';
-import { useNavigate, useParams } from 'react-router-dom';
+import { ProjectContextTabs, resolveProjectContextTab } from '@/features/projecten/components/ProjectContextTabs';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 
 function textOf(value: unknown, fallback = '—'): string {
   if (value == null) return fallback;
@@ -83,9 +84,10 @@ function textOf(value: unknown, fallback = '—'): string {
 }
 
 function tone(value?: string) {
-  const status = String(value || '').toLowerCase();
+  const status = normalizedStatus(value);
   if (['goedgekeurd', 'approved', 'accepted', 'resolved', 'conform'].includes(status)) return 'success' as const;
-  if (['afgekeurd', 'rejected', 'repair-required'].includes(status)) return 'danger' as const;
+  if (['afgekeurd', 'rejected', 'repair-required', 'defect', 'niet-conform'].includes(status)) return 'danger' as const;
+  if (['in-controle', 'in-behandeling', 'open'].includes(status)) return 'warning' as const;
   return 'neutral' as const;
 }
 
@@ -102,10 +104,11 @@ function normalizedStatus(value?: string) {
     .replace(/_/g, '-');
 
   if (!raw) return '';
-  if (raw === 'pending') return 'open';
+  if (raw === 'pending') return 'in-controle';
   if (raw === 'in controle' || raw === 'in-controle' || raw === 'in-control') return 'in-controle';
   if (raw === 'approved' || raw === 'accepted' || raw === 'ok') return 'conform';
-  if (raw === 'rejected' || raw === 'repair-required') return 'afgekeurd';
+  if (raw === 'rejected' || raw === 'repair-required' || raw === 'niet conform') return 'afgekeurd';
+  if (raw === 'in behandeling') return 'in-controle';
   return raw;
 }
 
@@ -126,12 +129,41 @@ function displayWps(row: Weld | Record<string, unknown>) {
   return textOf((row as { wps_id?: unknown }).wps_id ?? (row as { wps?: unknown }).wps);
 }
 
+function weldStatusLabel(value?: string) {
+  const status = normalizedStatus(value);
+  if (status === 'conform') return 'Conform';
+  if (status === 'afgekeurd') return 'Niet conform';
+  if (status === 'defect') return 'Defect';
+  if (status === 'in-controle' || status === 'open') return 'In behandeling';
+  return textOf(value, 'Conform');
+}
+
+function inspectionMethodLabel(value?: string) {
+  const method = String(value || '').toUpperCase();
+  if (method === 'VT') return 'Visuele controle';
+  if (method === 'MT') return 'Magnetisch onderzoek';
+  if (method === 'UT') return 'Ultrasoon onderzoek';
+  if (method === 'RT') return 'Radiografisch onderzoek';
+  return textOf(value);
+}
+
+function inspectionResultLabel(value?: string) {
+  const result = normalizedStatus(value);
+  if (result === 'conform') return 'Conform';
+  if (result === 'afgekeurd') return 'Niet conform';
+  if (result === 'repair-required') return 'Herstel nodig';
+  if (result === 'in-controle') return 'Nog te beoordelen';
+  return textOf(value, 'Conform');
+}
+
 export function LascontrolePage() {
   const pushNotification = useUiStore((state) => state.pushNotification);
   const globalSearch = useUiStore((state) => state.globalSearch);
   const navigate = useNavigate();
+  const location = useLocation();
   const { projectId = '' } = useParams<{ projectId?: string }>();
   const hasProject = Boolean(projectId);
+  const currentProjectTab = hasProject ? resolveProjectContextTab(location.pathname) : 'lascontrole';
 
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('all');
@@ -284,6 +316,44 @@ export function LascontrolePage() {
     weldWorkflowInspections.data,
   ]);
 
+  const buildWeldPayload = (row: Weld, nextStatus?: string): WeldFormValues => ({
+    project_id: String(row.project_id || projectId || ''),
+    weld_number: displayWeldNumber(row),
+    assembly_id: row.assembly_id ? String(row.assembly_id) : '',
+    wps_id: String(row.wps_id || (row as Record<string, unknown>).wps || ''),
+    welder_name: String(row.welder_name || (row as Record<string, unknown>).welders || ''),
+    process: String(row.process || '135'),
+    location: String(row.location || ''),
+    status: nextStatus || String(row.status || 'conform'),
+  });
+
+  const updateWeldStatusQuick = async (row: Weld, nextStatus: string) => {
+    const effectiveProjectId = String(row.project_id || projectId || '');
+    if (!effectiveProjectId) throw new Error('Project ontbreekt voor deze las.');
+    if (nextStatus === 'conform') {
+      await conformWeld.mutateAsync(row.id);
+    } else {
+      await updateWeld.mutateAsync({ weldId: row.id, payload: buildWeldPayload(row, nextStatus) });
+    }
+    setMessage(`Las ${displayWeldNumber(row)} status gewijzigd naar ${weldStatusLabel(nextStatus)}.`);
+  };
+
+  const updateInspectionStatusQuick = async (row: Inspection, nextResult: string) => {
+    const nextStatus = nextResult === 'accepted' ? 'approved' : nextResult === 'pending' ? 'pending' : 'rejected';
+    await updateInspection.mutateAsync({
+      inspectionId: row.id,
+      payload: {
+        weld_id: row.weld_id,
+        method: row.method || 'VT',
+        due_date: row.due_date || '',
+        notes: row.notes || row.remarks || '',
+        status: nextStatus,
+        result: nextResult,
+      },
+    });
+    setMessage(`Inspectie ${row.id} gewijzigd naar ${inspectionResultLabel(nextResult)}.`);
+  };
+
   const weldColumns: ColumnDef<Weld>[] = [
     {
       key: 'weld_number',
@@ -326,7 +396,21 @@ export function LascontrolePage() {
       key: 'status',
       header: 'Status',
       sortable: true,
-      cell: (row) => <Badge tone={tone(row.status)}>{textOf(row.status, 'Open')}</Badge>,
+      cell: (row) => (
+        <div onClick={(event) => event.stopPropagation()} onDoubleClick={(event) => event.stopPropagation()}>
+          <Select
+            value={normalizedStatus(row.status) || 'conform'}
+            onChange={async (event) => {
+              await updateWeldStatusQuick(row, event.target.value);
+            }}
+          >
+            <option value="conform">Conform</option>
+            <option value="afgekeurd">Niet conform</option>
+            <option value="defect">Defect</option>
+            <option value="in-controle">In behandeling</option>
+          </Select>
+        </div>
+      ),
     },
     {
       key: 'actions',
@@ -376,7 +460,7 @@ export function LascontrolePage() {
       key: 'id',
       header: 'Inspectie',
       sortable: true,
-      cell: (row) => <strong>{String(row.id)}</strong>,
+      cell: (row) => <strong>{inspectionMethodLabel(row.method)} · #{String(row.id)}</strong>,
     },
     {
       key: 'weld_id',
@@ -392,7 +476,7 @@ export function LascontrolePage() {
     },
     {
       key: 'due_date',
-      header: 'Planning',
+      header: 'Datum',
       sortable: true,
       cell: (row) => formatDate(row.due_date),
     },
@@ -400,13 +484,27 @@ export function LascontrolePage() {
       key: 'result',
       header: 'Resultaat',
       sortable: true,
-      cell: (row) => textOf(row.result),
+      cell: (row) => inspectionResultLabel(row.result),
     },
     {
       key: 'status',
       header: 'Status',
       sortable: true,
-      cell: (row) => <Badge tone={tone(row.status)}>{textOf(row.status, 'Open')}</Badge>,
+      cell: (row) => (
+        <div onClick={(event) => event.stopPropagation()} onDoubleClick={(event) => event.stopPropagation()}>
+          <Select
+            value={normalizedStatus(row.status) || 'conform'}
+            onChange={async (event) => {
+              await updateWeldStatusQuick(row, event.target.value);
+            }}
+          >
+            <option value="conform">Conform</option>
+            <option value="afgekeurd">Niet conform</option>
+            <option value="defect">Defect</option>
+            <option value="in-controle">In behandeling</option>
+          </Select>
+        </div>
+      ),
     },
     {
       key: 'actions',
@@ -446,7 +544,7 @@ export function LascontrolePage() {
       key: 'id',
       header: 'Defect',
       sortable: true,
-      cell: (row) => <strong>{String(row.id)}</strong>,
+      cell: (row) => <strong>Defect #{String(row.id)}</strong>,
     },
     {
       key: 'weld_id',
@@ -470,7 +568,21 @@ export function LascontrolePage() {
       key: 'status',
       header: 'Status',
       sortable: true,
-      cell: (row) => <Badge tone={tone(row.status)}>{textOf(row.status, 'Open')}</Badge>,
+      cell: (row) => (
+        <div onClick={(event) => event.stopPropagation()} onDoubleClick={(event) => event.stopPropagation()}>
+          <Select
+            value={normalizedStatus(row.status) || 'conform'}
+            onChange={async (event) => {
+              await updateWeldStatusQuick(row, event.target.value);
+            }}
+          >
+            <option value="conform">Conform</option>
+            <option value="afgekeurd">Niet conform</option>
+            <option value="defect">Defect</option>
+            <option value="in-controle">In behandeling</option>
+          </Select>
+        </div>
+      ),
     },
     {
       key: 'actions',
@@ -549,6 +661,8 @@ export function LascontrolePage() {
       />
 
       {message ? <InlineMessage tone="success">{message}</InlineMessage> : null}
+
+      {hasProject ? <ProjectContextTabs projectId={projectId} value={currentProjectTab} /> : null}
 
       <InlineMessage tone={hasProject ? 'neutral' : 'danger'}>
         {hasProject
@@ -774,7 +888,8 @@ export function LascontrolePage() {
                   current.length === weldRows.length ? [] : weldRows.map((row) => String(row.id)),
                 )
               }
-              onRowDoubleClick={(row) => setActiveWeld(row)}
+              onRowClick={(row) => setActiveWeld(row)}
+              onRowDoubleClick={(row) => { setActiveWeld(row); setWeldModalMode('edit'); setWeldModal(true); }}
               page={page}
               pageSize={limit}
               total={totalForActiveTab}
@@ -879,13 +994,28 @@ export function LascontrolePage() {
           defaultProjectId={String(projectId || activeWeld?.project_id || '')}
           submitLabel={weldModalMode === 'edit' ? 'Las bijwerken' : 'Las opslaan'}
           isSubmitting={createWeld.isPending || updateWeld.isPending}
-          onSubmit={async (values) => {
+          onSubmit={async (values, files) => {
             if (weldModalMode === 'edit' && activeWeld) {
-              await updateWeld.mutateAsync({ weldId: activeWeld.id, payload: values });
+              const updated = await updateWeld.mutateAsync({ weldId: activeWeld.id, payload: values });
+              if (files.length) {
+                for (const file of files) {
+                  const payload = new FormData();
+                  payload.append('files', file);
+                  await uploadWeldAttachment.mutateAsync(payload);
+                }
+              }
               setMessage(`Las ${displayWeldNumber(activeWeld)} bijgewerkt.`);
-              setActiveWeld({ ...activeWeld, ...values } as Weld);
+              setActiveWeld({ ...updated, ...values } as Weld);
             } else {
               const created = await createWeld.mutateAsync(values);
+              if (files.length && created?.id) {
+                for (const file of files) {
+                  const payload = new FormData();
+                  payload.append('files', file);
+                  await uploadWeldAttachmentRequest(String(created.project_id || values.project_id), String(created.id), payload);
+                  await queryClient.invalidateQueries({ queryKey: ['weld-attachments', String(created.project_id || values.project_id), String(created.id)] });
+                }
+              }
               setTab('welds');
               setStatus('all');
               setQuickFilter('all');
@@ -896,6 +1026,7 @@ export function LascontrolePage() {
                 description: 'Nieuwe las is opgeslagen via de bestaande backend.',
                 tone: 'success',
               });
+              setActiveWeld(created as Weld);
             }
             setWeldModal(false);
           }}

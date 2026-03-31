@@ -3,7 +3,6 @@ import { Outlet } from 'react-router-dom';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Topbar } from '@/components/layout/Topbar';
 import { MobileTabbar } from '@/components/layout/MobileTabbar';
-import { CommandPalette } from '@/components/search/CommandPalette';
 import { NotificationCenter } from '@/components/notifications/NotificationCenter';
 import { ToastViewport } from '@/components/notifications/ToastViewport';
 import { useUiStore } from '@/app/store/ui-store';
@@ -31,7 +30,6 @@ export function AppShell({ children }: PropsWithChildren) {
         </main>
         <MobileTabbar />
       </div>
-      <CommandPalette />
       <NotificationCenter />
       <ToastViewport />
     </div>

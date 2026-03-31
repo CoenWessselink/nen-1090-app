@@ -1,4 +1,4 @@
-import { Bell, Command, LogOut, Menu, Plus, Search } from 'lucide-react';
+import { Bell, LogOut, Menu, Plus, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useUiStore } from '@/app/store/ui-store';
 import { Button } from '@/components/ui/Button';
@@ -13,7 +13,6 @@ export function Topbar() {
     globalSearch,
     setGlobalSearch,
     toggleSidebar,
-    openCommandPalette,
     toggleNotificationCenter,
     notifications,
     pushNotification,
@@ -38,16 +37,12 @@ export function Topbar() {
           <SearchResultsPopover />
         </div>
         <div className="topbar-actions">
-          <Button variant="secondary" onClick={openCommandPalette}>
-            <Command size={16} />
-            <span className="button-label-desktop">Command</span>
-          </Button>
           <Button
             variant="secondary"
             onClick={() => {
               navigate('/projecten');
               requestCreateProject();
-              pushNotification({ title: 'Nieuw project', description: 'De projectwizard is geopend. Command en Nieuw zijn nu gescheiden acties.', tone: 'info' });
+              pushNotification({ title: 'Nieuw project', description: 'De projectwizard is geopend vanaf de bovenbalk.', tone: 'info' });
             }}
           >
             <Plus size={16} />
