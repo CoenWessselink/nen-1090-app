@@ -1,13 +1,12 @@
-import { BarChart3, FileBadge, FolderKanban, LayoutDashboard, ShieldCheck } from 'lucide-react';
+import { BarChart3, FolderKanban, LayoutDashboard, Settings } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { cn } from '@/utils/cn';
 
 const items = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/projecten', label: 'Projecten', icon: FolderKanban },
-  { to: '/lascontrole', label: 'Lascontrole', icon: ShieldCheck },
-  { to: '/ce-dossier', label: 'CE', icon: FileBadge },
   { to: '/rapportage', label: 'Rapportage', icon: BarChart3 },
+  { to: '/instellingen', label: 'Instellingen', icon: Settings },
 ];
 
 export function MobileTabbar() {

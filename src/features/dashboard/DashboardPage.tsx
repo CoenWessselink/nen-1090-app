@@ -1,20 +1,19 @@
-import { Activity, AlertTriangle, CheckCircle2, FolderKanban } from 'lucide-react';
+import { Activity, AlertTriangle, CheckCircle2, ChevronRight, FolderKanban } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card } from '@/components/ui/Card';
-import { KpiStrip } from '@/components/ui/KpiStrip';
 import { Badge } from '@/components/ui/Badge';
 import { useProjects } from '@/hooks/useProjects';
 import { useWelds } from '@/hooks/useWelds';
-import { useSystemHealth } from '@/hooks/useSystemHealth';
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { LoadingState } from '@/components/feedback/LoadingState';
 import { formatDatetime, toneFromStatus } from '@/utils/format';
 import { useDashboardSummary, useOpenDefectsSummary, usePendingInspectionsSummary, useRecentAudit, useRecentExports } from '@/hooks/useDashboardSummary';
 
 export function DashboardPage() {
+  const navigate = useNavigate();
   const projects = useProjects({ status: 'active', limit: 6 });
   const welds = useWelds({ limit: 6 });
-  const health = useSystemHealth();
   const summary = useDashboardSummary();
   const pendingInspections = usePendingInspectionsSummary();
   const openDefects = useOpenDefectsSummary();
@@ -23,44 +22,55 @@ export function DashboardPage() {
 
   const projectRows = projects.data?.items || [];
   const weldRows = welds.data?.items || [];
-  const derivedDefects = weldRows.filter((item) => Number(item.defect_count || 0) > 0).length;
   const summaryData = summary.data || {};
-  const defects = Number(summaryData.open_weld_defects ?? openDefects.data?.total ?? derivedDefects ?? 0);
+  const defects = Number(summaryData.open_weld_defects ?? openDefects.data?.total ?? 0);
   const readyDossiers = Number(summaryData.ce_dossier_ready ?? recentExports.data?.total ?? 0);
   const pendingCount = Number(summaryData.open_inspections ?? pendingInspections.data?.total ?? 0);
+  const openProjects = Number(summaryData.open_projects ?? projects.data?.total ?? projectRows.length);
   const activityRows = recentAudit.data?.length ? recentAudit.data : weldRows;
+
+  const kpis = [
+    { title: 'Open projecten', value: openProjects, onClick: () => navigate('/projecten') },
+    { title: 'Open lasdefecten', value: defects, onClick: () => navigate('/projecten') },
+    { title: 'Open inspecties', value: pendingCount, onClick: () => navigate('/projecten') },
+    { title: 'CE dossier gereed', value: readyDossiers, onClick: () => navigate('/rapportage') },
+  ];
 
   return (
     <div className="page-stack">
-      <PageHeader title="Dashboard" description="Realtime enterprise-overzicht op basis van de gestandaardiseerde API-contracten." />
-      <KpiStrip
-        items={[
-          { title: 'Open projecten', value: Number(summaryData.open_projects ?? projects.data?.total ?? projectRows.length), meta: 'GET /dashboard/summary of /projects' },
-          { title: 'Open lasdefecten', value: defects, meta: 'GET /dashboard/summary of /weld-defects?status=open' },
-          { title: 'Open inspecties', value: pendingCount, meta: 'GET /dashboard/summary of /inspections?status=pending' },
-          { title: 'CE dossier gereed', value: readyDossiers, meta: 'GET /dashboard/summary of /exports/recent' },
-          { title: 'API-status', value: health.data ? 'Verbonden' : health.isError ? 'Fout' : 'Controleren', meta: 'Bestaande omgeving' },
-        ]}
-      />
+      <PageHeader title="Dashboard" description="Operationeel overzicht met directe navigatie naar projecten, lassen en vervolgstappen." />
+
+      <div className="content-grid-4">
+        {kpis.map((item) => (
+          <button key={item.title} type="button" className="card stat-card card-button" onClick={item.onClick}>
+            <div className="stat-label">{item.title}</div>
+            <div className="stat-value">{item.value}</div>
+            <div className="stat-meta">Open detail</div>
+          </button>
+        ))}
+      </div>
 
       <div className="content-grid-2">
         <Card>
           <div className="section-title-row">
             <h3><FolderKanban size={18} /> Projectvoortgang</h3>
-            <Badge tone="neutral">Live</Badge>
+            <Badge tone="neutral">Direct openen</Badge>
           </div>
           {projects.isLoading ? <LoadingState label="Projecten laden..." /> : null}
-          {projects.isError ? <ErrorState title="Projecten niet geladen" description="Controleer of /projects bereikbaar is via de backend." /> : null}
+          {projects.isError ? <ErrorState title="Projecten niet geladen" description="Controleer of de projectenlijst bereikbaar is." /> : null}
           {!projects.isLoading && !projects.isError ? (
             <div className="list-stack">
               {projectRows.slice(0, 6).map((project) => (
-                <div className="list-row" key={String(project.id)}>
+                <button className="list-row list-row-button" type="button" key={String(project.id)} onClick={() => navigate(`/projecten/${project.id}/overzicht`)}>
                   <div>
                     <strong>{project.projectnummer || project.id}</strong>
                     <div className="list-subtle">{project.name || project.omschrijving || 'Onbekende projectnaam'}</div>
                   </div>
-                  <Badge tone={toneFromStatus(String(project.status || ''))}>{String(project.status || 'Onbekend')}</Badge>
-                </div>
+                  <div className="row-actions">
+                    <Badge tone={toneFromStatus(String(project.status || ''))}>{String(project.status || 'Onbekend')}</Badge>
+                    <ChevronRight size={16} />
+                  </div>
+                </button>
               ))}
             </div>
           ) : null}
@@ -77,15 +87,21 @@ export function DashboardPage() {
           </div>
           <div className="divider" />
           <div className="list-stack compact-list">
-            {weldRows.slice(0, 5).map((weld) => (
-              <div className="list-row" key={String(weld.id)}>
-                <div>
-                  <strong>{weld.weld_number || weld.weld_no || `Las ${weld.id}`}</strong>
-                  <div className="list-subtle">{weld.location || 'Locatie onbekend'}</div>
-                </div>
-                <Badge tone={toneFromStatus(String(weld.status || ''))}>{String(weld.status || 'Onbekend')}</Badge>
-              </div>
-            ))}
+            {weldRows.slice(0, 5).map((weld) => {
+              const projectId = String(weld.project_id || '');
+              return (
+                <button className="list-row list-row-button" type="button" key={String(weld.id)} onClick={() => navigate(projectId ? `/projecten/${projectId}/lassen/${weld.id}` : '/projecten')}>
+                  <div>
+                    <strong>{weld.weld_number || weld.weld_no || `Las ${weld.id}`}</strong>
+                    <div className="list-subtle">{weld.location || 'Locatie onbekend'}</div>
+                  </div>
+                  <div className="row-actions">
+                    <Badge tone={toneFromStatus(String(weld.status || ''))}>{String(weld.status || 'Onbekend')}</Badge>
+                    <ChevronRight size={16} />
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </Card>
       </div>
@@ -97,15 +113,20 @@ export function DashboardPage() {
           </div>
           {activityRows.length ? (
             <div className="timeline-list">
-              {activityRows.slice(0, 5).map((item, index) => (
-                <div className="timeline-item" key={String((item as Record<string, unknown>).id || index)}>
-                  <div className="timeline-dot" />
-                  <div>
-                    <strong>{String((item as Record<string, unknown>).title || (item as Record<string, unknown>).action || (item as Record<string, unknown>).weld_number || `Activiteit ${index + 1}`)}</strong>
-                    <div className="list-subtle">{String((item as Record<string, unknown>).location || (item as Record<string, unknown>).description || '')} · {formatDatetime((item as Record<string, unknown>).created_at as string | undefined)}</div>
-                  </div>
-                </div>
-              ))}
+              {activityRows.slice(0, 5).map((item, index) => {
+                const row = item as Record<string, unknown>;
+                const projectId = String(row.project_id || '');
+                const weldId = String(row.weld_id || row.id || '');
+                return (
+                  <button key={String(row.id || index)} type="button" className="timeline-item timeline-item-button" onClick={() => navigate(projectId ? `/projecten/${projectId}/lassen/${weldId}` : '/projecten')}>
+                    <div className="timeline-dot" />
+                    <div>
+                      <strong>{String(row.title || row.action || row.weld_number || `Activiteit ${index + 1}`)}</strong>
+                      <div className="list-subtle">{String(row.location || row.description || '')} · {formatDatetime(row.created_at as string | undefined)}</div>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           ) : (
             <div className="state-box">Nog geen recente activiteit beschikbaar vanuit de backend.</div>
@@ -113,12 +134,24 @@ export function DashboardPage() {
         </Card>
         <Card>
           <div className="section-title-row">
-            <h3>Omgevingsstatus</h3>
-            {health.data ? <Badge tone="success">Verbonden</Badge> : null}
+            <h3>Volgende stap</h3>
           </div>
-          {health.isLoading ? <LoadingState label="Health endpoint controleren..." /> : null}
-          {health.isError ? <ErrorState description="De bestaande Azure API reageert niet via de ingestelde URL." /> : null}
-          {health.data ? <pre className="code-block">{JSON.stringify(health.data, null, 2)}</pre> : null}
+          <div className="list-stack compact-list">
+            <button className="list-row list-row-button" type="button" onClick={() => navigate('/projecten')}>
+              <div>
+                <strong>Open Projecten</strong>
+                <div className="list-subtle">Ga direct naar de operationele projectflow en open Project 360.</div>
+              </div>
+              <ChevronRight size={16} />
+            </button>
+            <button className="list-row list-row-button" type="button" onClick={() => navigate('/rapportage')}>
+              <div>
+                <strong>Open Rapportage</strong>
+                <div className="list-subtle">Bekijk exports, managementrapportages en CE-output.</div>
+              </div>
+              <ChevronRight size={16} />
+            </button>
+          </div>
         </Card>
       </div>
     </div>

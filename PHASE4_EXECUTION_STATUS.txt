@@ -1,0 +1,21 @@
+NEN1090 APP — FASE 4 EXECUTION STATUS
+
+Werkelijk uitgevoerd in deze container:
+- npm ci
+- npm run build
+- npx playwright test --list
+- npx playwright test tests/e2e/smoke.spec.ts --project=desktop-chromium
+
+Werkelijke uitkomst:
+- npm ci = PASS
+- npm run build = PASS
+- playwright --list = PASS
+- playwright smoke run = FAIL door ontbrekende browser executable
+
+Concrete foutoorzaak:
+- Chromium voor Playwright was nog niet geinstalleerd in deze omgeving
+- foutmelding verwees naar het ontbreken van chrome-headless-shell
+
+Herstel opgenomen in fase 4:
+- de nieuwe local/live runners installeren nu expliciet eerst Chromium
+- daardoor is de validatiestap reproduceerbaar op de doelmachine

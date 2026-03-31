@@ -28,7 +28,6 @@ import { Tabs } from '@/components/ui/Tabs';
 import { Drawer } from '@/components/overlays/Drawer';
 import { UploadDropzone } from '@/components/upload/UploadDropzone';
 import { Select } from '@/components/ui/Select';
-import { ProjectScopePicker } from '@/components/project-scope/ProjectScopePicker';
 import { useUiStore } from '@/app/store/ui-store';
 import {
   useApproveInspection,
@@ -69,7 +68,7 @@ import { DefectForm } from '@/features/lascontrole/components/DefectForm';
 import type { CeDocument, Defect, Inspection, Weld } from '@/types/domain';
 import type { WeldFormValues } from '@/types/forms';
 import { formatDate } from '@/utils/format';
-import { useProjectContext } from '@/context/ProjectContext';
+import { useNavigate, useParams } from 'react-router-dom';
 
 function textOf(value: unknown, fallback = '—'): string {
   if (value == null) return fallback;
@@ -130,7 +129,9 @@ function displayWps(row: Weld | Record<string, unknown>) {
 export function LascontrolePage() {
   const pushNotification = useUiStore((state) => state.pushNotification);
   const globalSearch = useUiStore((state) => state.globalSearch);
-  const { projectId, hasProject } = useProjectContext();
+  const navigate = useNavigate();
+  const { projectId = '' } = useParams<{ projectId?: string }>();
+  const hasProject = Boolean(projectId);
 
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('all');
@@ -166,14 +167,6 @@ export function LascontrolePage() {
     direction: sortDirection,
     project_id: hasProject ? projectId || undefined : undefined,
   };
-
-  const globalWeldsQuery = useWelds(
-    {
-      ...weldBaseParams,
-      project_id: undefined,
-    },
-    true,
-  );
 
   const projectWeldsQuery = useWelds(
     {
@@ -224,14 +217,9 @@ export function LascontrolePage() {
   const uploadWeldAttachment = useUploadWeldAttachment(activeWeld?.project_id || projectId || '', activeWeld?.id || '');
   const inspectionResultsQuery = useInspectionResults(inspectionModal?.item?.id);
 
-  const globalWeldRows = useMemo(() => globalWeldsQuery.data?.items || [], [globalWeldsQuery.data]);
   const projectWeldRows = useMemo(() => projectWeldsQuery.data?.items || [], [projectWeldsQuery.data]);
 
-  const sourceWeldRows = useMemo(() => {
-    if (globalWeldRows.length > 0) return globalWeldRows;
-    if (hasProject && projectWeldRows.length > 0) return projectWeldRows;
-    return globalWeldRows;
-  }, [globalWeldRows, projectWeldRows, hasProject]);
+  const sourceWeldRows = useMemo(() => projectWeldRows, [projectWeldRows]);
 
   const weldRows = useMemo(() => {
     let rows = [...sourceWeldRows];
@@ -527,12 +515,7 @@ export function LascontrolePage() {
     },
   ];
 
-  const weldTotal =
-    globalWeldRows.length > 0
-      ? (globalWeldsQuery.data?.total ?? globalWeldRows.length)
-      : hasProject
-        ? (projectWeldsQuery.data?.total ?? projectWeldRows.length)
-        : (globalWeldsQuery.data?.total ?? globalWeldRows.length);
+  const weldTotal = projectWeldsQuery.data?.total ?? projectWeldRows.length;
 
   const totalForActiveTab =
     tab === 'welds'
@@ -562,21 +545,33 @@ export function LascontrolePage() {
     <div className="page-stack">
       <PageHeader
         title="Lascontrole"
-        description="Weld-first overzicht met projectfallback, inspecties, defecten en Weld 360°."
+        description="Projectgebonden lascontrole met inspecties, defecten, attachments en Weld 360."
       />
 
       {message ? <InlineMessage tone="success">{message}</InlineMessage> : null}
 
-      <InlineMessage tone={hasProject ? 'neutral' : 'success'}>
+      <InlineMessage tone={hasProject ? 'neutral' : 'danger'}>
         {hasProject
-          ? 'Projectscope actief. Als de tenantbrede lassenlijst leeg is, gebruikt Lascontrole automatisch de projectlijst als fallback.'
-          : 'Geen projectscope gekozen. Lascontrole draait tenantbreed over alle lassen.'}
+          ? 'Lascontrole draait volledig binnen de huidige projectcontext.'
+          : 'Open eerst een project vanuit Projecten om lascontrole te gebruiken.'}
       </InlineMessage>
+
+      {!hasProject ? (
+        <Card>
+          <div className="list-stack compact-list">
+            <button className="list-row list-row-button" type="button" onClick={() => navigate('/projecten')}>
+              <div>
+                <strong>Ga naar Projecten</strong>
+                <div className="list-subtle">Selecteer eerst een project om lassen, inspecties en defecten te beheren.</div>
+              </div>
+            </button>
+          </div>
+        </Card>
+      ) : null}
 
       <Card>
         <div className="form-grid" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
           <div style={{ gridColumn: '1 / -1' }}>
-            <ProjectScopePicker description="Projectscope wordt gebruikt voor acties en fallbackweergave van lassen." />
           </div>
 
           <Input
@@ -750,15 +745,13 @@ export function LascontrolePage() {
             }
           />
 
-          {globalWeldsQuery.isLoading || projectWeldsQuery.isLoading ? <LoadingState label="Lassen laden..." /> : null}
+          {projectWeldsQuery.isLoading ? <LoadingState label="Lassen laden..." /> : null}
 
-          {globalWeldsQuery.isError && !projectWeldRows.length ? (
-            <ErrorState title="Lassen niet geladen" description="Controleer /welds of de projectfallback." />
+          {projectWeldsQuery.isError ? (
+            <ErrorState title="Lassen niet geladen" description="De lassen voor dit project konden niet worden opgehaald." />
           ) : null}
 
-          {!globalWeldsQuery.isLoading &&
-          !projectWeldsQuery.isLoading &&
-          !(globalWeldsQuery.isError && !projectWeldRows.length) ? (
+          {!projectWeldsQuery.isLoading && !projectWeldsQuery.isError ? (
             <DataTable
               columns={weldColumns}
               rows={weldRows}
@@ -766,7 +759,7 @@ export function LascontrolePage() {
               empty={
                 <EmptyState
                   title="Geen lassen"
-                  description="Maak een las aan of verfijn het filter. Bij actieve projectscope wordt automatisch op projectniveau teruggevallen."
+                  description="Maak een las aan of verfijn het filter binnen dit project."
                 />
               }
               selectable
@@ -819,7 +812,7 @@ export function LascontrolePage() {
                   description={
                     hasProject
                       ? 'Maak een inspectie aan binnen het gekozen project.'
-                      : 'Kies eerst een projectscope om inspecties te bekijken.'
+: 'Open eerst een project om inspecties te bekijken.'
                   }
                 />
               }
@@ -861,7 +854,7 @@ export function LascontrolePage() {
                   description={
                     hasProject
                       ? 'Maak een defect aan binnen het gekozen project.'
-                      : 'Kies eerst een projectscope om defecten te bekijken.'
+: 'Open eerst een project om defecten te bekijken.'
                   }
                 />
               }

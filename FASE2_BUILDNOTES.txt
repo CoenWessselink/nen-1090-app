@@ -1,0 +1,37 @@
+NEN1090 APP — FASE 2 BUILDNOTES
+Datum: 2026-03-30
+
+In deze build uitgevoerd:
+- Project 360 als centrale projectcontainer voor:
+  - Overzicht
+  - Assemblies
+  - Lassen
+  - Lascontrole-tab doorgang
+  - Documenten
+  - Historie
+- Projectcentrische routes behouden onder /projecten/:projectId/*
+- Dashboard en Projecten-flow sluiten nu aan op Project 360
+- Assemblies CRUD binnen projectcontext
+- Lassen CRUD binnen projectcontext
+- Conform-actie per las binnen projectcontext
+- Projectdocumenten uploaden, metadata wijzigen, verwijderen en downloaden
+- Audit/historie-tab op projectniveau
+- Lasformulier verbeterd:
+  - project is vast binnen projectcontext
+  - assembly-keuze direct uit assemblies van het huidige project
+  - WPS/lasser selectie blijft gekoppeld aan instellingen
+
+Buildstatus:
+- npm run build = PASS
+
+Belangrijkste aangepaste bestanden:
+- src/features/projecten/Project360Page.tsx
+- src/features/lascontrole/components/WeldForm.tsx
+- src/features/lascontrole/LascontrolePage.tsx
+- src/features/projecten/ProjectenPage.tsx
+- src/app/router/routes.tsx
+- src/features/dashboard/DashboardPage.tsx
+- src/features/ce-dossier/CeDossierPage.tsx
+
+Opmerking:
+- Deze zip bevat de app-repo zonder node_modules, dist en .git, zodat hij direct vervangbaar/commitbaar blijft.

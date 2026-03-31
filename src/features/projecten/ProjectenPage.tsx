@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { Download, Eye, Filter, FolderOpen, Pencil, Plus, Trash2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Download, Eye, Filter, Pencil, Plus, Trash2 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -18,9 +18,7 @@ import { useUiStore } from '@/app/store/ui-store';
 import { useCreateProject, useDeleteProject, useProjects, useUpdateProject } from '@/hooks/useProjects';
 import { ProjectForm } from '@/features/projecten/components/ProjectForm';
 import { ProjectsFilterDrawer } from '@/features/projecten/components/ProjectsFilterDrawer';
-import { Project360Drawer } from '@/features/projecten/components/Project360Drawer';
 import { BulkActionsBar } from '@/features/projecten/components/BulkActionsBar';
-import { useProjectContext } from '@/context/ProjectContext';
 import type { Project } from '@/types/domain';
 import { formatDate } from '@/utils/format';
 import { downloadCsv } from '@/utils/export';
@@ -39,18 +37,18 @@ function toneFromStatus(status: string) {
 }
 
 export function ProjectenPage() {
+  const navigate = useNavigate();
   const createProject = useCreateProject();
   const updateProject = useUpdateProject();
   const deleteProject = useDeleteProject();
   const pushNotification = useUiStore((state) => state.pushNotification);
-  const { setProject, activeProject: currentScopedProject } = useProjectContext();
   const globalSearch = useUiStore((state) => state.globalSearch);
   const createProjectRequestNonce = useUiStore((state) => state.createProjectRequestNonce);
 
   const [search, setSearch] = useState('');
   const [filters, setFilters] = useState(initialFilters);
   const [modalMode, setModalMode] = useState<'create' | 'edit' | null>(null);
-  const [activeProject, setActiveProject] = useState<Project | null>(null);
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Project | null>(null);
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -81,6 +79,8 @@ export function ProjectenPage() {
     });
   }, [query.data, filters]);
 
+  const openProject = (row: Project) => navigate(`/projecten/${row.id}/overzicht`);
+
   const columns: ColumnDef<Project>[] = [
     { key: 'projectnummer', header: 'Projectnummer', sortable: true, cell: (row) => <strong>{String(row.projectnummer || row.id)}</strong> },
     { key: 'name', header: 'Omschrijving', sortable: true, cell: (row) => row.name || row.omschrijving || '—' },
@@ -94,9 +94,8 @@ export function ProjectenPage() {
       header: 'Acties',
       cell: (row) => (
         <div className="row-actions">
-          <button className="icon-button" type="button" onClick={() => { setActiveProject(row); setModalMode(null); }} aria-label="Openen"><Eye size={16} /></button>
-          <button className="icon-button" type="button" onClick={() => { setProject({ id: String(row.id), name: String(row.name || row.omschrijving || row.client_name || ''), projectnummer: String(row.projectnummer || '') }); setMessage(`Projectscope actief: ${row.projectnummer || row.id}.`); }} aria-label="Gebruik als projectscope"><FolderOpen size={16} /></button>
-          <button className="icon-button" type="button" onClick={() => { setActiveProject(row); setModalMode('edit'); }} aria-label="Bewerken"><Pencil size={16} /></button>
+          <button className="icon-button" type="button" onClick={() => openProject(row)} aria-label="Open Project 360"><Eye size={16} /></button>
+          <button className="icon-button" type="button" onClick={() => { setEditingProject(row); setModalMode('edit'); }} aria-label="Bewerken"><Pencil size={16} /></button>
           <button className="icon-button" type="button" onClick={() => setPendingDelete(row)} aria-label="Verwijderen"><Trash2 size={16} /></button>
         </div>
       ),
@@ -105,20 +104,18 @@ export function ProjectenPage() {
 
   const activeFilterCount = Number(Boolean(filters.opdrachtgever)) + Number(filters.executionClass !== 'all') + Number(filters.status !== 'all');
 
-
   useEffect(() => {
     if (!createProjectRequestNonce) return;
-    setActiveProject(null);
+    setEditingProject(null);
     setModalMode('create');
   }, [createProjectRequestNonce]);
 
   return (
     <div className="page-stack">
-      <PageHeader title="Projecten" description="Fase 2: projectlijst draait op enterprise list-contract met server-side page/limit/search/sort/status plus 360° detaildrawer voor assemblies, welds, inspecties, documenten, compliance en exports." />
+      <PageHeader title="Projecten" description="Operationele projecthub met directe doorgang naar Project 360, assemblies, lassen, documenten en historie." />
 
       {message ? <InlineMessage tone="success">{message}</InlineMessage> : null}
       {selectedRows.length ? <InlineMessage tone="neutral">{`${selectedRows.length} project(en) geselecteerd voor bulkacties.`}</InlineMessage> : null}
-      {currentScopedProject ? <InlineMessage tone="success">{`Actieve projectscope: ${currentScopedProject.projectnummer || currentScopedProject.name || currentScopedProject.id}`}</InlineMessage> : null}
 
       <BulkActionsBar projectIds={selectedRows} onDone={setMessage} />
 
@@ -153,11 +150,11 @@ export function ProjectenPage() {
               ) : null}
             </>
           }
-          right={<Button onClick={() => { setActiveProject(null); setModalMode('create'); }}><Plus size={16} /> Nieuw project</Button>}
+          right={<Button onClick={() => { setEditingProject(null); setModalMode('create'); }}><Plus size={16} /> Nieuw project</Button>}
         />
 
         {query.isLoading ? <LoadingState label="Projecten laden..." /> : null}
-        {query.isError ? <ErrorState title="Projecten niet geladen" description="De frontend verwacht een werkend GET /projects endpoint in de bestaande backend." /> : null}
+        {query.isError ? <ErrorState title="Projecten niet geladen" description="De projectlijst kon niet worden opgehaald uit de backend." /> : null}
         {!query.isLoading && !query.isError ? (
           <DataTable
             columns={columns}
@@ -174,7 +171,7 @@ export function ProjectenPage() {
               }
             }}
             selectable
-            onRowDoubleClick={(row) => { setActiveProject(row); setModalMode(null); }}
+            onRowDoubleClick={openProject}
             selectedRowKeys={selectedRows}
             onToggleRow={(key) => setSelectedRows((current) => current.includes(key) ? current.filter((item) => item !== key) : [...current, key])}
             onToggleAll={() => setSelectedRows((current) => current.length === rows.length ? [] : rows.map((row) => String(row.id)))}
@@ -209,11 +206,10 @@ export function ProjectenPage() {
                 `Foto's: ${summary?.photos_uploaded ?? 0}`,
                 `Waarschuwingen: ${warningCount}`,
               ].join(' · ');
-              setActiveProject(createdProject);
               setMessage(
                 warningCount
                   ? `Project aangemaakt met aandachtspunten. ${description}`
-                  : `Project aangemaakt en direct geopend in Project 360°. ${description}`,
+                  : `Project aangemaakt en direct geopend in Project 360. ${description}`,
               );
               pushNotification({
                 title: warningCount ? 'Project aangemaakt met waarschuwingen' : 'Nieuw project aangemaakt',
@@ -221,6 +217,7 @@ export function ProjectenPage() {
                 tone: warningCount ? 'warning' : 'success',
               });
               setModalMode(null);
+              navigate(`/projecten/${createdProject.id}/overzicht`);
             } catch (error) {
               setMessage(error instanceof Error ? error.message : 'Project aanmaken mislukt.');
             }
@@ -228,46 +225,44 @@ export function ProjectenPage() {
         />
       </Modal>
 
-      <Modal open={modalMode === 'edit' && !!activeProject} onClose={() => setModalMode(null)} title="Project bewerken" size="large">
-        {activeProject ? (
+      <Modal open={modalMode === 'edit' && !!editingProject} onClose={() => setModalMode(null)} title="Project bewerken" size="large">
+        {editingProject ? (
           <ProjectForm
-            initial={activeProject}
+            initial={editingProject}
             isSubmitting={updateProject.isPending}
             onSubmit={async (values) => {
               try {
-                await updateProject.mutateAsync({ id: activeProject.id, payload: values });
+                await updateProject.mutateAsync({ id: editingProject.id, payload: values });
                 setMessage('Project bijgewerkt.');
-                pushNotification({ title: 'Project bijgewerkt', description: `Wijzigingen op ${activeProject.projectnummer || activeProject.id} zijn opgeslagen.`, tone: 'success' });
+                pushNotification({ title: 'Project bijgewerkt', description: `Wijzigingen op ${editingProject.projectnummer || editingProject.id} zijn opgeslagen.`, tone: 'success' });
                 setModalMode(null);
               } catch (error) {
-                setMessage(error instanceof Error ? error.message : 'Bijwerken mislukt.');
+                setMessage(error instanceof Error ? error.message : 'Project bijwerken mislukt.');
               }
             }}
           />
         ) : null}
       </Modal>
 
-      <Project360Drawer project={activeProject} open={!!activeProject && modalMode !== 'edit'} onClose={() => setActiveProject(null)} onMessage={setMessage} />
-
       <ConfirmDialog
         open={!!pendingDelete}
         title="Project verwijderen"
-        description="Dit project wordt verwijderd uit de frontendlijst en gekoppelde records kunnen hierdoor niet meer bereikbaar zijn."
+        description="Het project wordt definitief verwijderd uit de projectlijst."
         danger
         confirmLabel="Verwijderen"
         onConfirm={async () => {
           if (!pendingDelete) return;
           try {
             await deleteProject.mutateAsync(pendingDelete.id);
-            setMessage('Project verwijderd.');
             setPendingDelete(null);
+            setSelectedRows((current) => current.filter((id) => id !== String(pendingDelete.id)));
+            setMessage('Project verwijderd.');
           } catch (error) {
-            setMessage(error instanceof Error ? error.message : 'Verwijderen mislukt.');
+            setMessage(error instanceof Error ? error.message : 'Project verwijderen mislukt.');
           }
         }}
         onClose={() => setPendingDelete(null)}
       />
-
     </div>
   );
 }

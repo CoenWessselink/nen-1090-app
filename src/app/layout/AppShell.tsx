@@ -7,7 +7,6 @@ import { CommandPalette } from '@/components/search/CommandPalette';
 import { NotificationCenter } from '@/components/notifications/NotificationCenter';
 import { ToastViewport } from '@/components/notifications/ToastViewport';
 import { useUiStore } from '@/app/store/ui-store';
-import { SystemBanners } from '@/components/layout/SystemBanners';
 
 export function AppShell({ children }: PropsWithChildren) {
   const { sidebarOpen, setSidebarOpen } = useUiStore();
@@ -28,7 +27,6 @@ export function AppShell({ children }: PropsWithChildren) {
       <div className="shell-main">
         <Topbar />
         <main className="page-canvas">
-          <SystemBanners />
           {children ?? <Outlet />}
         </main>
         <MobileTabbar />
