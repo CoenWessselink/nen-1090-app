@@ -23,7 +23,11 @@
     "test:phase4:local": "powershell -ExecutionPolicy Bypass -File scripts/test-local-phase4.ps1",
     "test:phase4:live": "powershell -ExecutionPolicy Bypass -File scripts/test-live-phase4.ps1",
     "test:phase4:smoke:live": "powershell -ExecutionPolicy Bypass -File scripts/test-live-phase4.ps1 -SmokeOnly",
-    "test:playwright:install": "playwright install chromium"
+    "test:playwright:install": "playwright install chromium",
+    "test:enterprise:local": "playwright test --project=desktop-chromium",
+    "test:enterprise:smoke": "playwright test tests/e2e/project-flow.spec.ts tests/e2e/welds-ce-flow.spec.ts --project=desktop-chromium",
+    "test:enterprise:ui": "playwright test tests/e2e/assemblies-flow.spec.ts --project=desktop-chromium",
+    "test:enterprise:report": "playwright show-report"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

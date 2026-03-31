@@ -282,3 +282,70 @@ export async function confirmDelete(page: Page) {
   ]);
   await confirmButton.click();
 }
+
+
+const ENTERPRISE_STORAGE_KEYS = {
+  accessTokens: ['auth_token', 'access_token', 'token'],
+  refreshTokens: ['refresh_token'],
+  userKeys: ['user', 'auth_user', 'session_user'],
+  tenantKeys: ['tenant', 'tenant_slug', 'active_tenant'],
+  roleKeys: ['role', 'auth_role'],
+};
+
+export async function seedAuth(page: Page) {
+  await page.goto('/login');
+  await page.evaluate(({ storageKeys }) => {
+    const token = 'e2e-demo-token';
+    const refresh = 'e2e-demo-refresh-token';
+    const user = {
+      email: 'admin@demo.com',
+      role: 'ADMIN',
+      tenant: 'demo',
+      tenant_slug: 'demo',
+    };
+
+    for (const key of storageKeys.accessTokens) {
+      localStorage.setItem(key, token);
+      sessionStorage.setItem(key, token);
+    }
+    for (const key of storageKeys.refreshTokens) {
+      localStorage.setItem(key, refresh);
+      sessionStorage.setItem(key, refresh);
+    }
+    for (const key of storageKeys.userKeys) {
+      localStorage.setItem(key, JSON.stringify(user));
+      sessionStorage.setItem(key, JSON.stringify(user));
+    }
+    for (const key of storageKeys.tenantKeys) {
+      localStorage.setItem(key, 'demo');
+      sessionStorage.setItem(key, 'demo');
+    }
+    for (const key of storageKeys.roleKeys) {
+      localStorage.setItem(key, 'ADMIN');
+      sessionStorage.setItem(key, 'ADMIN');
+    }
+  }, { storageKeys: ENTERPRISE_STORAGE_KEYS });
+}
+
+export async function openProjects(page: Page) {
+  await seedAuth(page);
+  await page.goto('/projecten');
+  await expect(page.getByRole('heading', { name: /projecten/i })).toBeVisible();
+  await expect(page).not.toHaveURL(/login/i);
+}
+
+export async function openFirstProject360(page: Page) {
+  await openProjects(page);
+  const firstRow = page.locator('tr').filter({ hasText: /P-20\d{2}|Demo project/i }).first();
+  await expect(firstRow).toBeVisible();
+  const openButton = firstRow.getByRole('button', { name: /open project 360|open/i }).first();
+  await openButton.click();
+  await expect(page).toHaveURL(/\/projecten\/.+\/(overzicht)?/i);
+  await expect(page.getByRole('button', { name: /nieuwe assembly/i })).toBeVisible();
+}
+
+export async function openTab(page: Page, name: RegExp) {
+  const tabButton = page.getByRole('button', { name }).first();
+  await expect(tabButton).toBeVisible();
+  await tabButton.click();
+}

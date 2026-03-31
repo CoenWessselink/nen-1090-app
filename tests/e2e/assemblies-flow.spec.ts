@@ -1,13 +1,14 @@
-import { expect, test } from '@playwright/test';
-import { seedSession, stubCommonApi, DEFAULT_PROJECT_ID } from './helpers';
+import { test, expect } from '@playwright/test';
+import { openFirstProject360 } from './helpers';
 
-test.beforeEach(async ({ page }) => {
-  await seedSession(page, 'ADMIN');
-  await stubCommonApi(page);
-});
+test('assemblies UI is bereikbaar vanuit project 360', async ({ page }) => {
+  await openFirstProject360(page);
+  await page.getByRole('button', { name: /assemblies/i }).click();
+  await expect(page.getByText(/assemblies/i).first()).toBeVisible();
 
-test('assemblies zijn bereikbaar binnen projectcontext', async ({ page }) => {
-  await page.goto(`/projecten/${DEFAULT_PROJECT_ID}/assemblies`);
-  await expect(page).toHaveURL(new RegExp(`/projecten/${DEFAULT_PROJECT_ID}/assemblies`));
-  await expect(page.locator('body')).toContainText(/assembl|portaalframe|a-001|demo project/i);
+  const createBtn = page.getByRole('button', { name: /nieuwe assembly/i });
+  await expect(createBtn).toBeVisible();
+
+  await createBtn.click();
+  await expect(page.getByText(/assembly|code|omschrijving|opslaan|bewaar/i).first()).toBeVisible();
 });
