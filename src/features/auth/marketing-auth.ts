@@ -29,7 +29,10 @@ export function getMarketingOrigin(): string {
   return DEFAULT_MARKETING_ORIGIN;
 }
 
-export function buildMarketingUrl(target: MarketingAuthTarget, options?: { next?: string; reason?: string; token?: string; query?: Record<string, string | null | undefined> }): string {
+export function buildMarketingUrl(
+  target: MarketingAuthTarget,
+  options?: { next?: string; reason?: string; token?: string; query?: Record<string, string | null | undefined> },
+): string {
   const origin = getMarketingOrigin();
   const pathname = targetPathMap[target] || targetPathMap.login;
   const url = new URL(`${origin}${pathname}`);
@@ -39,7 +42,9 @@ export function buildMarketingUrl(target: MarketingAuthTarget, options?: { next?
   if (options?.token) url.searchParams.set('token', options.token);
   if (options?.query) {
     Object.entries(options.query).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== '') url.searchParams.set(key, String(value));
+      if (value !== undefined && value !== null && value !== '') {
+        url.searchParams.set(key, String(value));
+      }
     });
   }
 
