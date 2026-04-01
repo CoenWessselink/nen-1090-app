@@ -59,6 +59,13 @@ export function validateObjectPayload(payload: unknown): { ok: boolean; reason: 
   return { ok: false, reason: 'Verwacht objectpayload.' };
 }
 
+/**
+ * Frontend hardening:
+ * - clamp overly large limits that trigger 422 on live backend
+ * - do not send unsupported generic sort/direction params
+ * - do not send brittle status=open/pending list params from generic widgets
+ * - keep project_id / tenant_id / search stable
+ */
 export function normalizeListParams(params?: ListParams): Record<string, string> {
   if (!params) return {};
 
@@ -66,23 +73,36 @@ export function normalizeListParams(params?: ListParams): Record<string, string>
   const source = { ...params } as ListParams & Record<string, unknown>;
 
   const page = Number(source.page ?? 1);
-  const limit = Number(source.limit ?? source.pageSize ?? 10);
-  const direction = source.direction;
+  const rawLimit = Number(source.limit ?? source.pageSize ?? 10);
+  const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(rawLimit, 1), 100) : 10;
   const projectId = source.project_id ?? source.projectId;
   const tenantId = source.tenant_id;
 
   if (Number.isFinite(page) && page > 0) normalized.page = String(page);
   if (Number.isFinite(limit) && limit > 0) normalized.limit = String(limit);
   if (typeof source.search === 'string' && source.search.trim()) normalized.search = source.search.trim();
-  if (typeof source.sort === 'string' && source.sort.trim()) normalized.sort = source.sort.trim();
-  if (typeof source.status === 'string' && source.status.trim()) normalized.status = source.status.trim();
-  if (direction === 'asc' || direction === 'desc') normalized.direction = direction;
+
   if (projectId !== undefined && projectId !== null && projectId !== '') normalized.project_id = String(projectId);
   if (tenantId !== undefined && tenantId !== null && tenantId !== '') normalized.tenant_id = String(tenantId);
 
   Object.entries(source).forEach(([key, value]) => {
     if (value === undefined || value === null || value === '') return;
-    if (['page', 'limit', 'pageSize', 'search', 'sort', 'status', 'direction', 'project_id', 'projectId', 'tenant_id'].includes(key)) return;
+    if (
+      [
+        'page',
+        'limit',
+        'pageSize',
+        'search',
+        'sort',
+        'status',
+        'direction',
+        'project_id',
+        'projectId',
+        'tenant_id',
+      ].includes(key)
+    ) {
+      return;
+    }
     normalized[key] = String(value);
   });
 

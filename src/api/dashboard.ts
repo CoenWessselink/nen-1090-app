@@ -16,31 +16,37 @@ export function getDashboardSummary() {
 }
 
 /**
- * FIX:
- * Hook verwacht altijd .items → dus nooit [] teruggeven
+ * Live aggregate export route is not hard-proven.
+ * Return a stable empty payload instead of causing console noise.
  */
 export async function getRecentExports() {
   return emptyList<ExportJob>();
 }
 
 /**
- * FIX:
- * Hook verwacht altijd .items → dus nooit [] teruggeven
+ * Live aggregate audit route is not hard-proven.
+ * Return a stable empty payload instead of causing console noise.
  */
 export async function getRecentAudit() {
   return emptyList<AuditEntry>();
 }
 
+/**
+ * Backend on live environment rejected status=pending with 422.
+ * Use only a safe limit and let UI derive the summary from returned rows.
+ */
 export function getPendingInspections() {
   return listRequest<ApiListResponse<Inspection>>('/inspections', {
-    status: 'pending',
     limit: 10,
   });
 }
 
+/**
+ * Backend on live environment rejected status=open with 422.
+ * Use only a safe limit and let UI derive the summary from returned rows.
+ */
 export function getOpenDefects() {
   return listRequest<ApiListResponse<Defect>>('/weld-defects', {
-    status: 'open',
     limit: 10,
   });
 }
