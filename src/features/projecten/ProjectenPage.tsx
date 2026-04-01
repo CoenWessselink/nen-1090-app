@@ -19,6 +19,7 @@ import { useCreateProject, useDeleteProject, useProjects, useUpdateProject } fro
 import { ProjectForm } from '@/features/projecten/components/ProjectForm';
 import { ProjectsFilterDrawer } from '@/features/projecten/components/ProjectsFilterDrawer';
 import { BulkActionsBar } from '@/features/projecten/components/BulkActionsBar';
+import { ProjectContextTabs } from '@/features/projecten/components/ProjectContextTabs';
 import type { Project } from '@/types/domain';
 import { formatDate } from '@/utils/format';
 import { downloadCsv } from '@/utils/export';
@@ -34,6 +35,20 @@ function toneFromStatus(status: string) {
   if (['gereed', 'vrijgegeven', 'conform'].includes(value)) return 'success' as const;
   if (['geblokkeerd', 'afgekeurd'].includes(value)) return 'danger' as const;
   return 'warning' as const;
+}
+
+function textOf(value: unknown, fallback = '—') {
+  if (value == null) return fallback;
+  const text = String(value).trim();
+  return text.length ? text : fallback;
+}
+
+function compareValue(left: unknown, right: unknown) {
+  const a = String(left ?? '').toLowerCase();
+  const b = String(right ?? '').toLowerCase();
+  if (a < b) return -1;
+  if (a > b) return 1;
+  return 0;
 }
 
 export function ProjectenPage() {
@@ -54,56 +69,159 @@ export function ProjectenPage() {
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState<string>('');
   const [sortKey, setSortKey] = useState<keyof Project>('projectnummer');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [page, setPage] = useState(1);
   const limit = 10;
 
   const mergedSearch = [search, globalSearch].filter(Boolean).join(' ').trim();
-  const apiStatus = filters.status !== 'all' ? filters.status : undefined;
+
+  /**
+   * Backend is live-proven on /projects page+limit+search.
+   * Status, sort and direction caused live 404/500 noise in the browser console.
+   * Therefore list page stays on stable API params and does filtering/sorting client-side.
+   */
   const query = useProjects({
     page,
     limit,
     search: mergedSearch || undefined,
-    sort: String(sortKey),
-    direction: sortDirection,
-    status: apiStatus,
   });
 
   const rows = useMemo(() => {
     const input = [...(query.data?.items || [])];
-    return input.filter((project) => {
-      const matchesClient = !filters.opdrachtgever || String(project.client_name || project.opdrachtgever || '').toLowerCase().includes(filters.opdrachtgever.toLowerCase());
-      const exec = String(project.execution_class || project.executieklasse || '').toLowerCase();
-      const matchesExecutionClass = filters.executionClass === 'all' || exec === filters.executionClass;
-      return matchesClient && matchesExecutionClass;
-    });
-  }, [query.data, filters]);
 
-  const openProject = (row: Project) => navigate(`/projecten/${row.id}/overzicht`);
+    const filtered = input.filter((project) => {
+      const status = String(project.status || '').toLowerCase();
+      const client = String(project.client_name || project.opdrachtgever || '').toLowerCase();
+      const exec = String(project.execution_class || project.executieklasse || '').toLowerCase();
+
+      const matchesStatus = filters.status === 'all' || status === filters.status.toLowerCase();
+      const matchesClient = !filters.opdrachtgever || client.includes(filters.opdrachtgever.toLowerCase());
+      const matchesExecutionClass = filters.executionClass === 'all' || exec === filters.executionClass.toLowerCase();
+
+      return matchesStatus && matchesClient && matchesExecutionClass;
+    });
+
+    filtered.sort((left, right) => {
+      const direction = sortDirection === 'asc' ? 1 : -1;
+      return compareValue(left[sortKey], right[sortKey]) * direction;
+    });
+
+    return filtered;
+  }, [query.data, filters, sortKey, sortDirection]);
+
+  const selectedProject = useMemo(
+    () => rows.find((project) => String(project.id) === String(selectedProjectId)) || rows[0] || null,
+    [rows, selectedProjectId],
+  );
+
+  useEffect(() => {
+    if (!rows.length) {
+      if (selectedProjectId) setSelectedProjectId('');
+      return;
+    }
+    const stillExists = rows.some((project) => String(project.id) === String(selectedProjectId));
+    if (!selectedProjectId || !stillExists) {
+      setSelectedProjectId(String(rows[0].id));
+    }
+  }, [rows, selectedProjectId]);
+
+  const openProject = (row: Project, tab: string = 'overzicht') => {
+    setSelectedProjectId(String(row.id));
+    navigate(`/projecten/${row.id}/${tab}`);
+  };
 
   const columns: ColumnDef<Project>[] = [
-    { key: 'projectnummer', header: 'Projectnummer', sortable: true, cell: (row) => <strong>{String(row.projectnummer || row.id)}</strong> },
-    { key: 'name', header: 'Omschrijving', sortable: true, cell: (row) => row.name || row.omschrijving || '—' },
-    { key: 'client_name', header: 'Opdrachtgever', sortable: true, cell: (row) => row.client_name || row.opdrachtgever || '—' },
-    { key: 'execution_class', header: 'Executieklasse', sortable: true, cell: (row) => row.execution_class || row.executieklasse || '—' },
-    { key: 'status', header: 'Status', sortable: true, cell: (row) => <Badge tone={toneFromStatus(String(row.status || ''))}>{String(row.status || 'Onbekend')}</Badge> },
-    { key: 'start_date', header: 'Start', sortable: true, hiddenByDefault: true, cell: (row) => formatDate(row.start_date) },
-    { key: 'end_date', header: 'Eind', sortable: true, hiddenByDefault: true, cell: (row) => formatDate(row.end_date) },
+    {
+      key: 'projectnummer',
+      header: 'Projectnummer',
+      sortable: true,
+      cell: (row) => <strong>{String(row.projectnummer || row.id)}</strong>,
+    },
+    {
+      key: 'name',
+      header: 'Omschrijving',
+      sortable: true,
+      cell: (row) => row.name || row.omschrijving || '—',
+    },
+    {
+      key: 'client_name',
+      header: 'Opdrachtgever',
+      sortable: true,
+      cell: (row) => row.client_name || row.opdrachtgever || '—',
+    },
+    {
+      key: 'execution_class',
+      header: 'Executieklasse',
+      sortable: true,
+      cell: (row) => row.execution_class || row.executieklasse || '—',
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      sortable: true,
+      cell: (row) => <Badge tone={toneFromStatus(String(row.status || ''))}>{String(row.status || 'Onbekend')}</Badge>,
+    },
+    {
+      key: 'start_date',
+      header: 'Start',
+      sortable: true,
+      hiddenByDefault: true,
+      cell: (row) => formatDate(row.start_date),
+    },
+    {
+      key: 'end_date',
+      header: 'Eind',
+      sortable: true,
+      hiddenByDefault: true,
+      cell: (row) => formatDate(row.end_date),
+    },
     {
       key: 'actions',
       header: 'Acties',
       cell: (row) => (
         <div className="row-actions">
-          <button className="icon-button" type="button" onClick={() => openProject(row)} aria-label="Open Project 360"><Eye size={16} /></button>
-          <button className="icon-button" type="button" onClick={() => { setEditingProject(row); setModalMode('edit'); }} aria-label="Bewerken"><Pencil size={16} /></button>
-          <button className="icon-button" type="button" onClick={() => setPendingDelete(row)} aria-label="Verwijderen"><Trash2 size={16} /></button>
+          <button
+            className="icon-button"
+            type="button"
+            onClick={() => openProject(row, 'overzicht')}
+            aria-label="Open Project 360"
+          >
+            <Eye size={16} />
+          </button>
+          <button
+            className="icon-button"
+            type="button"
+            onClick={() => {
+              setSelectedProjectId(String(row.id));
+              setEditingProject(row);
+              setModalMode('edit');
+            }}
+            aria-label="Bewerken"
+          >
+            <Pencil size={16} />
+          </button>
+          <button
+            className="icon-button"
+            type="button"
+            onClick={() => {
+              setSelectedProjectId(String(row.id));
+              setPendingDelete(row);
+            }}
+            aria-label="Verwijderen"
+          >
+            <Trash2 size={16} />
+          </button>
         </div>
       ),
     },
   ];
 
-  const activeFilterCount = Number(Boolean(filters.opdrachtgever)) + Number(filters.executionClass !== 'all') + Number(filters.status !== 'all');
+  const activeFilterCount =
+    Number(Boolean(filters.opdrachtgever)) +
+    Number(filters.executionClass !== 'all') +
+    Number(filters.status !== 'all');
 
   useEffect(() => {
     if (!createProjectRequestNonce) return;
@@ -132,16 +250,83 @@ export function ProjectenPage() {
 
   return (
     <div className="page-stack">
-      <PageHeader title="Projecten" description="Operationele projecthub met directe doorgang naar Project 360, assemblies, lassen, documenten en historie." />
+      <PageHeader
+        title="Projecten"
+        description="Operationele projecthub met directe doorgang naar Project 360, assemblies, lassen, documenten en historie."
+      />
 
       {message ? <InlineMessage tone="success">{message}</InlineMessage> : null}
-      {selectedRows.length ? <InlineMessage tone="neutral">{`${selectedRows.length} project(en) geselecteerd voor bulkacties.`}</InlineMessage> : null}
+      {selectedRows.length ? (
+        <InlineMessage tone="neutral">{`${selectedRows.length} project(en) geselecteerd voor bulkacties.`}</InlineMessage>
+      ) : null}
+
+      {selectedProject ? (
+        <ProjectContextTabs
+          projectId={String(selectedProject.id)}
+          value="overzicht"
+          searchSlot={
+            <Input
+              value={search}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setPage(1);
+              }}
+              placeholder="Zoek in projecten"
+            />
+          }
+        />
+      ) : null}
+
+      {selectedProject ? (
+        <Card>
+          <div className="detail-hero">
+            <div>
+              <h3>{textOf(selectedProject.projectnummer, textOf(selectedProject.name || selectedProject.omschrijving, 'Project'))}</h3>
+              <div className="list-subtle">
+                {textOf(selectedProject.client_name || selectedProject.opdrachtgever, 'Geen opdrachtgever')} ·{' '}
+                {textOf(selectedProject.execution_class || selectedProject.executieklasse, 'Executieklasse onbekend')}
+              </div>
+            </div>
+            <div className="row-actions">
+              <Badge tone={toneFromStatus(String(selectedProject.status || ''))}>
+                {textOf(selectedProject.status, 'Onbekend')}
+              </Badge>
+            </div>
+          </div>
+          <div className="divider" />
+          <div className="detail-grid">
+            <div><span>Start</span><strong>{formatDate(selectedProject.start_date)}</strong></div>
+            <div><span>Einde</span><strong>{formatDate(selectedProject.end_date)}</strong></div>
+            <div><span>Project-ID</span><strong>{textOf(selectedProject.id)}</strong></div>
+            <div><span>Actieve context</span><strong>Projecttabs direct beschikbaar</strong></div>
+          </div>
+          <div className="divider" />
+          <div className="row-actions">
+            <Button variant="secondary" onClick={() => openProject(selectedProject, 'overzicht')}>Overzicht</Button>
+            <Button variant="secondary" onClick={() => openProject(selectedProject, 'assemblies')}>Assemblies</Button>
+            <Button variant="secondary" onClick={() => openProject(selectedProject, 'lassen')}>Lassen</Button>
+            <Button variant="secondary" onClick={() => openProject(selectedProject, 'lascontrole')}>Lascontrole</Button>
+            <Button variant="secondary" onClick={() => openProject(selectedProject, 'documenten')}>Documenten</Button>
+            <Button variant="secondary" onClick={() => openProject(selectedProject, 'ce-dossier')}>CE Dossier</Button>
+            <Button variant="secondary" onClick={() => openProject(selectedProject, 'historie')}>Historie</Button>
+          </div>
+        </Card>
+      ) : null}
 
       <BulkActionsBar projectIds={selectedRows} onDone={setMessage} />
 
       <Card>
         <DataTableToolbar
-          left={<Input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} placeholder="Zoek binnen projecten" />}
+          left={
+            <Input
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
+              placeholder="Zoek binnen projecten"
+            />
+          }
           center={
             <>
               <Button variant="secondary" onClick={() => setFilterDrawerOpen(true)}>
@@ -150,7 +335,10 @@ export function ProjectenPage() {
               <Button
                 variant="secondary"
                 onClick={() => {
-                  const exportRows = (selectedRows.length ? rows.filter((row) => selectedRows.includes(String(row.id))) : rows).map((project) => ({
+                  const exportRows = (selectedRows.length
+                    ? rows.filter((row) => selectedRows.includes(String(row.id)))
+                    : rows
+                  ).map((project) => ({
                     projectnummer: project.projectnummer || project.id,
                     omschrijving: project.name || project.omschrijving || '',
                     opdrachtgever: project.client_name || project.opdrachtgever || '',
@@ -160,21 +348,44 @@ export function ProjectenPage() {
                     eind: project.end_date || '',
                   }));
                   downloadCsv('projecten.csv', exportRows);
-                  setMessage(selectedRows.length ? `${selectedRows.length} geselecteerde project(en) geëxporteerd.` : 'Huidige projectselectie geëxporteerd.');
-                  pushNotification({ title: 'Projectexport klaar', description: 'De huidige projectselectie is als CSV geëxporteerd.', tone: 'success' });
+                  setMessage(
+                    selectedRows.length
+                      ? `${selectedRows.length} geselecteerde project(en) geëxporteerd.`
+                      : 'Huidige projectselectie geëxporteerd.',
+                  );
+                  pushNotification({
+                    title: 'Projectexport klaar',
+                    description: 'De huidige projectselectie is als CSV geëxporteerd.',
+                    tone: 'success',
+                  });
                 }}
                 disabled={!rows.length}
-              ><Download size={16} /> Export</Button>
+              >
+                <Download size={16} /> Export
+              </Button>
               {selectedRows.length ? (
-                <Button variant="secondary" onClick={() => setSelectedRows([])}>Selectie wissen</Button>
+                <Button variant="secondary" onClick={() => setSelectedRows([])}>
+                  Selectie wissen
+                </Button>
               ) : null}
             </>
           }
-          right={<Button onClick={() => { setEditingProject(null); setModalMode('create'); }}><Plus size={16} /> Nieuw project</Button>}
+          right={
+            <Button
+              onClick={() => {
+                setEditingProject(null);
+                setModalMode('create');
+              }}
+            >
+              <Plus size={16} /> Nieuw project
+            </Button>
+          }
         />
 
         {query.isLoading ? <LoadingState label="Projecten laden..." /> : null}
-        {query.isError ? <ErrorState title="Projecten niet geladen" description="De projectlijst kon niet worden opgehaald uit de backend." /> : null}
+        {query.isError ? (
+          <ErrorState title="Projecten niet geladen" description="De projectlijst kon niet worden opgehaald uit de backend." />
+        ) : null}
         {!query.isLoading && !query.isError ? (
           <DataTable
             columns={columns}
@@ -184,18 +395,31 @@ export function ProjectenPage() {
             sortDirection={sortDirection}
             onSort={(key) => {
               setPage(1);
-              if (sortKey === key) setSortDirection((prev) => prev === 'asc' ? 'desc' : 'asc');
-              else {
+              if (sortKey === key) {
+                setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+              } else {
                 setSortKey(key as keyof Project);
                 setSortDirection('asc');
               }
             }}
             selectable
-            onRowDoubleClick={(row) => { setEditingProject(row); setModalMode('edit'); }}
+            onRowDoubleClick={(row) => openProject(row, 'overzicht')}
             selectedRowKeys={selectedRows}
-            onToggleRow={(key) => setSelectedRows((current) => current.includes(key) ? current.filter((item) => item !== key) : [...current, key])}
-            onToggleAll={() => setSelectedRows((current) => current.length === rows.length ? [] : rows.map((row) => String(row.id)))}
-            empty={<EmptyState title="Geen projecten gevonden" description="Pas filters aan of voeg een nieuw project toe via de modal." />}
+            onToggleRow={(key) => {
+              setSelectedRows((current) =>
+                current.includes(key) ? current.filter((item) => item !== key) : [...current, key],
+              );
+              setSelectedProjectId(key);
+            }}
+            onToggleAll={() =>
+              setSelectedRows((current) => (current.length === rows.length ? [] : rows.map((row) => String(row.id))))
+            }
+            empty={
+              <EmptyState
+                title="Geen projecten gevonden"
+                description="Pas filters aan of voeg een nieuw project toe via de modal."
+              />
+            }
             page={page}
             total={query.data?.total ?? rows.length}
             pageSize={limit}
@@ -207,9 +431,15 @@ export function ProjectenPage() {
       <ProjectsFilterDrawer
         open={filterDrawerOpen}
         values={filters}
-        onClose={() => { setFilterDrawerOpen(false); setPage(1); }}
+        onClose={() => {
+          setFilterDrawerOpen(false);
+          setPage(1);
+        }}
         onChange={(patch) => setFilters((current) => ({ ...current, ...patch }))}
-        onReset={() => { setFilters(initialFilters); setPage(1); }}
+        onReset={() => {
+          setFilters(initialFilters);
+          setPage(1);
+        }}
       />
 
       <Modal open={modalMode === 'create'} onClose={() => setModalMode(null)} title="Nieuw project" size="large">
@@ -218,7 +448,14 @@ export function ProjectenPage() {
           onSubmit={async (values) => {
             try {
               const createdProject = await createProject.mutateAsync(values);
-              const summary = (createdProject as { create_summary?: { assemblies_created?: number; welds_created?: number; photos_uploaded?: number; warnings?: Array<{ message?: string }> } }).create_summary;
+              const summary = (createdProject as {
+                create_summary?: {
+                  assemblies_created?: number;
+                  welds_created?: number;
+                  photos_uploaded?: number;
+                  warnings?: Array<{ message?: string }>;
+                };
+              }).create_summary;
               const warningCount = summary?.warnings?.length || 0;
               const description = [
                 `Assemblies: ${summary?.assemblies_created ?? 0}`,
@@ -254,7 +491,11 @@ export function ProjectenPage() {
               try {
                 await updateProject.mutateAsync({ id: editingProject.id, payload: values });
                 setMessage('Project bijgewerkt.');
-                pushNotification({ title: 'Project bijgewerkt', description: `Wijzigingen op ${editingProject.projectnummer || editingProject.id} zijn opgeslagen.`, tone: 'success' });
+                pushNotification({
+                  title: 'Project bijgewerkt',
+                  description: `Wijzigingen op ${editingProject.projectnummer || editingProject.id} zijn opgeslagen.`,
+                  tone: 'success',
+                });
                 setModalMode(null);
               } catch (error) {
                 setMessage(error instanceof Error ? error.message : 'Project bijwerken mislukt.');
