@@ -3,6 +3,8 @@ import type { ListParams } from '@/types/api';
 import type { Assembly, CeDocument, ComplianceOverview, ExportJob, Inspection, Project, Weld } from '@/types/domain';
 import type { ProjectAssemblyDraft, ProjectFormValues } from '@/types/forms';
 
+type PagedResponse<T> = T[] | { items?: T[]; total?: number; page?: number; limit?: number; data?: T[] };
+
 function normalizeProjectRecord(payload: Record<string, unknown>): Project {
   return {
     ...payload,
@@ -15,6 +17,30 @@ function normalizeProjectRecord(payload: Record<string, unknown>): Project {
     start_date: String(payload.start_date || ''),
     end_date: String(payload.end_date || ''),
   } as Project;
+}
+
+function normalizePagedList<T>(response: PagedResponse<T>, fallbackLimit = 25) {
+  if (Array.isArray(response)) {
+    return {
+      items: response,
+      total: response.length,
+      page: 1,
+      limit: fallbackLimit || response.length || 25,
+    };
+  }
+
+  const items = Array.isArray(response?.items)
+    ? response.items
+    : Array.isArray(response?.data)
+      ? response.data
+      : [];
+
+  return {
+    items,
+    total: Number(response?.total || items.length || 0),
+    page: Number(response?.page || 1),
+    limit: Number(response?.limit || fallbackLimit || 25),
+  };
 }
 
 function mapProjectPayload(
@@ -65,22 +91,11 @@ export async function getProjects(params?: ListParams) {
     '/projects',
     params,
   );
+  const paged = normalizePagedList<Project>(response, params?.limit || 25);
 
-  if (Array.isArray(response)) {
-    return {
-      items: response.map((row) => normalizeProjectRecord(row as unknown as Record<string, unknown>)),
-      total: response.length,
-      page: 1,
-      limit: params?.limit || response.length || 25,
-    };
-  }
-
-  const items = Array.isArray(response?.items) ? response.items : [];
   return {
-    items: items.map((row) => normalizeProjectRecord(row as unknown as Record<string, unknown>)),
-    total: Number(response?.total || items.length || 0),
-    page: Number(response?.page || 1),
-    limit: Number(response?.limit || 25),
+    ...paged,
+    items: paged.items.map((row) => normalizeProjectRecord(row as unknown as Record<string, unknown>)),
   };
 }
 
@@ -95,53 +110,52 @@ export async function getProject(projectId: string | number) {
 }
 
 export async function getProjectAssemblies(projectId: string | number, params?: ListParams) {
-  const rows = await listRequest<Assembly[] | { items?: Assembly[] }>('/assemblies', {
-    ...(params || {}),
-    project_id: String(projectId),
-  });
-  const items = Array.isArray(rows) ? rows : Array.isArray(rows?.items) ? rows.items : [];
-  return { items, total: items.length, page: 1, limit: params?.limit || 25 };
+  const response = await listRequest<PagedResponse<Assembly>>(`/projects/${projectId}/assemblies`, params);
+  return normalizePagedList<Assembly>(response, params?.limit || 25);
 }
 
 export async function getProjectWelds(projectId: string | number, params?: ListParams) {
-  const rows = await listRequest<Weld[] | { items?: Weld[] }>('/welds', {
-    ...(params || {}),
-    project_id: String(projectId),
-  });
-  const items = Array.isArray(rows) ? rows : Array.isArray(rows?.items) ? rows.items : [];
-  return { items, total: items.length, page: 1, limit: params?.limit || 25 };
+  const response = await listRequest<PagedResponse<Weld>>(`/projects/${projectId}/welds`, params);
+  return normalizePagedList<Weld>(response, params?.limit || 25);
 }
 
-export async function getProjectInspections(projectId: string | number, _params?: ListParams) {
-  const welds = await getProjectWelds(projectId);
-  let items: Inspection[] = [];
-
-  for (const weld of welds.items || []) {
-    const rows = await listRequest<Inspection[] | { items?: Inspection[] }>(
-      `/projects/${projectId}/welds/${weld.id}/inspections`,
-      {} as ListParams,
-    );
-    const inspectionItems = Array.isArray(rows) ? rows : Array.isArray(rows?.items) ? rows.items : [];
-    items = [...items, ...inspectionItems];
-  }
-
-  return { items, total: items.length, page: 1, limit: 25 };
+export async function getProjectInspections(projectId: string | number, params?: ListParams) {
+  const response = await listRequest<PagedResponse<Inspection>>(`/projects/${projectId}/inspections`, params);
+  return normalizePagedList<Inspection>(response, params?.limit || 25);
 }
 
-export async function getProjectDocuments(projectId: string | number, _params?: ListParams) {
-  const rows = await listRequest<CeDocument[] | { items?: CeDocument[] }>('/photos', {
-    project_id: String(projectId),
-  } as ListParams);
-  const items = Array.isArray(rows) ? rows : Array.isArray(rows?.items) ? rows.items : [];
-  return { items, total: items.length, page: 1, limit: 25 };
+export async function getProjectDocuments(projectId: string | number, params?: ListParams) {
+  const response =
+    (await optionalRequest<PagedResponse<CeDocument>>([`/projects/${projectId}/documents`])) ||
+    (await listRequest<PagedResponse<CeDocument>>('/photos', {
+      ...(params || {}),
+      project_id: String(projectId),
+    }));
+
+  return normalizePagedList<CeDocument>(response, params?.limit || 25);
 }
 
 export async function getProjectCompliance(projectId: string | number) {
-  return apiRequest<ComplianceOverview>(`/ce_export/${projectId}`);
+  const response =
+    (await optionalRequest<ComplianceOverview>([`/projects/${projectId}/compliance`])) ||
+    (await optionalRequest<ComplianceOverview>([`/ce_export/${projectId}`]));
+
+  if (!response) {
+    return {
+      score: 0,
+      status: 'onbekend',
+      summary: {},
+      checklist: [],
+      missing_items: [],
+    } as ComplianceOverview;
+  }
+
+  return response;
 }
 
-export async function getProjectExports(_projectId: string | number, _params?: ListParams) {
-  return { items: [] as ExportJob[], total: 0, page: 1, limit: 25 };
+export async function getProjectExports(projectId: string | number, params?: ListParams) {
+  const response = await listRequest<PagedResponse<ExportJob>>(`/projects/${projectId}/exports`, params);
+  return normalizePagedList<ExportJob>(response, params?.limit || 25);
 }
 
 export async function getProjectSelectedMaterials(projectId: string | number) {
@@ -166,8 +180,8 @@ export async function approveAllProject(projectId: string | number) {
     { method: 'POST', body: JSON.stringify({ mode: 'open_only' }) },
   );
 
-  let approvedWelds = 0;
-  if (weldIds.length) {
+  let approvedWelds = Number(inspectionResult?.approved_welds || inspectionResult?.approved || 0);
+  if (!approvedWelds && weldIds.length) {
     const bulkResult = await optionalRequest<Record<string, unknown>>([`/projects/${projectId}/welds/bulk-approve`], {
       method: 'POST',
       body: JSON.stringify({ weld_ids: weldIds }),
@@ -271,17 +285,30 @@ export async function deleteProject(id: string | number) {
 }
 
 export async function createProjectAssembly(projectId: string | number, payload: ProjectAssemblyDraft) {
-  return apiRequest<Assembly>('/assemblies', {
-    method: 'POST',
-    body: JSON.stringify({
-      project_id: String(projectId),
-      code: payload.code,
-      name: payload.name,
-      drawing_no: payload.drawing_no || null,
-      revision: payload.revision || null,
-      status: payload.status || 'open',
-    }),
-  });
+  const scoped =
+    (await optionalRequest<Assembly>([`/projects/${projectId}/assemblies`], {
+      method: 'POST',
+      body: JSON.stringify({
+        code: payload.code,
+        name: payload.name,
+        drawing_no: payload.drawing_no || null,
+        revision: payload.revision || null,
+        status: payload.status || 'open',
+      }),
+    })) ||
+    (await apiRequest<Assembly>('/assemblies', {
+      method: 'POST',
+      body: JSON.stringify({
+        project_id: String(projectId),
+        code: payload.code,
+        name: payload.name,
+        drawing_no: payload.drawing_no || null,
+        revision: payload.revision || null,
+        status: payload.status || 'open',
+      }),
+    }));
+
+  return scoped;
 }
 
 export async function addProjectMaterialLink(projectId: string | number, materialId: string | number) {
