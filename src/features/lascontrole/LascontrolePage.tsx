@@ -69,7 +69,7 @@ import type { CeDocument, Defect, Inspection, Weld } from '@/types/domain';
 import type { WeldFormValues } from '@/types/forms';
 import { formatDate } from '@/utils/format';
 import { ProjectContextTabs, resolveProjectContextTab } from '@/features/projecten/components/ProjectContextTabs';
-import { ProjectWorkspaceActionBar } from '@/features/projecten/components/ProjectWorkspaceActionBar';
+import { ProjectTabShell } from '@/features/projecten/components/ProjectTabShell';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 
 function textOf(value: unknown, fallback = '—'): string {
@@ -663,19 +663,6 @@ export function LascontrolePage() {
 
       {message ? <InlineMessage tone="success">{message}</InlineMessage> : null}
 
-      {hasProject ? <ProjectContextTabs projectId={projectId} value={currentProjectTab} /> : null}
-
-      {hasProject ? (
-        <ProjectWorkspaceActionBar
-          onCreateProject={() => navigate('/projecten?intent=create-project')}
-          onCreateAssembly={() => navigate(`/projecten/${projectId}/overzicht?intent=create-assembly`)}
-          onCreateWeld={() => {
-            setWeldModalMode('create');
-            setWeldModal(true);
-          }}
-        />
-      ) : null}
-
       <InlineMessage tone={hasProject ? 'neutral' : 'danger'}>
         {hasProject
           ? 'Lascontrole draait volledig binnen de huidige projectcontext.'
@@ -695,8 +682,18 @@ export function LascontrolePage() {
         </Card>
       ) : null}
 
-      <Card>
-        <div className="form-grid" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
+      {hasProject ? (
+        <ProjectTabShell
+          projectId={projectId}
+          currentTab={currentProjectTab}
+          onCreateProject={() => navigate('/projecten?intent=create-project')}
+          onCreateAssembly={() => navigate(`/projecten/${projectId}/overzicht?intent=create-assembly`)}
+          onCreateWeld={() => {
+            setWeldModalMode('create');
+            setWeldModal(true);
+          }}
+          filters={(
+            <div className="form-grid" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
           <div style={{ gridColumn: '1 / -1' }}>
           </div>
 
@@ -740,30 +737,39 @@ export function LascontrolePage() {
             <option value="asc">Oudste eerst</option>
           </Select>
         </div>
-      </Card>
+          )}
+          kpis={(
+            <>
+              <Card className="project-kpi-card">
+                <div className="metric-card">
+                  <span>Open inspecties</span>
+                  <strong>{openInspectionsCount}</strong>
+                </div>
+              </Card>
 
-      <div className="card-grid cols-3">
-        <Card>
-          <div className="metric-card">
-            <span>Open inspecties</span>
-            <strong>{openInspectionsCount}</strong>
-          </div>
-        </Card>
+              <Card className="project-kpi-card">
+                <div className="metric-card">
+                  <span>Actieve lassen</span>
+                  <strong>{weldRows.length}</strong>
+                </div>
+              </Card>
 
-        <Card>
-          <div className="metric-card">
-            <span>Actieve lassen</span>
-            <strong>{weldRows.length}</strong>
-          </div>
-        </Card>
+              <Card className="project-kpi-card">
+                <div className="metric-card">
+                  <span>Lassen met defecten</span>
+                  <strong>{sourceWeldRows.filter((item) => Number(item.defect_count || 0) > 0).length}</strong>
+                </div>
+              </Card>
 
-        <Card>
-          <div className="metric-card">
-            <span>Lassen met defecten</span>
-            <strong>{sourceWeldRows.filter((item) => Number(item.defect_count || 0) > 0).length}</strong>
-          </div>
-        </Card>
-      </div>
+              <Card className="project-kpi-card">
+                <div className="metric-card">
+                  <span>Totaal in tab</span>
+                  <strong>{totalForActiveTab}</strong>
+                </div>
+              </Card>
+            </>
+          )}
+        >
 
       <Card>
         <Tabs
@@ -993,6 +999,9 @@ export function LascontrolePage() {
             />
           ) : null}
         </Card>
+      ) : null}
+
+      </ProjectTabShell>
       ) : null}
 
       <Modal

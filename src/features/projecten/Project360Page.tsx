@@ -26,7 +26,7 @@ import { uploadWeldAttachment as uploadWeldAttachmentRequest } from '@/api/welds
 import type { WeldFormValues } from '@/types/forms';
 import { formatDate } from '@/utils/format';
 import { ProjectContextTabs, resolveProjectContextTab } from '@/features/projecten/components/ProjectContextTabs';
-import { ProjectWorkspaceActionBar } from '@/features/projecten/components/ProjectWorkspaceActionBar';
+import { ProjectTabShell } from '@/features/projecten/components/ProjectTabShell';
 
 function textOf(value: unknown, fallback = '—') {
   if (value == null) return fallback;
@@ -231,35 +231,28 @@ export function Project360Page() {
         <div className="list-subtle">Projectvoortgang binnen Fase 2 werkstroom: {progressPercent}% van de kernonderdelen is gevuld of afgerond.</div>
       </Card>
 
-      <ProjectContextTabs projectId={projectId} value={currentTab} />
-
-      <ProjectWorkspaceActionBar
+      <ProjectTabShell
+        projectId={projectId}
+        currentTab={currentTab}
         onCreateProject={() => navigate('/projecten?intent=create-project')}
         onCreateAssembly={() => setAssemblyModal({ mode: 'create' })}
         onCreateWeld={() => setWeldModal({ mode: 'create' })}
-      />
-
-      <Card>
-        <Input value={subSearch} onChange={(event) => setSubSearch(event.target.value)} placeholder="Zoek binnen deze projectcontext" />
-      </Card>
-
+        filters={<Input value={subSearch} onChange={(event) => setSubSearch(event.target.value)} placeholder="Zoek binnen deze projectcontext" />}
+        kpis={summaryCards.map((card) => {
+          const Icon = card.icon;
+          return (
+            <Card key={card.label} className="project-kpi-card">
+              <div className="stat-card">
+                <div className="metric-inline"><Icon size={18} /><span className="stat-label">{card.label}</span></div>
+                <div className="stat-value">{card.value}</div>
+                <div className="stat-meta">Direct vanuit deze projectcontext bijgewerkt.</div>
+              </div>
+            </Card>
+          );
+        })}
+      >
       {currentTab === 'overzicht' ? (
         <>
-          <div className="grid-3">
-            {summaryCards.map((card) => {
-              const Icon = card.icon;
-              return (
-                <Card key={card.label}>
-                  <div className="stat-card">
-                    <div className="metric-inline"><Icon size={18} /><span className="stat-label">{card.label}</span></div>
-                    <div className="stat-value">{card.value}</div>
-                    <div className="stat-meta">Direct vanuit deze projectcontext bijgewerkt.</div>
-                  </div>
-                </Card>
-              );
-            })}
-          </div>
-
           <div className="content-grid-2">
             <Card>
               <div className="section-title-row"><h3>Snelle acties</h3></div>
@@ -638,6 +631,7 @@ export function Project360Page() {
           </Card>
         </div>
       ) : null}
+      </ProjectTabShell>
 
       <Modal open={!!assemblyModal} onClose={() => setAssemblyModal(null)} title={assemblyModal?.mode === 'edit' ? 'Assembly bewerken' : 'Nieuwe assembly'} size="large">
         <AssemblyForm

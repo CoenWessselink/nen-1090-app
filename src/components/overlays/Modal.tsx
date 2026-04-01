@@ -1,4 +1,4 @@
-import { PropsWithChildren, useEffect, useMemo, useRef, useState } from 'react';
+import { PropsWithChildren, useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 
 type ModalSize = 'small' | 'medium' | 'large' | 'fullscreen';
@@ -13,65 +13,97 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
+type DragState = {
+  active: boolean;
+  pointerId: number;
+  startX: number;
+  startY: number;
+  originX: number;
+  originY: number;
+};
+
 export function Modal({ open, onClose, title, size = 'medium', children }: PropsWithChildren<{ open: boolean; onClose: () => void; title: string; size?: ModalSize }>) {
   const panelRef = useRef<HTMLDivElement | null>(null);
-  const dragStateRef = useRef<{ pointerId: number; startX: number; startY: number; originX: number; originY: number } | null>(null);
+  const headerRef = useRef<HTMLDivElement | null>(null);
+  const dragStateRef = useRef<DragState | null>(null);
+  const frameRef = useRef<number | null>(null);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
     if (!open) {
       setOffset({ x: 0, y: 0 });
       dragStateRef.current = null;
+      if (frameRef.current) {
+        window.cancelAnimationFrame(frameRef.current);
+        frameRef.current = null;
+      }
     }
   }, [open]);
-
-  const maxBounds = useMemo(() => {
-    if (typeof window === 'undefined' || size === 'fullscreen') {
-      return { x: 0, y: 0 };
-    }
-    const width = Math.min(window.innerWidth - 48, modalWidths[size]);
-    const height = Math.min(window.innerHeight - 48, (panelRef.current?.offsetHeight || window.innerHeight - 48));
-    return {
-      x: Math.max(0, Math.floor((window.innerWidth - width) / 2) - 24),
-      y: Math.max(0, Math.floor((window.innerHeight - height) / 2) - 24),
-    };
-  }, [size, open]);
 
   useEffect(() => {
     if (!open || size === 'fullscreen') return;
 
-    const handlePointerMove = (event: PointerEvent) => {
-      const state = dragStateRef.current;
-      if (!state || state.pointerId !== event.pointerId) return;
-      const nextX = state.originX + (event.clientX - state.startX);
-      const nextY = state.originY + (event.clientY - state.startY);
-      setOffset({ x: clamp(nextX, -maxBounds.x, maxBounds.x), y: clamp(nextY, -maxBounds.y, maxBounds.y) });
+    const getBounds = () => {
+      if (typeof window === 'undefined') return { x: 0, y: 0 };
+      const panelWidth = panelRef.current?.offsetWidth || modalWidths[size];
+      const panelHeight = panelRef.current?.offsetHeight || Math.min(window.innerHeight - 48, 720);
+      return {
+        x: Math.max(0, Math.floor((window.innerWidth - panelWidth) / 2) - 24),
+        y: Math.max(0, Math.floor((window.innerHeight - panelHeight) / 2) - 24),
+      };
     };
 
-    const stopDragging = (event?: PointerEvent) => {
-      if (event && dragStateRef.current && dragStateRef.current.pointerId !== event.pointerId) return;
+    const stopDragging = () => {
       dragStateRef.current = null;
-      if (panelRef.current) {
-        try { panelRef.current.releasePointerCapture(event?.pointerId || 0); } catch {}
+      document.body.classList.remove('modal-dragging');
+      if (frameRef.current) {
+        window.cancelAnimationFrame(frameRef.current);
+        frameRef.current = null;
       }
     };
 
-    const handleResize = () => setOffset((current) => ({
-      x: clamp(current.x, -maxBounds.x, maxBounds.x),
-      y: clamp(current.y, -maxBounds.y, maxBounds.y),
-    }));
+    const handlePointerMove = (event: PointerEvent) => {
+      const state = dragStateRef.current;
+      if (!state?.active || state.pointerId !== event.pointerId) return;
+      event.preventDefault();
+      const bounds = getBounds();
+      const nextX = state.originX + (event.clientX - state.startX);
+      const nextY = state.originY + (event.clientY - state.startY);
 
-    window.addEventListener('pointermove', handlePointerMove);
+      if (frameRef.current) {
+        window.cancelAnimationFrame(frameRef.current);
+      }
+      frameRef.current = window.requestAnimationFrame(() => {
+        setOffset({
+          x: clamp(nextX, -bounds.x, bounds.x),
+          y: clamp(nextY, -bounds.y, bounds.y),
+        });
+      });
+    };
+
+    const handleResize = () => {
+      const bounds = getBounds();
+      setOffset((current) => ({
+        x: clamp(current.x, -bounds.x, bounds.x),
+        y: clamp(current.y, -bounds.y, bounds.y),
+      }));
+    };
+
+    window.addEventListener('pointermove', handlePointerMove, { passive: false });
     window.addEventListener('pointerup', stopDragging);
     window.addEventListener('pointercancel', stopDragging);
+    window.addEventListener('blur', stopDragging);
     window.addEventListener('resize', handleResize);
+
     return () => {
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', stopDragging);
       window.removeEventListener('pointercancel', stopDragging);
+      window.removeEventListener('blur', stopDragging);
       window.removeEventListener('resize', handleResize);
+      stopDragging();
     };
-  }, [open, size, maxBounds.x, maxBounds.y]);
+  }, [open, size]);
 
   if (!open) return null;
 
@@ -84,18 +116,22 @@ export function Modal({ open, onClose, title, size = 'medium', children }: Props
         style={size === 'fullscreen' ? undefined : { transform: `translate(${offset.x}px, ${offset.y}px)` }}
       >
         <div
+          ref={headerRef}
           className={`overlay-header ${size === 'fullscreen' ? '' : 'overlay-header-draggable'}`.trim()}
           onPointerDown={(event) => {
             if (size === 'fullscreen') return;
             if ((event.target as HTMLElement).closest('button, input, select, textarea, a, [role="button"]')) return;
             dragStateRef.current = {
+              active: true,
               pointerId: event.pointerId,
               startX: event.clientX,
               startY: event.clientY,
               originX: offset.x,
               originY: offset.y,
             };
-            try { panelRef.current?.setPointerCapture(event.pointerId); } catch {}
+            headerRef.current?.setPointerCapture?.(event.pointerId);
+            document.body.classList.add('modal-dragging');
+            event.preventDefault();
           }}
         >
           <div>

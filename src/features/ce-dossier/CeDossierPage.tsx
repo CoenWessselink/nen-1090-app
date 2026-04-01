@@ -43,7 +43,7 @@ import {
 import { CePdfLayoutCard } from '@/features/ce-dossier/components/CePdfBlocks';
 import type { ExportJob } from '@/types/domain';
 import { ProjectContextTabs, resolveProjectContextTab } from '@/features/projecten/components/ProjectContextTabs';
-import { ProjectWorkspaceActionBar } from '@/features/projecten/components/ProjectWorkspaceActionBar';
+import { ProjectTabShell } from '@/features/projecten/components/ProjectTabShell';
 
 type LocalExportRecord = ExportJob & { local_only?: boolean };
 
@@ -236,112 +236,107 @@ export function CeDossierPage() {
       </PageHeader>
 
       {message ? <InlineMessage tone="success">{message}</InlineMessage> : null}
-      <ProjectContextTabs projectId={projectId} value={currentProjectTab} />
 
-      <ProjectWorkspaceActionBar
+      <ProjectTabShell
+        projectId={projectId}
+        currentTab={currentProjectTab}
         onCreateProject={() => navigate('/projecten?intent=create-project')}
         onCreateAssembly={() => navigate(`/projecten/${projectId}/overzicht?intent=create-assembly`)}
         onCreateWeld={() => navigate(`/projecten/${projectId}/overzicht?intent=create-weld`)}
-      />
+        filters={<Input value={ceSearch} onChange={(event) => setCeSearch(event.target.value)} placeholder="Filter op ontbrekende onderdelen, checklist of exports" />}
+        kpis={ceKpis.map((item) => (
+          <Card key={item.label} className="project-kpi-card">
+            <div className="stat-card">
+              <div className="stat-label">{item.label}</div>
+              <div className="stat-value">{item.value}</div>
+              <div className="stat-meta">CE dossier KPI binnen dezelfde vaste projectstructuur.</div>
+            </div>
+          </Card>
+        ))}
+      >
+        {isLoading ? <LoadingState label="CE dossier laden..." /> : null}
+        {isError ? <ErrorState title="CE dossier niet geladen" description="De CE/compliance-data voor dit project kon niet worden opgehaald." /> : null}
 
-      <Card>
-        <Input value={ceSearch} onChange={(event) => setCeSearch(event.target.value)} placeholder="Filter op ontbrekende onderdelen, checklist of exports" />
-      </Card>
+        {!isLoading && !isError ? (
+          <>
+            <CeStatusPanel
+              project={project}
+              status={asText(overview.status || dossier.status, 'In behandeling')}
+              score={Number(overview.score || dossier.score || 0)}
+              readyForExport={Boolean(overview.ready_for_export ?? dossier.ready_for_export)}
+              source={asText(dossier.source, 'live-api')}
+              missingCount={missingItems.length}
+            />
 
-      {isLoading ? <LoadingState label="CE dossier laden..." /> : null}
-      {isError ? <ErrorState title="CE dossier niet geladen" description="De CE/compliance-data voor dit project kon niet worden opgehaald." /> : null}
+            <div className="content-grid-2">
+              <CeMissingItemsCard missingItems={filteredMissingItems} />
+              <CeChecklistCard checklist={filteredChecklist} />
+            </div>
 
-      {!isLoading && !isError ? (
-        <>
-          <div className="grid-3">
-            {ceKpis.map((item) => (
-              <Card key={item.label}>
-                <div className="stat-card">
-                  <div className="stat-label">{item.label}</div>
-                  <div className="stat-value">{item.value}</div>
-                  <div className="stat-meta">Gelijkgetrokken KPI-structuur voor het CE-dossier.</div>
-                </div>
-              </Card>
-            ))}
-          </div>
+            <div className="content-grid-2">
+              <CeDossierStructureCard
+                counts={counts}
+                assemblies={assemblies}
+                welds={welds}
+                inspections={inspections}
+                documents={documents}
+                photos={photos}
+              />
+              <CeDataGroupsCard
+                assemblies={assemblies}
+                welds={welds}
+                inspections={inspections}
+                documents={documents}
+              />
+            </div>
 
-          <CeStatusPanel
-            project={project}
-            status={asText(overview.status || dossier.status, 'In behandeling')}
-            score={Number(overview.score || dossier.score || 0)}
-            readyForExport={Boolean(overview.ready_for_export ?? dossier.ready_for_export)}
-            source={asText(dossier.source, 'live-api')}
-            missingCount={missingItems.length}
-          />
+            <div className="content-grid-2">
+              <CeExportActionsCard
+                pending={{
+                  ce: createReport.isPending,
+                  pdf: createPdf.isPending,
+                  zip: createZip.isPending,
+                  excel: createExcel.isPending,
+                }}
+                onExport={handleExport}
+                preview={preview}
+              />
+              <CeExportManifestCard manifest={manifest} exportItem={selectedExport} />
+            </div>
 
-          <div className="content-grid-2">
-            <CeMissingItemsCard missingItems={filteredMissingItems} />
-            <CeChecklistCard checklist={filteredChecklist} />
-          </div>
+            <CeExportHistoryCard
+              items={filteredExportItems}
+              selectedExportId={selectedExportId}
+              onSelect={(item) => setSelectedExportId(item.id)}
+              onDownload={handleDownload}
+              onRetry={handleRetry}
+              downloadingId={downloadingId}
+              retryingId={retryingId}
+            />
 
-          <div className="content-grid-2">
-            <CeDossierStructureCard
+            <CePdfLayoutCard
+              project={project}
+              status={asText(overview.status || dossier.status, 'In behandeling')}
+              score={Number(overview.score || dossier.score || 0)}
               counts={counts}
+              checklist={checklist}
+              missingItems={missingItems}
               assemblies={assemblies}
               welds={welds}
               inspections={inspections}
               documents={documents}
               photos={photos}
+              onPrint={() => window.print()}
             />
-            <CeDataGroupsCard
-              assemblies={assemblies}
-              welds={welds}
-              inspections={inspections}
-              documents={documents}
-            />
-          </div>
 
-          <div className="content-grid-2">
-            <CeExportActionsCard
-              pending={{
-                ce: createReport.isPending,
-                pdf: createPdf.isPending,
-                zip: createZip.isPending,
-                excel: createExcel.isPending,
-              }}
-              onExport={handleExport}
-              preview={preview}
-            />
-            <CeExportManifestCard manifest={manifest} exportItem={selectedExport} />
-          </div>
-
-          <CeExportHistoryCard
-            items={filteredExportItems}
-            selectedExportId={selectedExportId}
-            onSelect={(item) => setSelectedExportId(item.id)}
-            onDownload={handleDownload}
-            onRetry={handleRetry}
-            downloadingId={downloadingId}
-            retryingId={retryingId}
-          />
-
-          <CePdfLayoutCard
-            project={project}
-            status={asText(overview.status || dossier.status, 'In behandeling')}
-            score={Number(overview.score || dossier.score || 0)}
-            counts={counts}
-            checklist={checklist}
-            missingItems={missingItems}
-            assemblies={assemblies}
-            welds={welds}
-            inspections={inspections}
-            documents={documents}
-            photos={photos}
-            onPrint={() => window.print()}
-          />
-
-          <div className="toolbar-cluster" style={{ justifyContent: 'space-between' }}>
-            <Button variant="secondary" onClick={() => navigate(`/projecten/${projectId}/documenten`)}>Ga naar documenten</Button>
-            <Button variant="secondary" onClick={() => navigate(`/projecten/${projectId}/lascontrole`)}>Ga naar lascontrole</Button>
-            <Button variant="secondary" onClick={() => navigate(`/projecten/${projectId}/historie`)}><RefreshCcw size={16} /> Audit / historie</Button>
-          </div>
-        </>
-      ) : null}
+            <div className="toolbar-cluster" style={{ justifyContent: 'space-between' }}>
+              <Button variant="secondary" onClick={() => navigate(`/projecten/${projectId}/documenten`)}>Ga naar documenten</Button>
+              <Button variant="secondary" onClick={() => navigate(`/projecten/${projectId}/lascontrole`)}>Ga naar lascontrole</Button>
+              <Button variant="secondary" onClick={() => navigate(`/projecten/${projectId}/historie`)}><RefreshCcw size={16} /> Audit / historie</Button>
+            </div>
+          </>
+        ) : null}
+      </ProjectTabShell>
     </div>
   );
 }

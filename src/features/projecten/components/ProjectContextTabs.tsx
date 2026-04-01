@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { FolderKanban } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/Card';
 import { Tabs } from '@/components/ui/Tabs';
@@ -27,11 +28,15 @@ export function ProjectContextTabs({ projectId, value, searchSlot }: { projectId
   const navigate = useNavigate();
 
   return (
-    <Card className="project-context-tabs-card">
+    <Card className="project-context-tabs-card" data-project-structure="tabs">
       <div className="project-context-tabs-header">
-        <div>
-          <strong>Projectnavigatie</strong>
-          <div className="list-subtle">De hoofdtabs blijven altijd zichtbaar binnen deze projectcontext.</div>
+        <div className="project-context-tabs-copy">
+          <div className="project-context-tabs-kicker">
+            <FolderKanban size={14} />
+            <span>Projectnavigatie</span>
+          </div>
+          <strong>Elke projectpagina gebruikt dezelfde vaste tabvolgorde</strong>
+          <div className="list-subtle">Tabs bovenin, daarna actiebalk, filters, KPI’s en de werktafel.</div>
         </div>
         {searchSlot ? <div className="project-context-tabs-search">{searchSlot}</div> : null}
       </div>

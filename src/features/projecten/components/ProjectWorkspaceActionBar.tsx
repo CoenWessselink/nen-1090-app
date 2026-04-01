@@ -1,4 +1,4 @@
-import { Plus } from 'lucide-react';
+import { FolderPlus, Plus, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
 export function ProjectWorkspaceActionBar({
@@ -11,15 +11,27 @@ export function ProjectWorkspaceActionBar({
   onCreateWeld: () => void;
 }) {
   return (
-    <div className="card project-workspace-actionbar">
+    <div className="card project-workspace-actionbar" data-project-structure="actions">
       <div className="project-workspace-actionbar-copy">
-        <strong>Actiebalk</strong>
-        <div className="list-subtle">Dezelfde hoofdacties blijven op ieder projecttabblad bovenaan beschikbaar.</div>
+        <div className="project-workspace-actionbar-kicker">
+          <Sparkles size={14} />
+          <span>Actiebalk</span>
+        </div>
+        <strong>Vaste hoofdacties op elk projecttabblad</strong>
+        <div className="list-subtle">
+          Nieuwe items blijven overal op dezelfde plek zichtbaar zodat de projectflow rustig en voorspelbaar blijft.
+        </div>
       </div>
       <div className="project-workspace-actionbar-actions">
-        <Button variant="secondary" onClick={onCreateProject}><Plus size={16} /> Nieuw project</Button>
-        <Button variant="secondary" onClick={onCreateAssembly}><Plus size={16} /> Nieuwe assembly</Button>
-        <Button onClick={onCreateWeld}><Plus size={16} /> Nieuwe las</Button>
+        <Button variant="secondary" className="project-workspace-action" onClick={onCreateProject}>
+          <FolderPlus size={16} /> Nieuw project
+        </Button>
+        <Button variant="secondary" className="project-workspace-action" onClick={onCreateAssembly}>
+          <Plus size={16} /> Nieuwe assembly
+        </Button>
+        <Button variant="secondary" className="project-workspace-action" onClick={onCreateWeld}>
+          <Plus size={16} /> Nieuwe las
+        </Button>
       </div>
     </div>
   );
