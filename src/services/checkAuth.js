@@ -4,7 +4,7 @@ const marketingBaseUrl = (
 
 function buildLoginRedirect() {
   const next = `${window.location.pathname}${window.location.search}${window.location.hash}`;
-  const url = new URL(`${marketingBaseUrl}/app/login`);
+  const url = new URL(`${marketingBaseUrl}/login`);
   if (next && next !== '/login') {
     url.searchParams.set('next', next);
     url.searchParams.set('message', 'Log in om verder te werken in het platform.');

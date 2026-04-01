@@ -10,13 +10,13 @@ export type MarketingAuthTarget =
 const DEFAULT_MARKETING_ORIGIN = 'https://nen1090-marketing-new.pages.dev';
 
 const targetPathMap: Record<MarketingAuthTarget, string> = {
-  login: '/app/login',
-  'forgot-password': '/app/forgot-password',
-  'reset-password': '/app/reset-password',
-  'set-password': '/app/set-password',
-  'change-password': '/app/change-password',
-  logout: '/app/logout',
-  subscription: '/app/subscription',
+  login: '/login',
+  'forgot-password': '/forgot-password',
+  'reset-password': '/reset-password',
+  'set-password': '/set-password',
+  'change-password': '/change-password',
+  logout: '/logout',
+  subscription: '/subscription',
 };
 
 function trimTrailingSlash(value: string) {
@@ -57,7 +57,10 @@ export function buildAppReturnTo(pathname = '/dashboard'): string {
   return `${url.pathname}${url.search}${url.hash}`;
 }
 
-export function redirectToMarketing(target: MarketingAuthTarget, options?: Parameters<typeof buildMarketingUrl>[1]) {
+export function redirectToMarketing(
+  target: MarketingAuthTarget,
+  options?: Parameters<typeof buildMarketingUrl>[1],
+) {
   if (typeof window === 'undefined') return;
   window.location.replace(buildMarketingUrl(target, options));
 }
