@@ -62,39 +62,72 @@ function expireSession(message?: string) {
   }
 }
 
+function hasRecoverableSession() {
+  const { token, refreshToken, user } = useAuthStore.getState();
+  return Boolean(
+    (token && token !== '__cookie_session__') ||
+    refreshToken ||
+    (token === '__cookie_session__' && user)
+  );
+}
+
 async function tryRefreshToken(): Promise<boolean> {
   if (refreshInFlight) return refreshInFlight;
+  if (!hasRecoverableSession()) return false;
 
   refreshInFlight = (async () => {
-    const { refreshToken, user, setSession, clearSession } = useAuthStore.getState();
+    const { token, refreshToken, user, setSession, clearSession } = useAuthStore.getState();
 
     try {
-      const payload =
-        refreshToken && refreshToken !== '__cookie_session__'
-          ? await refreshSession(refreshToken)
-          : await refreshCentralSession();
-      if (!payload.access_token || !user) {
-        clearSession();
-        useApiStatusStore.getState().markSessionExpired(
-          'Je sessie kon niet worden vernieuwd via de bestaande authflow.',
+      if (refreshToken && refreshToken !== '__cookie_session__') {
+        const payload = await refreshSession(refreshToken);
+        if (!payload.access_token || !user) {
+          clearSession();
+          useApiStatusStore.getState().markSessionExpired(
+            'Je sessie kon niet worden vernieuwd via de bestaande authflow.',
+          );
+          return false;
+        }
+
+        setSession(
+          payload.access_token,
+          {
+            email: payload.user?.email || user.email,
+            tenant: payload.user?.tenant || user.tenant,
+            tenantId: payload.user?.tenant_id || user.tenantId,
+            role: payload.user?.role || user.role,
+            name: payload.user?.name || user.name,
+          },
+          payload.refresh_token || refreshToken,
         );
-        return false;
+        return true;
       }
 
-      const refreshedUser = {
-        email: payload.user?.email || user.email,
-        tenant: payload.user?.tenant || user.tenant,
-        tenantId: payload.user?.tenant_id || user.tenantId,
-        role: payload.user?.role || user.role,
-        name: payload.user?.name || user.name,
-      };
+      if (token === '__cookie_session__') {
+        const payload = await refreshCentralSession();
+        if (!payload.user) {
+          clearSession();
+          useApiStatusStore.getState().markSessionExpired(
+            'Je sessie kon niet worden vernieuwd via de centrale authflow.',
+          );
+          return false;
+        }
 
-      const nextToken =
-        refreshToken && refreshToken !== '__cookie_session__' ? payload.access_token : '__cookie_session__';
-      const nextRefreshToken =
-        refreshToken && refreshToken !== '__cookie_session__' ? payload.refresh_token || refreshToken : null;
-      setSession(nextToken, refreshedUser, nextRefreshToken);
-      return true;
+        setSession(
+          '__cookie_session__',
+          {
+            email: payload.user.email || user?.email || '',
+            tenant: payload.user.tenant || user?.tenant || '',
+            tenantId: payload.user.tenant_id || user?.tenantId || '',
+            role: payload.user.role || user?.role || '',
+            name: payload.user.name || user?.name || '',
+          },
+          null,
+        );
+        return true;
+      }
+
+      return false;
     } catch {
       clearSession();
       useApiStatusStore.getState().markSessionExpired(
@@ -149,8 +182,9 @@ export async function apiRequest<T>(
 
   const isAuthRefreshCall = path.endsWith('/auth/refresh');
   const isAuthTerminalCall = path.endsWith('/auth/logout') || path.endsWith('/auth/change-password');
+  const canAttemptRefresh = hasRecoverableSession();
 
-  if (response.status === 401 && retryCount === 0 && !isAuthRefreshCall && !isAuthTerminalCall) {
+  if (response.status === 401 && retryCount === 0 && !isAuthRefreshCall && !isAuthTerminalCall && canAttemptRefresh) {
     const refreshed = await tryRefreshToken();
     if (refreshed) return apiRequest<T>(path, init, 1, suppressHandledStatus);
   }
@@ -164,7 +198,7 @@ export async function apiRequest<T>(
     const error = await parseError(response);
     const isSilencedFallbackStatus = suppressHandledStatus && [404, 405].includes(response.status);
 
-    if (response.status === 401 && !isAuthTerminalCall) {
+    if (response.status === 401 && !isAuthTerminalCall && canAttemptRefresh) {
       expireSession();
     } else if (isTenantSessionMismatch(error)) {
       expireSession('Je sessie hoort niet meer bij de actieve tenant. Log opnieuw in.');

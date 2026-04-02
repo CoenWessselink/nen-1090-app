@@ -167,7 +167,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
         setSession(nextToken, refreshedUser, nextRefreshToken);
         if (nextToken !== '__cookie_session__') updateToken(nextToken);
       } catch {
-        // laat de huidige UI-sessie intact; pas een echte routeguard of expliciete logout mag de sessie volledig wissen.
+        // houd de bestaande UI-sessie intact; voorkom refresh-loop op login en projectroutes.
       }
     }
 
@@ -194,7 +194,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
     user,
     tenant: user?.tenant,
     role: user?.role,
-    isAuthenticated: Boolean(user && token),
+    isAuthenticated: Boolean(user && (token || refreshToken)),
     isImpersonating: Boolean(impersonation?.active),
     isBootstrapping,
     impersonationTenantName: impersonation?.tenantName,
