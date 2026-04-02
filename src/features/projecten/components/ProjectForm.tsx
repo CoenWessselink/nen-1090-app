@@ -64,10 +64,12 @@ export function ProjectForm({
   initial,
   onSubmit,
   isSubmitting,
+  submitLabel = 'Project opslaan',
 }: {
   initial?: Project;
   onSubmit: (values: ProjectFormValues) => Promise<void> | void;
   isSubmitting?: boolean;
+  submitLabel?: string;
 }) {
   const [stepIndex, setStepIndex] = useState(0);
   const [assemblies, setAssemblies] = useState<ProjectAssemblyDraft[]>([makeAssemblyRow()]);
@@ -281,7 +283,7 @@ export function ProjectForm({
         <Button type="button" variant="secondary" onClick={() => setStepIndex((current) => Math.max(current - 1, 0))} disabled={stepIndex === 0}>Vorige</Button>
         <div className="toolbar-cluster">
           {stepIndex < steps.length - 1 ? <Button type="button" onClick={nextStep}>Volgende</Button> : null}
-          <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Opslaan...' : 'Project opslaan'}</Button>
+          <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Opslaan...' : submitLabel}</Button>
         </div>
       </div>
     </form>
