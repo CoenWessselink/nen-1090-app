@@ -1,1 +1,11 @@
+/app/login /login 302
+/app/login.html /login 302
+/app/forgot-password /forgot-password 302
+/app/forgot-password.html /forgot-password 302
+/app/reset-password /reset-password 302
+/app/reset-password.html /reset-password 302
+/app/logout /logout 302
+/app/logout.html /logout 302
+/app/change-password /change-password 302
+/app/change-password.html /change-password 302
 /* /index.html 200

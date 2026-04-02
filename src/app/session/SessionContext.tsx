@@ -51,6 +51,26 @@ function normalizeRole(role?: string | null): string {
   return String(role || '').replace(/[^a-zA-Z]/g, '').toUpperCase();
 }
 
+function isAuthPage(pathname: string) {
+  return [
+    '/login',
+    '/forgot-password',
+    '/reset-password',
+    '/logout',
+    '/change-password',
+    '/app/login',
+    '/app/login.html',
+    '/app/forgot-password',
+    '/app/forgot-password.html',
+    '/app/reset-password',
+    '/app/reset-password.html',
+    '/app/logout',
+    '/app/logout.html',
+    '/app/change-password',
+    '/app/change-password.html',
+  ].includes(pathname);
+}
+
 export function SessionProvider({ children }: PropsWithChildren) {
   const token = useAuthStore((state) => state.token);
   const refreshToken = useAuthStore((state) => state.refreshToken);
@@ -65,7 +85,16 @@ export function SessionProvider({ children }: PropsWithChildren) {
     let cancelled = false;
 
     async function bootstrap() {
+      const pathname = window.location.pathname;
+      const onAuthPage = isAuthPage(pathname);
+
       if (!token && !refreshToken) {
+        if (!cancelled) setIsBootstrapping(false);
+        return;
+      }
+
+      if (onAuthPage && token && token !== '__cookie_session__' && !refreshToken) {
+        clearSession();
         if (!cancelled) setIsBootstrapping(false);
         return;
       }
@@ -107,6 +136,12 @@ export function SessionProvider({ children }: PropsWithChildren) {
             );
           }
           activeToken = '__cookie_session__';
+        }
+
+        if (onAuthPage && !refreshToken && activeToken && activeToken !== '__cookie_session__') {
+          clearSession();
+          if (!cancelled) setIsBootstrapping(false);
+          return;
         }
 
         const me = await getMe();
@@ -167,7 +202,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
         setSession(nextToken, refreshedUser, nextRefreshToken);
         if (nextToken !== '__cookie_session__') updateToken(nextToken);
       } catch {
-        // houd de bestaande UI-sessie intact; voorkom refresh-loop op login en projectroutes.
+        // houd bestaande UI-sessie intact om login/projectroutes niet te laten loopen.
       }
     }
 
