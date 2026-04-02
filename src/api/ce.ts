@@ -1,4 +1,4 @@
-import { optionalRequest } from '@/api/client';
+import { ApiError, apiRequest, optionalRequest } from '@/api/client';
 import { getAssemblies } from '@/api/assemblies';
 import { getProjectDocuments, getProjectInspections, getProjectWelds, getProjects } from '@/api/projects';
 import type { ListParams } from '@/types/api';
@@ -33,57 +33,17 @@ function buildChecklist(args: {
     return ['approved', 'goedgekeurd', 'conform', 'gereed', 'ok'].includes(value);
   }).length;
 
-  const items = [
-    {
-      key: 'project',
-      label: 'Projectgegevens',
-      ok: Boolean(project),
-      count: project ? 1 : 0,
-      detail: project ? 'Project gevonden in live API.' : 'Project ontbreekt in live API.',
-    },
-    {
-      key: 'assemblies',
-      label: 'Assemblies',
-      ok: assemblies.length > 0,
-      count: assemblies.length,
-      detail: assemblies.length ? `${assemblies.length} assemblies gekoppeld.` : 'Nog geen assemblies gekoppeld.',
-    },
-    {
-      key: 'welds',
-      label: 'Lassen',
-      ok: welds.length > 0,
-      count: welds.length,
-      detail: welds.length ? `${welds.length} lassen beschikbaar.` : 'Nog geen lassen geregistreerd.',
-    },
-    {
-      key: 'inspections',
-      label: 'Inspecties',
-      ok: inspections.length > 0,
-      count: inspections.length,
-      detail: inspections.length
-        ? `${approvedInspections}/${inspections.length} inspecties akkoord of conform.`
-        : 'Nog geen inspecties geregistreerd.',
-    },
-    {
-      key: 'documents',
-      label: 'Documenten en foto’s',
-      ok: documents.length > 0,
-      count: documents.length,
-      detail: documents.length ? `${documents.length} documenten/foto’s gekoppeld.` : 'Nog geen documenten of foto’s gekoppeld.',
-    },
+  return [
+    { key: 'project', label: 'Projectgegevens', ok: Boolean(project), count: project ? 1 : 0, detail: project ? 'Project gevonden in live API.' : 'Project ontbreekt in live API.' },
+    { key: 'assemblies', label: 'Assemblies', ok: assemblies.length > 0, count: assemblies.length, detail: assemblies.length ? `${assemblies.length} assemblies gekoppeld.` : 'Nog geen assemblies gekoppeld.' },
+    { key: 'welds', label: 'Lassen', ok: welds.length > 0, count: welds.length, detail: welds.length ? `${welds.length} lassen beschikbaar.` : 'Nog geen lassen geregistreerd.' },
+    { key: 'inspections', label: 'Inspecties', ok: inspections.length > 0, count: inspections.length, detail: inspections.length ? `${approvedInspections}/${inspections.length} inspecties akkoord of conform.` : 'Nog geen inspecties geregistreerd.' },
+    { key: 'documents', label: 'Documenten en foto’s', ok: documents.length > 0, count: documents.length, detail: documents.length ? `${documents.length} documenten/foto’s gekoppeld.` : 'Nog geen documenten of foto’s gekoppeld.' },
   ];
-
-  return items;
 }
 
 function buildMissingItems(checklist: Array<Record<string, unknown>>) {
-  return checklist
-    .filter((item) => !Boolean(item.ok))
-    .map((item) => ({
-      key: item.key,
-      label: item.label,
-      detail: item.detail,
-    }));
+  return checklist.filter((item) => !Boolean(item.ok)).map((item) => ({ key: item.key, label: item.label, detail: item.detail }));
 }
 
 function buildStatus(checklist: Array<Record<string, unknown>>) {
@@ -91,14 +51,8 @@ function buildStatus(checklist: Array<Record<string, unknown>>) {
   const completed = checklist.filter((item) => Boolean(item.ok)).length;
   const score = total ? Math.round((completed / total) * 100) : 0;
 
-  if (completed === total && total > 0) {
-    return { score, status: 'gereed', ready_for_export: true };
-  }
-
-  if (completed === 0) {
-    return { score, status: 'niet gestart', ready_for_export: false };
-  }
-
+  if (completed === total && total > 0) return { score, status: 'gereed', ready_for_export: true };
+  if (completed === 0) return { score, status: 'niet gestart', ready_for_export: false };
   return { score, status: 'in behandeling', ready_for_export: false };
 }
 
@@ -161,17 +115,10 @@ async function buildFallbackCeDossier(projectId: string | number) {
   };
 }
 
-function mergeCePayload(
-  livePayload: Record<string, unknown> | null,
-  fallbackPayload: Record<string, unknown>,
-) {
+function mergeCePayload(livePayload: Record<string, unknown> | null, fallbackPayload: Record<string, unknown>) {
   const live = asRecord(livePayload);
-  const mergedChecklist = asArray<Record<string, unknown>>(live.checklist).length
-    ? asArray<Record<string, unknown>>(live.checklist)
-    : asArray<Record<string, unknown>>(fallbackPayload.checklist);
-  const mergedMissing = asArray<Record<string, unknown>>(live.missing_items).length
-    ? asArray<Record<string, unknown>>(live.missing_items)
-    : asArray<Record<string, unknown>>(fallbackPayload.missing_items);
+  const mergedChecklist = asArray<Record<string, unknown>>(live.checklist).length ? asArray<Record<string, unknown>>(live.checklist) : asArray<Record<string, unknown>>(fallbackPayload.checklist);
+  const mergedMissing = asArray<Record<string, unknown>>(live.missing_items).length ? asArray<Record<string, unknown>>(live.missing_items) : asArray<Record<string, unknown>>(fallbackPayload.missing_items);
 
   return {
     ...fallbackPayload,
@@ -185,45 +132,54 @@ function mergeCePayload(
     documents: asArray(live.documents).length ? asArray(live.documents) : fallbackPayload.documents,
     checklist: mergedChecklist,
     missing_items: mergedMissing,
-    counts: {
-      ...asRecord(fallbackPayload.counts),
-      ...asRecord(live.counts),
-    },
+    counts: { ...asRecord(fallbackPayload.counts), ...asRecord(live.counts) },
     score: Number(live.score || fallbackPayload.score || 0),
     status: String(live.status || fallbackPayload.status || 'in behandeling'),
     ready_for_export: Boolean(live.ready_for_export ?? fallbackPayload.ready_for_export),
   };
 }
 
+async function tryRequestVariants(paths: string[], methods: Array<'GET' | 'POST'>) {
+  for (const path of paths) {
+    for (const method of methods) {
+      try {
+        return await apiRequest<Record<string, unknown>>(path, method === 'POST' ? { method: 'POST' } : undefined, 0, true);
+      } catch (error) {
+        if (error instanceof ApiError && [404, 405].includes(error.status)) {
+          continue;
+        }
+        throw error;
+      }
+    }
+  }
+  return null;
+}
+
+function directDownloadPayload(kind: string, projectId: string | number, path: string) {
+  return {
+    type: kind,
+    export_type: kind,
+    status: 'aangemaakt',
+    message: `${kind.toUpperCase()} download gestart.`,
+    project_id: String(projectId),
+    download_url: path,
+    direct_download: true,
+  };
+}
+
 export async function getComplianceOverview(projectId: string | number) {
   const dossier = await getCeDossier(projectId);
-  return {
-    score: dossier.score || 0,
-    status: dossier.status || 'in behandeling',
-    ready_for_export: Boolean(dossier.ready_for_export),
-    checklist: asArray<Record<string, unknown>>(dossier.checklist),
-    missing_items: asArray<Record<string, unknown>>(dossier.missing_items),
-    counts: asRecord(dossier.counts),
-    source: dossier.source,
-  };
+  return { score: dossier.score || 0, status: dossier.status || 'in behandeling', ready_for_export: Boolean(dossier.ready_for_export), checklist: asArray<Record<string, unknown>>(dossier.checklist), missing_items: asArray<Record<string, unknown>>(dossier.missing_items), counts: asRecord(dossier.counts), source: dossier.source };
 }
 
 export async function getComplianceMissingItems(projectId: string | number) {
   const dossier = await getCeDossier(projectId);
-  return {
-    items: asArray<Record<string, unknown>>(dossier.missing_items),
-    missing_items: asArray<Record<string, unknown>>(dossier.missing_items),
-    source: dossier.source,
-  };
+  return { items: asArray<Record<string, unknown>>(dossier.missing_items), missing_items: asArray<Record<string, unknown>>(dossier.missing_items), source: dossier.source };
 }
 
 export async function getComplianceChecklist(projectId: string | number) {
   const dossier = await getCeDossier(projectId);
-  return {
-    items: asArray<Record<string, unknown>>(dossier.checklist),
-    checklist: asArray<Record<string, unknown>>(dossier.checklist),
-    source: dossier.source,
-  };
+  return { items: asArray<Record<string, unknown>>(dossier.checklist), checklist: asArray<Record<string, unknown>>(dossier.checklist), source: dossier.source };
 }
 
 export async function getCeDossier(projectId: string | number) {
@@ -231,10 +187,7 @@ export async function getCeDossier(projectId: string | number) {
   let livePayload: Record<string, unknown> | null = null;
 
   try {
-    livePayload = await optionalRequest<Record<string, unknown>>([
-      `/projects/${projectId}/ce-dossier`,
-      `/ce_export/${projectId}`,
-    ]);
+    livePayload = await optionalRequest<Record<string, unknown>>([`/projects/${projectId}/ce-dossier`, `/ce_export/${projectId}`]);
   } catch {
     livePayload = null;
   }
@@ -252,46 +205,50 @@ export async function uploadDocument(payload: FormData) {
 
 export async function getProjectExports(projectId: string | number) {
   try {
-    return (
-      (await optionalRequest<Record<string, unknown> | { items?: Record<string, unknown>[] }>([
-        `/projects/${projectId}/exports`,
-      ])) || emptyListPayload()
-    );
+    return ((await optionalRequest<Record<string, unknown> | { items?: Record<string, unknown>[] }>([`/projects/${projectId}/exports`])) || emptyListPayload());
   } catch {
     return emptyListPayload();
   }
 }
 
 export async function createCeReport(projectId: string | number) {
-  return (
-    (await optionalRequest<Record<string, unknown>>([
-      `/projects/${projectId}/exports/ce-report`,
-    ], { method: 'POST' })) || { unsupported: true, type: 'ce-report', project_id: String(projectId) }
-  );
+  const result = await tryRequestVariants([
+    `/projects/${projectId}/exports/ce-report`,
+    `/projects/${projectId}/exports/report`,
+    `/projects/${projectId}/ce-dossier/report`,
+  ], ['POST', 'GET']);
+
+  return result || { unsupported: true, type: 'ce-report', project_id: String(projectId) };
 }
 
 export async function createZipExport(projectId: string | number) {
-  return (
-    (await optionalRequest<Record<string, unknown>>([
-      `/projects/${projectId}/exports/zip`,
-    ], { method: 'POST' })) || { unsupported: true, type: 'zip', project_id: String(projectId) }
-  );
+  const getPaths = [
+    `/projects/${projectId}/exports/zip`,
+    `/projects/${projectId}/export/zip`,
+    `/projects/${projectId}/ce-dossier/zip`,
+  ];
+  const result = await tryRequestVariants(getPaths, ['GET', 'POST']);
+  return result || directDownloadPayload('zip', projectId, getPaths[0]);
 }
 
 export async function createPdfExport(projectId: string | number) {
-  return (
-    (await optionalRequest<Record<string, unknown>>([
-      `/projects/${projectId}/exports/pdf`,
-    ], { method: 'POST' })) || { unsupported: true, type: 'pdf', project_id: String(projectId) }
-  );
+  const getPaths = [
+    `/projects/${projectId}/exports/pdf`,
+    `/projects/${projectId}/export/pdf`,
+    `/projects/${projectId}/ce-dossier/pdf`,
+  ];
+  const result = await tryRequestVariants(getPaths, ['GET', 'POST']);
+  return result || directDownloadPayload('pdf', projectId, getPaths[0]);
 }
 
 export async function createExcelExport(projectId: string | number) {
-  return (
-    (await optionalRequest<Record<string, unknown>>([
-      `/projects/${projectId}/exports/excel`,
-    ], { method: 'POST' })) || { unsupported: true, type: 'excel', project_id: String(projectId) }
-  );
+  const getPaths = [
+    `/projects/${projectId}/exports/excel`,
+    `/projects/${projectId}/export/excel`,
+    `/projects/${projectId}/ce-dossier/excel`,
+  ];
+  const result = await tryRequestVariants(getPaths, ['GET', 'POST']);
+  return result || directDownloadPayload('excel', projectId, getPaths[0]);
 }
 
 export async function downloadProjectExport(_projectId: string | number, exportId: string | number) {
@@ -299,12 +256,10 @@ export async function downloadProjectExport(_projectId: string | number, exportI
 }
 
 export async function retryProjectExport(projectId: string | number, exportId: string | number) {
-  return (
-    (await optionalRequest<Record<string, unknown>>([
-      `/projects/${projectId}/exports/${exportId}/retry`,
-      `/ops/projects/${projectId}/exports/${exportId}/retry`,
-    ], { method: 'POST' })) || { unsupported: true, export_id: String(exportId), project_id: String(projectId) }
-  );
+  return ((await optionalRequest<Record<string, unknown>>([
+    `/projects/${projectId}/exports/${exportId}/retry`,
+    `/ops/projects/${projectId}/exports/${exportId}/retry`,
+  ], { method: 'POST' })) || { unsupported: true, export_id: String(exportId), project_id: String(projectId) });
 }
 
 export async function getProjectExportPreview(projectId: string | number) {

@@ -59,6 +59,7 @@ function makeLocalExport(kind: CeExportKind, payload: unknown): LocalExportRecor
     created_at: new Date().toISOString(),
     manifest: { section: 'project', included: true },
     local_only: true,
+    download_url: source.download_url ? String(source.download_url) : undefined,
   };
 }
 
@@ -161,7 +162,12 @@ export function CeDossierPage() {
       const record = makeLocalExport(kind, payload);
       setLocalExports((current) => [record, ...current]);
       setSelectedExportId(record.id);
-      setMessage(`${kind.toUpperCase()} export gestart of voorbereid.`);
+      if (record.download_url) {
+        window.open(record.download_url, '_blank', 'noopener,noreferrer');
+        setMessage(`${kind.toUpperCase()} download gestart.`);
+      } else {
+        setMessage(`${kind.toUpperCase()} export gestart of voorbereid.`);
+      }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Export starten mislukt.');
     }
@@ -178,8 +184,12 @@ export function CeDossierPage() {
       }
       const payload = await downloadExport.mutateAsync(item.id);
       const source = asRecord(payload);
-      if (source.download_url) window.open(String(source.download_url), '_blank', 'noopener,noreferrer');
-      setMessage('Download geopend in een nieuw venster.');
+      if (source.download_url) {
+        window.open(String(source.download_url), '_blank', 'noopener,noreferrer');
+        setMessage('Download geopend in een nieuw venster.');
+      } else {
+        setMessage('Voor deze export is nog geen directe download beschikbaar.');
+      }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Download openen mislukt.');
     } finally {
