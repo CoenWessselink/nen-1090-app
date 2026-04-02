@@ -65,16 +65,54 @@ export function SessionProvider({ children }: PropsWithChildren) {
     let cancelled = false;
 
     async function bootstrap() {
-      if (!token) {
+      if (!token && !refreshToken) {
         if (!cancelled) setIsBootstrapping(false);
         return;
       }
 
       try {
+        let activeToken = token;
+
+        if (!activeToken && refreshToken && refreshToken !== '__cookie_session__') {
+          const refreshed = await refreshSession(refreshToken);
+          activeToken = refreshed.access_token;
+          if (!cancelled && activeToken) {
+            setSession(
+              activeToken,
+              {
+                email: refreshed.user?.email || '',
+                tenant: refreshed.user?.tenant || '',
+                tenantId: refreshed.user?.tenant_id || '',
+                role: refreshed.user?.role || '',
+                name: refreshed.user?.name || '',
+              },
+              refreshed.refresh_token || refreshToken,
+            );
+          }
+        }
+
+        if (!activeToken && refreshToken === '__cookie_session__') {
+          const refreshed = await refreshCentralSession();
+          if (!cancelled) {
+            setSession(
+              '__cookie_session__',
+              {
+                email: refreshed.user?.email || '',
+                tenant: refreshed.user?.tenant || '',
+                tenantId: refreshed.user?.tenant_id || '',
+                role: refreshed.user?.role || '',
+                name: refreshed.user?.name || '',
+              },
+              null,
+            );
+          }
+          activeToken = '__cookie_session__';
+        }
+
         const me = await getMe();
         if (!cancelled) {
           setSession(
-            token,
+            activeToken || token || '__cookie_session__',
             {
               email: me.email,
               tenant: me.tenant,
@@ -129,7 +167,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
         setSession(nextToken, refreshedUser, nextRefreshToken);
         if (nextToken !== '__cookie_session__') updateToken(nextToken);
       } catch {
-        // api-client verwerkt een echte 401 en zet de sessie dan uit.
+        // laat de huidige UI-sessie intact; pas een echte routeguard of expliciete logout mag de sessie volledig wissen.
       }
     }
 

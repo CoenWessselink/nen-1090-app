@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { ClipboardCheck, FileText, Plus, ShieldCheck, Pencil } from 'lucide-react';
+import { ClipboardCheck, FileText, History, Paperclip, Pencil, Plus, ShieldCheck } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
+import { Badge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/feedback/EmptyState';
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { LoadingState } from '@/components/feedback/LoadingState';
@@ -36,6 +37,13 @@ function textOf(value: unknown, fallback = '—') {
   return text.length ? text : fallback;
 }
 
+function toneFromStatus(status?: string) {
+  const value = String(status || '').toLowerCase();
+  if (['gereed', 'vrijgegeven', 'conform', 'approved'].includes(value)) return 'success' as const;
+  if (['afgekeurd', 'geblokkeerd', 'niet conform', 'rejected'].includes(value)) return 'danger' as const;
+  return 'warning' as const;
+}
+
 export function Project360Page() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -59,10 +67,11 @@ export function Project360Page() {
   const inspections = useMemo(() => inspectionsQuery.data?.items || [], [inspectionsQuery.data]);
   const documents = useMemo(() => documentsQuery.data?.items || [], [documentsQuery.data]);
   const auditItems = useMemo<AuditItem[]>(() => (auditQuery.data?.items || []) as AuditItem[], [auditQuery.data]);
-  const filteredAudit = useMemo<AuditItem[]>(
-    () => auditItems.filter((item) => JSON.stringify(item).toLowerCase().includes(search.toLowerCase())),
-    [auditItems, search]
-  );
+
+  const filteredAssemblies = useMemo(() => assemblies.filter((item) => JSON.stringify(item).toLowerCase().includes(search.toLowerCase())), [assemblies, search]);
+  const filteredWelds = useMemo(() => welds.filter((item) => JSON.stringify(item).toLowerCase().includes(search.toLowerCase())), [welds, search]);
+  const filteredDocuments = useMemo(() => documents.filter((item) => JSON.stringify(item).toLowerCase().includes(search.toLowerCase())), [documents, search]);
+  const filteredAudit = useMemo<AuditItem[]>(() => auditItems.filter((item) => JSON.stringify(item).toLowerCase().includes(search.toLowerCase())), [auditItems, search]);
 
   if (!projectId) return <ErrorState title="Geen projectcontext" description="Open eerst een project vanuit Projecten." />;
   if (projectQuery.isLoading) return <LoadingState label="Project laden..." />;
@@ -72,7 +81,7 @@ export function Project360Page() {
     <div className="page-stack">
       <PageHeader
         title={textOf(project.name || project.omschrijving || project.projectnummer, 'Project 360')}
-        description="Vanuit Projecten opent dubbelklik eerst deze onderliggende projectgegevens. Hier open je wijzigen via de knop of door te dubbelklikken op de projecteigenschappen."
+        description="Dubbelklik in de projectlijst opent deze onderliggende projectgegevens. Hier open je Wijzig project via de knop of door te dubbelklikken op de projecteigenschappen."
       >
         <Button variant="secondary" onClick={() => navigate('/projecten')}>Terug naar projecten</Button>
         <Button onClick={() => setProjectModalOpen(true)}><Pencil size={16} /> Wijzig project</Button>
@@ -88,15 +97,15 @@ export function Project360Page() {
         projectId={projectId}
         currentTab={currentTab}
         onCreateProject={() => navigate('/projecten?intent=create-project')}
-        onCreateAssembly={() => setMessage('Nieuwe assembly starten vanuit Project 360.')}
+        onCreateAssembly={() => navigate(`/projecten/${projectId}/assemblies`)}
         onCreateWeld={() => navigate(`/projecten/${projectId}/lascontrole`)}
         filters={<Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Zoek binnen projectcontext" />}
         kpis={
           <>
-            <Card className="project-kpi-card"><div className="stat-card"><div className="stat-label">Assemblies</div><div className="stat-value">{assemblies.length}</div></div></Card>
-            <Card className="project-kpi-card"><div className="stat-card"><div className="stat-label">Lassen</div><div className="stat-value">{welds.length}</div></div></Card>
-            <Card className="project-kpi-card"><div className="stat-card"><div className="stat-label">Inspecties</div><div className="stat-value">{inspections.length}</div></div></Card>
-            <Card className="project-kpi-card"><div className="stat-card"><div className="stat-label">Documenten</div><div className="stat-value">{documents.length}</div></div></Card>
+            <Card className="project-kpi-card"><div className="stat-card"><div className="stat-label">Assemblies</div><div className="stat-value">{assemblies.length}</div><div className="stat-meta">Projectonderdelen</div></div></Card>
+            <Card className="project-kpi-card"><div className="stat-card"><div className="stat-label">Lassen</div><div className="stat-value">{welds.length}</div><div className="stat-meta">Binnen project</div></div></Card>
+            <Card className="project-kpi-card"><div className="stat-card"><div className="stat-label">Inspecties</div><div className="stat-value">{inspections.length}</div><div className="stat-meta">Controlepunten</div></div></Card>
+            <Card className="project-kpi-card"><div className="stat-card"><div className="stat-label">Documenten</div><div className="stat-value">{documents.length}</div><div className="stat-meta">Dossieropbouw</div></div></Card>
           </>
         }
       >
@@ -129,12 +138,79 @@ export function Project360Page() {
                   <div><span>Executieklasse</span><strong>{textOf(project.execution_class || project.executieklasse)}</strong></div>
                   <div><span>Periode</span><strong>{formatDate(project.start_date)} — {formatDate(project.end_date)}</strong></div>
                 </div>
-                <div className="list-subtle" style={{ marginTop: 12 }}>
-                  Dubbelklik op deze projectgegevens om het wijzigscherm te openen.
-                </div>
+                <div className="list-subtle" style={{ marginTop: 12 }}>Dubbelklik op deze projectgegevens om het wijzigscherm te openen.</div>
               </Card>
             </div>
           </div>
+        ) : null}
+
+        {currentTab === 'assemblies' ? (
+          <Card>
+            <div className="section-title-row"><h3>Assemblies</h3></div>
+            {assembliesQuery.isLoading ? <LoadingState label="Assemblies laden..." /> : null}
+            {assembliesQuery.isError ? <ErrorState title="Assemblies niet geladen" description="De assemblies konden niet worden opgehaald." /> : null}
+            {!assembliesQuery.isLoading && !assembliesQuery.isError ? (
+              filteredAssemblies.length ? (
+                <div className="list-stack compact-list">
+                  {filteredAssemblies.map((assembly) => (
+                    <div key={String((assembly as { id?: string | number }).id)} className="list-row">
+                      <div>
+                        <strong>{textOf((assembly as { code?: unknown; name?: unknown }).code || (assembly as { name?: unknown }).name, `Assembly ${(assembly as { id?: string | number }).id}`)}</strong>
+                        <div className="list-subtle">{textOf((assembly as { name?: unknown }).name)} · {textOf((assembly as { status?: unknown }).status)}</div>
+                      </div>
+                      <Badge tone={toneFromStatus(String((assembly as { status?: unknown }).status || 'concept'))}>{textOf((assembly as { status?: unknown }).status, 'Concept')}</Badge>
+                    </div>
+                  ))}
+                </div>
+              ) : <EmptyState title="Nog geen assemblies" description="Voeg assemblies toe om de projectstructuur op te bouwen." />
+            ) : null}
+          </Card>
+        ) : null}
+
+        {currentTab === 'lassen' ? (
+          <Card>
+            <div className="section-title-row"><h3>Lassen</h3></div>
+            {weldsQuery.isLoading ? <LoadingState label="Lassen laden..." /> : null}
+            {weldsQuery.isError ? <ErrorState title="Lassen niet geladen" description="De lassen konden niet worden opgehaald." /> : null}
+            {!weldsQuery.isLoading && !weldsQuery.isError ? (
+              filteredWelds.length ? (
+                <div className="list-stack compact-list">
+                  {filteredWelds.map((weld) => (
+                    <div key={String((weld as { id?: string | number }).id)} className="list-row list-row-button" onDoubleClick={() => navigate(`/projecten/${projectId}/lascontrole`)}>
+                      <div>
+                        <strong>{textOf((weld as { weld_number?: unknown; weld_no?: unknown }).weld_number || (weld as { weld_no?: unknown }).weld_no, `Las ${(weld as { id?: string | number }).id}`)}</strong>
+                        <div className="list-subtle">{textOf((weld as { location?: unknown }).location)} · {textOf((weld as { welder_name?: unknown }).welder_name)} · {textOf((weld as { status?: unknown }).status)}</div>
+                      </div>
+                      <Badge tone={toneFromStatus(String((weld as { status?: unknown }).status || 'concept'))}>{textOf((weld as { status?: unknown }).status, 'Concept')}</Badge>
+                    </div>
+                  ))}
+                </div>
+              ) : <EmptyState title="Nog geen lassen" description="Voeg lassen toe via Lascontrole of projectopbouw." />
+            ) : null}
+          </Card>
+        ) : null}
+
+        {currentTab === 'documenten' ? (
+          <Card>
+            <div className="section-title-row"><h3>Documenten</h3></div>
+            {documentsQuery.isLoading ? <LoadingState label="Documenten laden..." /> : null}
+            {documentsQuery.isError ? <ErrorState title="Documenten niet geladen" description="De documenten konden niet worden opgehaald." /> : null}
+            {!documentsQuery.isLoading && !documentsQuery.isError ? (
+              filteredDocuments.length ? (
+                <div className="list-stack compact-list">
+                  {filteredDocuments.map((document) => (
+                    <div key={String((document as { id?: string | number }).id)} className="list-row">
+                      <div>
+                        <strong>{textOf((document as { title?: unknown; filename?: unknown }).title || (document as { filename?: unknown }).filename, `Document ${(document as { id?: string | number }).id}`)}</strong>
+                        <div className="list-subtle">{textOf((document as { type?: unknown }).type)} · {textOf((document as { status?: unknown }).status)} · {formatDate((document as { uploaded_at?: string }).uploaded_at)}</div>
+                      </div>
+                      <Paperclip size={16} />
+                    </div>
+                  ))}
+                </div>
+              ) : <EmptyState title="Nog geen documenten" description="Upload projectdocumenten voor dossieropbouw en bewijs." />
+            ) : null}
+          </Card>
         ) : null}
 
         {currentTab === 'historie' ? (
@@ -151,19 +227,12 @@ export function Project360Page() {
                         <strong>{textOf(item.title || item.action, `Auditregel ${item.id}`)}</strong>
                         <div className="list-subtle">{textOf(item.entity)} · {textOf(item.status)} · {formatDate(item.created_at)}</div>
                       </div>
-                      <span className="badge badge-neutral">{textOf(item.status, 'Open')}</span>
+                      <Badge tone={toneFromStatus(String(item.status || 'concept'))}>{textOf(item.status, 'Open')}</Badge>
                     </div>
                   ))}
                 </div>
               ) : <EmptyState title="Nog geen historie" description="Projecthistorie verschijnt hier zodra er mutaties zijn." />
             ) : null}
-          </Card>
-        ) : null}
-
-        {currentTab !== 'overzicht' && currentTab !== 'historie' ? (
-          <Card>
-            <div className="section-title-row"><h3>{currentTab}</h3></div>
-            <div className="list-subtle">Je zit nu in de onderliggende projectgegevens. Dubbelklik op de projecteigenschappen bovenaan om het wijzigscherm te openen.</div>
           </Card>
         ) : null}
       </ProjectTabShell>
