@@ -1,5 +1,5 @@
 import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useState } from 'react';
-import { refreshCentralSession, refreshSession } from '@/api/auth';
+import { getMe, refreshCentralSession, refreshSession } from '@/api/auth';
 import { useAuthStore } from '@/app/store/auth-store';
 import type { Role, SessionUser } from '@/types/domain';
 
@@ -51,27 +51,6 @@ function normalizeRole(role?: string | null): string {
   return String(role || '').replace(/[^a-zA-Z]/g, '').toUpperCase();
 }
 
-function consumeMarketingHandoff() {
-  if (typeof window === 'undefined') return null;
-  const url = new URL(window.location.href);
-  const accessToken = url.searchParams.get('access_token') || '';
-  const email = url.searchParams.get('email') || '';
-  if (!accessToken || !email) return null;
-
-  const user: SessionUser = {
-    email,
-    tenant: url.searchParams.get('tenant') || 'demo',
-    tenantId: url.searchParams.get('tenant_id') || undefined,
-    role: url.searchParams.get('role') || undefined,
-    name: url.searchParams.get('name') || undefined,
-  };
-
-  const refreshToken = url.searchParams.get('refresh_token') || null;
-  ['access_token', 'refresh_token', 'email', 'tenant', 'tenant_id', 'role', 'name', 'auth_source'].forEach((key) => url.searchParams.delete(key));
-  window.history.replaceState({}, document.title, `${url.pathname}${url.search}${url.hash}`);
-  return { token: accessToken, refreshToken, user };
-}
-
 export function SessionProvider({ children }: PropsWithChildren) {
   const token = useAuthStore((state) => state.token);
   const refreshToken = useAuthStore((state) => state.refreshToken);
@@ -80,29 +59,47 @@ export function SessionProvider({ children }: PropsWithChildren) {
   const clearSession = useAuthStore((state) => state.clearSession);
   const setSession = useAuthStore((state) => state.setSession);
   const updateToken = useAuthStore((state) => state.updateToken);
-  const [isBootstrapping, setIsBootstrapping] = useState(Boolean(typeof window !== 'undefined' && !user));
+  const [isBootstrapping, setIsBootstrapping] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
 
-    function bootstrapFromHandoff() {
-      if (user) {
+    async function bootstrap() {
+      if (!token) {
         if (!cancelled) setIsBootstrapping(false);
         return;
       }
 
-      const handoff = consumeMarketingHandoff();
-      if (handoff) {
-        setSession(handoff.token, handoff.user, handoff.refreshToken);
+      try {
+        const me = await getMe();
+        if (!cancelled) {
+          setSession(
+            token,
+            {
+              email: me.email,
+              tenant: me.tenant,
+              tenantId: me.tenantId,
+              role: me.role,
+              name: me.name,
+            },
+            refreshToken,
+          );
+        }
+      } catch {
+        if (!cancelled) {
+          clearSession();
+        }
+      } finally {
+        if (!cancelled) setIsBootstrapping(false);
       }
-      if (!cancelled) setIsBootstrapping(false);
     }
 
-    bootstrapFromHandoff();
+    void bootstrap();
+
     return () => {
       cancelled = true;
     };
-  }, [setSession, user]);
+  }, [clearSession, refreshToken, setSession, token]);
 
   useEffect(() => {
     if (!user) return;
@@ -111,9 +108,10 @@ export function SessionProvider({ children }: PropsWithChildren) {
 
     async function refreshExistingSession() {
       try {
-        const payload = refreshToken && refreshToken !== '__cookie_session__'
-          ? await refreshSession(refreshToken)
-          : await refreshCentralSession();
+        const payload =
+          refreshToken && refreshToken !== '__cookie_session__'
+            ? await refreshSession(refreshToken)
+            : await refreshCentralSession();
 
         if (cancelled || !payload.access_token) return;
 
@@ -127,10 +125,11 @@ export function SessionProvider({ children }: PropsWithChildren) {
 
         const nextToken = refreshToken && refreshToken !== '__cookie_session__' ? payload.access_token : '__cookie_session__';
         const nextRefreshToken = refreshToken && refreshToken !== '__cookie_session__' ? payload.refresh_token || refreshToken : null;
+
         setSession(nextToken, refreshedUser, nextRefreshToken);
         if (nextToken !== '__cookie_session__') updateToken(nextToken);
       } catch {
-        // Laat de bestaande sessie staan; de API-client handelt een echte 401 af.
+        // api-client verwerkt een echte 401 en zet de sessie dan uit.
       }
     }
 
@@ -140,6 +139,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
+
     return () => {
       cancelled = true;
       window.clearInterval(interval);

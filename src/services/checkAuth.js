@@ -1,25 +1,40 @@
-const marketingBaseUrl = (
-  import.meta?.env?.VITE_MARKETING_BASE_URL || 'https://nen1090-marketing-new.pages.dev'
-).replace(/\/+$/, '');
+const APP_LOGIN_PATH = '/login';
 
 function buildLoginRedirect() {
   const next = `${window.location.pathname}${window.location.search}${window.location.hash}`;
-  const url = new URL(`${marketingBaseUrl}/login`);
+  const url = new URL(APP_LOGIN_PATH, window.location.origin);
+
   if (next && next !== '/login') {
     url.searchParams.set('next', next);
     url.searchParams.set('message', 'Log in om verder te werken in het platform.');
   }
+
   return url.toString();
 }
 
 export async function checkAuth() {
-  const res = await fetch(`${marketingBaseUrl}/api/session`, {
-    credentials: 'include',
-  });
+  try {
+    const apiBase =
+      (import.meta?.env?.VITE_API_BASE_URL || 'https://nen1090-api-prod-f5ddagedbrftb4ew.westeurope-01.azurewebsites.net/api/v1')
+        .replace(/\/+$/, '');
 
-  const data = await res.json();
+    const res = await fetch(`${apiBase}/auth/me`, {
+      credentials: 'include',
+      headers: {
+        Accept: 'application/json',
+      },
+    });
 
-  if (!data.authenticated) {
+    if (!res.ok) {
+      window.location.href = buildLoginRedirect();
+      return;
+    }
+
+    const data = await res.json();
+    if (!data) {
+      window.location.href = buildLoginRedirect();
+    }
+  } catch {
     window.location.href = buildLoginRedirect();
   }
 }

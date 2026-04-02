@@ -1,7 +1,7 @@
 {
   "name": "nen1090-frontend-enterprise-rebuild",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
     "dev": "node scripts/use-source-entry.mjs && vite",
@@ -10,24 +10,15 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
     "lint": "npm run typecheck",
+    "test": "npm run test:smoke && npm run test:e2e",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed --project=desktop-chromium",
-    "test:e2e:mobile": "playwright test --project=mobile-chromium",
-    "test:e2e:contracts": "playwright test tests/e2e/documents-and-settings.spec.ts tests/e2e/planning-reporting.spec.ts",
-    "test:e2e:workflows": "playwright test tests/e2e/projects-crud.spec.ts tests/e2e/auth-and-routing.spec.ts",
-    "test:e2e:local": "playwright test",
-    "test:e2e:auth": "playwright test tests/e2e/auth-hardening.spec.ts tests/e2e/auth-session-negative.spec.ts tests/e2e/auth-and-routing.spec.ts",
     "test:e2e:auth:live": "PLAYWRIGHT_LIVE_AUTH=1 playwright test tests/e2e/auth-live.spec.ts --project=desktop-chromium",
     "test:smoke": "playwright test tests/e2e/smoke.spec.ts --project=desktop-chromium",
-    "test:phase4:verify": "npm run typecheck && npm run build && npx playwright test --list",
-    "test:phase4:local": "powershell -ExecutionPolicy Bypass -File scripts/test-local-phase4.ps1",
-    "test:phase4:live": "powershell -ExecutionPolicy Bypass -File scripts/test-live-phase4.ps1",
-    "test:phase4:smoke:live": "powershell -ExecutionPolicy Bypass -File scripts/test-live-phase4.ps1 -SmokeOnly",
+    "test:workflows": "playwright test tests/e2e/projects-crud.spec.ts tests/e2e/project-flow.spec.ts tests/e2e/welds-ce-flow.spec.ts --project=desktop-chromium",
+    "test:report": "playwright show-report",
     "test:playwright:install": "playwright install chromium",
-    "test:enterprise:local": "playwright test --project=desktop-chromium",
-    "test:enterprise:smoke": "playwright test tests/e2e/project-flow.spec.ts tests/e2e/welds-ce-flow.spec.ts --project=desktop-chromium",
-    "test:enterprise:ui": "playwright test tests/e2e/assemblies-flow.spec.ts --project=desktop-chromium",
-    "test:enterprise:report": "playwright show-report"
+    "release:verify": "npm run typecheck && npm run build:pages && npx playwright test --list"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

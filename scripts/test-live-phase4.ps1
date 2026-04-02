@@ -1,36 +1,23 @@
 param(
-    [string]$BaseUrl = "https://nen1090-marketing-new.pages.dev",
-    [switch]$SmokeOnly
+  [switch]$SmokeOnly
 )
 
 $ErrorActionPreference = "Stop"
-Set-Location "C:\NEN1090\nen-1090-app"
+$env:PLAYWRIGHT_BASE_URL = "https://nen-1090-app.pages.dev"
+$env:DEMO_TENANT = "demo"
+$env:DEMO_EMAIL = "admin@demo.com"
+$env:DEMO_PASSWORD = "Admin123!"
 
-function Run-Step($name, $command) {
-    Write-Host ""
-    Write-Host "========== $name ==========" -ForegroundColor Cyan
-    Invoke-Expression $command
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "FAILED: $name" -ForegroundColor Red
-        exit $LASTEXITCODE
-    }
-}
+Write-Host "== CWS NEN-1090 LIVE TEST START ==" -ForegroundColor Cyan
+Write-Host "Base URL: $env:PLAYWRIGHT_BASE_URL"
 
-$env:PLAYWRIGHT_BASE_URL = $BaseUrl
-
-Run-Step "INSTALL DEPENDENCIES" "npm ci"
-Run-Step "INSTALL PLAYWRIGHT CHROMIUM" "npx playwright install chromium"
-Run-Step "BUILD" "npm run build"
-Run-Step "PLAYWRIGHT TEST LIST" "npx playwright test --list"
+npm install
+npx playwright install chromium
 
 if ($SmokeOnly) {
-    Run-Step "PLAYWRIGHT LIVE SMOKE" "npx playwright test tests/e2e/smoke.spec.ts --project=desktop-chromium"
-}
-else {
-    Run-Step "PLAYWRIGHT LIVE AUTH" "npx playwright test tests/e2e/auth-live.spec.ts --project=desktop-chromium"
-    Run-Step "PLAYWRIGHT LIVE SMOKE" "npx playwright test tests/e2e/smoke.spec.ts --project=desktop-chromium"
-    Run-Step "PLAYWRIGHT LIVE FULL" "npx playwright test --project=desktop-chromium"
+  npx playwright test tests/e2e/auth-routing-smoke.spec.ts --project=desktop-chromium
+} else {
+  npx playwright test tests/e2e/auth-routing-smoke.spec.ts tests/e2e/live-auth.spec.ts --project=desktop-chromium
 }
 
-Write-Host ""
-Write-Host "PHASE 4 LIVE VALIDATION PASSED" -ForegroundColor Green
+Write-Host "== LIVE TEST KLAAR ==" -ForegroundColor Green

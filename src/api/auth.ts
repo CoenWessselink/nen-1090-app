@@ -1,12 +1,17 @@
 import { apiRequest } from '@/api/client';
 import { env } from '@/lib/env';
 import type { AuthRefreshResponse, ChangePasswordPayload, LoginPayload, LoginResponse, LogoutPayload } from '@/types/api';
+import type { SessionUser } from '@/types/domain';
 
 export function login(payload: LoginPayload) {
   return apiRequest<LoginResponse>('/auth/login', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
+}
+
+export function getMe() {
+  return apiRequest<SessionUser>('/auth/me');
 }
 
 export function refreshSession(refreshToken: string) {
@@ -44,14 +49,20 @@ export function logout(payload?: LogoutPayload) {
   });
 }
 
-
 export async function refreshCentralSession() {
   const response = await fetch(`${env.apiBaseUrl}/auth/refresh`, {
     method: 'POST',
     credentials: 'include',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
     body: JSON.stringify({}),
   });
-  if (!response.ok) throw new Error('CENTRAL_REFRESH_FAILED');
-  return await response.json() as AuthRefreshResponse;
+
+  if (!response.ok) {
+    throw new Error('CENTRAL_REFRESH_FAILED');
+  }
+
+  return (await response.json()) as AuthRefreshResponse;
 }

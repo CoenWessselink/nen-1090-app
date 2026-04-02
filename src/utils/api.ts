@@ -59,13 +59,6 @@ export function validateObjectPayload(payload: unknown): { ok: boolean; reason: 
   return { ok: false, reason: 'Verwacht objectpayload.' };
 }
 
-/**
- * Frontend hardening:
- * - clamp overly large limits that trigger 422 on live backend
- * - do not send unsupported generic sort/direction params
- * - do not send brittle status=open/pending list params from generic widgets
- * - keep project_id / tenant_id / search stable
- */
 export function normalizeListParams(params?: ListParams): Record<string, string> {
   if (!params) return {};
 
