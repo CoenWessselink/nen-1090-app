@@ -72,7 +72,7 @@ export function Project360Page() {
     <div className="page-stack">
       <PageHeader
         title={textOf(project.name || project.omschrijving || project.projectnummer, 'Project 360')}
-        description="Dubbelklik binnen deze projectgegevens opent het wijzigproject-scherm. Vanuit de projectlijst ga je juist eerst naar deze onderliggende projectgegevens."
+        description="Vanuit Projecten opent dubbelklik eerst deze onderliggende projectgegevens. Hier open je wijzigen via de knop of door te dubbelklikken op de projecteigenschappen."
       >
         <Button variant="secondary" onClick={() => navigate('/projecten')}>Terug naar projecten</Button>
         <Button onClick={() => setProjectModalOpen(true)}><Pencil size={16} /> Wijzig project</Button>
@@ -120,18 +120,20 @@ export function Project360Page() {
               </div>
             </Card>
 
-            <Card onDoubleClick={() => setProjectModalOpen(true)}>
-              <div className="section-title-row"><h3>Projectstatus</h3></div>
-              <div className="detail-grid">
-                <div><span>Status</span><strong>{textOf(project.status, 'Concept')}</strong></div>
-                <div><span>Opdrachtgever</span><strong>{textOf(project.client_name || project.opdrachtgever)}</strong></div>
-                <div><span>Executieklasse</span><strong>{textOf(project.execution_class || project.executieklasse)}</strong></div>
-                <div><span>Periode</span><strong>{formatDate(project.start_date)} — {formatDate(project.end_date)}</strong></div>
-              </div>
-              <div className="list-subtle" style={{ marginTop: 12 }}>
-                Dubbelklik op deze projectgegevens om het wijzigscherm te openen.
-              </div>
-            </Card>
+            <div onDoubleClick={() => setProjectModalOpen(true)}>
+              <Card>
+                <div className="section-title-row"><h3>Projectstatus</h3></div>
+                <div className="detail-grid">
+                  <div><span>Status</span><strong>{textOf(project.status, 'Concept')}</strong></div>
+                  <div><span>Opdrachtgever</span><strong>{textOf(project.client_name || project.opdrachtgever)}</strong></div>
+                  <div><span>Executieklasse</span><strong>{textOf(project.execution_class || project.executieklasse)}</strong></div>
+                  <div><span>Periode</span><strong>{formatDate(project.start_date)} — {formatDate(project.end_date)}</strong></div>
+                </div>
+                <div className="list-subtle" style={{ marginTop: 12 }}>
+                  Dubbelklik op deze projectgegevens om het wijzigscherm te openen.
+                </div>
+              </Card>
+            </div>
           </div>
         ) : null}
 
@@ -161,7 +163,7 @@ export function Project360Page() {
         {currentTab !== 'overzicht' && currentTab !== 'historie' ? (
           <Card>
             <div className="section-title-row"><h3>{currentTab}</h3></div>
-            <div className="list-subtle">Je zit nu in de onderliggende projectgegevens. Ook hier kan het wijzigscherm via dubbelklik op de projectheader geopend worden.</div>
+            <div className="list-subtle">Je zit nu in de onderliggende projectgegevens. Dubbelklik op de projecteigenschappen bovenaan om het wijzigscherm te openen.</div>
           </Card>
         ) : null}
       </ProjectTabShell>
