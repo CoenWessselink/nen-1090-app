@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { ClipboardCheck, FileText, Plus, ShieldCheck } from 'lucide-react';
+import { ClipboardCheck, FileText, Plus, ShieldCheck, Pencil } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -9,14 +9,17 @@ import { EmptyState } from '@/components/feedback/EmptyState';
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { LoadingState } from '@/components/feedback/LoadingState';
 import { InlineMessage } from '@/components/feedback/InlineMessage';
-import { useProject, useProjectInspections, useProjectWelds } from '@/hooks/useProjects';
+import { Modal } from '@/components/overlays/Modal';
+import { useProject, useProjectInspections, useProjectWelds, useUpdateProject } from '@/hooks/useProjects';
 import { useAssemblies } from '@/hooks/useAssemblies';
 import { useProjectDocuments } from '@/hooks/useDocuments';
 import { useProjectAudit } from '@/hooks/useProjectAudit';
 import { resolveProjectContextTab } from '@/features/projecten/components/ProjectContextTabs';
 import { ProjectTabShell } from '@/features/projecten/components/ProjectTabShell';
 import { ProjectContextHeader } from '@/features/projecten/components/ProjectContextHeader';
+import { ProjectForm } from '@/features/projecten/components/ProjectForm';
 import { formatDate } from '@/utils/format';
+import type { Project } from '@/types/domain';
 
 type AuditItem = {
   id: string | number;
@@ -40,6 +43,7 @@ export function Project360Page() {
   const currentTab = resolveProjectContextTab(location.pathname);
   const [message, setMessage] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [projectModalOpen, setProjectModalOpen] = useState(false);
 
   const projectQuery = useProject(projectId);
   const assembliesQuery = useAssemblies(projectId, { search: search || undefined });
@@ -47,18 +51,18 @@ export function Project360Page() {
   const inspectionsQuery = useProjectInspections(projectId, { search: search || undefined });
   const documentsQuery = useProjectDocuments(projectId, { search: search || undefined });
   const auditQuery = useProjectAudit(projectId);
+  const updateProject = useUpdateProject();
 
-  const project = projectQuery.data;
+  const project = projectQuery.data as Project | undefined;
   const assemblies = useMemo(() => assembliesQuery.data?.items || [], [assembliesQuery.data]);
   const welds = useMemo(() => weldsQuery.data?.items || [], [weldsQuery.data]);
   const inspections = useMemo(() => inspectionsQuery.data?.items || [], [inspectionsQuery.data]);
   const documents = useMemo(() => documentsQuery.data?.items || [], [documentsQuery.data]);
   const auditItems = useMemo<AuditItem[]>(() => (auditQuery.data?.items || []) as AuditItem[], [auditQuery.data]);
-
-  const filteredAssemblies = useMemo(() => assemblies.filter((item) => JSON.stringify(item).toLowerCase().includes(search.toLowerCase())), [assemblies, search]);
-  const filteredWelds = useMemo(() => welds.filter((item) => JSON.stringify(item).toLowerCase().includes(search.toLowerCase())), [welds, search]);
-  const filteredDocuments = useMemo(() => documents.filter((item) => JSON.stringify(item).toLowerCase().includes(search.toLowerCase())), [documents, search]);
-  const filteredAudit = useMemo<AuditItem[]>(() => auditItems.filter((item) => JSON.stringify(item).toLowerCase().includes(search.toLowerCase())), [auditItems, search]);
+  const filteredAudit = useMemo<AuditItem[]>(
+    () => auditItems.filter((item) => JSON.stringify(item).toLowerCase().includes(search.toLowerCase())),
+    [auditItems, search]
+  );
 
   if (!projectId) return <ErrorState title="Geen projectcontext" description="Open eerst een project vanuit Projecten." />;
   if (projectQuery.isLoading) return <LoadingState label="Project laden..." />;
@@ -68,13 +72,17 @@ export function Project360Page() {
     <div className="page-stack">
       <PageHeader
         title={textOf(project.name || project.omschrijving || project.projectnummer, 'Project 360')}
-        description="Projectoverzicht met assemblies, lassen, documenten, historie en doorstroom naar Lascontrole en CE Dossier."
+        description="Dubbelklik binnen deze projectgegevens opent het wijzigproject-scherm. Vanuit de projectlijst ga je juist eerst naar deze onderliggende projectgegevens."
       >
         <Button variant="secondary" onClick={() => navigate('/projecten')}>Terug naar projecten</Button>
+        <Button onClick={() => setProjectModalOpen(true)}><Pencil size={16} /> Wijzig project</Button>
       </PageHeader>
 
       {message ? <InlineMessage tone="success">{message}</InlineMessage> : null}
-      <ProjectContextHeader projectId={projectId} title="Projecteigenschappen" />
+
+      <div onDoubleClick={() => setProjectModalOpen(true)}>
+        <ProjectContextHeader projectId={projectId} title="Projecteigenschappen" />
+      </div>
 
       <ProjectTabShell
         projectId={projectId}
@@ -112,13 +120,16 @@ export function Project360Page() {
               </div>
             </Card>
 
-            <Card>
+            <Card onDoubleClick={() => setProjectModalOpen(true)}>
               <div className="section-title-row"><h3>Projectstatus</h3></div>
               <div className="detail-grid">
                 <div><span>Status</span><strong>{textOf(project.status, 'Concept')}</strong></div>
                 <div><span>Opdrachtgever</span><strong>{textOf(project.client_name || project.opdrachtgever)}</strong></div>
                 <div><span>Executieklasse</span><strong>{textOf(project.execution_class || project.executieklasse)}</strong></div>
                 <div><span>Periode</span><strong>{formatDate(project.start_date)} — {formatDate(project.end_date)}</strong></div>
+              </div>
+              <div className="list-subtle" style={{ marginTop: 12 }}>
+                Dubbelklik op deze projectgegevens om het wijzigscherm te openen.
               </div>
             </Card>
           </div>
@@ -150,10 +161,27 @@ export function Project360Page() {
         {currentTab !== 'overzicht' && currentTab !== 'historie' ? (
           <Card>
             <div className="section-title-row"><h3>{currentTab}</h3></div>
-            <div className="list-subtle">Deze tab blijft actief binnen de projectcontext. De typecheck-fix is hier nu toegepast.</div>
+            <div className="list-subtle">Je zit nu in de onderliggende projectgegevens. Ook hier kan het wijzigscherm via dubbelklik op de projectheader geopend worden.</div>
           </Card>
         ) : null}
       </ProjectTabShell>
+
+      <Modal open={projectModalOpen} onClose={() => setProjectModalOpen(false)} title="Wijzig project" size="large">
+        <ProjectForm
+          initial={project}
+          isSubmitting={updateProject.isPending}
+          submitLabel="Wijzigen"
+          onSubmit={async (values) => {
+            try {
+              await updateProject.mutateAsync({ id: project.id, payload: values });
+              setMessage('Project gewijzigd.');
+              setProjectModalOpen(false);
+            } catch (error) {
+              setMessage(error instanceof Error ? error.message : 'Project wijzigen mislukt.');
+            }
+          }}
+        />
+      </Modal>
     </div>
   );
 }
