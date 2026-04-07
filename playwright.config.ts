@@ -1,6 +1,22 @@
-import { defineConfig, devices } from '@playwright/test';
+import { defineConfig, devices, type PlaywrightTestConfig } from '@playwright/test';
 
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || 'https://nen-1090-app.pages.dev';
+const executablePath = process.env.PLAYWRIGHT_EXECUTABLE_PATH || undefined;
+const restrictedBrowser = process.env.PLAYWRIGHT_RESTRICTED_BROWSER === '1';
+
+const desktopProjectUse: PlaywrightTestConfig['use'] = executablePath
+  ? {
+      browserName: 'chromium',
+      ...devices['Desktop Chrome'],
+      channel: undefined,
+      launchOptions: {
+        executablePath,
+        args: ['--no-sandbox', '--disable-dev-shm-usage'],
+      },
+    }
+  : {
+      ...devices['Desktop Chrome'],
+    };
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -19,14 +35,14 @@ export default defineConfig({
   ],
   use: {
     baseURL,
-    trace: 'on-first-retry',
-    screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
+    trace: restrictedBrowser ? 'off' : 'on-first-retry',
+    screenshot: restrictedBrowser ? 'off' : 'only-on-failure',
+    video: restrictedBrowser ? 'off' : 'retain-on-failure',
   },
   projects: [
     {
       name: 'desktop-chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: desktopProjectUse,
     },
   ],
 });

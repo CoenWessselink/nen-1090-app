@@ -1,14 +1,19 @@
 import type { ReactNode } from 'react';
 import { Card } from '@/components/ui/Card';
 import { ProjectContextTabs } from '@/features/projecten/components/ProjectContextTabs';
-import { ProjectWorkspaceActionBar } from '@/features/projecten/components/ProjectWorkspaceActionBar';
+import { ProjectTopActionBar } from '@/features/projecten/components/ProjectTopActionBar';
 
 type ProjectTabShellProps = {
   projectId: string;
   currentTab: string;
+  onBack: () => void;
   onCreateProject: () => void;
+  onEditProject: () => void;
   onCreateAssembly: () => void;
   onCreateWeld: () => void;
+  onExportSelectionPdf?: () => void;
+  exportSelectionDisabled?: boolean;
+  exportSelectionLabel?: string;
   filters?: ReactNode;
   kpis?: ReactNode;
   children: ReactNode;
@@ -17,9 +22,14 @@ type ProjectTabShellProps = {
 export function ProjectTabShell({
   projectId,
   currentTab,
+  onBack,
   onCreateProject,
+  onEditProject,
   onCreateAssembly,
   onCreateWeld,
+  onExportSelectionPdf,
+  exportSelectionDisabled,
+  exportSelectionLabel,
   filters,
   kpis,
   children,
@@ -28,10 +38,15 @@ export function ProjectTabShell({
     <div className="project-tab-shell" data-project-structure="shell">
       <ProjectContextTabs projectId={projectId} value={currentTab} />
 
-      <ProjectWorkspaceActionBar
+      <ProjectTopActionBar
+        onBack={onBack}
         onCreateProject={onCreateProject}
+        onEditProject={onEditProject}
         onCreateAssembly={onCreateAssembly}
         onCreateWeld={onCreateWeld}
+        onExportSelectionPdf={onExportSelectionPdf}
+        exportSelectionDisabled={exportSelectionDisabled}
+        exportSelectionLabel={exportSelectionLabel}
       />
 
       {filters ? (

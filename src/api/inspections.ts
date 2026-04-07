@@ -1,52 +1,150 @@
-import { apiRequest, listRequest } from '@/api/client';
-import type { Inspection } from '@/types/domain';
+import { apiRequest, listRequest, optionalRequest } from '@/api/client';
+import type { Inspection, WeldStatus } from '@/types/domain';
 import type { ListParams } from '@/types/api';
+
+type InspectionListResponse = Inspection[] | { items?: Inspection[]; total?: number; page?: number; limit?: number };
+type InspectionDetailResponse = { exists?: boolean; inspection?: Record<string, unknown> | null } | Record<string, unknown>;
+
+type InspectionCheckPayload = {
+  id?: string | number;
+  group_key: string;
+  criterion_key: string;
+  approved?: boolean;
+  status?: WeldStatus | string;
+  comment?: string;
+};
+
+type InspectionUpsertPayload = {
+  status: WeldStatus | string;
+  template_id?: string;
+  remarks?: string;
+  inspector?: string;
+  checks?: InspectionCheckPayload[];
+};
+
+function normalizeStatus(value: unknown): WeldStatus {
+  const raw = String(value || '').trim().toLowerCase();
+  if (raw === 'conform' || raw === 'approved' || raw === 'ok') return 'conform';
+  if (raw === 'gerepareerd' || raw === 'resolved' || raw === 'repaired') return 'gerepareerd';
+  return 'defect';
+}
+
+function normalizeCheck(row: Record<string, unknown>) {
+  return {
+    id: row.id as string | number | undefined,
+    group_key: String(row.group_key || row.group || 'algemeen'),
+    criterion_key: String(row.criterion_key || row.key || row.code || ''),
+    approved: Boolean(row.approved ?? (normalizeStatus(row.status) !== 'defect')),
+    status: normalizeStatus(row.status ?? (row.approved ? 'conform' : 'defect')),
+    comment: String(row.comment || ''),
+  };
+}
 
 function normalizeInspection(row: Record<string, unknown>): Inspection {
   return {
     ...(row as Inspection),
     id: row.id as string | number,
     weld_id: row.weld_id as string | number | undefined,
-    result: String(row.result || row.status || ''),
-    status: String(row.status || row.result || 'open'),
+    template_id: row.template_id as string | number | undefined,
+    result: normalizeStatus(row.result || row.status || 'defect'),
+    status: normalizeStatus(row.status || row.result || 'defect'),
     inspector: String(row.inspector || row.inspector_name || ''),
     inspector_name: String(row.inspector_name || row.inspector || ''),
-    due_date: String(row.due_date || ''),
+    due_date: String(row.due_date || row.inspected_at || ''),
+    remarks: String(row.remarks || row.notes || ''),
+    checks: Array.isArray(row.checks) ? row.checks.map((item) => normalizeCheck(item as Record<string, unknown>)) : [],
+  };
+}
+
+function normalizeList(response: InspectionListResponse) {
+  if (Array.isArray(response)) {
+    return { items: response.map((row) => normalizeInspection(row as unknown as Record<string, unknown>)), total: response.length, page: 1, limit: response.length || 25 };
+  }
+  const items = Array.isArray(response?.items) ? response.items : [];
+  return {
+    items: items.map((row) => normalizeInspection(row as unknown as Record<string, unknown>)),
+    total: Number(response?.total || items.length || 0),
+    page: Number(response?.page || 1),
+    limit: Number(response?.limit || 25),
   };
 }
 
 export async function getInspections(params?: ListParams) {
-  const weldId = (params as Record<string, unknown> | undefined)?.weld_id;
-  const query = weldId ? ({ weld_id: String(weldId) } as ListParams) : undefined;
-  const response = await listRequest<Inspection[] | { items?: Inspection[]; total?: number; page?: number; limit?: number }>('/inspections', query);
-  if (Array.isArray(response)) return { items: response.map((row) => normalizeInspection(row as unknown as Record<string, unknown>)), total: response.length, page: 1, limit: response.length || 25 };
-  const items = Array.isArray(response?.items) ? response.items : [];
-  return { items: items.map((row) => normalizeInspection(row as unknown as Record<string, unknown>)), total: Number(response?.total || items.length || 0), page: Number(response?.page || 1), limit: Number(response?.limit || 25) };
+  return normalizeList(await listRequest<InspectionListResponse>('/inspections', params));
 }
 
 export async function getInspection(inspectionId: string | number) {
-  const rows = await getInspections();
-  const match = rows.items.find((item) => String(item.id) === String(inspectionId));
-  if (!match) throw new Error('Inspectie niet gevonden in huidige API-response.');
-  return match;
+  const direct = await optionalRequest<Record<string, unknown>>([`/inspections/${inspectionId}`]);
+  if (!direct) throw new Error('Inspectie niet gevonden.');
+  return normalizeInspection(direct);
+}
+
+export async function getInspectionForWeld(projectId: string | number, weldId: string | number) {
+  const scoped = await optionalRequest<InspectionDetailResponse>([`/projects/${projectId}/welds/${weldId}/inspection`, `/welds/${weldId}/inspection`]);
+  if (!scoped) return null;
+  const record = scoped as { exists?: boolean; inspection?: Record<string, unknown> | null };
+  if (record.exists === false) return null;
+  const source = record.inspection && typeof record.inspection === 'object' ? record.inspection : (scoped as Record<string, unknown>);
+  return normalizeInspection(source);
 }
 
 export async function createInspection(projectId: string | number | undefined, weldId: string | number, payload: Record<string, unknown>) {
-  await apiRequest<Record<string, unknown>>('/inspections', { method: 'POST', body: JSON.stringify({ ...payload, project_id: projectId, weld_id: weldId }) });
-  const rows = await getInspections({ weld_id: String(weldId) } as ListParams);
-  return rows.items[0] || { ok: true };
+  const targetProjectId = String(projectId || payload.project_id || '');
+  const response = await apiRequest<Record<string, unknown>>(`/projects/${targetProjectId}/welds/${weldId}/inspections`, { method: 'POST', body: JSON.stringify(payload) });
+  return normalizeInspection(response);
+}
+
+export async function upsertInspectionForWeld(projectId: string | number, weldId: string | number, payload: InspectionUpsertPayload) {
+  const body = {
+    overall_status: normalizeStatus(payload.status),
+    template_id: payload.template_id || null,
+    remarks: payload.remarks || null,
+    inspector: payload.inspector || null,
+    checks: (payload.checks || []).map((check) => ({
+      group_key: check.group_key,
+      criterion_key: check.criterion_key,
+      approved: normalizeStatus(check.status ?? (check.approved ? 'conform' : 'defect')) !== 'defect',
+      status: normalizeStatus(check.status ?? (check.approved ? 'conform' : 'defect')),
+      comment: check.comment || null,
+    })),
+  };
+  const response = await apiRequest<Record<string, unknown>>(`/projects/${projectId}/welds/${weldId}/inspection`, { method: 'PUT', body: JSON.stringify(body) });
+  return normalizeInspection(response);
 }
 
 export async function updateInspection(inspectionId: string | number, payload: Record<string, unknown>) {
-  await apiRequest<Record<string, unknown>>('/inspections', { method: 'POST', body: JSON.stringify({ ...payload, id: inspectionId }) });
-  return await getInspection(inspectionId);
+  const response = await apiRequest<Record<string, unknown>>(`/inspections/${inspectionId}`, { method: 'PUT', body: JSON.stringify(payload) });
+  return normalizeInspection(response);
 }
 
-export async function deleteInspection(_inspectionId: string | number) { return { ok: false, unsupported: true }; }
-export async function getInspectionResults(inspectionId: string | number) { const item = await getInspection(inspectionId); return { inspection_id: inspectionId, result: item.result || item.status || '', checks: (item as Record<string, unknown>).checks || [] }; }
-export async function createInspectionResult(inspectionId: string | number, payload: Record<string, unknown>) { return await updateInspection(inspectionId, payload); }
-export async function getInspectionAttachments(_inspectionId: string | number) { return { items: [], total: 0, page: 1, limit: 25 }; }
-export async function uploadInspectionAttachment(_inspectionId: string | number, _payload: FormData) { return { ok: false, unsupported: true }; }
-export async function downloadInspectionAttachment(_inspectionId: string | number, _attachmentId: string | number) { return new Blob([]); }
-export async function getInspectionAudit(_inspectionId: string | number) { return { items: [], total: 0, page: 1, limit: 25 }; }
-export async function approveInspection(inspectionId: string | number) { return await updateInspection(inspectionId, { status: 'approved', result: 'approved' }); }
+export async function deleteInspection(inspectionId: string | number) {
+  return apiRequest<{ ok: boolean }>(`/inspections/${inspectionId}`, { method: 'DELETE' });
+}
+
+export async function getInspectionResults(inspectionId: string | number) {
+  return apiRequest<Record<string, unknown>>(`/inspections/${inspectionId}/results`);
+}
+
+export async function createInspectionResult(inspectionId: string | number, payload: Record<string, unknown>) {
+  return apiRequest<Record<string, unknown>>(`/inspections/${inspectionId}/results`, { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export async function getInspectionAttachments(inspectionId: string | number) {
+  return apiRequest<{ items: Array<Record<string, unknown>>; total?: number }>(`/inspections/${inspectionId}/attachments`);
+}
+
+export async function uploadInspectionAttachment(inspectionId: string | number, payload: FormData) {
+  return apiRequest<Record<string, unknown>>(`/inspections/${inspectionId}/attachments`, { method: 'POST', body: payload });
+}
+
+export async function downloadInspectionAttachment(inspectionId: string | number, attachmentId: string | number) {
+  return apiRequest<Blob>(`/inspections/${inspectionId}/attachments/${attachmentId}/download`, { method: 'GET' });
+}
+
+export async function getInspectionAudit(inspectionId: string | number) {
+  return apiRequest<{ items: Array<Record<string, unknown>>; total?: number }>(`/inspections/${inspectionId}/audit`);
+}
+
+export async function approveInspection(inspectionId: string | number) {
+  return apiRequest<Record<string, unknown>>(`/inspections/${inspectionId}/approve`, { method: 'POST' });
+}

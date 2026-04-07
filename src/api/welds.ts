@@ -39,7 +39,9 @@ function mapWeldPayload(payload: WeldFormValues & { id?: string | number }) {
     process: payload.process || null,
     welders: payload.welder_name || null,
     wps: payload.wps_id || null,
-    status: payload.status || 'conform',
+    execution_class: payload.execution_class || null,
+    template_id: payload.template_id || null,
+    status: payload.status || 'defect',
   };
 }
 
@@ -57,7 +59,9 @@ function normalizeWeld(row: Record<string, unknown>): Weld {
     wps: String(row.wps || row.wps_id || ''),
     location: String(row.location || ''),
     process: String(row.process || ''),
-    status: String(row.status || ''),
+    status: String(row.status || 'defect'),
+    execution_class: row.execution_class ? String(row.execution_class) : '',
+    template_id: row.template_id ? String(row.template_id) : '',
   };
 }
 
@@ -100,7 +104,7 @@ export async function copyWeld(projectId: string | number, weldId: string | numb
     welder_name: String(source.welder_name || source.welders || ''),
     process: String(source.process || '135'),
     location: String(source.location || ''),
-    status: String(source.status || 'conform'),
+    status: (String(source.status || 'conform') === 'gerepareerd' ? 'gerepareerd' : String(source.status || 'conform') === 'conform' ? 'conform' : 'defect'),
   });
 }
 
@@ -130,6 +134,15 @@ export async function deleteWeld(projectId: string | number, weldId: string | nu
   });
   if (direct) return direct;
   return { ok: false, unsupported: true };
+}
+
+
+export async function patchWeldStatus(projectId: string | number, weldId: string | number, status: 'conform' | 'defect' | 'gerepareerd') {
+  const response = await apiRequest<Record<string, unknown>>(`/projects/${projectId}/welds/${weldId}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  });
+  return { id: String(response.id || weldId), status: String(response.status || status) };
 }
 
 export async function getWeldInspections(projectId: string | number, weldId: string | number) {
@@ -221,7 +234,7 @@ export async function resetWeldToNorm(projectId: string | number, weldId: string
     welder_name: String(current.welder_name || current.welders || ''),
     process: String(current.process || '135'),
     location: String(current.location || ''),
-    status: 'concept',
+    status: 'defect',
   });
 }
 

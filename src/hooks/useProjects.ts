@@ -204,7 +204,7 @@ export function useCreateProject() {
             welder_name: weld.welder_name,
             process: weld.process,
             location: weld.location,
-            status: weld.status || 'concept',
+            status: weld.status === 'gerepareerd' ? 'gerepareerd' : weld.status === 'conform' ? 'conform' : 'defect',
           })) as { id: string | number };
           weldsCreated += 1;
 

@@ -1,8 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { ClipboardCheck, FileText, History, Paperclip, Pencil, Plus, ShieldCheck } from 'lucide-react';
+import { ClipboardCheck, FileText, History, Paperclip, Plus, ShieldCheck } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
@@ -19,6 +18,7 @@ import { resolveProjectContextTab } from '@/features/projecten/components/Projec
 import { ProjectTabShell } from '@/features/projecten/components/ProjectTabShell';
 import { ProjectContextHeader } from '@/features/projecten/components/ProjectContextHeader';
 import { ProjectForm } from '@/features/projecten/components/ProjectForm';
+import { ProjectKpiActionCard } from '@/features/projecten/components/ProjectKpiActionCard';
 import { formatDate } from '@/utils/format';
 import type { Project } from '@/types/domain';
 
@@ -81,11 +81,8 @@ export function Project360Page() {
     <div className="page-stack">
       <PageHeader
         title={textOf(project.name || project.omschrijving || project.projectnummer, 'Project 360')}
-        description="Dubbelklik in de projectlijst opent deze onderliggende projectgegevens. Hier open je Wijzig project via de knop of door te dubbelklikken op de projecteigenschappen."
-      >
-        <Button variant="secondary" onClick={() => navigate('/projecten')}>Terug naar projecten</Button>
-        <Button onClick={() => setProjectModalOpen(true)}><Pencil size={16} /> Wijzig project</Button>
-      </PageHeader>
+        description="Project 360 gebruikt op alle tabs dezelfde routingshell, klikbare KPI's en vaste hoofdacties."
+      />
 
       {message ? <InlineMessage tone="success">{message}</InlineMessage> : null}
 
@@ -96,16 +93,19 @@ export function Project360Page() {
       <ProjectTabShell
         projectId={projectId}
         currentTab={currentTab}
+        onBack={() => navigate('/projecten')}
         onCreateProject={() => navigate('/projecten?intent=create-project')}
+        onEditProject={() => setProjectModalOpen(true)}
         onCreateAssembly={() => navigate(`/projecten/${projectId}/assemblies`)}
-        onCreateWeld={() => navigate(`/projecten/${projectId}/lascontrole`)}
+        onCreateWeld={() => navigate(`/projecten/${projectId}/lassen`)}
+        exportSelectionDisabled
         filters={<Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Zoek binnen projectcontext" />}
         kpis={
           <>
-            <Card className="project-kpi-card"><div className="stat-card"><div className="stat-label">Assemblies</div><div className="stat-value">{assemblies.length}</div><div className="stat-meta">Projectonderdelen</div></div></Card>
-            <Card className="project-kpi-card"><div className="stat-card"><div className="stat-label">Lassen</div><div className="stat-value">{welds.length}</div><div className="stat-meta">Binnen project</div></div></Card>
-            <Card className="project-kpi-card"><div className="stat-card"><div className="stat-label">Inspecties</div><div className="stat-value">{inspections.length}</div><div className="stat-meta">Controlepunten</div></div></Card>
-            <Card className="project-kpi-card"><div className="stat-card"><div className="stat-label">Documenten</div><div className="stat-value">{documents.length}</div><div className="stat-meta">Dossieropbouw</div></div></Card>
+            <ProjectKpiActionCard label="Assemblies" value={assemblies.length} meta="Klik om naar assemblies te gaan" onClick={() => navigate(`/projecten/${projectId}/assemblies`)} testId="kpi-assemblies" />
+            <ProjectKpiActionCard label="Lassen" value={welds.length} meta="Klik om de lassenlijst te openen" onClick={() => navigate(`/projecten/${projectId}/lassen`)} testId="kpi-lassen" />
+            <ProjectKpiActionCard label="Inspecties" value={inspections.length} meta="Klik om naar lascontrole te gaan" onClick={() => navigate(`/projecten/${projectId}/lascontrole`)} testId="kpi-inspecties" />
+            <ProjectKpiActionCard label="Documenten" value={documents.length} meta="Klik om documentbeheer te openen" onClick={() => navigate(`/projecten/${projectId}/documenten`)} testId="kpi-documenten" />
           </>
         }
       >

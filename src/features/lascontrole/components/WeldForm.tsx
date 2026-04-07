@@ -9,7 +9,7 @@ import { FormField } from '@/components/forms/FormField';
 import { UploadDropzone } from '@/components/upload/UploadDropzone';
 import { useAssemblies } from '@/hooks/useAssemblies';
 import { useProjects } from '@/hooks/useProjects';
-import { useWelders, useWps } from '@/hooks/useSettings';
+import { useInspectionTemplates, useWelders, useWps } from '@/hooks/useSettings';
 import type { WeldFormValues } from '@/types/forms';
 
 const schema = z.object({
@@ -20,7 +20,9 @@ const schema = z.object({
   welder_name: z.string().optional(),
   process: z.string().optional(),
   location: z.string().min(1, 'Locatie is verplicht'),
-  status: z.string().min(1, 'Status is verplicht'),
+  status: z.enum(['conform', 'defect', 'gerepareerd']),
+  execution_class: z.enum(['', 'EXC1', 'EXC2', 'EXC3', 'EXC4']).optional(),
+  template_id: z.string().optional(),
 });
 
 function optionLabel(row: Record<string, unknown>, keys: string[], fallback: string) {
@@ -51,14 +53,23 @@ export function WeldForm({
   const assemblies = useAssemblies(projectId, { limit: 200, sort: 'code' });
   const wps = useWps();
   const welders = useWelders();
+  const templates = useInspectionTemplates();
 
   const projectRows = useMemo(() => projects.data?.items || [], [projects.data]);
   const assemblyRows = useMemo(() => assemblies.data?.items || [], [assemblies.data]);
   const wpsRows = useMemo(() => wps.data?.items || [], [wps.data]);
   const welderRows = useMemo(() => welders.data?.items || [], [welders.data]);
+  const templateRows = useMemo(() => templates.data?.items || [], [templates.data]);
   const activeProject = useMemo(() => projectRows.find((project) => String(project.id) === String(projectId)), [projectRows, projectId]);
+  const projectExecutionClass = String(initial?.execution_class || activeProject?.execution_class || '').trim();
+  const projectTemplateId = String(initial?.template_id || activeProject?.default_template_id || '').trim();
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<WeldFormValues>({
+  const filteredTemplateRows = useMemo(() => {
+    if (!projectExecutionClass) return templateRows;
+    return templateRows.filter((row) => String(row.execution_class || row.exc_class || '').trim() === projectExecutionClass);
+  }, [projectExecutionClass, templateRows]);
+
+  const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<WeldFormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       project_id: initial?.project_id || defaultProjectId || (projectId ? String(projectId) : ''),
@@ -68,7 +79,9 @@ export function WeldForm({
       welder_name: initial?.welder_name || '',
       process: initial?.process || '135',
       location: initial?.location || '',
-      status: initial?.status || 'conform',
+      status: initial?.status || 'defect',
+      execution_class: (initial?.execution_class || projectExecutionClass || '') as WeldFormValues['execution_class'],
+      template_id: initial?.template_id || projectTemplateId || '',
     },
   });
 
@@ -81,9 +94,22 @@ export function WeldForm({
       welder_name: initial?.welder_name || '',
       process: initial?.process || '135',
       location: initial?.location || '',
-      status: initial?.status || 'conform',
+      status: initial?.status || 'defect',
+      execution_class: (initial?.execution_class || projectExecutionClass || '') as WeldFormValues['execution_class'],
+      template_id: initial?.template_id || projectTemplateId || '',
     });
-  }, [defaultProjectId, initial, projectId, reset]);
+  }, [defaultProjectId, initial, projectExecutionClass, projectId, projectTemplateId, reset]);
+
+  const selectedExecutionClass = watch('execution_class');
+
+  useEffect(() => {
+    if (!selectedExecutionClass || !filteredTemplateRows.length) return;
+    const currentTemplate = watch('template_id');
+    if (currentTemplate) return;
+    const exact = filteredTemplateRows.find((row) => String(row.id) === String(projectTemplateId));
+    const fallback = exact || filteredTemplateRows[0];
+    if (fallback?.id) setValue('template_id', String(fallback.id));
+  }, [filteredTemplateRows, projectTemplateId, selectedExecutionClass, setValue, watch]);
 
   const totalSizeLabel = useMemo(() => {
     const total = files.reduce((sum, file) => sum + file.size, 0);
@@ -146,15 +172,31 @@ export function WeldForm({
         </FormField>
       </div>
       <div className="two-column-grid">
+        <FormField label="Executieklasse" error={errors.execution_class?.message}>
+          <Select {...register('execution_class')}>
+            <option value="">Overnemen van project</option>
+            <option value="EXC1">EXC1</option>
+            <option value="EXC2">EXC2</option>
+            <option value="EXC3">EXC3</option>
+            <option value="EXC4">EXC4</option>
+          </Select>
+        </FormField>
+        <FormField label="Inspectietemplate" error={errors.template_id?.message}>
+          <Select {...register('template_id')}>
+            <option value="">Automatisch kiezen</option>
+            {filteredTemplateRows.map((row) => <option key={String(row.id)} value={String(row.id)}>{String(row.name || row.code || row.id)}</option>)}
+          </Select>
+        </FormField>
+      </div>
+      <div className="two-column-grid">
         <FormField label="Locatie" error={errors.location?.message}>
           <Input {...register('location')} placeholder="Bijv. Hal A / spant 3" />
         </FormField>
         <FormField label="Status" error={errors.status?.message}>
           <Select {...register('status')}>
             <option value="conform">Conform</option>
-            <option value="in-controle">In behandeling</option>
             <option value="defect">Defect</option>
-            <option value="afgekeurd">Niet conform</option>
+            <option value="gerepareerd">Gerepareerd</option>
           </Select>
         </FormField>
       </div>

@@ -45,6 +45,7 @@ import type { ExportJob } from '@/types/domain';
 import { resolveProjectContextTab } from '@/features/projecten/components/ProjectContextTabs';
 import { ProjectTabShell } from '@/features/projecten/components/ProjectTabShell';
 import { ProjectContextHeader } from '@/features/projecten/components/ProjectContextHeader';
+import { ProjectKpiActionCard } from '@/features/projecten/components/ProjectKpiActionCard';
 
 type LocalExportRecord = ExportJob & { local_only?: boolean };
 
@@ -126,13 +127,6 @@ export function CeDossierPage() {
   const filteredChecklist = useMemo(() => checklist.filter((item) => !normalizedCeSearch || JSON.stringify(item).toLowerCase().includes(normalizedCeSearch)), [checklist, normalizedCeSearch]);
   const filteredMissingItems = useMemo(() => missingItems.filter((item) => !normalizedCeSearch || JSON.stringify(item).toLowerCase().includes(normalizedCeSearch)), [missingItems, normalizedCeSearch]);
   const filteredExportItems = useMemo(() => exportItems.filter((item) => !normalizedCeSearch || JSON.stringify(item).toLowerCase().includes(normalizedCeSearch)), [exportItems, normalizedCeSearch]);
-
-  const ceKpis = [
-    { label: 'Ontbrekend', value: filteredMissingItems.length },
-    { label: 'Checklist', value: filteredChecklist.length },
-    { label: 'Exports', value: filteredExportItems.length },
-    { label: 'Dekkingsgraad', value: `${Math.max(0, Math.round(Number(overview.score || dossier.score || 0)))}%` },
-  ];
 
   const selectedExport = useMemo(() => exportItems.find((item) => String(item.id) === String(selectedExportId)) || null, [exportItems, selectedExportId]);
   const manifestQuery = useProjectExportManifest(projectId, selectedExport?.id);
@@ -225,35 +219,36 @@ export function CeDossierPage() {
       <ProjectTabShell
         projectId={projectId}
         currentTab={currentProjectTab}
+        onBack={() => navigate('/projecten')}
         onCreateProject={() => navigate('/projecten?intent=create-project')}
-        onCreateAssembly={() => navigate(`/projecten/${projectId}/overzicht?intent=create-assembly`)}
-        onCreateWeld={() => navigate(`/projecten/${projectId}/overzicht?intent=create-weld`)}
+        onEditProject={() => navigate(`/projecten/${projectId}/overzicht`)}
+        onCreateAssembly={() => navigate(`/projecten/${projectId}/assemblies`)}
+        onCreateWeld={() => navigate(`/projecten/${projectId}/lassen`)}
+        onExportSelectionPdf={() => handleExport('pdf')}
+        exportSelectionDisabled={false}
         filters={<Input value={ceSearch} onChange={(event) => setCeSearch(event.target.value)} placeholder="Filter op ontbrekende onderdelen, checklist of exports" />}
-        kpis={ceKpis.map((item) => (
-          <Card key={item.label} className="project-kpi-card">
-            <div className="stat-card">
-              <div className="stat-label">{item.label}</div>
-              <div className="stat-value">{item.value}</div>
-              <div className="stat-meta">CE dossier KPI binnen dezelfde vaste projectstructuur.</div>
-            </div>
-          </Card>
-        ))}
+        kpis={[
+          <ProjectKpiActionCard key="Ontbrekend" label="Ontbrekend" value={filteredMissingItems.length} meta="Klik om naar ontbrekende onderdelen te scrollen" onClick={() => document.getElementById('ce-missing-items-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} testId="ce-kpi-missing" />,
+          <ProjectKpiActionCard key="Checklist" label="Checklist" value={filteredChecklist.length} meta="Klik om naar de checklist te scrollen" onClick={() => document.getElementById('ce-checklist-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} testId="ce-kpi-checklist" />,
+          <ProjectKpiActionCard key="Exports" label="Exports" value={filteredExportItems.length} meta="Klik om exporthistorie te openen" onClick={() => document.getElementById('ce-export-history-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} testId="ce-kpi-exports" />,
+          <ProjectKpiActionCard key="Dekkingsgraad" label="Dekkingsgraad" value={`${Math.max(0, Math.round(Number(overview.score || dossier.score || 0)))}%`} meta="Klik om naar de dossierstatus te scrollen" onClick={() => document.getElementById('ce-status-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} testId="ce-kpi-score" />,
+        ]}
       >
         {isLoading ? <LoadingState label="CE dossier laden..." /> : null}
         {isError ? <ErrorState title="CE dossier niet geladen" description="De CE/compliance-data voor dit project kon niet worden opgehaald." /> : null}
         {!isLoading && !isError ? (
           <>
-            <CeStatusPanel
+            <div id="ce-status-panel"><CeStatusPanel
               project={project}
               status={asText(overview.status || dossier.status, 'In behandeling')}
               score={Number(overview.score || dossier.score || 0)}
               readyForExport={Boolean(overview.ready_for_export ?? dossier.ready_for_export)}
               source={asText(dossier.source, 'live-api')}
               missingCount={filteredMissingItems.length}
-            />
+            /></div>
             <div className="content-grid-2">
-              <CeMissingItemsCard missingItems={filteredMissingItems} />
-              <CeChecklistCard checklist={filteredChecklist} />
+              <div id="ce-missing-items-card"><CeMissingItemsCard missingItems={filteredMissingItems} /></div>
+              <div id="ce-checklist-card"><CeChecklistCard checklist={filteredChecklist} /></div>
             </div>
             <div className="content-grid-2">
               <CeDossierStructureCard counts={counts} assemblies={assemblies} welds={welds} inspections={inspections} documents={documents} photos={photos} />
@@ -263,7 +258,7 @@ export function CeDossierPage() {
               <CeExportActionsCard pending={{ ce: createReport.isPending, pdf: createPdf.isPending, zip: createZip.isPending, excel: createExcel.isPending }} onExport={handleExport} preview={preview} />
               <CeExportManifestCard manifest={manifest} exportItem={selectedExport} />
             </div>
-            <CeExportHistoryCard items={filteredExportItems} selectedExportId={selectedExportId} onSelect={(item) => setSelectedExportId(item.id)} onDownload={handleDownload} onRetry={handleRetry} downloadingId={downloadingId} retryingId={retryingId} />
+            <div id="ce-export-history-card"><CeExportHistoryCard items={filteredExportItems} selectedExportId={selectedExportId} onSelect={(item) => setSelectedExportId(item.id)} onDownload={handleDownload} onRetry={handleRetry} downloadingId={downloadingId} retryingId={retryingId} /></div>
             <CePdfLayoutCard project={project} status={asText(overview.status || dossier.status, 'In behandeling')} score={Number(overview.score || dossier.score || 0)} counts={counts} checklist={checklist} missingItems={missingItems} assemblies={assemblies} welds={welds} inspections={inspections} documents={documents} photos={photos} onPrint={() => window.print()} />
             <div className="toolbar-cluster" style={{ justifyContent: 'space-between' }}>
               <Button variant="secondary" onClick={() => navigate(`/projecten/${projectId}/documenten`)}>Ga naar documenten</Button>

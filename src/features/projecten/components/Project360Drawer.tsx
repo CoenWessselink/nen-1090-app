@@ -534,7 +534,7 @@ export function Project360Drawer({ project, open, onClose, onMessage }: { projec
                 welder_name: String(weldModal.item.welder_name || ''),
                 process: String(weldModal.item.process || '135'),
                 location: String(weldModal.item.location || ''),
-                status: String(weldModal.item.status || 'open'),
+                status: (String(weldModal.item.status || 'defect') === 'gerepareerd' ? 'gerepareerd' : String(weldModal.item.status || 'defect') === 'conform' ? 'conform' : 'defect'),
               } satisfies Partial<WeldFormValues>) : undefined}
               defaultProjectId={String(projectId || '')}
               submitLabel={weldModal?.mode === 'edit' ? 'Las bijwerken' : 'Las opslaan'}

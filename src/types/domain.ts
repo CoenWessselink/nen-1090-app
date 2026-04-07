@@ -1,6 +1,7 @@
 export type Role = 'ADMIN' | 'PLANNER' | 'USER' | 'VIEWER' | 'SUPERADMIN' | 'TenantAdmin' | 'TenantUser' | 'SuperAdmin';
 
 export type ProjectStatus = 'concept' | 'in-uitvoering' | 'in-controle' | 'gereed' | 'geblokkeerd';
+export type WeldStatus = 'conform' | 'defect' | 'gerepareerd';
 
 export type Project = {
   id: string | number;
@@ -10,6 +11,7 @@ export type Project = {
   client_name?: string;
   opdrachtgever?: string;
   execution_class?: string;
+  default_template_id?: string;
   executieklasse?: string;
   status?: ProjectStatus | string;
   start_date?: string;
@@ -40,7 +42,9 @@ export type Weld = {
   inspection_date?: string;
   inspection_status?: string;
   location?: string;
-  status?: string;
+  status?: WeldStatus | string;
+  execution_class?: string;
+  template_id?: string;
   defect_count?: number;
   ndt_required?: boolean;
   created_at?: string;
@@ -52,11 +56,12 @@ export type Inspection = {
   id: string | number;
   project_id?: string | number;
   weld_id?: string | number;
-  status?: string;
-  result?: string;
+  status?: WeldStatus | string;
+  result?: WeldStatus | string;
   due_date?: string;
   method?: string;
   template_id?: string | number;
+  checks?: Array<{ id?: string | number; group_key?: string; criterion_key?: string; approved?: boolean; status?: WeldStatus | string; comment?: string }>;
   notes?: string;
   remarks?: string;
   inspector?: string;

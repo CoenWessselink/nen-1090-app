@@ -155,3 +155,10 @@ export function deleteInspectionTemplate(templateId: string | number) {
     method: 'DELETE',
   });
 }
+
+
+export function duplicateInspectionTemplate(templateId: string | number) {
+  return apiRequest<MasterDataItem>(`/settings/inspection-templates/${templateId}/duplicate`, {
+    method: "POST",
+  });
+}

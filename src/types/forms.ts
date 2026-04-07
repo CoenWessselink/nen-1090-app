@@ -48,5 +48,7 @@ export type WeldFormValues = {
   welder_name?: string;
   process?: string;
   location: string;
-  status: string;
+  status: 'conform' | 'defect' | 'gerepareerd';
+  execution_class?: 'EXC1' | 'EXC2' | 'EXC3' | 'EXC4' | '';
+  template_id?: string;
 };

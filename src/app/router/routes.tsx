@@ -10,6 +10,7 @@ import { LascontrolePage } from '@/features/lascontrole/LascontrolePage';
 import { CeDossierPage } from '@/features/ce-dossier/CeDossierPage';
 import { RapportagePage } from '@/features/rapportage/RapportagePage';
 import { InstellingenPage } from '@/features/instellingen/InstellingenPage';
+import { InspectionTemplatesPage } from '@/features/instellingen/InspectionTemplatesPage';
 import { SuperadminPage } from '@/features/superadmin/SuperadminPage';
 import { BillingPage } from '@/features/billing/BillingPage';
 import LoginPage from '@/features/auth/LoginPage';
@@ -77,6 +78,7 @@ export const routerConfig = [
       { path: 'rapportage', element: <RapportagePage /> },
       { path: 'billing', element: <BillingPage /> },
       { path: 'instellingen', element: <InstellingenPage /> },
+      { path: 'instellingen/templates', element: <InspectionTemplatesPage /> },
       { path: 'superadmin', element: <RoleGuard allow={['SUPERADMIN', 'ADMIN']}><SuperadminPage /></RoleGuard> },
     ],
   },
