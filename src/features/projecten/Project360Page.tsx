@@ -1,7 +1,7 @@
 import { useNavigate, useParams } from "react-router-dom";
 import ProjectTabShell from "@/app/layout/ProjectTabShell";
 
-export default function Project360Page() {
+export function Project360Page() {
   const { projectId } = useParams();
   const navigate = useNavigate();
 

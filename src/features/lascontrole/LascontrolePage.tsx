@@ -2,7 +2,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import ProjectTabShell from "@/app/layout/ProjectTabShell";
 import { normalizeStatus } from "@/types/weld";
 
-export default function LascontrolePage() {
+export function LascontrolePage() {
   const { projectId } = useParams();
   const navigate = useNavigate();
 
