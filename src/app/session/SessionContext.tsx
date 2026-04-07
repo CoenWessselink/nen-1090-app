@@ -177,16 +177,20 @@ export function SessionProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     if (!user) return;
 
+    const hasBearerRefreshToken = Boolean(refreshToken && refreshToken !== '__cookie_session__');
+    const hasCookieSession = token === '__cookie_session__';
+
+    if (!hasBearerRefreshToken && !hasCookieSession) return;
+
     let cancelled = false;
 
     async function refreshExistingSession() {
       try {
-        const payload =
-          refreshToken && refreshToken !== '__cookie_session__'
-            ? await refreshSession(refreshToken)
-            : await refreshCentralSession();
+        const payload = hasBearerRefreshToken
+          ? await refreshSession(refreshToken as string)
+          : await refreshCentralSession();
 
-        if (cancelled || !payload.access_token) return;
+        if (cancelled) return;
 
         const refreshedUser: SessionUser = {
           email: payload.user?.email || user.email,
@@ -196,11 +200,15 @@ export function SessionProvider({ children }: PropsWithChildren) {
           name: payload.user?.name || user.name,
         };
 
-        const nextToken = refreshToken && refreshToken !== '__cookie_session__' ? payload.access_token : '__cookie_session__';
-        const nextRefreshToken = refreshToken && refreshToken !== '__cookie_session__' ? payload.refresh_token || refreshToken : null;
+        if (hasBearerRefreshToken) {
+          if (!payload.access_token) return;
+          const nextRefreshToken = payload.refresh_token || refreshToken || null;
+          setSession(payload.access_token, refreshedUser, nextRefreshToken);
+          updateToken(payload.access_token);
+          return;
+        }
 
-        setSession(nextToken, refreshedUser, nextRefreshToken);
-        if (nextToken !== '__cookie_session__') updateToken(nextToken);
+        setSession('__cookie_session__', refreshedUser, null);
       } catch {
         // houd bestaande UI-sessie intact om login/projectroutes niet te laten loopen.
       }
@@ -218,7 +226,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
       window.clearInterval(interval);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [refreshToken, setSession, updateToken, user]);
+  }, [refreshToken, setSession, token, updateToken, user]);
 
   const normalizedRole = normalizeRole(user?.role);
   const permissions = permissionMap[normalizedRole] || [];
