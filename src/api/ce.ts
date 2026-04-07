@@ -227,7 +227,7 @@ export async function createZipExport(projectId: string | number) {
     `/projects/${projectId}/export/zip`,
     `/projects/${projectId}/ce-dossier/zip`,
   ];
-  const result = await tryRequestVariants(getPaths, ['GET', 'POST']);
+  const result = await tryRequestVariants(getPaths, ['POST', 'GET']);
   return result || directDownloadPayload('zip', projectId, getPaths[0]);
 }
 
@@ -237,7 +237,7 @@ export async function createPdfExport(projectId: string | number) {
     `/projects/${projectId}/export/pdf`,
     `/projects/${projectId}/ce-dossier/pdf`,
   ];
-  const result = await tryRequestVariants(getPaths, ['GET', 'POST']);
+  const result = await tryRequestVariants(getPaths, ['POST', 'GET']);
   return result || directDownloadPayload('pdf', projectId, getPaths[0]);
 }
 
@@ -247,12 +247,12 @@ export async function createExcelExport(projectId: string | number) {
     `/projects/${projectId}/export/excel`,
     `/projects/${projectId}/ce-dossier/excel`,
   ];
-  const result = await tryRequestVariants(getPaths, ['GET', 'POST']);
+  const result = await tryRequestVariants(getPaths, ['POST', 'GET']);
   return result || directDownloadPayload('excel', projectId, getPaths[0]);
 }
 
-export async function downloadProjectExport(_projectId: string | number, exportId: string | number) {
-  return optionalRequest<Record<string, unknown>>([`/projects/exports/${exportId}/download`]);
+export async function downloadProjectExport(projectId: string | number, exportId: string | number) {
+  return optionalRequest<Record<string, unknown>>([`/projects/${projectId}/exports/${exportId}/download`, `/exports/${exportId}/download`]);
 }
 
 export async function retryProjectExport(projectId: string | number, exportId: string | number) {

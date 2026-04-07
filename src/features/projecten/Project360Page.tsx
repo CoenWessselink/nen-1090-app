@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { ClipboardCheck, FileText, History, Paperclip, Plus, ShieldCheck } from 'lucide-react';
+import { ClipboardCheck, FileText, History, Paperclip, Pencil, Plus, ShieldCheck } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
@@ -13,12 +14,12 @@ import { Modal } from '@/components/overlays/Modal';
 import { useProject, useProjectInspections, useProjectWelds, useUpdateProject } from '@/hooks/useProjects';
 import { useAssemblies } from '@/hooks/useAssemblies';
 import { useProjectDocuments } from '@/hooks/useDocuments';
+import { createProjectDocument } from '@/api/documents';
 import { useProjectAudit } from '@/hooks/useProjectAudit';
 import { resolveProjectContextTab } from '@/features/projecten/components/ProjectContextTabs';
 import { ProjectTabShell } from '@/features/projecten/components/ProjectTabShell';
 import { ProjectContextHeader } from '@/features/projecten/components/ProjectContextHeader';
 import { ProjectForm } from '@/features/projecten/components/ProjectForm';
-import { ProjectKpiActionCard } from '@/features/projecten/components/ProjectKpiActionCard';
 import { formatDate } from '@/utils/format';
 import type { Project } from '@/types/domain';
 
@@ -52,6 +53,8 @@ export function Project360Page() {
   const [message, setMessage] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [projectModalOpen, setProjectModalOpen] = useState(false);
+  const [documentUploading, setDocumentUploading] = useState(false);
+  const documentInputRef = useRef<HTMLInputElement | null>(null);
 
   const projectQuery = useProject(projectId);
   const assembliesQuery = useAssemblies(projectId, { search: search || undefined });
@@ -77,12 +80,33 @@ export function Project360Page() {
   if (projectQuery.isLoading) return <LoadingState label="Project laden..." />;
   if (projectQuery.isError || !project) return <ErrorState title="Project niet geladen" description="De projectcontext kon niet worden opgehaald." />;
 
+  const handleProjectDocumentUpload = async (file: File) => {
+    try {
+      setDocumentUploading(true);
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('title', file.name);
+      formData.append('document_type', file.type || 'document');
+      await createProjectDocument(projectId, formData);
+      await documentsQuery.refetch();
+      setMessage(`Document ${file.name} geüpload.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Document upload mislukt.');
+    } finally {
+      setDocumentUploading(false);
+      if (documentInputRef.current) documentInputRef.current.value = '';
+    }
+  };
+
   return (
     <div className="page-stack">
       <PageHeader
         title={textOf(project.name || project.omschrijving || project.projectnummer, 'Project 360')}
-        description="Project 360 gebruikt op alle tabs dezelfde routingshell, klikbare KPI's en vaste hoofdacties."
-      />
+        description="Dubbelklik in de projectlijst opent deze onderliggende projectgegevens. Hier open je Wijzig project via de knop of door te dubbelklikken op de projecteigenschappen."
+      >
+        <Button variant="secondary" onClick={() => navigate('/projecten')}>Terug naar projecten</Button>
+        <Button onClick={() => setProjectModalOpen(true)}><Pencil size={16} /> Wijzig project</Button>
+      </PageHeader>
 
       {message ? <InlineMessage tone="success">{message}</InlineMessage> : null}
 
@@ -93,19 +117,16 @@ export function Project360Page() {
       <ProjectTabShell
         projectId={projectId}
         currentTab={currentTab}
-        onBack={() => navigate('/projecten')}
         onCreateProject={() => navigate('/projecten?intent=create-project')}
-        onEditProject={() => setProjectModalOpen(true)}
         onCreateAssembly={() => navigate(`/projecten/${projectId}/assemblies`)}
-        onCreateWeld={() => navigate(`/projecten/${projectId}/lassen`)}
-        exportSelectionDisabled
+        onCreateWeld={() => navigate(`/projecten/${projectId}/lascontrole`)}
         filters={<Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Zoek binnen projectcontext" />}
         kpis={
           <>
-            <ProjectKpiActionCard label="Assemblies" value={assemblies.length} meta="Klik om naar assemblies te gaan" onClick={() => navigate(`/projecten/${projectId}/assemblies`)} testId="kpi-assemblies" />
-            <ProjectKpiActionCard label="Lassen" value={welds.length} meta="Klik om de lassenlijst te openen" onClick={() => navigate(`/projecten/${projectId}/lassen`)} testId="kpi-lassen" />
-            <ProjectKpiActionCard label="Inspecties" value={inspections.length} meta="Klik om naar lascontrole te gaan" onClick={() => navigate(`/projecten/${projectId}/lascontrole`)} testId="kpi-inspecties" />
-            <ProjectKpiActionCard label="Documenten" value={documents.length} meta="Klik om documentbeheer te openen" onClick={() => navigate(`/projecten/${projectId}/documenten`)} testId="kpi-documenten" />
+            <button type="button" className="project-kpi-card-button" onClick={() => navigate(`/projecten/${projectId}/assemblies`)}><Card className="project-kpi-card"><div className="stat-card"><div className="stat-label">Assemblies</div><div className="stat-value">{assemblies.length}</div><div className="stat-meta">Klik om naar assemblies te gaan</div></div></Card></button>
+            <button type="button" className="project-kpi-card-button" onClick={() => navigate(`/projecten/${projectId}/lassen`)}><Card className="project-kpi-card"><div className="stat-card"><div className="stat-label">Lassen</div><div className="stat-value">{welds.length}</div><div className="stat-meta">Klik om naar lassen te gaan</div></div></Card></button>
+            <button type="button" className="project-kpi-card-button" onClick={() => navigate(`/projecten/${projectId}/lascontrole`)}><Card className="project-kpi-card"><div className="stat-card"><div className="stat-label">Inspecties</div><div className="stat-value">{inspections.length}</div><div className="stat-meta">Klik om naar lascontrole te gaan</div></div></Card></button>
+            <button type="button" className="project-kpi-card-button" onClick={() => navigate(`/projecten/${projectId}/documenten`)}><Card className="project-kpi-card"><div className="stat-card"><div className="stat-label">Documenten</div><div className="stat-value">{documents.length}</div><div className="stat-meta">Klik om naar documenten te gaan</div></div></Card></button>
           </>
         }
       >
@@ -193,6 +214,13 @@ export function Project360Page() {
         {currentTab === 'documenten' ? (
           <Card>
             <div className="section-title-row"><h3>Documenten</h3></div>
+            <div className="toolbar-cluster" style={{ justifyContent: 'space-between', marginBottom: 12 }}>
+              <div className="list-subtle">Upload projectdocumenten, bekijk metadata en open downloads direct vanuit Project 360.</div>
+              <div className="toolbar-cluster">
+                <input ref={documentInputRef} type="file" style={{ display: 'none' }} onChange={(event) => { const file = event.target.files?.[0]; if (file) void handleProjectDocumentUpload(file); }} />
+                <Button onClick={() => documentInputRef.current?.click()} disabled={documentUploading}>{documentUploading ? 'Uploaden...' : 'Document uploaden'}</Button>
+              </div>
+            </div>
             {documentsQuery.isLoading ? <LoadingState label="Documenten laden..." /> : null}
             {documentsQuery.isError ? <ErrorState title="Documenten niet geladen" description="De documenten konden niet worden opgehaald." /> : null}
             {!documentsQuery.isLoading && !documentsQuery.isError ? (
@@ -204,7 +232,12 @@ export function Project360Page() {
                         <strong>{textOf((document as { title?: unknown; filename?: unknown }).title || (document as { filename?: unknown }).filename, `Document ${(document as { id?: string | number }).id}`)}</strong>
                         <div className="list-subtle">{textOf((document as { type?: unknown }).type)} · {textOf((document as { status?: unknown }).status)} · {formatDate((document as { uploaded_at?: string }).uploaded_at)}</div>
                       </div>
-                      <Paperclip size={16} />
+                      <div className="toolbar-cluster">
+                        {Boolean((document as { download_url?: string }).download_url) ? (
+                          <Button variant="secondary" onClick={() => window.open(String((document as { download_url?: string }).download_url), '_blank', 'noopener,noreferrer')}>Download</Button>
+                        ) : null}
+                        <Paperclip size={16} />
+                      </div>
                     </div>
                   ))}
                 </div>
