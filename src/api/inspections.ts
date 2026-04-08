@@ -86,8 +86,8 @@ export async function getInspection(inspectionId: string | number) {
 
 export async function getInspectionForWeld(projectId: string | number, weldId: string | number) {
   const scoped = await optionalRequest<InspectionDetailResponse>([
-    `/projects/${projectId}/welds/${weldId}/inspection`,
     `/welds/${weldId}/inspection`,
+    `/projects/${projectId}/welds/${weldId}/inspection`,
   ]);
   if (!scoped) return null;
   const record = scoped as { exists?: boolean; inspection?: Record<string, unknown> | null };
@@ -129,8 +129,8 @@ export async function upsertInspectionForWeld(projectId: string | number, weldId
   };
 
   const candidates = [
-    `/projects/${projectId}/welds/${weldId}/inspection`,
     `/welds/${weldId}/inspection`,
+    `/projects/${projectId}/welds/${weldId}/inspection`,
   ];
 
   for (const path of candidates) {

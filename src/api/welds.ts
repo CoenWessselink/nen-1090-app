@@ -153,7 +153,7 @@ export async function deleteWeld(projectId: string | number, weldId: string | nu
 
 
 export async function patchWeldStatus(projectId: string | number, weldId: string | number, status: 'conform' | 'defect' | 'gerepareerd') {
-  const response = await optionalRequest<Record<string, unknown>>([`/projects/${projectId}/welds/${weldId}/status`], {
+  const response = await optionalRequest<Record<string, unknown>>([`/projects/${projectId}/welds/${weldId}`], {
     method: 'PATCH',
     body: JSON.stringify({ status }),
   });
@@ -179,8 +179,8 @@ export async function patchWeldStatus(projectId: string | number, weldId: string
 
 export async function getWeldInspections(projectId: string | number, weldId: string | number) {
   const single = await optionalRequest<Record<string, unknown> | { inspection?: Record<string, unknown> | null; exists?: boolean }>([
-    `/projects/${projectId}/welds/${weldId}/inspection`,
     `/welds/${weldId}/inspection`,
+    `/projects/${projectId}/welds/${weldId}/inspection`,
   ]);
 
   if (single) {
