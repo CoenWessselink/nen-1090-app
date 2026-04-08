@@ -29,10 +29,6 @@ function normalizeStatus(value: unknown): WeldStatus {
   return 'defect';
 }
 
-function weldInspectionPath(weldId: string | number) {
-  return `/welds/${weldId}/inspection`;
-}
-
 function normalizeCheck(row: Record<string, unknown>) {
   return {
     id: row.id as string | number | undefined,
@@ -49,10 +45,9 @@ function normalizeInspection(row: Record<string, unknown>): Inspection {
     ...(row as Inspection),
     id: row.id as string | number,
     weld_id: row.weld_id as string | number | undefined,
-    project_id: row.project_id as string | number | undefined,
     template_id: row.template_id as string | number | undefined,
-    result: normalizeStatus(row.result || row.status || row.overall_status || 'defect'),
-    status: normalizeStatus(row.status || row.result || row.overall_status || 'defect'),
+    result: normalizeStatus(row.result || row.status || 'defect'),
+    status: normalizeStatus(row.status || row.result || 'defect'),
     inspector: String(row.inspector || row.inspector_name || ''),
     inspector_name: String(row.inspector_name || row.inspector || ''),
     due_date: String(row.due_date || row.inspected_at || ''),
@@ -89,8 +84,11 @@ export async function getInspection(inspectionId: string | number) {
   return normalizeInspection(direct);
 }
 
-export async function getInspectionForWeld(_projectId: string | number, weldId: string | number) {
-  const scoped = await optionalRequest<InspectionDetailResponse>([weldInspectionPath(weldId)]);
+export async function getInspectionForWeld(projectId: string | number, weldId: string | number) {
+  const scoped = await optionalRequest<InspectionDetailResponse>([
+    `/projects/${projectId}/welds/${weldId}/inspection`,
+    `/welds/${weldId}/inspection`,
+  ]);
   if (!scoped) return null;
   const record = scoped as { exists?: boolean; inspection?: Record<string, unknown> | null };
   if (record.exists === false) return null;
@@ -105,6 +103,13 @@ export async function createInspection(projectId: string | number | undefined, w
     body: JSON.stringify(payload),
   });
   return normalizeInspection(response);
+}
+
+async function requestInspectionUpsert(path: string, body: Record<string, unknown>) {
+  return apiRequest<Record<string, unknown>>(path, {
+    method: 'PUT',
+    body: JSON.stringify(body),
+  }, 0, true);
 }
 
 export async function upsertInspectionForWeld(projectId: string | number, weldId: string | number, payload: InspectionUpsertPayload) {
@@ -123,21 +128,25 @@ export async function upsertInspectionForWeld(projectId: string | number, weldId
     })),
   };
 
-  const putResponse = await optionalRequest<Record<string, unknown>>([weldInspectionPath(weldId)], {
-    method: 'PUT',
-    body: JSON.stringify(body),
-  });
-  if (putResponse) return normalizeInspection(putResponse);
+  const candidates = [
+    `/projects/${projectId}/welds/${weldId}/inspection`,
+    `/welds/${weldId}/inspection`,
+  ];
 
-  const postResponse = await optionalRequest<Record<string, unknown>>([`/projects/${projectId}/welds/${weldId}/inspections`], {
-    method: 'POST',
-    body: JSON.stringify({
-      status: body.overall_status,
-      result: body.overall_status,
-      notes: body.remarks,
-    }),
-  });
-  if (postResponse) return normalizeInspection(postResponse);
+  for (const path of candidates) {
+    try {
+      const response = await requestInspectionUpsert(path, body);
+      return normalizeInspection(response);
+    } catch (error: unknown) {
+      if (typeof error === 'object' && error && 'status' in error) {
+        const status = Number((error as { status?: unknown }).status);
+        if (status === 404 || status === 405) {
+          continue;
+        }
+      }
+      throw error;
+    }
+  }
 
   throw new Error('Inspectie opslaan mislukt. Geen bruikbaar endpoint gevonden.');
 }
