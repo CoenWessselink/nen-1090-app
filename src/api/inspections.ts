@@ -58,7 +58,12 @@ function normalizeInspection(row: Record<string, unknown>): Inspection {
 
 function normalizeList(response: InspectionListResponse) {
   if (Array.isArray(response)) {
-    return { items: response.map((row) => normalizeInspection(row as unknown as Record<string, unknown>)), total: response.length, page: 1, limit: response.length || 25 };
+    return {
+      items: response.map((row) => normalizeInspection(row as unknown as Record<string, unknown>)),
+      total: response.length,
+      page: 1,
+      limit: response.length || 25,
+    };
   }
   const items = Array.isArray(response?.items) ? response.items : [];
   return {
@@ -80,7 +85,10 @@ export async function getInspection(inspectionId: string | number) {
 }
 
 export async function getInspectionForWeld(projectId: string | number, weldId: string | number) {
-  const scoped = await optionalRequest<InspectionDetailResponse>([`/projects/${projectId}/welds/${weldId}/inspection`, `/welds/${weldId}/inspection`]);
+  const scoped = await optionalRequest<InspectionDetailResponse>([
+    `/projects/${projectId}/welds/${weldId}/inspection`,
+    `/welds/${weldId}/inspection`,
+  ]);
   if (!scoped) return null;
   const record = scoped as { exists?: boolean; inspection?: Record<string, unknown> | null };
   if (record.exists === false) return null;
@@ -90,8 +98,18 @@ export async function getInspectionForWeld(projectId: string | number, weldId: s
 
 export async function createInspection(projectId: string | number | undefined, weldId: string | number, payload: Record<string, unknown>) {
   const targetProjectId = String(projectId || payload.project_id || '');
-  const response = await apiRequest<Record<string, unknown>>(`/projects/${targetProjectId}/welds/${weldId}/inspections`, { method: 'POST', body: JSON.stringify(payload) });
+  const response = await apiRequest<Record<string, unknown>>(`/projects/${targetProjectId}/welds/${weldId}/inspections`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
   return normalizeInspection(response);
+}
+
+async function requestInspectionUpsert(path: string, body: Record<string, unknown>) {
+  return apiRequest<Record<string, unknown>>(path, {
+    method: 'PUT',
+    body: JSON.stringify(body),
+  }, 0, true);
 }
 
 export async function upsertInspectionForWeld(projectId: string | number, weldId: string | number, payload: InspectionUpsertPayload) {
@@ -103,17 +121,41 @@ export async function upsertInspectionForWeld(projectId: string | number, weldId
     checks: (payload.checks || []).map((check) => ({
       group_key: check.group_key,
       criterion_key: check.criterion_key,
+      applicable: true,
       approved: normalizeStatus(check.status ?? (check.approved ? 'conform' : 'defect')) !== 'defect',
       status: normalizeStatus(check.status ?? (check.approved ? 'conform' : 'defect')),
       comment: check.comment || null,
     })),
   };
-  const response = await apiRequest<Record<string, unknown>>(`/projects/${projectId}/welds/${weldId}/inspection`, { method: 'PUT', body: JSON.stringify(body) });
-  return normalizeInspection(response);
+
+  const candidates = [
+    `/projects/${projectId}/welds/${weldId}/inspection`,
+    `/welds/${weldId}/inspection`,
+  ];
+
+  for (const path of candidates) {
+    try {
+      const response = await requestInspectionUpsert(path, body);
+      return normalizeInspection(response);
+    } catch (error: unknown) {
+      if (typeof error === 'object' && error && 'status' in error) {
+        const status = Number((error as { status?: unknown }).status);
+        if (status === 404 || status === 405) {
+          continue;
+        }
+      }
+      throw error;
+    }
+  }
+
+  throw new Error('Inspectie opslaan mislukt. Geen bruikbaar endpoint gevonden.');
 }
 
 export async function updateInspection(inspectionId: string | number, payload: Record<string, unknown>) {
-  const response = await apiRequest<Record<string, unknown>>(`/inspections/${inspectionId}`, { method: 'PUT', body: JSON.stringify(payload) });
+  const response = await apiRequest<Record<string, unknown>>(`/inspections/${inspectionId}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
   return normalizeInspection(response);
 }
 
@@ -126,7 +168,10 @@ export async function getInspectionResults(inspectionId: string | number) {
 }
 
 export async function createInspectionResult(inspectionId: string | number, payload: Record<string, unknown>) {
-  return apiRequest<Record<string, unknown>>(`/inspections/${inspectionId}/results`, { method: 'POST', body: JSON.stringify(payload) });
+  return apiRequest<Record<string, unknown>>(`/inspections/${inspectionId}/results`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
 }
 
 export async function getInspectionAttachments(inspectionId: string | number) {
@@ -134,7 +179,10 @@ export async function getInspectionAttachments(inspectionId: string | number) {
 }
 
 export async function uploadInspectionAttachment(inspectionId: string | number, payload: FormData) {
-  return apiRequest<Record<string, unknown>>(`/inspections/${inspectionId}/attachments`, { method: 'POST', body: payload });
+  return apiRequest<Record<string, unknown>>(`/inspections/${inspectionId}/attachments`, {
+    method: 'POST',
+    body: payload,
+  });
 }
 
 export async function downloadInspectionAttachment(inspectionId: string | number, attachmentId: string | number) {
