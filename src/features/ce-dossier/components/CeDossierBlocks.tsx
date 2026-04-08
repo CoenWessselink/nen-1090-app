@@ -20,13 +20,22 @@ export function asText(value: unknown, fallback = '—') {
 function statusTone(status?: string) {
   const normalized = String(status || '').toLowerCase();
   if (['gereed', 'approved', 'goedgekeurd', 'conform', 'vrijgegeven'].includes(normalized)) return 'success' as const;
-  if (['niet gestart', 'open', 'blokkerend', 'afgekeurd'].includes(normalized)) return 'warning' as const;
+  if (['niet gestart', 'open', 'blokkerend', 'afgekeurd', 'niet conform'].includes(normalized)) return 'warning' as const;
   return 'neutral' as const;
 }
 
 function itemTone(item: Record<string, unknown>) {
   if (Boolean(item.ok) || Boolean(item.completed)) return 'success' as const;
   return 'warning' as const;
+}
+
+function clickableRow(onClick?: () => void): React.CSSProperties | undefined {
+  if (!onClick) return undefined;
+  return { cursor: 'pointer' };
+}
+
+function openActionLabel(actionLabel?: string) {
+  return actionLabel || 'Openen';
 }
 
 export function CeStatusPanel({
@@ -36,6 +45,10 @@ export function CeStatusPanel({
   readyForExport,
   source,
   missingCount,
+  onOpenScore,
+  onOpenMissing,
+  onOpenStatus,
+  onOpenSource,
 }: {
   project: Record<string, unknown>;
   status: string;
@@ -43,10 +56,21 @@ export function CeStatusPanel({
   readyForExport: boolean;
   source: string;
   missingCount: number;
+  onOpenScore?: () => void;
+  onOpenMissing?: () => void;
+  onOpenStatus?: () => void;
+  onOpenSource?: () => void;
 }) {
   const projectName = asText(project.name || project.omschrijving || project.projectnummer, 'Onbekend project');
   const clientName = asText(project.client_name || project.opdrachtgever, 'Geen opdrachtgever');
   const executionClass = asText(project.execution_class || project.executieklasse, 'Niet opgegeven');
+
+  const metricItems = [
+    { label: 'Score', value: `${score}%`, onClick: onOpenScore },
+    { label: 'Open acties', value: String(missingCount), onClick: onOpenMissing },
+    { label: 'Status', value: status, onClick: onOpenStatus },
+    { label: 'Bron', value: source, onClick: onOpenSource },
+  ];
 
   return (
     <Card>
@@ -64,30 +88,21 @@ export function CeStatusPanel({
         </div>
       </div>
       <div className="card-grid cols-4" style={{ marginTop: 16 }}>
-        <Card>
-          <div className="metric-card">
-            <span>Score</span>
-            <strong>{score}%</strong>
-          </div>
-        </Card>
-        <Card>
-          <div className="metric-card">
-            <span>Open acties</span>
-            <strong>{missingCount}</strong>
-          </div>
-        </Card>
-        <Card>
-          <div className="metric-card">
-            <span>Status</span>
-            <strong>{status}</strong>
-          </div>
-        </Card>
-        <Card>
-          <div className="metric-card">
-            <span>Bron</span>
-            <strong>{source}</strong>
-          </div>
-        </Card>
+        {metricItems.map((item) => (
+          <button
+            key={item.label}
+            type="button"
+            className="card"
+            onClick={item.onClick}
+            style={{ ...(clickableRow(item.onClick) || {}), textAlign: 'left', background: 'transparent', border: 0, padding: 16 }}
+          >
+            <div className="metric-card">
+              <span>{item.label}</span>
+              <strong>{item.value}</strong>
+              {item.onClick ? <div className="list-subtle">{openActionLabel('Open')}</div> : null}
+            </div>
+          </button>
+        ))}
       </div>
     </Card>
   );
@@ -96,9 +111,11 @@ export function CeStatusPanel({
 export function CeChecklistCard({
   checklist,
   title = 'Checklist',
+  onSelect,
 }: {
   checklist: Record<string, unknown>[];
   title?: string;
+  onSelect?: (item: Record<string, unknown>) => void;
 }) {
   const completed = checklist.filter((item) => Boolean(item.ok) || Boolean(item.completed)).length;
 
@@ -113,7 +130,20 @@ export function CeChecklistCard({
       {checklist.length ? (
         <div className="list-stack compact-list">
           {checklist.map((item, index) => (
-            <div key={String(item.key || item.id || index)} className="list-row">
+            <div
+              key={String(item.key || item.id || index)}
+              className="list-row"
+              style={clickableRow(onSelect ? () => onSelect(item) : undefined)}
+              onClick={onSelect ? () => onSelect(item) : undefined}
+              role={onSelect ? 'button' : undefined}
+              tabIndex={onSelect ? 0 : undefined}
+              onKeyDown={onSelect ? (event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  onSelect(item);
+                }
+              } : undefined}
+            >
               <div>
                 <strong>{asText(item.label || item.name, `Checklist ${index + 1}`)}</strong>
                 <div className="list-subtle">{asText(item.detail || item.description, '')}</div>
@@ -131,10 +161,12 @@ export function CeChecklistCard({
 
 export function CeMissingItemsCard({
   missingItems,
-  title = 'Missende onderdelen',
+  title = 'Ontbrekende onderdelen',
+  onSelect,
 }: {
   missingItems: Record<string, unknown>[];
   title?: string;
+  onSelect?: (item: Record<string, unknown>) => void;
 }) {
   return (
     <Card>
@@ -145,7 +177,20 @@ export function CeMissingItemsCard({
       {missingItems.length ? (
         <div className="list-stack compact-list">
           {missingItems.map((item, index) => (
-            <div key={String(item.key || item.id || index)} className="list-row">
+            <div
+              key={String(item.key || item.id || index)}
+              className="list-row"
+              style={clickableRow(onSelect ? () => onSelect(item) : undefined)}
+              onClick={onSelect ? () => onSelect(item) : undefined}
+              role={onSelect ? 'button' : undefined}
+              tabIndex={onSelect ? 0 : undefined}
+              onKeyDown={onSelect ? (event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  onSelect(item);
+                }
+              } : undefined}
+            >
               <div>
                 <strong>{asText(item.label || item.name, `Punt ${index + 1}`)}</strong>
                 <div className="list-subtle">{asText(item.detail || item.reason || item.description, '')}</div>
@@ -155,7 +200,7 @@ export function CeMissingItemsCard({
           ))}
         </div>
       ) : (
-        <InlineMessage tone="success">Geen missende onderdelen gevonden in de huidige CE-opbouw.</InlineMessage>
+        <InlineMessage tone="success">Geen ontbrekende onderdelen gevonden in de huidige CE-opbouw.</InlineMessage>
       )}
     </Card>
   );
@@ -168,6 +213,7 @@ export function CeDossierStructureCard({
   inspections,
   documents,
   photos,
+  onSelectSection,
 }: {
   counts: Record<string, unknown>;
   assemblies: Record<string, unknown>[];
@@ -175,6 +221,7 @@ export function CeDossierStructureCard({
   inspections: Record<string, unknown>[];
   documents: Record<string, unknown>[];
   photos: Record<string, unknown>[];
+  onSelectSection?: (section: string) => void;
 }) {
   const sections = [
     { key: 'assemblies', label: 'Assemblies', count: Number(counts.assemblies || assemblies.length || 0) },
@@ -192,7 +239,20 @@ export function CeDossierStructureCard({
       </div>
       <div className="list-stack compact-list">
         {sections.map((item) => (
-          <div key={item.key} className="list-row">
+          <div
+            key={item.key}
+            className="list-row"
+            style={clickableRow(onSelectSection ? () => onSelectSection(item.key) : undefined)}
+            onClick={onSelectSection ? () => onSelectSection(item.key) : undefined}
+            role={onSelectSection ? 'button' : undefined}
+            tabIndex={onSelectSection ? 0 : undefined}
+            onKeyDown={onSelectSection ? (event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                onSelectSection(item.key);
+              }
+            } : undefined}
+          >
             <div>
               <strong>{item.label}</strong>
               <div className="list-subtle">{item.count > 0 ? `${item.count} gekoppeld` : 'Nog leeg'}</div>
@@ -210,11 +270,13 @@ export function CeDataGroupsCard({
   welds,
   inspections,
   documents,
+  onSelectSection,
 }: {
   assemblies: Record<string, unknown>[];
   welds: Record<string, unknown>[];
   inspections: Record<string, unknown>[];
   documents: Record<string, unknown>[];
+  onSelectSection?: (section: 'assemblies' | 'welds' | 'inspections' | 'documents') => void;
 }) {
   return (
     <Card>
@@ -225,7 +287,7 @@ export function CeDataGroupsCard({
       {assemblies.length || welds.length || inspections.length || documents.length ? (
         <div className="list-stack compact-list">
           {assemblies.slice(0, 3).map((item, index) => (
-            <div key={`assembly-${String(item.id || index)}`} className="list-row">
+            <div key={`assembly-${String(item.id || index)}`} className="list-row" style={clickableRow(onSelectSection ? () => onSelectSection('assemblies') : undefined)} onClick={onSelectSection ? () => onSelectSection('assemblies') : undefined}>
               <div>
                 <strong>{asText(item.code || item.name, `Assembly ${index + 1}`)}</strong>
                 <div className="list-subtle">{asText(item.status, '')}</div>
@@ -234,7 +296,7 @@ export function CeDataGroupsCard({
             </div>
           ))}
           {welds.slice(0, 3).map((item, index) => (
-            <div key={`weld-${String(item.id || index)}`} className="list-row">
+            <div key={`weld-${String(item.id || index)}`} className="list-row" style={clickableRow(onSelectSection ? () => onSelectSection('welds') : undefined)} onClick={onSelectSection ? () => onSelectSection('welds') : undefined}>
               <div>
                 <strong>{asText(item.weld_number || item.weld_no, `Las ${index + 1}`)}</strong>
                 <div className="list-subtle">{asText(item.location || item.status, '')}</div>
@@ -243,7 +305,7 @@ export function CeDataGroupsCard({
             </div>
           ))}
           {inspections.slice(0, 3).map((item, index) => (
-            <div key={`inspection-${String(item.id || index)}`} className="list-row">
+            <div key={`inspection-${String(item.id || index)}`} className="list-row" style={clickableRow(onSelectSection ? () => onSelectSection('inspections') : undefined)} onClick={onSelectSection ? () => onSelectSection('inspections') : undefined}>
               <div>
                 <strong>{asText(item.method || item.result, `Inspectie ${index + 1}`)}</strong>
                 <div className="list-subtle">{asText(item.status || item.result, '')}</div>
@@ -254,17 +316,17 @@ export function CeDataGroupsCard({
             </div>
           ))}
           {documents.slice(0, 3).map((item, index) => (
-            <div key={`document-${String(item.id || index)}`} className="list-row">
+            <div key={`document-${String(item.id || index)}`} className="list-row" style={clickableRow(onSelectSection ? () => onSelectSection('documents') : undefined)} onClick={onSelectSection ? () => onSelectSection('documents') : undefined}>
               <div>
                 <strong>{asText(item.title || item.filename || item.uploaded_filename, `Document ${index + 1}`)}</strong>
                 <div className="list-subtle">{asText(item.type || item.mime_type, '')}</div>
               </div>
-              <Badge tone="success">Bestand</Badge>
+              <Badge tone="neutral">Document</Badge>
             </div>
           ))}
         </div>
       ) : (
-        <EmptyState title="Nog geen dossierinhoud" description="Voeg assemblies, lassen, inspecties of bestanden toe om het CE dossier te vullen." />
+        <EmptyState title="Nog geen dossierinhoud" description="Koppel assemblies, lassen, inspecties en documenten om het CE dossier te vullen." />
       )}
     </Card>
   );

@@ -11,7 +11,7 @@ export type CeExportKind = 'ce' | 'zip' | 'pdf' | 'excel';
 function tone(status?: string) {
   const value = String(status || '').toLowerCase();
   if (['vrijgegeven', 'conform', 'gereed', 'goedgekeurd', 'approved', 'resolved', 'ok', 'completed', 'done', 'downloaded'].includes(value)) return 'success' as const;
-  if (['afgekeurd', 'open', 'blokkerend', 'rejected', 'nok', 'failed', 'error'].includes(value)) return 'danger' as const;
+  if (['afgekeurd', 'open', 'blokkerend', 'rejected', 'nok', 'failed', 'error', 'niet beschikbaar'].includes(value)) return 'danger' as const;
   return 'warning' as const;
 }
 
@@ -51,7 +51,7 @@ export function CeExportActionsCard({
         <Badge tone="neutral">Blok C</Badge>
       </div>
       <div className="list-subtle" style={{ marginBottom: 16 }}>
-        Start hier een CE-rapport, PDF-, ZIP- of Excel-export. Bij live API-ondersteuning wordt de serverexport gebruikt; anders blijft de export zichtbaar als voorbereide lokale set in de historie.
+        Start hier een CE-rapport, PDF-, ZIP- of Excel-export. Als een live endpoint ontbreekt, wordt automatisch een lokale exportfallback gebruikt zodat de gebruiker direct verder kan.
       </div>
       <div className="stack-actions" style={{ marginBottom: 16 }}>
         <Button onClick={() => onExport('ce')} disabled={pending?.ce}><Download size={16} /> {pending?.ce ? 'Bezig...' : 'CE rapport'}</Button>
@@ -103,8 +103,22 @@ export function CeExportHistoryCard({
           {items.map((item, index) => {
             const kind = itemKind(item);
             const rowId = String(item.id || `local-${index}`);
+            const active = String(selectedExportId) === rowId;
             return (
-              <div key={rowId} className="list-row" style={{ alignItems: 'flex-start' }}>
+              <div
+                key={rowId}
+                className="list-row"
+                style={{ alignItems: 'flex-start', cursor: 'pointer', background: active ? 'rgba(59, 130, 246, 0.06)' : undefined, borderRadius: 12, padding: 12 }}
+                onClick={() => onSelect(item)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    onSelect(item);
+                  }
+                }}
+              >
                 <div>
                   <strong>{exportLabel(kind)}</strong>
                   <div className="list-subtle">{formatDate(String(item.created_at || '')) || 'Onbekende datum'}</div>
@@ -112,9 +126,9 @@ export function CeExportHistoryCard({
                 </div>
                 <div className="toolbar-cluster" style={{ justifyContent: 'flex-end' }}>
                   <Badge tone={tone(String(item.status || 'aangemaakt'))}>{String(item.status || 'Aangemaakt')}</Badge>
-                  <Button variant="ghost" onClick={() => onSelect(item)}><Eye size={16} /> {String(selectedExportId) === rowId ? 'Actief' : 'Manifest'}</Button>
-                  <Button variant="secondary" onClick={() => onDownload(item)} disabled={String(downloadingId) === rowId}><Download size={16} /> {String(downloadingId) === rowId ? 'Bezig...' : 'Download'}</Button>
-                  <Button variant="secondary" onClick={() => onRetry(item)} disabled={String(retryingId) === rowId}><RefreshCcw size={16} /> {String(retryingId) === rowId ? 'Bezig...' : 'Opnieuw'}</Button>
+                  <Button variant="ghost" onClick={(event) => { event.stopPropagation(); onSelect(item); }}><Eye size={16} /> {active ? 'Actief' : 'Manifest'}</Button>
+                  <Button variant="secondary" onClick={(event) => { event.stopPropagation(); onDownload(item); }} disabled={String(downloadingId) === rowId}><Download size={16} /> {String(downloadingId) === rowId ? 'Bezig...' : 'Download'}</Button>
+                  <Button variant="secondary" onClick={(event) => { event.stopPropagation(); onRetry(item); }} disabled={String(retryingId) === rowId}><RefreshCcw size={16} /> {String(retryingId) === rowId ? 'Bezig...' : 'Opnieuw'}</Button>
                 </div>
               </div>
             );
@@ -128,9 +142,11 @@ export function CeExportHistoryCard({
 export function CeExportManifestCard({
   manifest,
   exportItem,
+  onSelectSection,
 }: {
   manifest: Array<Record<string, unknown>>;
   exportItem?: ExportJob | null;
+  onSelectSection?: (section: string) => void;
 }) {
   return (
     <Card>
@@ -143,7 +159,20 @@ export function CeExportManifestCard({
       ) : (
         <div className="list-stack compact-list">
           {manifest.map((entry, index) => (
-            <div key={String(entry.section || index)} className="list-row">
+            <div
+              key={String(entry.section || index)}
+              className="list-row"
+              style={onSelectSection ? { cursor: 'pointer' } : undefined}
+              onClick={onSelectSection ? () => onSelectSection(String(entry.section || '')) : undefined}
+              role={onSelectSection ? 'button' : undefined}
+              tabIndex={onSelectSection ? 0 : undefined}
+              onKeyDown={onSelectSection ? (event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  onSelectSection(String(entry.section || ''));
+                }
+              } : undefined}
+            >
               <div>
                 <strong>{String(entry.section || `Onderdeel ${index + 1}`)}</strong>
                 <div className="list-subtle">{Boolean(entry.included) ? 'Opgenomen in export' : 'Niet opgenomen in export'}</div>

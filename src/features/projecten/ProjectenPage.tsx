@@ -186,12 +186,24 @@ export function ProjectenPage() {
 
   useEffect(() => {
     const queryIntent = new URLSearchParams(location.search).get('intent');
-    const stateIntent = (location.state as { intent?: string } | null)?.intent;
+    const state = (location.state as { intent?: string; projectId?: string | number } | null) || null;
+    const stateIntent = state?.intent;
     const intent = stateIntent || queryIntent;
-    if (intent !== 'create-project') return;
 
-    setEditingProject(null);
-    setModalMode('create');
+    if (intent === 'create-project') {
+      setEditingProject(null);
+      setModalMode('create');
+    }
+
+    if (intent === 'edit-project' && state?.projectId) {
+      const projectToEdit = (query.data?.items || []).find((item) => String(item.id) === String(state.projectId)) || null;
+      if (projectToEdit) {
+        setEditingProject(projectToEdit);
+        setModalMode('edit');
+      }
+    }
+
+    if (!intent) return;
 
     if (stateIntent) {
       navigate(location.pathname + location.search, { replace: true, state: null });
@@ -201,7 +213,7 @@ export function ProjectenPage() {
     if (queryIntent) {
       navigate(location.pathname, { replace: true });
     }
-  }, [location.pathname, location.search, location.state, navigate]);
+  }, [location.pathname, location.search, location.state, navigate, query.data]);
 
   return (
     <div className="page-stack">

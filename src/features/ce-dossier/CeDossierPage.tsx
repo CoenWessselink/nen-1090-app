@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { Download, RefreshCcw } from 'lucide-react';
+import { RefreshCcw } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -46,6 +46,7 @@ import { resolveProjectContextTab } from '@/features/projecten/components/Projec
 import { ProjectTabShell } from '@/features/projecten/components/ProjectTabShell';
 import { ProjectContextHeader } from '@/features/projecten/components/ProjectContextHeader';
 import { ProjectKpiActionCard } from '@/features/projecten/components/ProjectKpiActionCard';
+import { downloadCsv, downloadJson, downloadText, openPrintWindow } from '@/utils/export';
 
 type LocalExportRecord = ExportJob & { local_only?: boolean };
 
@@ -55,13 +56,73 @@ function makeLocalExport(kind: CeExportKind, payload: unknown): LocalExportRecor
     id: String(source.id || source.export_id || `local-${kind}-${Date.now()}`),
     type: kind,
     export_type: kind,
-    status: String(source.status || (source.unsupported ? 'voorbereid' : 'aangemaakt')),
-    message: String(source.message || (source.unsupported ? 'Geen live endpoint gevonden; exportvoorbereiding is lokaal vastgelegd.' : 'Export gestart.')),
+    status: String(source.status || (source.unsupported ? 'lokaal gereed' : 'aangemaakt')),
+    message: String(source.message || (source.unsupported ? 'Live endpoint ontbreekt; lokale exportfallback uitgevoerd.' : 'Export gestart.')),
     created_at: new Date().toISOString(),
     manifest: { section: 'project', included: true },
     local_only: true,
     download_url: source.download_url ? String(source.download_url) : undefined,
   };
+}
+
+function slugify(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/gi, '-')
+    .replace(/^-+|-+$/g, '') || 'project';
+}
+
+function buildDossierHtml({
+  project,
+  status,
+  score,
+  checklist,
+  missingItems,
+  assemblies,
+  welds,
+  inspections,
+  documents,
+}: {
+  project: Record<string, unknown>;
+  status: string;
+  score: number;
+  checklist: Record<string, unknown>[];
+  missingItems: Record<string, unknown>[];
+  assemblies: Record<string, unknown>[];
+  welds: Record<string, unknown>[];
+  inspections: Record<string, unknown>[];
+  documents: Record<string, unknown>[];
+}) {
+  const projectName = asText(project.name || project.omschrijving || project.projectnummer, 'Onbekend project');
+  const customer = asText(project.client_name || project.opdrachtgever, 'Geen opdrachtgever');
+  const executionClass = asText(project.execution_class || project.executieklasse, 'Niet opgegeven');
+  const rows = (items: Record<string, unknown>[], title: string, fields: string[]) => `
+    <div class="block">
+      <h3>${title}</h3>
+      <table>
+        <thead><tr>${fields.map((field) => `<th>${field}</th>`).join('')}</tr></thead>
+        <tbody>
+          ${items.length ? items.map((item) => `<tr>${fields.map((field) => `<td>${asText(item[field], '—')}</td>`).join('')}</tr>`).join('') : `<tr><td colspan="${fields.length}">Geen records</td></tr>`}
+        </tbody>
+      </table>
+    </div>`;
+
+  return `
+    <h1>CE dossier – ${projectName}</h1>
+    <div class="muted">Opdrachtgever: ${customer} · Executieklasse: ${executionClass} · Status: ${status} · Score: ${score}%</div>
+    <div class="block">
+      <h2>Checklist</h2>
+      ${checklist.map((item) => `<div class="row"><div><strong>${asText(item.label || item.name, 'Checklistregel')}</strong><div>${asText(item.detail || item.description, '')}</div></div><span class="badge">${Boolean(item.ok) || Boolean(item.completed) ? 'Gereed' : 'Open'}</span></div>`).join('') || '<div>Geen checklistregels</div>'}
+    </div>
+    <div class="block">
+      <h2>Ontbrekende onderdelen</h2>
+      ${missingItems.map((item) => `<div class="row"><div><strong>${asText(item.label || item.name, 'Actie')}</strong><div>${asText(item.detail || item.description || item.reason, '')}</div></div><span class="badge">Actie nodig</span></div>`).join('') || '<div>Geen ontbrekende onderdelen</div>'}
+    </div>
+    ${rows(assemblies, 'Assemblies', ['code', 'name', 'status'])}
+    ${rows(welds, 'Lassen', ['weld_number', 'status', 'execution_class'])}
+    ${rows(inspections, 'Inspecties', ['status', 'method', 'remarks'])}
+    ${rows(documents, 'Documenten', ['title', 'filename', 'status'])}
+  `;
 }
 
 export function CeDossierPage() {
@@ -145,25 +206,94 @@ export function CeDossierPage() {
     ];
   }, [manifestQuery.data, selectedExport, counts, assemblies.length, welds.length, inspections.length, documents.length, photos.length, checklist.length]);
 
+  const projectLabel = asText(project.name || project.omschrijving || project.projectnummer, `project-${projectId}`);
+  const exportSlug = slugify(projectLabel);
+
   if (!projectId) return <ErrorState title="Geen projectcontext" description="Open eerst een project vanuit Projecten om het CE dossier te bekijken." />;
 
   const isLoading = overviewQuery.isLoading || missingItemsQuery.isLoading || checklistQuery.isLoading || dossierQuery.isLoading;
   const isError = overviewQuery.isError || missingItemsQuery.isError || checklistQuery.isError || dossierQuery.isError;
 
+  const routeFromSection = (section: string) => {
+    if (section === 'assemblies') return `/projecten/${projectId}/assemblies`;
+    if (section === 'welds' || section === 'lassen') return `/projecten/${projectId}/lassen`;
+    if (section === 'inspections' || section === 'checklist' || section === 'lascontrole') return `/projecten/${projectId}/lascontrole`;
+    if (section === 'documents' || section === 'photos') return `/projecten/${projectId}/documenten`;
+    if (section === 'project') return `/projecten/${projectId}/overzicht`;
+    return `/projecten/${projectId}/ce-dossier`;
+  };
+
+  const openSection = (section: string) => navigate(routeFromSection(section));
+
+  const runLocalExport = (kind: CeExportKind) => {
+    const score = Number(overview.score || dossier.score || 0);
+    const status = asText(overview.status || dossier.status, 'In behandeling');
+    const html = buildDossierHtml({ project, status, score, checklist, missingItems, assemblies, welds, inspections, documents });
+
+    if (kind === 'pdf') {
+      const opened = openPrintWindow(`CE dossier ${projectLabel}`, html);
+      if (!opened) throw new Error('Printvenster kon niet worden geopend. Controleer of pop-ups zijn toegestaan.');
+      return { unsupported: true, message: 'PDF-export lokaal geopend via printvenster.' };
+    }
+
+    if (kind === 'ce') {
+      downloadText(`ce-rapport-${exportSlug}.html`, html, 'text/html;charset=utf-8;');
+      return { unsupported: true, message: 'CE-rapport lokaal gedownload als HTML-bestand.' };
+    }
+
+    if (kind === 'excel') {
+      downloadCsv(`ce-dossier-${exportSlug}.csv`, [
+        ...checklist.map((item) => ({ categorie: 'checklist', titel: asText(item.label || item.name), status: Boolean(item.ok) || Boolean(item.completed) ? 'gereed' : 'open', detail: asText(item.detail || item.description) })),
+        ...missingItems.map((item) => ({ categorie: 'ontbrekend', titel: asText(item.label || item.name), status: 'actie nodig', detail: asText(item.detail || item.description || item.reason) })),
+      ]);
+      return { unsupported: true, message: 'Excel-export lokaal gedownload als CSV-bestand.' };
+    }
+
+    downloadJson(`ce-dossier-${exportSlug}-pakket.json`, {
+      exported_at: new Date().toISOString(),
+      project,
+      counts,
+      checklist,
+      missingItems,
+      assemblies,
+      welds,
+      inspections,
+      documents,
+      photos,
+    });
+    return { unsupported: true, message: 'ZIP-export lokaal voorbereid als JSON-pakket.' };
+  };
+
   const handleExport = async (kind: CeExportKind) => {
     try {
       const payload = kind === 'ce' ? await createReport.mutateAsync() : kind === 'pdf' ? await createPdf.mutateAsync() : kind === 'zip' ? await createZip.mutateAsync() : await createExcel.mutateAsync();
-      const record = makeLocalExport(kind, payload);
+      const source = asRecord(payload);
+      let effectivePayload: unknown = payload;
+
+      if (!source.download_url && !source.status) {
+        effectivePayload = runLocalExport(kind);
+      } else if (source.download_url) {
+        window.open(String(source.download_url), '_blank', 'noopener,noreferrer');
+      } else if (String(source.status || '').toLowerCase().includes('queued')) {
+        setMessage(`${kind.toUpperCase()} export in wachtrij geplaatst.`);
+      } else {
+        effectivePayload = runLocalExport(kind);
+      }
+
+      const record = makeLocalExport(kind, effectivePayload);
       setLocalExports((current) => [record, ...current]);
       setSelectedExportId(record.id);
-      if (record.download_url) {
-        window.open(record.download_url, '_blank', 'noopener,noreferrer');
-        setMessage(`${kind.toUpperCase()} download gestart.`);
-      } else {
-        setMessage(`${kind.toUpperCase()} export gestart of voorbereid.`);
-      }
+      setMessage(record.message || `${kind.toUpperCase()} export gestart.`);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Export starten mislukt.');
+      try {
+        const localPayload = runLocalExport(kind);
+        const record = makeLocalExport(kind, localPayload);
+        setLocalExports((current) => [record, ...current]);
+        setSelectedExportId(record.id);
+        setMessage(record.message || `${kind.toUpperCase()} export lokaal uitgevoerd.`);
+      } catch {
+        setMessage(error instanceof Error ? error.message : 'Export starten mislukt.');
+      }
     }
   };
 
@@ -174,6 +304,10 @@ export function CeDossierPage() {
       if (item.download_url) {
         window.open(String(item.download_url), '_blank', 'noopener,noreferrer');
         setMessage('Download geopend in een nieuw venster.');
+        return;
+      }
+      if ((item as LocalExportRecord).local_only) {
+        handleExport(String(item.type || item.export_type || 'pdf').toLowerCase() as CeExportKind);
         return;
       }
       const payload = await downloadExport.mutateAsync(item.id);
@@ -196,48 +330,68 @@ export function CeDossierPage() {
     try {
       setRetryingId(rowId);
       const payload = await retryExport.mutateAsync(item.id);
-      const record = makeLocalExport(String(item.type || item.export_type || 'ce') as CeExportKind, payload);
-      setLocalExports((current) => [record, ...current]);
-      setSelectedExportId(record.id);
-      setMessage('Export opnieuw gestart of lokaal opnieuw voorbereid.');
+      const source = asRecord(payload);
+      if (source.unsupported || (item as LocalExportRecord).local_only) {
+        const nextKind = String(item.type || item.export_type || 'pdf').toLowerCase() as CeExportKind;
+        await handleExport(nextKind);
+        return;
+      }
+      setMessage(asText(source.message, 'Export opnieuw aangeboden.'));
+      exportsQuery.refetch();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Export opnieuw starten mislukt.');
+      setMessage(error instanceof Error ? error.message : 'Export opnieuw aanbieden mislukt.');
     } finally {
       setRetryingId(null);
     }
   };
 
+  const approvedInspections = inspections.filter((item) => {
+    const status = String((item as Record<string, unknown>).status || (item as Record<string, unknown>).result || '').toLowerCase();
+    return ['approved', 'goedgekeurd', 'conform', 'gereed'].includes(status);
+  }).length;
+
+  const checklistStats = useMemo(() => ({
+    total: checklist.length,
+    completed: checklist.filter((item) => Boolean((item as Record<string, unknown>).ok) || Boolean((item as Record<string, unknown>).completed)).length,
+  }), [checklist]);
+
   return (
     <div className="page-stack">
-      <PageHeader title="CE Dossier" description="Projectgebonden compliance-overzicht, ontbrekende onderdelen en exportacties.">
-        <Button variant="secondary" onClick={() => navigate(`/projecten/${projectId}/overzicht`)}>Terug naar Project 360</Button>
-        <Button onClick={() => handleExport('pdf')}><Download size={16} /> Snelle PDF-export</Button>
-      </PageHeader>
-      {message ? <InlineMessage tone="success">{message}</InlineMessage> : null}
-      <ProjectContextHeader projectId={projectId} title="Projecteigenschappen" />
-
+      <ProjectContextHeader projectId={projectId} title="CE dossier" />
       <ProjectTabShell
         projectId={projectId}
         currentTab={currentProjectTab}
         onBack={() => navigate('/projecten')}
-        onCreateProject={() => navigate('/projecten?intent=create-project')}
-        onEditProject={() => navigate(`/projecten/${projectId}/overzicht`)}
-        onCreateAssembly={() => navigate(`/projecten/${projectId}/assemblies`)}
-        onCreateWeld={() => navigate(`/projecten/${projectId}/lassen`)}
+        onCreateProject={() => navigate('/projecten?actie=nieuw')}
+        onEditProject={() => navigate(`/projecten?project=${projectId}&actie=wijzig`)}
+        onCreateAssembly={() => navigate(`/projecten/${projectId}/assemblies?actie=nieuw`)}
+        onCreateWeld={() => navigate(`/projecten/${projectId}/lassen?actie=nieuw`)}
         onExportSelectionPdf={() => handleExport('pdf')}
-        exportSelectionDisabled={false}
-        filters={<Input value={ceSearch} onChange={(event) => setCeSearch(event.target.value)} placeholder="Filter op ontbrekende onderdelen, checklist of exports" />}
-        kpis={[
-          <ProjectKpiActionCard key="Ontbrekend" label="Ontbrekend" value={filteredMissingItems.length} meta="Klik om naar ontbrekende onderdelen te scrollen" onClick={() => document.getElementById('ce-missing-items-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} testId="ce-kpi-missing" />,
-          <ProjectKpiActionCard key="Checklist" label="Checklist" value={filteredChecklist.length} meta="Klik om naar de checklist te scrollen" onClick={() => document.getElementById('ce-checklist-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} testId="ce-kpi-checklist" />,
-          <ProjectKpiActionCard key="Exports" label="Exports" value={filteredExportItems.length} meta="Klik om exporthistorie te openen" onClick={() => document.getElementById('ce-export-history-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} testId="ce-kpi-exports" />,
-          <ProjectKpiActionCard key="Dekkingsgraad" label="Dekkingsgraad" value={`${Math.max(0, Math.round(Number(overview.score || dossier.score || 0)))}%`} meta="Klik om naar de dossierstatus te scrollen" onClick={() => document.getElementById('ce-status-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} testId="ce-kpi-score" />,
-        ]}
+        exportSelectionLabel="PDF export"
       >
+        <PageHeader title="CE dossier" description="Werk de compliance-keten af, stuur exports aan en controleer of alle verplichte onderdelen aanwezig zijn." />
+
+        {message ? <InlineMessage tone="neutral">{message}</InlineMessage> : null}
+
+        <Card>
+          <div className="toolbar-cluster" style={{ justifyContent: 'space-between' }}>
+            <Input value={ceSearch} onChange={(event) => setCeSearch(event.target.value)} placeholder="Zoek in checklist, ontbrekende onderdelen en exports" />
+            <Button variant="secondary" onClick={() => setCeSearch('')}>Wis filter</Button>
+          </div>
+        </Card>
+
         {isLoading ? <LoadingState label="CE dossier laden..." /> : null}
-        {isError ? <ErrorState title="CE dossier niet geladen" description="De CE/compliance-data voor dit project kon niet worden opgehaald." /> : null}
+        {isError ? <ErrorState title="CE dossier niet geladen" description="Controleer de CE- en projectendpoints. Zonder projectdata kan het dossier niet worden opgebouwd." /> : null}
+
         {!isLoading && !isError ? (
           <>
+            <div className="project-tab-kpi-grid">
+              <ProjectKpiActionCard label="Checklist gereed" value={`${checklistStats.completed}/${checklistStats.total}`} meta="Open lascontrole en checklist" onClick={() => openSection('checklist')} />
+              <ProjectKpiActionCard label="Ontbrekende onderdelen" value={filteredMissingItems.length} meta="Open documenten en ontbrekende onderdelen" onClick={() => openSection('documents')} />
+              <ProjectKpiActionCard label="Inspecties akkoord" value={`${approvedInspections}/${inspections.length || 0}`} meta="Open lascontrole en inspecties" onClick={() => openSection('inspections')} />
+              <ProjectKpiActionCard label="Exports" value={filteredExportItems.length} meta="Open exporthistorie of manifest" onClick={() => setSelectedExportId(filteredExportItems[0]?.id || null)} />
+            </div>
+
             <div id="ce-status-panel"><CeStatusPanel
               project={project}
               status={asText(overview.status || dossier.status, 'In behandeling')}
@@ -245,21 +399,25 @@ export function CeDossierPage() {
               readyForExport={Boolean(overview.ready_for_export ?? dossier.ready_for_export)}
               source={asText(dossier.source, 'live-api')}
               missingCount={filteredMissingItems.length}
+              onOpenScore={() => openSection('checklist')}
+              onOpenMissing={() => openSection('documents')}
+              onOpenStatus={() => openSection('inspections')}
+              onOpenSource={() => openSection('project')}
             /></div>
             <div className="content-grid-2">
-              <div id="ce-missing-items-card"><CeMissingItemsCard missingItems={filteredMissingItems} /></div>
-              <div id="ce-checklist-card"><CeChecklistCard checklist={filteredChecklist} /></div>
+              <div id="ce-missing-items-card"><CeMissingItemsCard missingItems={filteredMissingItems} onSelect={(item) => openSection(String(item.section || item.key || 'documents'))} /></div>
+              <div id="ce-checklist-card"><CeChecklistCard checklist={filteredChecklist} onSelect={(item) => openSection(String(item.section || item.key || 'checklist'))} /></div>
             </div>
             <div className="content-grid-2">
-              <CeDossierStructureCard counts={counts} assemblies={assemblies} welds={welds} inspections={inspections} documents={documents} photos={photos} />
-              <CeDataGroupsCard assemblies={assemblies} welds={welds} inspections={inspections} documents={documents} />
+              <CeDossierStructureCard counts={counts} assemblies={assemblies} welds={welds} inspections={inspections} documents={documents} photos={photos} onSelectSection={openSection} />
+              <CeDataGroupsCard assemblies={assemblies} welds={welds} inspections={inspections} documents={documents} onSelectSection={openSection as (section: 'assemblies' | 'welds' | 'inspections' | 'documents') => void} />
             </div>
             <div className="content-grid-2">
               <CeExportActionsCard pending={{ ce: createReport.isPending, pdf: createPdf.isPending, zip: createZip.isPending, excel: createExcel.isPending }} onExport={handleExport} preview={preview} />
-              <CeExportManifestCard manifest={manifest} exportItem={selectedExport} />
+              <CeExportManifestCard manifest={manifest} exportItem={selectedExport} onSelectSection={openSection} />
             </div>
             <div id="ce-export-history-card"><CeExportHistoryCard items={filteredExportItems} selectedExportId={selectedExportId} onSelect={(item) => setSelectedExportId(item.id)} onDownload={handleDownload} onRetry={handleRetry} downloadingId={downloadingId} retryingId={retryingId} /></div>
-            <CePdfLayoutCard project={project} status={asText(overview.status || dossier.status, 'In behandeling')} score={Number(overview.score || dossier.score || 0)} counts={counts} checklist={checklist} missingItems={missingItems} assemblies={assemblies} welds={welds} inspections={inspections} documents={documents} photos={photos} onPrint={() => window.print()} />
+            <CePdfLayoutCard project={project} status={asText(overview.status || dossier.status, 'In behandeling')} score={Number(overview.score || dossier.score || 0)} counts={counts} checklist={checklist} missingItems={missingItems} assemblies={assemblies} welds={welds} inspections={inspections} documents={documents} photos={photos} onPrint={() => openPrintWindow(`CE dossier ${projectLabel}`, buildDossierHtml({ project, status: asText(overview.status || dossier.status, 'In behandeling'), score: Number(overview.score || dossier.score || 0), checklist, missingItems, assemblies, welds, inspections, documents }))} />
             <div className="toolbar-cluster" style={{ justifyContent: 'space-between' }}>
               <Button variant="secondary" onClick={() => navigate(`/projecten/${projectId}/documenten`)}>Ga naar documenten</Button>
               <Button variant="secondary" onClick={() => navigate(`/projecten/${projectId}/lascontrole`)}>Ga naar lascontrole</Button>

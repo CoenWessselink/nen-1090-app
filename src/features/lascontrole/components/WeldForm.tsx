@@ -79,7 +79,7 @@ export function WeldForm({
       welder_name: initial?.welder_name || '',
       process: initial?.process || '135',
       location: initial?.location || '',
-      status: initial?.status || 'defect',
+      status: initial?.status || 'conform',
       execution_class: (initial?.execution_class || projectExecutionClass || '') as WeldFormValues['execution_class'],
       template_id: initial?.template_id || projectTemplateId || '',
     },
@@ -94,7 +94,7 @@ export function WeldForm({
       welder_name: initial?.welder_name || '',
       process: initial?.process || '135',
       location: initial?.location || '',
-      status: initial?.status || 'defect',
+      status: initial?.status || 'conform',
       execution_class: (initial?.execution_class || projectExecutionClass || '') as WeldFormValues['execution_class'],
       template_id: initial?.template_id || projectTemplateId || '',
     });

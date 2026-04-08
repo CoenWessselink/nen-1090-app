@@ -12,7 +12,8 @@ function normalizeProjectRecord(payload: Record<string, unknown>): Project {
     projectnummer: String(payload.projectnummer || payload.code || payload.project_number || ''),
     name: String(payload.name || payload.omschrijving || ''),
     client_name: String(payload.client_name || payload.client || payload.opdrachtgever || ''),
-    execution_class: String(payload.execution_class || payload.exc || payload.executieklasse || ''),
+    execution_class: String(payload.execution_class || payload.default_execution_class || payload.exc || payload.executieklasse || ''),
+    default_template_id: String(payload.default_template_id || payload.inspection_template_id || payload.template_id || ''),
     status: String(payload.status || 'concept'),
     start_date: String(payload.start_date || ''),
     end_date: String(payload.end_date || ''),
@@ -46,7 +47,7 @@ function normalizePagedList<T>(response: PagedResponse<T>, fallbackLimit = 25) {
 function mapProjectPayload(
   payload: Pick<
     ProjectFormValues,
-    'projectnummer' | 'name' | 'client_name' | 'execution_class' | 'status' | 'start_date' | 'end_date'
+    'projectnummer' | 'name' | 'client_name' | 'execution_class' | 'status' | 'start_date' | 'end_date' | 'inspection_template_id'
   >,
 ) {
   return {
@@ -54,6 +55,9 @@ function mapProjectPayload(
     name: payload.name,
     client_name: payload.client_name,
     execution_class: payload.execution_class,
+    default_execution_class: payload.execution_class,
+    default_template_id: payload.inspection_template_id || null,
+    inspection_template_id: payload.inspection_template_id || null,
     status: payload.status,
     start_date: payload.start_date || null,
     end_date: payload.end_date || null,
@@ -65,7 +69,14 @@ function mapProjectPatch(payload: Partial<ProjectFormValues>) {
   if (payload.projectnummer !== undefined) body.code = payload.projectnummer;
   if (payload.name !== undefined) body.name = payload.name;
   if (payload.client_name !== undefined) body.client_name = payload.client_name;
-  if (payload.execution_class !== undefined) body.execution_class = payload.execution_class;
+  if (payload.execution_class !== undefined) {
+    body.execution_class = payload.execution_class;
+    body.default_execution_class = payload.execution_class;
+  }
+  if (payload.inspection_template_id !== undefined) {
+    body.default_template_id = payload.inspection_template_id || null;
+    body.inspection_template_id = payload.inspection_template_id || null;
+  }
   if (payload.status !== undefined) body.status = payload.status;
   if (payload.start_date !== undefined) body.start_date = payload.start_date || null;
   if (payload.end_date !== undefined) body.end_date = payload.end_date || null;
@@ -260,95 +271,82 @@ export async function updateProjectRecord(id: string | number, payload: Partial<
       body: JSON.stringify(mapProjectPatch(payload)),
     }));
 
-  if (response) return normalizeProjectRecord(response);
-  return getProject(id);
+  if (!response) {
+    throw new Error('Project bijwerken wordt niet ondersteund door de huidige backend.');
+  }
+
+  return normalizeProjectRecord(response);
 }
 
-export async function updateProject(id: string | number, payload: ProjectFormValues) {
-  const response =
-    (await optionalRequest<Record<string, unknown>>([`/projects/${id}`], {
-      method: 'PUT',
-      body: JSON.stringify(mapProjectPayload(payload)),
-    })) ||
-    (await optionalRequest<Record<string, unknown>>([`/projects/${id}`], {
-      method: 'PATCH',
-      body: JSON.stringify(mapProjectPayload(payload)),
-    }));
-
-  if (response) return normalizeProjectRecord(response);
-  return getProject(id);
-}
+export const updateProject = updateProjectRecord;
 
 export async function deleteProject(id: string | number) {
-  await apiRequest(`/projects/${id}`, { method: 'DELETE' });
-  return { ok: true, id };
+  return await apiRequest<void>(`/projects/${id}`, {
+    method: 'DELETE',
+  });
 }
 
 export async function createProjectAssembly(projectId: string | number, payload: ProjectAssemblyDraft) {
-  const scoped =
-    (await optionalRequest<Assembly>([`/projects/${projectId}/assemblies`], {
-      method: 'POST',
-      body: JSON.stringify({
-        code: payload.code,
-        name: payload.name,
-        drawing_no: payload.drawing_no || null,
-        revision: payload.revision || null,
-        status: payload.status || 'open',
-      }),
-    })) ||
-    (await apiRequest<Assembly>('/assemblies', {
-      method: 'POST',
-      body: JSON.stringify({
-        project_id: String(projectId),
-        code: payload.code,
-        name: payload.name,
-        drawing_no: payload.drawing_no || null,
-        revision: payload.revision || null,
-        status: payload.status || 'open',
-      }),
-    }));
-
-  return scoped;
+  return await apiRequest<Record<string, unknown>>(`/projects/${projectId}/assemblies`, {
+    method: 'POST',
+    body: JSON.stringify({
+      code: payload.code,
+      name: payload.name,
+      drawing_no: payload.drawing_no || null,
+      revision: payload.revision || null,
+      status: payload.status || 'open',
+      notes: payload.notes || null,
+    }),
+  });
 }
 
 export async function addProjectMaterialLink(projectId: string | number, materialId: string | number) {
   return (
-    (await optionalRequest<Record<string, unknown>>([`/projects/${projectId}/materials`], {
+    (await optionalRequest<Record<string, unknown>>([`/projects/${projectId}/selected/materials`], {
       method: 'POST',
-      body: JSON.stringify({ ref_id: materialId }),
+      body: JSON.stringify({ material_id: materialId }),
     })) || { ok: true, projectId, materialId }
   );
 }
 
 export async function removeProjectMaterialLink(projectId: string | number, materialId: string | number) {
-  await apiRequest(`/projects/${projectId}/materials/${materialId}`, { method: 'DELETE' });
-  return { ok: true, projectId, materialId };
+  return (
+    (await optionalRequest<Record<string, unknown>>([`/projects/${projectId}/selected/materials/${materialId}`], {
+      method: 'DELETE',
+    })) || { ok: true, projectId, materialId }
+  );
 }
 
 export async function addProjectWpsLink(projectId: string | number, wpsId: string | number) {
   return (
-    (await optionalRequest<Record<string, unknown>>([`/projects/${projectId}/wps`], {
+    (await optionalRequest<Record<string, unknown>>([`/projects/${projectId}/selected/wps`], {
       method: 'POST',
-      body: JSON.stringify({ ref_id: wpsId }),
+      body: JSON.stringify({ wps_id: wpsId }),
     })) || { ok: true, projectId, wpsId }
   );
 }
 
 export async function removeProjectWpsLink(projectId: string | number, wpsId: string | number) {
-  await apiRequest(`/projects/${projectId}/wps/${wpsId}`, { method: 'DELETE' });
-  return { ok: true, projectId, wpsId };
+  return (
+    (await optionalRequest<Record<string, unknown>>([`/projects/${projectId}/selected/wps/${wpsId}`], {
+      method: 'DELETE',
+    })) || { ok: true, projectId, wpsId }
+  );
 }
 
 export async function addProjectWelderLink(projectId: string | number, welderId: string | number) {
   return (
-    (await optionalRequest<Record<string, unknown>>([`/projects/${projectId}/welders`], {
+    (await optionalRequest<Record<string, unknown>>([`/projects/${projectId}/selected/welders`], {
       method: 'POST',
-      body: JSON.stringify({ ref_id: welderId }),
+      body: JSON.stringify({ welder_id: welderId }),
     })) || { ok: true, projectId, welderId }
   );
 }
 
 export async function removeProjectWelderLink(projectId: string | number, welderId: string | number) {
-  await apiRequest(`/projects/${projectId}/welders/${welderId}`, { method: 'DELETE' });
-  return { ok: true, projectId, welderId };
+  return (
+    (await optionalRequest<Record<string, unknown>>([`/projects/${projectId}/selected/welders/${welderId}`], {
+      method: 'DELETE',
+    })) || { ok: true, projectId, welderId }
+  );
 }

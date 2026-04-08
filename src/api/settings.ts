@@ -143,11 +143,17 @@ export function createInspectionTemplate(payload: Record<string, unknown>) {
   });
 }
 
-export function updateInspectionTemplate(templateId: string | number, payload: Record<string, unknown>) {
-  return apiRequest<MasterDataItem>(`/settings/inspection-templates/${templateId}`, {
-    method: 'PATCH',
-    body: JSON.stringify(payload),
-  });
+export async function updateInspectionTemplate(templateId: string | number, payload: Record<string, unknown>) {
+  return (
+    (await optionalRequest<MasterDataItem>([`/settings/inspection-templates/${templateId}`], {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    })) ||
+    (await apiRequest<MasterDataItem>(`/settings/inspection-templates/${templateId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }))
+  );
 }
 
 export function deleteInspectionTemplate(templateId: string | number) {
@@ -156,9 +162,25 @@ export function deleteInspectionTemplate(templateId: string | number) {
   });
 }
 
-
-export function duplicateInspectionTemplate(templateId: string | number) {
-  return apiRequest<MasterDataItem>(`/settings/inspection-templates/${templateId}/duplicate`, {
-    method: "POST",
+export async function duplicateInspectionTemplate(templateId: string | number) {
+  const direct = await optionalRequest<MasterDataItem>([`/settings/inspection-templates/${templateId}/duplicate`], {
+    method: 'POST',
   });
+  if (direct) return direct;
+
+  const current = await optionalRequest<MasterDataItem>([`/settings/inspection-templates/${templateId}`]);
+  if (!current) {
+    throw new Error('Template dupliceren wordt niet ondersteund door de huidige backend.');
+  }
+
+  const clone: Record<string, unknown> = {
+    ...current,
+    name: `${String(current.name || current.code || 'Template')} kopie`,
+    code: `${String(current.code || current.id || 'TPL')}-KOPIE`,
+    version: Number(current.version || 1),
+  };
+  delete clone.id;
+  delete clone.created_at;
+  delete clone.updated_at;
+  return createInspectionTemplate(clone);
 }

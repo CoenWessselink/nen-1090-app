@@ -41,7 +41,7 @@ function mapWeldPayload(payload: WeldFormValues & { id?: string | number }) {
     wps: payload.wps_id || null,
     execution_class: payload.execution_class || null,
     template_id: payload.template_id || null,
-    status: payload.status || 'defect',
+    status: payload.status || 'conform',
   };
 }
 
@@ -59,7 +59,7 @@ function normalizeWeld(row: Record<string, unknown>): Weld {
     wps: String(row.wps || row.wps_id || ''),
     location: String(row.location || ''),
     process: String(row.process || ''),
-    status: String(row.status || 'defect'),
+    status: String(row.status || 'conform'),
     execution_class: row.execution_class ? String(row.execution_class) : '',
     template_id: row.template_id ? String(row.template_id) : '',
   };

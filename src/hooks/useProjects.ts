@@ -205,6 +205,8 @@ export function useCreateProject() {
             process: weld.process,
             location: weld.location,
             status: weld.status === 'gerepareerd' ? 'gerepareerd' : weld.status === 'conform' ? 'conform' : 'defect',
+            execution_class: (payload.execution_class || '') as 'EXC1' | 'EXC2' | 'EXC3' | 'EXC4' | '',
+            template_id: payload.inspection_template_id || '',
           })) as { id: string | number };
           weldsCreated += 1;
 

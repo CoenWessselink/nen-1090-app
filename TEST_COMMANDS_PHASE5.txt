@@ -1,0 +1,21 @@
+NEN1090 APP — FASE 5 TESTCOMMANDO'S
+
+Lokaal (in C:\NEN1090\nen-1090-app):
+
+npm install
+npm run typecheck
+npm run test:phase5:smoke
+npm run test:phase5:routing
+npm run test:phase5:prove
+
+PowerShell lokaal:
+
+powershell -ExecutionPolicy Bypass -File scripts/test-local-phase5.ps1
+
+Live tegen Pages:
+
+powershell -ExecutionPolicy Bypass -File scripts/test-live-phase5.ps1
+
+Of met expliciete live URL:
+
+powershell -ExecutionPolicy Bypass -File scripts/test-live-phase5.ps1 -BaseUrl https://nen-1090-app.pages.dev

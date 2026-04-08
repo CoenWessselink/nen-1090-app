@@ -38,9 +38,9 @@ export function InspectionForm({
       weld_id: initial?.weld_id || defaultWeldId || '',
       method: initial?.method || 'VT',
       template_id: initial?.template_id || '',
-      status: initial?.status || 'approved',
+      status: initial?.status || 'conform',
       due_date: initial?.due_date || '',
-      result: initial?.result || 'accepted',
+      result: initial?.result || 'conform',
       notes: initial?.notes || '',
     },
   });
@@ -50,9 +50,9 @@ export function InspectionForm({
       weld_id: initial?.weld_id || defaultWeldId || '',
       method: initial?.method || 'VT',
       template_id: initial?.template_id || '',
-      status: initial?.status || 'approved',
+      status: initial?.status || 'conform',
       due_date: initial?.due_date || '',
-      result: initial?.result || 'accepted',
+      result: initial?.result || 'conform',
       notes: initial?.notes || '',
     });
   }, [defaultWeldId, initial, reset]);
@@ -107,18 +107,16 @@ export function InspectionForm({
       <div className="two-column-grid">
         <FormField label="Status">
           <Select {...register('status')}>
-            <option value="approved">Conform</option>
-            <option value="pending">In behandeling</option>
-            <option value="completed">Afgerond</option>
-            <option value="rejected">Niet conform</option>
+            <option value="conform">Conform</option>
+            <option value="defect">Defect</option>
+            <option value="gerepareerd">Gerepareerd</option>
           </Select>
         </FormField>
         <FormField label="Resultaat">
           <Select {...register('result')}>
-            <option value="accepted">Conform</option>
-            <option value="rejected">Niet conform</option>
-            <option value="repair-required">Herstel nodig</option>
-            <option value="pending">Nog te beoordelen</option>
+            <option value="conform">Conform</option>
+            <option value="defect">Defect</option>
+            <option value="gerepareerd">Gerepareerd</option>
           </Select>
         </FormField>
       </div>

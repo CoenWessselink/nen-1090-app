@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -48,8 +48,15 @@ function uniqueProjectClients(initial?: Project) {
   ].filter(Boolean)));
 }
 
+function normalizeExecutionClass(value: unknown) {
+  const text = String(value || '').trim().toUpperCase();
+  return ['EXC1', 'EXC2', 'EXC3', 'EXC4'].includes(text) ? text : '';
+}
+
 function getInspectionTemplateLabel(item: Record<string, unknown>) {
-  return String(item.name || item.title || item.code || item.id || 'Template');
+  const executionClass = normalizeExecutionClass(item.execution_class || item.exc_class);
+  const version = item.version ? `v${String(item.version)}` : '';
+  return [String(item.name || item.title || item.code || item.id || 'Template'), executionClass, version].filter(Boolean).join(' · ');
 }
 
 function makeAssemblyRow(index = 1): ProjectAssemblyDraft {
@@ -85,6 +92,7 @@ export function ProjectForm({
     register,
     handleSubmit,
     watch,
+    setValue,
     trigger,
     formState: { errors },
   } = useForm<ProjectFormValues>({
@@ -100,12 +108,29 @@ export function ProjectForm({
       project_type: 'Staalconstructie',
       location: 'Werkplaats',
       planner: 'Werkvoorbereiding',
-      inspection_template_id: '',
+      inspection_template_id: String(initial?.default_template_id || ''),
       apply_materials: true,
       apply_wps: true,
       apply_welders: true,
     },
   });
+
+  const values = watch();
+  const templateRows = useMemo(() => (inspectionTemplates.data?.items || []) as Array<Record<string, unknown>>, [inspectionTemplates.data]);
+  const executionClass = normalizeExecutionClass(values.execution_class);
+  const matchingTemplates = useMemo(() => {
+    if (!executionClass) return templateRows;
+    return templateRows.filter((item) => normalizeExecutionClass(item.execution_class || item.exc_class) === executionClass);
+  }, [executionClass, templateRows]);
+
+  useEffect(() => {
+    if (!matchingTemplates.length) return;
+    const currentTemplateId = String(values.inspection_template_id || '');
+    const currentTemplate = matchingTemplates.find((item) => String(item.id) === currentTemplateId);
+    if (!currentTemplate) {
+      setValue('inspection_template_id', String(matchingTemplates[0]?.id || ''));
+    }
+  }, [matchingTemplates, setValue, values.inspection_template_id]);
 
   async function nextStep() {
     const generalFields: Array<keyof ProjectFormValues> = ['projectnummer', 'name', 'client_name', 'execution_class', 'status'];
@@ -124,8 +149,7 @@ export function ProjectForm({
     setWelds((current) => current.map((row) => row.temp_id === tempId ? { ...row, ...patch } : row));
   }
 
-  const values = watch();
-  const selectedTemplate = (inspectionTemplates.data?.items || []).find((item) => String(item.id || '') === values.inspection_template_id);
+  const selectedTemplate = matchingTemplates.find((item) => String(item.id || '') === values.inspection_template_id);
 
   return (
     <form className="form-grid" onSubmit={handleSubmit(async (formValues) => onSubmit({
@@ -183,11 +207,29 @@ export function ProjectForm({
           <div className="form-grid">
             <FormField label="Inspectietemplate">
               <Select {...register('inspection_template_id')}>
-                <option value="">Geen template direct toepassen</option>
-                {(inspectionTemplates.data?.items || []).map((item) => <option key={String(item.id)} value={String(item.id)}>{getInspectionTemplateLabel(item)}</option>)}
+                {!matchingTemplates.length ? <option value="">Geen template beschikbaar voor {executionClass || 'de huidige EXC'}</option> : null}
+                {matchingTemplates.map((item) => <option key={String(item.id)} value={String(item.id)}>{getInspectionTemplateLabel(item)}</option>)}
               </Select>
             </FormField>
             <div className="list-stack compact-list">
+              <div className="list-row">
+                <div>
+                  <strong>Templatekoppeling op projectniveau</strong>
+                  <div className="list-subtle">De gekozen template wordt als standaard opgeslagen voor alle nieuwe lassen in dit project. Per las kan later handmatig worden afgeweken.</div>
+                </div>
+              </div>
+              <div className="list-row">
+                <div>
+                  <strong>Actieve executieklasse</strong>
+                  <div className="list-subtle">{executionClass || 'Niet ingesteld'}</div>
+                </div>
+              </div>
+              <div className="list-row">
+                <div>
+                  <strong>Gekozen template</strong>
+                  <div className="list-subtle">{selectedTemplate ? getInspectionTemplateLabel(selectedTemplate) : 'Nog geen template gekozen'}</div>
+                </div>
+              </div>
               <label className="list-row"><div><strong>Materiaalset direct toevoegen</strong><div className="list-subtle">Beschikbare materials uit instellingen: {(materials.data?.items || []).length}</div></div><input type="checkbox" {...register('apply_materials')} /></label>
               <label className="list-row"><div><strong>WPS-set direct toevoegen</strong><div className="list-subtle">Beschikbare WPS uit instellingen: {(wps.data?.items || []).length}</div></div><input type="checkbox" {...register('apply_wps')} /></label>
               <label className="list-row"><div><strong>Lasserset direct toevoegen</strong><div className="list-subtle">Beschikbare lassers uit instellingen: {(welders.data?.items || []).length}</div></div><input type="checkbox" {...register('apply_welders')} /></label>
@@ -199,61 +241,35 @@ export function ProjectForm({
       {stepIndex === 2 ? (
         <div className="detail-stack">
           <Card>
-            <div className="section-title-row"><h3>Assemblies</h3><Button type="button" variant="secondary" onClick={() => setAssemblies((current) => [...current, makeAssemblyRow(current.length + 1)])}>+ Nieuwe assembly</Button></div>
-            <div className="list-stack">
-              {assemblies.map((assembly, index) => (
-                <div key={assembly.temp_id} className="card-grid" style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 12 }}>
+            <div className="section-title-row"><h3>Assemblies</h3><Button type="button" variant="secondary" onClick={() => setAssemblies((current) => [...current, makeAssemblyRow(current.length + 1)])}>Nieuwe assembly</Button></div>
+            <div className="list-stack compact-list">
+              {assemblies.map((assembly) => (
+                <div key={assembly.temp_id} className="detail-stack" style={{ border: '1px solid var(--line)', borderRadius: 14, padding: 12 }}>
                   <div className="two-column-grid">
-                    <FormField label={`Assembly code ${index + 1}`}><Input value={assembly.code} onChange={(e) => updateAssembly(assembly.temp_id, { code: e.target.value })} /></FormField>
-                    <FormField label="Naam"><Input value={assembly.name} onChange={(e) => updateAssembly(assembly.temp_id, { name: e.target.value })} /></FormField>
+                    <FormField label="Code"><Input value={assembly.code} onChange={(event) => updateAssembly(assembly.temp_id, { code: event.target.value })} /></FormField>
+                    <FormField label="Naam"><Input value={assembly.name} onChange={(event) => updateAssembly(assembly.temp_id, { name: event.target.value })} /></FormField>
                   </div>
                   <div className="two-column-grid">
-                    <FormField label="Tekeningnummer"><Input value={assembly.drawing_no || ''} onChange={(e) => updateAssembly(assembly.temp_id, { drawing_no: e.target.value })} /></FormField>
-                    <FormField label="Revisie"><Input value={assembly.revision || ''} onChange={(e) => updateAssembly(assembly.temp_id, { revision: e.target.value })} /></FormField>
+                    <FormField label="Tekening"><Input value={assembly.drawing_no || ''} onChange={(event) => updateAssembly(assembly.temp_id, { drawing_no: event.target.value })} /></FormField>
+                    <FormField label="Revisie"><Input value={assembly.revision || ''} onChange={(event) => updateAssembly(assembly.temp_id, { revision: event.target.value })} /></FormField>
                   </div>
-                  <div className="form-actions"><Button type="button" variant="ghost" onClick={() => setAssemblies((current) => current.length > 1 ? current.filter((item) => item.temp_id !== assembly.temp_id) : current)}>Verwijderen</Button></div>
                 </div>
               ))}
             </div>
           </Card>
+
           <Card>
-            <div className="section-title-row"><h3>Lassen</h3><div className="toolbar-cluster"><Button type="button" variant="secondary" onClick={() => setWelds((current) => [...current, makeWeldRow(current.length + 1)])}>+ Nieuwe las</Button></div></div>
-            <div className="list-stack">
-              {welds.map((weld, index) => (
-                <div key={weld.temp_id} className="card-grid" style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 12 }}>
+            <div className="section-title-row"><h3>Lassen</h3><Button type="button" variant="secondary" onClick={() => setWelds((current) => [...current, makeWeldRow(current.length + 1)])}>Nieuwe las</Button></div>
+            <div className="list-stack compact-list">
+              {welds.map((weld) => (
+                <div key={weld.temp_id} className="detail-stack" style={{ border: '1px solid var(--line)', borderRadius: 14, padding: 12 }}>
                   <div className="two-column-grid">
-                    <FormField label={`Lasnummer ${index + 1}`}><Input value={weld.weld_number} onChange={(e) => updateWeld(weld.temp_id, { weld_number: e.target.value })} /></FormField>
-                    <FormField label="Assembly">
-                      <Select value={weld.assembly_temp_id || ''} onChange={(e) => updateWeld(weld.temp_id, { assembly_temp_id: e.target.value })}>
-                        <option value="">Geen assembly</option>
-                        {assemblies.map((assembly) => <option key={assembly.temp_id} value={assembly.temp_id}>{assembly.code || assembly.name || assembly.temp_id}</option>)}
-                      </Select>
-                    </FormField>
+                    <FormField label="Lasnummer"><Input value={weld.weld_number} onChange={(event) => updateWeld(weld.temp_id, { weld_number: event.target.value })} /></FormField>
+                    <FormField label="Assembly"><Select value={weld.assembly_temp_id || ''} onChange={(event) => updateWeld(weld.temp_id, { assembly_temp_id: event.target.value })}><option value="">Koppel later</option>{assemblies.map((assembly) => <option key={assembly.temp_id} value={assembly.temp_id}>{assembly.code || assembly.name || assembly.temp_id}</option>)}</Select></FormField>
                   </div>
                   <div className="two-column-grid">
-                    <FormField label="WPS">
-                      <Select value={weld.wps_id || ''} onChange={(e) => updateWeld(weld.temp_id, { wps_id: e.target.value })}>
-                        <option value="">Geen WPS</option>
-                        {(wps.data?.items || []).map((item) => <option key={String(item.id)} value={String(item.id)}>{String(item.code || item.name || item.id)}</option>)}
-                      </Select>
-                    </FormField>
-                    <FormField label="Lasser">
-                      <Select value={weld.welder_name || ''} onChange={(e) => updateWeld(weld.temp_id, { welder_name: e.target.value })}>
-                        <option value="">Geen lasser</option>
-                        {(welders.data?.items || []).map((item) => <option key={String(item.id)} value={String(item.name || item.code || item.id)}>{String(item.name || item.code || item.id)}</option>)}
-                      </Select>
-                    </FormField>
-                  </div>
-                  <div className="two-column-grid">
-                    <FormField label="Proces"><Input value={weld.process || ''} onChange={(e) => updateWeld(weld.temp_id, { process: e.target.value })} /></FormField>
-                    <FormField label="Locatie"><Input value={weld.location} onChange={(e) => updateWeld(weld.temp_id, { location: e.target.value })} /></FormField>
-                  </div>
-                  <FormField label="Foto’s / bijlagen bij deze las">
-                    <Input type="file" multiple onChange={(e) => updateWeld(weld.temp_id, { photos: Array.from(e.target.files || []) })} />
-                  </FormField>
-                  <div className="form-actions" style={{ justifyContent: 'space-between' }}>
-                    <Button type="button" variant="secondary" onClick={() => setWelds((current) => [...current, { ...weld, temp_id: `copy-${Date.now()}-${index}`, photos: [] }])}>Las kopiëren</Button>
-                    <Button type="button" variant="ghost" onClick={() => setWelds((current) => current.length > 1 ? current.filter((item) => item.temp_id !== weld.temp_id) : current)}>Verwijderen</Button>
+                    <FormField label="Proces"><Input value={weld.process || ''} onChange={(event) => updateWeld(weld.temp_id, { process: event.target.value })} /></FormField>
+                    <FormField label="Locatie"><Input value={weld.location} onChange={(event) => updateWeld(weld.temp_id, { location: event.target.value })} /></FormField>
                   </div>
                 </div>
               ))}
@@ -264,27 +280,20 @@ export function ProjectForm({
 
       {stepIndex === 3 ? (
         <Card>
-          <div className="detail-grid">
-            <div><span>Projectnummer</span><strong>{values.projectnummer || '—'}</strong></div>
-            <div><span>Omschrijving</span><strong>{values.name || '—'}</strong></div>
-            <div><span>Opdrachtgever</span><strong>{values.client_name || '—'}</strong></div>
-            <div><span>Executieklasse</span><strong>{values.execution_class || '—'}</strong></div>
-            <div><span>Status</span><strong>{values.status || '—'}</strong></div>
-            <div><span>Template</span><strong>{selectedTemplate ? getInspectionTemplateLabel(selectedTemplate) : 'Geen'}</strong></div>
-            <div><span>Assemblies</span><strong>{assemblies.filter((item) => item.code || item.name).length}</strong></div>
-            <div><span>Lassen</span><strong>{welds.filter((item) => item.weld_number).length}</strong></div>
-            <div><span>Foto’s</span><strong>{welds.reduce((sum, item) => sum + (item.photos?.length || 0), 0)}</strong></div>
+          <div className="detail-stack">
+            <div className="list-row"><div><strong>Project</strong><div className="list-subtle">{values.projectnummer} · {values.name}</div></div></div>
+            <div className="list-row"><div><strong>Opdrachtgever</strong><div className="list-subtle">{values.client_name}</div></div></div>
+            <div className="list-row"><div><strong>Executieklasse</strong><div className="list-subtle">{values.execution_class}</div></div></div>
+            <div className="list-row"><div><strong>Template voor nieuwe lassen</strong><div className="list-subtle">{selectedTemplate ? getInspectionTemplateLabel(selectedTemplate) : 'Geen template gekozen'}</div></div></div>
+            <div className="list-row"><div><strong>Assemblies</strong><div className="list-subtle">{assemblies.filter((item) => item.code || item.name).length}</div></div></div>
+            <div className="list-row"><div><strong>Lassen</strong><div className="list-subtle">{welds.filter((item) => item.weld_number).length}</div></div></div>
           </div>
-          <div className="list-subtle" style={{ marginTop: 12 }}>Na opslaan worden project, assemblies, lassen en foto-bijlagen direct aangemaakt zodat Lascontrole direct per las kan doorwerken.</div>
         </Card>
       ) : null}
 
-      <div className="form-actions" style={{ justifyContent: 'space-between' }}>
-        <Button type="button" variant="secondary" onClick={() => setStepIndex((current) => Math.max(current - 1, 0))} disabled={stepIndex === 0}>Vorige</Button>
-        <div className="toolbar-cluster">
-          {stepIndex < steps.length - 1 ? <Button type="button" onClick={nextStep}>Volgende</Button> : null}
-          <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Opslaan...' : submitLabel}</Button>
-        </div>
+      <div className="toolbar-cluster">
+        <Button type="button" variant="secondary" onClick={() => setStepIndex((current) => Math.max(current - 1, 0))} disabled={stepIndex === 0}>Vorige stap</Button>
+        {stepIndex < steps.length - 1 ? <Button type="button" onClick={nextStep}>Volgende stap</Button> : <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Opslaan...' : submitLabel}</Button>}
       </div>
     </form>
   );

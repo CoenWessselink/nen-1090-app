@@ -1,8 +1,13 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import ProjectTabShell from '@/app/layout/ProjectTabShell';
+import { ProjectKpiActionCard } from '@/features/projecten/components/ProjectKpiActionCard';
+import { WeldInspectionModal } from '@/features/lascontrole/components/WeldInspectionModal';
+import { useUpsertWeldInspection, useWeldInspection } from '@/hooks/useInspections';
 import { useProject, useProjectAssemblies, useProjectInspections, useProjectWelds } from '@/hooks/useProjects';
-import type { Assembly, AuditEntry, Project, Weld } from '@/types/domain';
+import { usePatchWeldStatus, useUpdateWeld } from '@/hooks/useWelds';
+import type { Assembly, AuditEntry, Inspection, Project, Weld, WeldStatus } from '@/types/domain';
+import type { WeldFormValues } from '@/types/forms';
 
 function titleFromProject(project?: Project | null) {
   return project?.name || project?.omschrijving || project?.projectnummer || String(project?.id || '') || 'Project 360';
@@ -11,14 +16,23 @@ function titleFromProject(project?: Project | null) {
 function currentTabFromPath(pathname: string) {
   if (pathname.includes('/assemblies')) return 'assemblies';
   if (pathname.includes('/lassen')) return 'lassen';
+  if (pathname.includes('/lascontrole')) return 'lascontrole';
   if (pathname.includes('/documenten')) return 'documenten';
+  if (pathname.includes('/ce-dossier')) return 'ce-dossier';
   if (pathname.includes('/historie')) return 'historie';
   return 'overzicht';
 }
 
+function normalizeStatus(value: unknown): WeldStatus {
+  const raw = String(value || '').trim().toLowerCase();
+  if (raw === 'gerepareerd') return 'gerepareerd';
+  if (raw === 'defect') return 'defect';
+  return 'conform';
+}
+
 function statusTone(status?: string) {
   const value = String(status || '').toLowerCase();
-  if (value.includes('gereed') || value.includes('conform')) return '#16a34a';
+  if (value.includes('gereed') || value.includes('conform') || value.includes('gerepareerd')) return '#16a34a';
   if (value.includes('defect') || value.includes('afgekeurd')) return '#dc2626';
   return '#d97706';
 }
@@ -32,21 +46,40 @@ function surfaceStyle(): React.CSSProperties {
   };
 }
 
+function actionButtonStyle(active = false, status?: WeldStatus): React.CSSProperties {
+  const isDefect = status === 'defect';
+  return {
+    borderRadius: 12,
+    border: `1px solid ${active ? (isDefect ? '#ef4444' : '#16a34a') : '#cbd5e1'}`,
+    background: active ? (isDefect ? '#fee2e2' : '#dcfce7') : '#ffffff',
+    color: active ? (isDefect ? '#991b1b' : '#166534') : '#0f172a',
+    fontWeight: 600,
+    padding: '10px 14px',
+    cursor: 'pointer',
+  };
+}
+
 export function Project360Page() {
   const { projectId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const currentTab = currentTabFromPath(location.pathname);
+  const [selectedWeld, setSelectedWeld] = useState<Weld | null>(null);
 
   const projectQuery = useProject(projectId);
   const assembliesQuery = useProjectAssemblies(projectId, { page: 1, limit: 25 });
-  const weldsQuery = useProjectWelds(projectId, { page: 1, limit: 25 });
+  const weldsQuery = useProjectWelds(projectId, { page: 1, limit: 200 });
   const inspectionsQuery = useProjectInspections(projectId, { page: 1, limit: 25 });
+  const selectedInspectionQuery = useWeldInspection(projectId, selectedWeld?.id);
+  const saveInspection = useUpsertWeldInspection(String(projectId || ''), String(selectedWeld?.id || ''));
+  const updateWeld = useUpdateWeld(String(projectId || ''));
+  const patchWeldStatus = usePatchWeldStatus(String(projectId || ''));
 
   const project = projectQuery.data as Project | undefined;
   const assemblies = (assembliesQuery.data?.items || []) as Assembly[];
   const welds = (weldsQuery.data?.items || []) as Weld[];
   const inspections = (inspectionsQuery.data?.items || []) as AuditEntry[];
+  const selectedInspection = selectedInspectionQuery.data as Inspection | null;
 
   const filters = (
     <input
@@ -55,30 +88,40 @@ export function Project360Page() {
     />
   );
 
-  const kpis = (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
-      <button type="button" style={{ ...surfaceStyle(), textAlign: 'left', cursor: 'pointer' }} onClick={() => navigate(`/projecten/${projectId}/assemblies`)}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: '#3b82f6', textTransform: 'uppercase' }}>Assemblies</div>
-        <div style={{ fontSize: 40, fontWeight: 700, marginTop: 8 }}>{assemblies.length}</div>
-        <div style={{ color: '#64748b', marginTop: 8 }}>Klik om naar assemblies te gaan</div>
-      </button>
-      <button type="button" style={{ ...surfaceStyle(), textAlign: 'left', cursor: 'pointer' }} onClick={() => navigate(`/projecten/${projectId}/lassen`)}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: '#3b82f6', textTransform: 'uppercase' }}>Lassen</div>
-        <div style={{ fontSize: 40, fontWeight: 700, marginTop: 8 }}>{welds.length}</div>
-        <div style={{ color: '#64748b', marginTop: 8 }}>Klik om de lassenlijst te openen</div>
-      </button>
-      <button type="button" style={{ ...surfaceStyle(), textAlign: 'left', cursor: 'pointer' }} onClick={() => navigate(`/projecten/${projectId}/lascontrole`)}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: '#3b82f6', textTransform: 'uppercase' }}>Inspecties</div>
-        <div style={{ fontSize: 40, fontWeight: 700, marginTop: 8 }}>{inspectionsQuery.data?.total || inspections.length}</div>
-        <div style={{ color: '#64748b', marginTop: 8 }}>Klik om naar lascontrole te gaan</div>
-      </button>
-      <button type="button" style={{ ...surfaceStyle(), textAlign: 'left', cursor: 'pointer' }} onClick={() => navigate(`/projecten/${projectId}/documenten`)}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: '#3b82f6', textTransform: 'uppercase' }}>Documenten</div>
-        <div style={{ fontSize: 40, fontWeight: 700, marginTop: 8 }}>0</div>
-        <div style={{ color: '#64748b', marginTop: 8 }}>Klik om documentbeheer te openen</div>
-      </button>
-    </div>
-  );
+  const kpis = [
+    <ProjectKpiActionCard
+      key="assemblies"
+      label="Assemblies"
+      value={assemblies.length}
+      meta="Klik om naar assemblies te gaan"
+      onClick={() => navigate(`/projecten/${projectId}/assemblies`)}
+      testId="project-kpi-assemblies"
+    />,
+    <ProjectKpiActionCard
+      key="lassen"
+      label="Lassen"
+      value={welds.length}
+      meta="Klik om de lassenlijst te openen"
+      onClick={() => navigate(`/projecten/${projectId}/lassen`)}
+      testId="project-kpi-welds"
+    />,
+    <ProjectKpiActionCard
+      key="inspecties"
+      label="Lascontrole"
+      value={inspectionsQuery.data?.total || inspections.length}
+      meta="Klik om naar lascontrole te gaan"
+      onClick={() => navigate(`/projecten/${projectId}/lascontrole`)}
+      testId="project-kpi-inspections"
+    />,
+    <ProjectKpiActionCard
+      key="documenten"
+      label="Documenten"
+      value={0}
+      meta="Klik om documentbeheer te openen"
+      onClick={() => navigate(`/projecten/${projectId}/documenten`)}
+      testId="project-kpi-documents"
+    />,
+  ];
 
   const content = useMemo(() => {
     if (projectQuery.isLoading) {
@@ -116,18 +159,28 @@ export function Project360Page() {
       return (
         <section style={surfaceStyle()}>
           <h3 style={{ margin: 0 }}>Lassen</h3>
+          <div style={{ marginTop: 8, color: '#64748b' }}>Dubbelklik op een las om de popup “Las wijzigen” te openen.</div>
           <div style={{ marginTop: 16, display: 'grid', gap: 12 }}>
-            {welds.length ? welds.map((weld) => (
-              <div key={String(weld.id)} style={surfaceStyle()}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
-                  <strong>{weld.weld_number || weld.weld_no || `Las ${weld.id}`}</strong>
-                  <span style={{ color: statusTone(String(weld.status || '')) }}>{String(weld.status || 'Onbekend')}</span>
+            {welds.length ? welds.map((weld) => {
+              const weldStatus = normalizeStatus(weld.status);
+              return (
+                <div key={String(weld.id)} style={surfaceStyle()} onDoubleClick={() => setSelectedWeld(weld)}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'minmax(260px, 1.4fr) repeat(5, auto)', gap: 12, alignItems: 'center' }}>
+                    <div>
+                      <strong>{weld.weld_number || weld.weld_no || `Las ${weld.id}`}</strong>
+                      <div style={{ marginTop: 8, color: '#64748b' }}>
+                        {String(weld.location || 'Locatie onbekend')} · {String(weld.welder_name || 'Geen lasser')} · {String(weld.execution_class || 'Geen EXC')}
+                      </div>
+                    </div>
+                    <span style={actionButtonStyle(true, weldStatus)}>{weldStatus === 'conform' ? 'Conform' : weldStatus === 'defect' ? 'Defect' : 'Gerepareerd'}</span>
+                    <button type="button" style={actionButtonStyle()} onClick={() => setSelectedWeld(weld)}>Wijzigen</button>
+                    <button type="button" style={actionButtonStyle(weldStatus === 'conform', 'conform')} onClick={() => void patchWeldStatus.mutateAsync({ weldId: weld.id, status: 'conform' })}>Conform</button>
+                    <button type="button" style={actionButtonStyle(weldStatus === 'defect', 'defect')} onClick={() => void patchWeldStatus.mutateAsync({ weldId: weld.id, status: 'defect' })}>Defect</button>
+                    <button type="button" style={actionButtonStyle(weldStatus === 'gerepareerd', 'gerepareerd')} onClick={() => void patchWeldStatus.mutateAsync({ weldId: weld.id, status: 'gerepareerd' })}>Gerepareerd</button>
+                  </div>
                 </div>
-                <div style={{ marginTop: 8, color: '#64748b' }}>
-                  {String(weld.location || 'Locatie onbekend')} · {String(weld.welder_name || 'Geen lasser')}
-                </div>
-              </div>
-            )) : <div style={{ color: '#64748b' }}>Nog geen lassen beschikbaar voor dit project.</div>}
+              );
+            }) : <div style={{ color: '#64748b' }}>Nog geen lassen beschikbaar voor dit project.</div>}
           </div>
         </section>
       );
@@ -168,13 +221,17 @@ export function Project360Page() {
             Project 360 gebruikt op alle tabs dezelfde routingshell, klikbare KPI’s en vaste hoofdacties.
           </p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginTop: 16 }}>
-            <div style={surfaceStyle()}>
+            <button
+              type="button"
+              onClick={() => navigate('/projecten', { state: { intent: 'edit-project', projectId } })}
+              style={{ ...surfaceStyle(), textAlign: 'left', cursor: 'pointer' }}
+            >
               <div style={{ fontSize: 12, fontWeight: 700, color: '#3b82f6', textTransform: 'uppercase' }}>Projecteigenschappen</div>
               <div style={{ marginTop: 12, fontWeight: 700 }}>{titleFromProject(project)}</div>
               <div style={{ marginTop: 8, color: '#64748b' }}>
                 {String(project.client_name || project.opdrachtgever || 'Geen opdrachtgever')} · {String(project.execution_class || project.executieklasse || 'Geen EXC')}
               </div>
-            </div>
+            </button>
             <div style={surfaceStyle()}>
               <div style={{ fontSize: 12, fontWeight: 700, color: '#3b82f6', textTransform: 'uppercase' }}>Status</div>
               <div style={{ marginTop: 12, fontWeight: 700, color: statusTone(String(project.status || '')) }}>
@@ -195,22 +252,52 @@ export function Project360Page() {
         </section>
       </div>
     );
-  }, [assemblies, currentTab, inspections, inspectionsQuery.data?.total, project, projectId, projectQuery.isError, projectQuery.isLoading, welds]);
+  }, [assemblies, currentTab, inspections, inspectionsQuery.data?.total, navigate, patchWeldStatus, project, projectId, projectQuery.isError, projectQuery.isLoading, welds]);
 
   return (
-    <ProjectTabShell
-      projectId={String(projectId || '')}
-      currentTab={currentTab}
-      onBack={() => navigate('/projecten')}
-      onCreateProject={() => navigate('/projecten', { state: { intent: 'create-project' } })}
-      onEditProject={() => navigate('/projecten')}
-      onCreateAssembly={() => navigate(`/projecten/${projectId}/assemblies`)}
-      onCreateWeld={() => navigate(`/projecten/${projectId}/lassen`)}
-      filters={filters}
-      kpis={kpis}
-    >
-      {content}
-    </ProjectTabShell>
+    <>
+      <ProjectTabShell
+        projectId={String(projectId || '')}
+        currentTab={currentTab}
+        onBack={() => navigate('/projecten')}
+        onCreateProject={() => navigate('/projecten', { state: { intent: 'create-project' } })}
+        onEditProject={() => navigate('/projecten', { state: { intent: 'edit-project', projectId } })}
+        onCreateAssembly={() => navigate(`/projecten/${projectId}/assemblies`)}
+        onCreateWeld={() => navigate(`/projecten/${projectId}/lassen`)}
+        exportSelectionLabel="PDF export bij selectie"
+        exportSelectionDisabled
+        filters={filters}
+        kpis={kpis}
+      >
+        {content}
+      </ProjectTabShell>
+
+      <WeldInspectionModal
+        open={Boolean(selectedWeld)}
+        weld={selectedWeld}
+        inspection={selectedInspection}
+        savingWeld={updateWeld.isPending}
+        savingInspection={saveInspection.isPending}
+        onClose={() => setSelectedWeld(null)}
+        onQuickStatus={async (status) => {
+          if (!selectedWeld) return;
+          await patchWeldStatus.mutateAsync({ weldId: selectedWeld.id, status });
+          await selectedInspectionQuery.refetch();
+          await weldsQuery.refetch();
+        }}
+        onSaveWeld={async (payload: WeldFormValues) => {
+          if (!selectedWeld) return;
+          await updateWeld.mutateAsync({ weldId: selectedWeld.id, payload });
+          await weldsQuery.refetch();
+        }}
+        onSaveInspection={async (payload) => {
+          if (!selectedWeld) return;
+          await saveInspection.mutateAsync(payload);
+          await selectedInspectionQuery.refetch();
+          await weldsQuery.refetch();
+        }}
+      />
+    </>
   );
 }
 

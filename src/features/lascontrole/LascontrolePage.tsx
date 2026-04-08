@@ -1,15 +1,19 @@
 import { useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import ProjectTabShell from '@/app/layout/ProjectTabShell';
+import { ProjectKpiActionCard } from '@/features/projecten/components/ProjectKpiActionCard';
 import { useProjectWelds } from '@/hooks/useProjects';
 import { useUpsertWeldInspection, useWeldInspection } from '@/hooks/useInspections';
+import { usePatchWeldStatus, useUpdateWeld } from '@/hooks/useWelds';
+import { WeldInspectionModal } from '@/features/lascontrole/components/WeldInspectionModal';
 import type { Inspection, Weld, WeldStatus } from '@/types/domain';
+import type { WeldFormValues } from '@/types/forms';
 
 function normalizeStatus(value: unknown): WeldStatus {
   const raw = String(value || '').toLowerCase();
-  if (raw === 'conform') return 'conform';
   if (raw === 'gerepareerd') return 'gerepareerd';
-  return 'defect';
+  if (raw === 'defect') return 'defect';
+  return 'conform';
 }
 
 function toStatusLabel(status: WeldStatus) {
@@ -27,12 +31,14 @@ function surfaceStyle(): React.CSSProperties {
   };
 }
 
-function buttonStyle(primary = false): React.CSSProperties {
+function buttonStyle(activeStatus?: WeldStatus, status?: WeldStatus): React.CSSProperties {
+  const isActive = activeStatus === status;
+  const isDefect = status === 'defect';
   return {
     borderRadius: 12,
-    border: primary ? '1px solid #2563eb' : '1px solid #cbd5e1',
-    background: primary ? '#2563eb' : '#ffffff',
-    color: primary ? '#ffffff' : '#0f172a',
+    border: `1px solid ${isActive ? (isDefect ? '#ef4444' : '#16a34a') : '#cbd5e1'}`,
+    background: isActive ? (isDefect ? '#fee2e2' : '#dcfce7') : '#ffffff',
+    color: isActive ? (isDefect ? '#991b1b' : '#166534') : '#0f172a',
     fontWeight: 600,
     padding: '10px 14px',
     cursor: 'pointer',
@@ -42,13 +48,23 @@ function buttonStyle(primary = false): React.CSSProperties {
 export function LascontrolePage() {
   const { projectId } = useParams();
   const navigate = useNavigate();
-  const weldsQuery = useProjectWelds(projectId, { page: 1, limit: 50 });
+  const location = useLocation();
+  const statusFilter = new URLSearchParams(location.search).get('status');
+  const weldsQuery = useProjectWelds(projectId, { page: 1, limit: 200 });
   const welds = (weldsQuery.data?.items || []) as Weld[];
 
   const [selectedWeld, setSelectedWeld] = useState<Weld | null>(null);
   const inspectionQuery = useWeldInspection(projectId, selectedWeld?.id);
   const saveInspection = useUpsertWeldInspection(String(projectId || ''), String(selectedWeld?.id || ''));
+  const updateWeld = useUpdateWeld(String(projectId || ''));
+  const patchWeldStatus = usePatchWeldStatus(String(projectId || ''));
   const inspection = inspectionQuery.data as Inspection | null;
+
+  const visibleWelds = useMemo(() => {
+    const normalizedFilter = normalizeStatus(statusFilter || 'conform');
+    if (!statusFilter) return welds;
+    return welds.filter((item) => normalizeStatus(item.status) === normalizedFilter);
+  }, [statusFilter, welds]);
 
   const stats = useMemo(() => {
     const total = welds.length;
@@ -60,6 +76,7 @@ export function LascontrolePage() {
 
   async function applyStatus(weld: Weld, status: WeldStatus) {
     setSelectedWeld(weld);
+    await patchWeldStatus.mutateAsync({ weldId: weld.id, status });
 
     const checks = Array.isArray(inspection?.checks) && inspection.checks.length
       ? inspection.checks.map((check) => ({
@@ -76,109 +93,133 @@ export function LascontrolePage() {
 
     await saveInspection.mutateAsync({
       status,
+      template_id: inspection?.template_id ? String(inspection.template_id) : undefined,
       remarks: typeof inspection?.remarks === 'string' ? inspection.remarks : '',
       checks,
     });
 
+    await weldsQuery.refetch();
     await inspectionQuery.refetch();
   }
 
   const filters = (
-    <input
-      placeholder="Zoek op las, locatie, lasser of status"
-      style={{ width: '100%', padding: 14, borderRadius: 12, border: '1px solid #cbd5e1' }}
-    />
-  );
-
-  const kpis = (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
-      <div style={surfaceStyle()}><div style={{ fontSize: 12, fontWeight: 700, color: '#3b82f6', textTransform: 'uppercase' }}>Lassen</div><div style={{ fontSize: 40, fontWeight: 700, marginTop: 8 }}>{stats.total}</div><div style={{ color: '#64748b', marginTop: 8 }}>Direct bewerkbaar via dubbelklik.</div></div>
-      <div style={surfaceStyle()}><div style={{ fontSize: 12, fontWeight: 700, color: '#3b82f6', textTransform: 'uppercase' }}>Conform</div><div style={{ fontSize: 40, fontWeight: 700, marginTop: 8 }}>{stats.conform}</div><div style={{ color: '#64748b', marginTop: 8 }}>Groene eindstatus.</div></div>
-      <div style={surfaceStyle()}><div style={{ fontSize: 12, fontWeight: 700, color: '#3b82f6', textTransform: 'uppercase' }}>Defecten</div><div style={{ fontSize: 40, fontWeight: 700, marginTop: 8 }}>{stats.defect}</div><div style={{ color: '#64748b', marginTop: 8 }}>Rode eindstatus / defectflow.</div></div>
-      <div style={surfaceStyle()}><div style={{ fontSize: 12, fontWeight: 700, color: '#3b82f6', textTransform: 'uppercase' }}>Gerepareerd</div><div style={{ fontSize: 40, fontWeight: 700, marginTop: 8 }}>{stats.gerepareerd}</div><div style={{ color: '#64748b', marginTop: 8 }}>Herstelde lassen en inspecties.</div></div>
+    <div style={{ display: 'grid', gap: 12 }}>
+      <input
+        placeholder="Zoek op las, locatie, lasser of status"
+        style={{ width: '100%', padding: 14, borderRadius: 12, border: '1px solid #cbd5e1' }}
+      />
+      {statusFilter ? <div style={{ color: '#64748b' }}>Actief statusfilter: <strong>{toStatusLabel(normalizeStatus(statusFilter))}</strong></div> : null}
     </div>
   );
 
+  const kpis = [
+    <ProjectKpiActionCard
+      key="welds"
+      label="Lassen"
+      value={stats.total}
+      meta="Klik om de lassenlijst te openen"
+      onClick={() => navigate(`/projecten/${projectId}/lassen`)}
+      testId="lascontrole-kpi-welds"
+    />,
+    <ProjectKpiActionCard
+      key="conform"
+      label="Conform"
+      value={stats.conform}
+      meta="Klik om conforme lassen in de lascontrole te bekijken"
+      onClick={() => navigate(`/projecten/${projectId}/lascontrole?status=conform`)}
+      testId="lascontrole-kpi-conform"
+    />,
+    <ProjectKpiActionCard
+      key="defect"
+      label="Defecten"
+      value={stats.defect}
+      meta="Klik om defecten in de lascontrole te bekijken"
+      onClick={() => navigate(`/projecten/${projectId}/lascontrole?status=defect`)}
+      testId="lascontrole-kpi-defect"
+    />,
+    <ProjectKpiActionCard
+      key="gerepareerd"
+      label="Gerepareerd"
+      value={stats.gerepareerd}
+      meta="Klik om gerepareerde lassen in de lascontrole te bekijken"
+      onClick={() => navigate(`/projecten/${projectId}/lascontrole?status=gerepareerd`)}
+      testId="lascontrole-kpi-gerepareerd"
+    />,
+  ];
+
   return (
-    <ProjectTabShell
-      projectId={String(projectId || '')}
-      currentTab="lascontrole"
-      onBack={() => navigate('/projecten')}
-      onCreateProject={() => navigate('/projecten', { state: { intent: 'create-project' } })}
-      onEditProject={() => navigate('/projecten')}
-      onCreateAssembly={() => navigate(`/projecten/${projectId}/assemblies`)}
-      onCreateWeld={() => navigate(`/projecten/${projectId}/lassen`)}
-      filters={filters}
-      kpis={kpis}
-    >
-      <div style={{ display: 'grid', gap: 12 }}>
-        <div style={{ ...surfaceStyle(), display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: '#3b82f6', textTransform: 'uppercase' }}>Dubbelklik opent “Las wijzigen”</div>
-          <span style={buttonStyle()}>{stats.conform} conform</span>
-          <span style={buttonStyle()}>{stats.defect} defect</span>
-          <span style={buttonStyle()}>{stats.gerepareerd} gerepareerd</span>
-          <button type="button" style={buttonStyle()} onClick={() => navigate(`/projecten/${projectId}/lassen`)}>Alles akkoord</button>
-          <button type="button" style={buttonStyle(true)} onClick={() => navigate(`/projecten/${projectId}/lassen`)}>+ Nieuwe las</button>
-        </div>
-
-        {welds.map((weld) => (
-          <div key={String(weld.id)} style={surfaceStyle()} onDoubleClick={() => setSelectedWeld(weld)}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1.4fr auto auto auto auto auto', gap: 12, alignItems: 'center' }}>
-              <div>
-                <strong>{weld.weld_number || weld.weld_no || `Las ${weld.id}`}</strong>
-                <div style={{ marginTop: 8, color: '#64748b' }}>
-                  {String(weld.location || 'Locatie onbekend')} · {String(weld.welder_name || 'Geen lasser')}
-                </div>
-              </div>
-              <span style={buttonStyle()}>{toStatusLabel(normalizeStatus(weld.status))}</span>
-              <button type="button" style={buttonStyle()} onClick={() => setSelectedWeld(weld)}>Wijzigen</button>
-              <button type="button" style={buttonStyle()} onClick={() => setSelectedWeld(weld)}>Inspectie</button>
-              <button type="button" style={buttonStyle()} onClick={() => void applyStatus(weld, 'conform')}>Conform</button>
-              <button type="button" style={buttonStyle()} onClick={() => void applyStatus(weld, 'defect')}>Defect</button>
-            </div>
+    <>
+      <ProjectTabShell
+        projectId={String(projectId || '')}
+        currentTab="lascontrole"
+        onBack={() => navigate('/projecten')}
+        onCreateProject={() => navigate('/projecten', { state: { intent: 'create-project' } })}
+        onEditProject={() => navigate('/projecten', { state: { intent: 'edit-project', projectId } })}
+        onCreateAssembly={() => navigate(`/projecten/${projectId}/assemblies`)}
+        onCreateWeld={() => navigate(`/projecten/${projectId}/lassen`)}
+        exportSelectionLabel="PDF export bij selectie"
+        exportSelectionDisabled
+        filters={filters}
+        kpis={kpis}
+      >
+        <div style={{ display: 'grid', gap: 12 }}>
+          <div style={{ ...surfaceStyle(), display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#3b82f6', textTransform: 'uppercase' }}>Dubbelklik opent “Las wijzigen”</div>
+            <span style={buttonStyle('conform', 'conform')}>{stats.conform} conform</span>
+            <span style={buttonStyle('defect', 'defect')}>{stats.defect} defect</span>
+            <span style={buttonStyle('gerepareerd', 'gerepareerd')}>{stats.gerepareerd} gerepareerd</span>
           </div>
-        ))}
 
-        {selectedWeld ? (
-          <div style={surfaceStyle()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
-              <h3 style={{ margin: 0 }}>Las wijzigen</h3>
-              <button type="button" style={buttonStyle()} onClick={() => setSelectedWeld(null)}>Sluiten</button>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginTop: 16 }}>
-              <div style={surfaceStyle()}><div style={{ fontSize: 12, fontWeight: 700, color: '#3b82f6', textTransform: 'uppercase' }}>Las</div><div style={{ marginTop: 8, fontWeight: 700 }}>{selectedWeld.weld_number || selectedWeld.weld_no || selectedWeld.id}</div></div>
-              <div style={surfaceStyle()}><div style={{ fontSize: 12, fontWeight: 700, color: '#3b82f6', textTransform: 'uppercase' }}>Executieklasse</div><div style={{ marginTop: 8, fontWeight: 700 }}>{String(selectedWeld.execution_class || 'Van project')}</div></div>
-              <div style={surfaceStyle()}><div style={{ fontSize: 12, fontWeight: 700, color: '#3b82f6', textTransform: 'uppercase' }}>Template</div><div style={{ marginTop: 8, fontWeight: 700 }}>{String(inspection?.template_id || 'Automatisch')}</div></div>
-              <div style={surfaceStyle()}><div style={{ fontSize: 12, fontWeight: 700, color: '#3b82f6', textTransform: 'uppercase' }}>Status</div><div style={{ marginTop: 8, fontWeight: 700 }}>{toStatusLabel(normalizeStatus(inspection?.status || selectedWeld.status))}</div></div>
-            </div>
-
-            <div style={{ display: 'grid', gap: 12, marginTop: 16 }}>
-              {(inspection?.checks?.length ? inspection.checks : [
-                { group_key: 'algemeen', criterion_key: 'VISUAL_BASE', status: 'conform' },
-                { group_key: 'maatvoering', criterion_key: 'DIMENSION_CHECK', status: 'conform' },
-              ]).map((check, index) => (
-                <div key={`${check.criterion_key || index}`} style={{ ...surfaceStyle(), display: 'grid', gridTemplateColumns: '1fr auto auto auto', gap: 12, alignItems: 'center' }}>
+          {visibleWelds.map((weld) => {
+            const weldStatus = normalizeStatus(weld.status);
+            return (
+              <div key={String(weld.id)} style={surfaceStyle()} onDoubleClick={() => setSelectedWeld(weld)}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(260px, 1.5fr) repeat(5, auto)', gap: 12, alignItems: 'center' }}>
                   <div>
-                    <strong>{String(check.criterion_key || `Check ${index + 1}`)}</strong>
-                    <div style={{ marginTop: 8, color: '#64748b' }}>{String(check.group_key || 'algemeen')}</div>
+                    <strong>{weld.weld_number || weld.weld_no || `Las ${weld.id}`}</strong>
+                    <div style={{ marginTop: 8, color: '#64748b' }}>
+                      {String(weld.location || 'Locatie onbekend')} · {String(weld.welder_name || 'Geen lasser')} · {String(weld.execution_class || 'Geen EXC')}
+                    </div>
                   </div>
-                  <span style={buttonStyle()}>{toStatusLabel(normalizeStatus(check.status))}</span>
-                  <button type="button" style={buttonStyle()} onClick={() => void applyStatus(selectedWeld, 'conform')}>Conform</button>
-                  <button type="button" style={buttonStyle()} onClick={() => void applyStatus(selectedWeld, 'defect')}>Defect</button>
+                  <span style={buttonStyle(weldStatus, weldStatus)}>{toStatusLabel(weldStatus)}</span>
+                  <button type="button" style={buttonStyle()} onClick={() => setSelectedWeld(weld)}>Wijzigen</button>
+                  <button type="button" style={buttonStyle()} onClick={() => setSelectedWeld(weld)}>Inspectie</button>
+                  <button type="button" style={buttonStyle(weldStatus, 'conform')} onClick={() => void applyStatus(weld, 'conform')}>Conform</button>
+                  <button type="button" style={buttonStyle(weldStatus, 'defect')} onClick={() => void applyStatus(weld, 'defect')}>Defect</button>
+                  <button type="button" style={buttonStyle(weldStatus, 'gerepareerd')} onClick={() => void applyStatus(weld, 'gerepareerd')}>Gerepareerd</button>
                 </div>
-              ))}
-            </div>
-
-            {saveInspection.isError ? (
-              <div style={{ marginTop: 16, color: '#dc2626' }}>
-                Inspectie opslaan mislukt: {saveInspection.error instanceof Error ? saveInspection.error.message : 'Onbekende fout'}
               </div>
-            ) : null}
-          </div>
-        ) : null}
-      </div>
-    </ProjectTabShell>
+            );
+          })}
+
+          {!visibleWelds.length ? <div style={surfaceStyle()}>Geen lassen gevonden voor dit filter.</div> : null}
+        </div>
+      </ProjectTabShell>
+
+      <WeldInspectionModal
+        open={Boolean(selectedWeld)}
+        weld={selectedWeld}
+        inspection={inspection}
+        savingWeld={updateWeld.isPending}
+        savingInspection={saveInspection.isPending}
+        onClose={() => setSelectedWeld(null)}
+        onQuickStatus={async (status) => {
+          if (!selectedWeld) return;
+          await patchWeldStatus.mutateAsync({ weldId: selectedWeld.id, status });
+        }}
+        onSaveWeld={async (payload: WeldFormValues) => {
+          if (!selectedWeld) return;
+          await updateWeld.mutateAsync({ weldId: selectedWeld.id, payload });
+          await weldsQuery.refetch();
+        }}
+        onSaveInspection={async (payload) => {
+          if (!selectedWeld) return;
+          await saveInspection.mutateAsync(payload);
+          await weldsQuery.refetch();
+          await inspectionQuery.refetch();
+        }}
+      />
+    </>
   );
 }
 

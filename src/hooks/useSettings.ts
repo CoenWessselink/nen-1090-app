@@ -8,6 +8,7 @@ import {
   deleteMaterial,
   deleteWelder,
   deleteWps,
+  duplicateInspectionTemplate,
   getInspectionTemplates,
   getMaterials,
   getSettings,
@@ -107,5 +108,13 @@ export function useDeleteMasterData() {
   return useMutation({
     mutationFn: ({ type, id }: { type: MasterDataType; id: string | number }) => deleteHandlers[type](id),
     onSuccess: (_, variables) => queryClient.invalidateQueries({ queryKey: [`settings-${variables.type}`] }),
+  });
+}
+
+export function useDuplicateInspectionTemplate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string | number) => duplicateInspectionTemplate(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['settings-inspection-templates'] }),
   });
 }

@@ -3,7 +3,7 @@ import { Card } from '@/components/ui/Card';
 import { ProjectContextTabs } from '@/features/projecten/components/ProjectContextTabs';
 import { ProjectTopActionBar } from '@/features/projecten/components/ProjectTopActionBar';
 
-type ProjectTabShellProps = {
+export type ProjectTabShellProps = {
   projectId: string;
   currentTab: string;
   onBack: () => void;
