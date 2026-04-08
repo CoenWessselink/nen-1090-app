@@ -5,6 +5,8 @@ import type { WeldFormValues } from '@/types/forms';
 
 type PagedResponse<T> = ApiListResponse<T> | T[] | { items?: T[]; total?: number; page?: number; limit?: number; data?: T[] };
 
+type WeldStatus = 'conform' | 'defect' | 'gerepareerd';
+
 function normalizePagedList<T>(response: PagedResponse<T>, fallbackLimit = 25) {
   if (Array.isArray(response)) {
     return {
@@ -29,17 +31,15 @@ function normalizePagedList<T>(response: PagedResponse<T>, fallbackLimit = 25) {
   };
 }
 
-
-function normalizeExecutionClass(value: unknown): '' | 'EXC1' | 'EXC2' | 'EXC3' | 'EXC4' {
-  const raw = String(value || '').trim().toUpperCase();
-  return raw in {'EXC1':1,'EXC2':1,'EXC3':1,'EXC4':1} ? (raw as '' | 'EXC1' | 'EXC2' | 'EXC3' | 'EXC4') : '';
+function normalizeStatus(value: unknown): WeldStatus {
+  const raw = String(value || '').trim().toLowerCase();
+  if (raw === 'conform' || raw === 'approved' || raw === 'ok') return 'conform';
+  if (raw === 'gerepareerd' || raw === 'resolved' || raw === 'repaired') return 'gerepareerd';
+  return 'defect';
 }
 
-function normalizeStatus(value: unknown): 'conform' | 'defect' | 'gerepareerd' {
-  const raw = String(value || '').trim().toLowerCase();
-  if (raw === 'gerepareerd' || raw === 'repaired' || raw === 'resolved') return 'gerepareerd';
-  if (raw === 'conform' || raw === 'ok' || raw === 'approved') return 'conform';
-  return 'defect';
+function projectWeldsBase(projectId: string | number) {
+  return `/projects/${projectId}/welds`;
 }
 
 function mapWeldPayload(payload: WeldFormValues & { id?: string | number }) {
@@ -57,7 +57,7 @@ function mapWeldPayload(payload: WeldFormValues & { id?: string | number }) {
     wps_id: payload.wps_id || null,
     execution_class: payload.execution_class || null,
     template_id: payload.template_id || null,
-    status: normalizeStatus(payload.status || 'conform'),
+    status: normalizeStatus(payload.status || 'defect'),
   };
 }
 
@@ -75,26 +75,16 @@ function normalizeWeld(row: Record<string, unknown>): Weld {
     wps: String(row.wps || row.wps_id || ''),
     location: String(row.location || ''),
     process: String(row.process || ''),
-    status: normalizeStatus(row.status || 'conform'),
-    execution_class: normalizeExecutionClass(row.execution_class),
+    status: normalizeStatus(row.status || 'defect'),
+    execution_class: row.execution_class ? String(row.execution_class) : '',
     template_id: row.template_id ? String(row.template_id) : '',
   };
 }
 
-function resolveProjectId(
-  projectId?: string | number | null,
-  payload?: Partial<WeldFormValues> | Record<string, unknown> | null,
-): string {
-  const fromProjectId = String(projectId ?? '').trim();
-  if (fromProjectId) return fromProjectId;
-  const fromPayload = String(payload?.project_id ?? '').trim();
-  return fromPayload;
-}
-
 export async function getWelds(params?: ListParams) {
-  const projectId = resolveProjectId(undefined, params as Record<string, unknown>);
+  const projectId = params?.project_id;
   const response = projectId
-    ? await listRequest<PagedResponse<Weld>>(`/projects/${projectId}/welds`, params)
+    ? await listRequest<PagedResponse<Weld>>(projectWeldsBase(String(projectId)), params)
     : await listRequest<PagedResponse<Weld>>('/welds', params);
   const paged = normalizePagedList<Weld>(response, params?.limit || 25);
   return {
@@ -105,55 +95,25 @@ export async function getWelds(params?: ListParams) {
 
 export async function getWeld(projectId: string | number, weldId: string | number) {
   const scoped = await optionalRequest<Record<string, unknown>>([
-    `/projects/${projectId}/welds/${weldId}`,
+    `${projectWeldsBase(projectId)}/${weldId}`,
     `/welds/${weldId}`,
   ]);
-  if (scoped) return normalizeWeld(scoped);
-
-  const rows = await getWelds({ project_id: String(projectId) });
-  const match = rows.items.find((item) => String(item.id) === String(weldId));
-  if (!match) throw new Error('Las niet gevonden in huidige API-response.');
-  return match;
+  if (!scoped) throw new Error('Las niet gevonden.');
+  return normalizeWeld(scoped);
 }
 
 export async function createWeld(payload: WeldFormValues) {
-  const projectId = resolveProjectId(undefined, payload);
-  const body = JSON.stringify(mapWeldPayload(payload));
-
-  const created = projectId
-    ? await optionalRequest<Record<string, unknown>>([
-        `/projects/${projectId}/welds`,
-        '/welds',
-      ], {
-        method: 'POST',
-        body,
-      })
-    : await apiRequest<Record<string, unknown>>('/welds', {
-        method: 'POST',
-        body,
-      });
-
-  if (!created) throw new Error('Las aanmaken mislukt. Geen bruikbaar endpoint gevonden.');
-
-  const createdId = created?.id || created?.weld_id;
-  if (!createdId) return created;
-  return await getWeld(projectId || String(payload.project_id || ''), createdId as string | number);
+  if (!payload.project_id) throw new Error('Project-ID ontbreekt bij het aanmaken van een las.');
+  const response = await apiRequest<Record<string, unknown>>(projectWeldsBase(String(payload.project_id)), {
+    method: 'POST',
+    body: JSON.stringify(mapWeldPayload(payload)),
+  });
+  const createdId = response?.id || response?.weld_id;
+  if (!createdId) return normalizeWeld(response);
+  return await getWeld(String(payload.project_id), createdId as string | number);
 }
 
 export async function copyWeld(projectId: string | number, weldId: string | number, weldNumber?: string) {
-  const copied = await optionalRequest<Record<string, unknown>>([
-    `/projects/${projectId}/welds/${weldId}/copy`,
-  ], {
-    method: 'POST',
-    body: JSON.stringify({ weld_number: weldNumber || null }),
-  });
-
-  if (copied) {
-    const copiedId = copied.id || copied.weld_id;
-    if (copiedId) return getWeld(projectId, copiedId as string | number);
-    return copied;
-  }
-
   const source = await getWeld(projectId, weldId);
   return await createWeld({
     project_id: String(source.project_id || projectId || ''),
@@ -163,40 +123,37 @@ export async function copyWeld(projectId: string | number, weldId: string | numb
     welder_name: String(source.welder_name || source.welders || ''),
     process: String(source.process || '135'),
     location: String(source.location || ''),
-    status: normalizeStatus(source.status || 'conform'),
-    execution_class: normalizeExecutionClass(source.execution_class),
+    execution_class: (String(source.execution_class || '') || '') as '' | 'EXC1' | 'EXC2' | 'EXC3' | 'EXC4',
     template_id: String(source.template_id || ''),
+    status: normalizeStatus(source.status || 'conform'),
   });
 }
 
 export async function updateWeld(projectId: string | number, weldId: string | number, payload: WeldFormValues) {
-  const resolvedProjectId = resolveProjectId(projectId, payload);
-  const body = JSON.stringify(mapWeldPayload({ ...payload, id: weldId, project_id: resolvedProjectId }));
-
+  const body = JSON.stringify(mapWeldPayload({ ...payload, id: weldId, project_id: String(projectId) }));
   const direct =
     (await optionalRequest<Record<string, unknown>>([
-      `/projects/${resolvedProjectId}/welds/${weldId}`,
+      `${projectWeldsBase(projectId)}/${weldId}`,
       `/welds/${weldId}`,
     ], {
       method: 'PUT',
       body,
     })) ||
     (await optionalRequest<Record<string, unknown>>([
-      `/projects/${resolvedProjectId}/welds/${weldId}`,
+      `${projectWeldsBase(projectId)}/${weldId}`,
       `/welds/${weldId}`,
     ], {
       method: 'PATCH',
       body,
     }));
 
-  if (direct) return normalizeWeld(direct);
-
-  throw new Error('Las opslaan mislukt. Geen bruikbaar endpoint gevonden.');
+  if (!direct) throw new Error('Las opslaan mislukt. Geen bruikbaar endpoint gevonden.');
+  return normalizeWeld(direct);
 }
 
 export async function deleteWeld(projectId: string | number, weldId: string | number) {
   const direct = await optionalRequest<Record<string, unknown>>([
-    `/projects/${projectId}/welds/${weldId}`,
+    `${projectWeldsBase(projectId)}/${weldId}`,
     `/welds/${weldId}`,
   ], {
     method: 'DELETE',
@@ -205,49 +162,33 @@ export async function deleteWeld(projectId: string | number, weldId: string | nu
   return { ok: false, unsupported: true };
 }
 
-export async function patchWeldStatus(projectId: string | number, weldId: string | number, status: 'conform' | 'defect' | 'gerepareerd') {
-  const normalized = normalizeStatus(status);
+export async function patchWeldStatus(projectId: string | number, weldId: string | number, status: WeldStatus) {
+  const response =
+    (await optionalRequest<Record<string, unknown>>([
+      `${projectWeldsBase(projectId)}/${weldId}/status`,
+      `/welds/${weldId}/status`,
+    ], {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    })) ||
+    (await optionalRequest<Record<string, unknown>>([
+      `${projectWeldsBase(projectId)}/${weldId}`,
+      `/welds/${weldId}`,
+    ], {
+      method: 'PUT',
+      body: JSON.stringify({ status }),
+    }));
 
-  const direct = await optionalRequest<Record<string, unknown>>([
-    `/projects/${projectId}/welds/${weldId}/status`,
-  ], {
-    method: 'PATCH',
-    body: JSON.stringify({ status: normalized }),
-  });
-
-  if (direct) return { id: String(direct.id || weldId), status: normalizeStatus(direct.status || normalized) };
-
-  const updated = await updateWeld(projectId, weldId, {
-    project_id: String(projectId),
-    weld_number: String((await getWeld(projectId, weldId)).weld_number || ''),
-    assembly_id: String((await getWeld(projectId, weldId)).assembly_id || ''),
-    wps_id: String((await getWeld(projectId, weldId)).wps_id || ''),
-    welder_name: String((await getWeld(projectId, weldId)).welder_name || ''),
-    process: String((await getWeld(projectId, weldId)).process || '135'),
-    location: String((await getWeld(projectId, weldId)).location || ''),
-    status: normalized,
-    execution_class: normalizeExecutionClass((await getWeld(projectId, weldId)).execution_class),
-    template_id: String((await getWeld(projectId, weldId)).template_id || ''),
-  });
-  return { id: String(updated.id || weldId), status: normalizeStatus(updated.status || normalized) };
+  if (!response) throw new Error('Status wijzigen mislukt. Geen bruikbaar endpoint gevonden.');
+  return { id: String(response.id || weldId), status: normalizeStatus(response.status || status) };
 }
 
 export async function getWeldInspections(projectId: string | number, weldId: string | number) {
   const direct =
-    (await optionalRequest<Record<string, unknown> | PagedResponse<Inspection>>([
-      `/projects/${projectId}/welds/${weldId}/inspection`,
-      `/welds/${weldId}/inspection`,
-      `/projects/${projectId}/welds/${weldId}/inspections`,
-    ])) ||
+    (await optionalRequest<PagedResponse<Inspection>>([`${projectWeldsBase(projectId)}/${weldId}/inspections`])) ||
     (await listRequest<PagedResponse<Inspection>>('/inspections', { weld_id: String(weldId) } as ListParams));
 
-  const detail = direct as { exists?: boolean; inspection?: Record<string, unknown> | null } | null;
-  if (detail && !Array.isArray(direct) && typeof direct === 'object' && 'inspection' in detail) {
-    const inspection = detail.exists === false ? null : detail.inspection;
-    return normalizePagedList<Inspection>(inspection ? [inspection as Inspection] : [], 25);
-  }
-
-  return normalizePagedList<Inspection>(direct as PagedResponse<Inspection>, 25);
+  return normalizePagedList<Inspection>(direct, 25);
 }
 
 export async function getWeldDefects(projectId: string | number, weldId: string | number) {
@@ -261,9 +202,7 @@ export async function getWeldDefects(projectId: string | number, weldId: string 
 
 export async function getWeldAttachments(projectId: string | number, weldId: string | number) {
   const direct =
-    (await optionalRequest<PagedResponse<CeDocument>>([
-      `/projects/${projectId}/welds/${weldId}/attachments`,
-    ])) ||
+    (await optionalRequest<PagedResponse<CeDocument>>([`${projectWeldsBase(projectId)}/${weldId}/attachments`])) ||
     (await listRequest<PagedResponse<CeDocument>>('/photos', {
       project_id: String(projectId),
       weld_id: String(weldId),
@@ -273,9 +212,7 @@ export async function getWeldAttachments(projectId: string | number, weldId: str
 }
 
 export async function uploadWeldAttachment(projectId: string | number, weldId: string | number, payload: FormData) {
-  const direct = await optionalRequest<Record<string, unknown>>([
-    `/projects/${projectId}/welds/${weldId}/attachments`,
-  ], {
+  const direct = await optionalRequest<Record<string, unknown>>([`${projectWeldsBase(projectId)}/${weldId}/attachments`], {
     method: 'POST',
     body: payload,
   });
@@ -300,7 +237,7 @@ export async function uploadWeldAttachment(projectId: string | number, weldId: s
 }
 
 export async function getWeldCompliance(projectId: string | number, weldId: string | number) {
-  const direct = await optionalRequest<ComplianceOverview>([`/projects/${projectId}/welds/${weldId}/compliance`]);
+  const direct = await optionalRequest<ComplianceOverview>([`${projectWeldsBase(projectId)}/${weldId}/compliance`]);
   if (direct) return direct;
 
   const inspections = await getWeldInspections(projectId, weldId);
@@ -321,61 +258,38 @@ export async function getWeldCompliance(projectId: string | number, weldId: stri
 }
 
 export async function resetWeldToNorm(projectId: string | number, weldId: string | number) {
-  const direct = await optionalRequest<Record<string, unknown>>([
-    `/projects/${projectId}/welds/${weldId}/reset-to-norm`,
-  ], {
+  const direct = await optionalRequest<Record<string, unknown>>([`${projectWeldsBase(projectId)}/${weldId}/reset-to-norm`], {
     method: 'POST',
   });
   if (direct) return direct;
 
-  const current = await getWeld(projectId, weldId);
   return await updateWeld(projectId, weldId, {
-    project_id: String(current.project_id || projectId || ''),
-    weld_number: String(current.weld_number || current.weld_no || ''),
-    assembly_id: String(current.assembly_id || ''),
-    wps_id: String(current.wps_id || current.wps || ''),
-    welder_name: String(current.welder_name || current.welders || ''),
-    process: String(current.process || '135'),
-    location: String(current.location || ''),
-    status: 'defect',
-    execution_class: normalizeExecutionClass(current.execution_class),
-    template_id: String(current.template_id || ''),
+    project_id: String(projectId),
+    weld_number: String(weldId),
+    location: '',
+    status: 'conform',
   });
 }
 
 export async function conformWeld(projectId: string | number, weldId: string | number) {
-  const direct = await optionalRequest<Record<string, unknown>>([
-    `/projects/${projectId}/welds/${weldId}/conform`,
-  ], {
+  const direct = await optionalRequest<Record<string, unknown>>([`${projectWeldsBase(projectId)}/${weldId}/conform`], {
     method: 'POST',
   });
   if (direct) return direct;
 
-  const current = await getWeld(projectId, weldId);
   return await updateWeld(projectId, weldId, {
-    project_id: String(current.project_id || projectId || ''),
-    weld_number: String(current.weld_number || current.weld_no || ''),
-    assembly_id: String(current.assembly_id || ''),
-    wps_id: String(current.wps_id || current.wps || ''),
-    welder_name: String(current.welder_name || current.welders || ''),
-    process: String(current.process || '135'),
-    location: String(current.location || ''),
+    project_id: String(projectId),
+    weld_number: String(weldId),
+    location: '',
     status: 'conform',
-    execution_class: normalizeExecutionClass(current.execution_class),
-    template_id: String(current.template_id || ''),
   });
 }
 
 export async function bulkApproveWelds(projectId: string | number, weldIds: Array<string | number>) {
-  const direct = await optionalRequest<Record<string, unknown>>([
-    `/projects/${projectId}/welds/bulk-approve`,
-  ], {
+  const direct = await optionalRequest<Record<string, unknown>>([`${projectWeldsBase(projectId)}/bulk-approve`], {
     method: 'POST',
-    body: JSON.stringify({ weld_ids: weldIds }),
+    body: JSON.stringify({ weld_ids: weldIds.map(String) }),
   });
-  if (direct) return { ok: true, count: Number(direct.approved || direct.count || weldIds.length), items: weldIds };
-
-  const results = [];
-  for (const weldId of weldIds) results.push(await conformWeld(projectId, weldId));
-  return { ok: true, count: results.length, items: results };
+  if (direct) return direct;
+  return { ok: false, unsupported: true };
 }

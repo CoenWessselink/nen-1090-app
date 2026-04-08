@@ -29,6 +29,10 @@ function normalizeStatus(value: unknown): WeldStatus {
   return 'defect';
 }
 
+function weldInspectionPath(weldId: string | number) {
+  return `/welds/${weldId}/inspection`;
+}
+
 function normalizeCheck(row: Record<string, unknown>) {
   return {
     id: row.id as string | number | undefined,
@@ -45,6 +49,7 @@ function normalizeInspection(row: Record<string, unknown>): Inspection {
     ...(row as Inspection),
     id: row.id as string | number,
     weld_id: row.weld_id as string | number | undefined,
+    project_id: row.project_id as string | number | undefined,
     template_id: row.template_id as string | number | undefined,
     result: normalizeStatus(row.result || row.status || row.overall_status || 'defect'),
     status: normalizeStatus(row.status || row.result || row.overall_status || 'defect'),
@@ -84,52 +89,27 @@ export async function getInspection(inspectionId: string | number) {
   return normalizeInspection(direct);
 }
 
-export async function getInspectionForWeld(projectId: string | number, weldId: string | number) {
-  const scoped = await optionalRequest<InspectionDetailResponse>([
-    `/projects/${projectId}/welds/${weldId}/inspection`,
-    `/welds/${weldId}/inspection`,
-    `/projects/${projectId}/welds/${weldId}/inspections`,
-  ]);
+export async function getInspectionForWeld(_projectId: string | number, weldId: string | number) {
+  const scoped = await optionalRequest<InspectionDetailResponse>([weldInspectionPath(weldId)]);
   if (!scoped) return null;
-
   const record = scoped as { exists?: boolean; inspection?: Record<string, unknown> | null };
   if (record.exists === false) return null;
-
-  if (record.inspection && typeof record.inspection === 'object') return normalizeInspection(record.inspection);
-
-  if (Array.isArray((scoped as { items?: unknown[] }).items)) {
-    const first = ((scoped as { items?: unknown[] }).items || [])[0];
-    return first && typeof first === 'object' ? normalizeInspection(first as Record<string, unknown>) : null;
-  }
-
-  return normalizeInspection(scoped as Record<string, unknown>);
+  const source = record.inspection && typeof record.inspection === 'object' ? record.inspection : (scoped as Record<string, unknown>);
+  return normalizeInspection(source);
 }
 
 export async function createInspection(projectId: string | number | undefined, weldId: string | number, payload: Record<string, unknown>) {
   const targetProjectId = String(projectId || payload.project_id || '');
-  const response = await optionalRequest<Record<string, unknown>>([
-    `/projects/${targetProjectId}/welds/${weldId}/inspections`,
-    `/welds/${weldId}/inspection`,
-  ], {
+  const response = await apiRequest<Record<string, unknown>>(`/projects/${targetProjectId}/welds/${weldId}/inspections`, {
     method: 'POST',
     body: JSON.stringify(payload),
   });
-
-  if (!response) throw new Error('Inspectie aanmaken mislukt. Geen bruikbaar endpoint gevonden.');
   return normalizeInspection(response);
-}
-
-async function requestInspectionUpsert(path: string, body: Record<string, unknown>) {
-  return apiRequest<Record<string, unknown>>(path, {
-    method: 'PUT',
-    body: JSON.stringify(body),
-  }, 0, true);
 }
 
 export async function upsertInspectionForWeld(projectId: string | number, weldId: string | number, payload: InspectionUpsertPayload) {
   const body = {
     overall_status: normalizeStatus(payload.status),
-    status: normalizeStatus(payload.status),
     template_id: payload.template_id || null,
     remarks: payload.remarks || null,
     inspector: payload.inspector || null,
@@ -143,25 +123,21 @@ export async function upsertInspectionForWeld(projectId: string | number, weldId
     })),
   };
 
-  const candidates = [
-    `/projects/${projectId}/welds/${weldId}/inspection`,
-    `/welds/${weldId}/inspection`,
-  ];
+  const putResponse = await optionalRequest<Record<string, unknown>>([weldInspectionPath(weldId)], {
+    method: 'PUT',
+    body: JSON.stringify(body),
+  });
+  if (putResponse) return normalizeInspection(putResponse);
 
-  for (const path of candidates) {
-    try {
-      const response = await requestInspectionUpsert(path, body);
-      return normalizeInspection(response);
-    } catch (error: unknown) {
-      if (typeof error === 'object' && error && 'status' in error) {
-        const status = Number((error as { status?: unknown }).status);
-        if (status === 404 || status === 405) {
-          continue;
-        }
-      }
-      throw error;
-    }
-  }
+  const postResponse = await optionalRequest<Record<string, unknown>>([`/projects/${projectId}/welds/${weldId}/inspections`], {
+    method: 'POST',
+    body: JSON.stringify({
+      status: body.overall_status,
+      result: body.overall_status,
+      notes: body.remarks,
+    }),
+  });
+  if (postResponse) return normalizeInspection(postResponse);
 
   throw new Error('Inspectie opslaan mislukt. Geen bruikbaar endpoint gevonden.');
 }
