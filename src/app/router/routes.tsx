@@ -13,6 +13,7 @@ import {
   Shield,
 } from 'lucide-react';
 import type { RouteObject } from 'react-router-dom';
+import DashboardPage from '@/features/dashboard/DashboardPage';
 import RapportagePage from '@/features/rapportage/RapportagePage';
 import LoginPage from '@/features/auth/LoginPage';
 import ForgotPasswordPage from '@/features/auth/ForgotPasswordPage';
@@ -41,7 +42,7 @@ export const appRouteMeta: AppRouteMeta[] = [
     path: '/dashboard',
     label: 'Dashboard',
     description: 'Hoofdoverzicht van het platform',
-    keywords: ['home', 'overview', 'dashboard'],
+    keywords: ['dashboard', 'overzicht', 'home'],
     showInSidebar: true,
     icon: LayoutDashboard,
   },
@@ -65,7 +66,7 @@ export const appRouteMeta: AppRouteMeta[] = [
     path: '/ce-dossier',
     label: 'CE dossier',
     description: 'CE documentatie en export',
-    keywords: ['ce', 'dossier', 'export'],
+    keywords: ['ce dossier', 'ce', 'export'],
     showInSidebar: true,
     icon: Shield,
   },
@@ -144,8 +145,8 @@ export const appRouteMeta: AppRouteMeta[] = [
 ];
 
 export const routerConfig: RouteObject[] = [
-  { path: '/', element: <Placeholder title="Dashboard" /> },
-  { path: '/dashboard', element: <Placeholder title="Dashboard" /> },
+  { path: '/', element: <DashboardPage /> },
+  { path: '/dashboard', element: <DashboardPage /> },
   { path: '/projecten', element: <Placeholder title="Projecten" /> },
   { path: '/lascontrole', element: <Placeholder title="Lascontrole" /> },
   { path: '/ce-dossier', element: <Placeholder title="CE dossier" /> },
