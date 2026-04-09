@@ -1,4 +1,3 @@
-
 export class ApiError extends Error {
   status: number;
   details: unknown;
@@ -15,8 +14,11 @@ type Primitive = string | number | boolean;
 type QueryValue = Primitive | null | undefined;
 type QueryParams = Record<string, QueryValue> | undefined;
 
+const STORAGE_KEY = 'nen1090.session';
+const COOKIE_SESSION_MARKER = '__cookie_session__';
+
 function isAbsoluteUrl(path: string): boolean {
-  return /^https?:\/\//i.test(path);
+  return /^https?:\/\/\/?/i.test(path);
 }
 
 function buildBasePath(path: string): string {
@@ -42,6 +44,20 @@ function isFormData(value: unknown): value is FormData {
   return typeof FormData !== 'undefined' && value instanceof FormData;
 }
 
+function readStoredAccessToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { token?: unknown };
+    if (typeof parsed.token !== 'string' || !parsed.token.trim()) return null;
+    if (parsed.token === COOKIE_SESSION_MARKER) return null;
+    return parsed.token;
+  } catch {
+    return null;
+  }
+}
+
 function normalizeInit(init?: RequestInit): RequestInit {
   const headers = new Headers(init?.headers || {});
   const next: RequestInit = {
@@ -50,8 +66,17 @@ function normalizeInit(init?: RequestInit): RequestInit {
     headers,
   };
 
+  const accessToken = readStoredAccessToken();
+  if (accessToken && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${accessToken}`);
+  }
+
   if (init?.body && !isFormData(init.body) && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
+  }
+
+  if (!headers.has('Accept')) {
+    headers.set('Accept', 'application/json');
   }
 
   return next;
@@ -78,16 +103,16 @@ async function parseResponse<T>(response: Response, raw = false): Promise<T> {
 
   const contentType = response.headers.get('content-type') || '';
   if (contentType.includes('application/json')) {
-    return await response.json() as T;
+    return (await response.json()) as T;
   }
   if (
     contentType.includes('application/pdf') ||
     contentType.includes('application/octet-stream') ||
     contentType.includes('application/zip')
   ) {
-    return await response.blob() as T;
+    return (await response.blob()) as T;
   }
-  return await response.text() as T;
+  return (await response.text()) as T;
 }
 
 export async function apiRequest<T = unknown>(

@@ -2,6 +2,7 @@ import React, { FormEvent, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { getMe, login } from '@/api/auth';
 import { useAuthStore } from '@/app/store/auth-store';
+import type { SessionUser } from '@/types/domain';
 
 function readErrorMessage(error: unknown): string {
   if (!error) return 'Inloggen is mislukt.';
@@ -17,7 +18,18 @@ function readErrorMessage(error: unknown): string {
       if (typeof detailsRecord.detail === 'string' && detailsRecord.detail) return detailsRecord.detail;
     }
   }
-  return 'Inloggen is mislukt.';
+  return 'API request failed';
+}
+
+function normalizeUser(payload: unknown, tenantFallback: string, emailFallback: string): SessionUser {
+  const raw = (payload || {}) as Record<string, unknown>;
+  return {
+    email: String(raw.email || emailFallback),
+    tenant: String(raw.tenant || tenantFallback),
+    tenantId: raw.tenant_id as string | number | undefined,
+    role: String(raw.role || ''),
+    name: String(raw.name || ''),
+  };
 }
 
 export default function LoginPage() {
@@ -29,7 +41,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('admin@demo.com');
   const [password, setPassword] = useState('Admin123!');
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string>('');
+  const [error, setError] = useState('');
 
   const redirectTarget = useMemo(() => searchParams.get('redirect') || '/dashboard', [searchParams]);
 
@@ -54,18 +66,31 @@ export default function LoginPage() {
             ? response.token
             : '__cookie_session__';
 
-      const me = await getMe();
-      setSession(
-        accessToken,
-        {
-          email: me.email,
-          tenant: me.tenant,
-          tenantId: me.tenantId,
-          role: me.role,
-          name: me.name,
-        },
-        typeof response.refresh_token === 'string' && response.refresh_token ? response.refresh_token : null,
-      );
+      const refreshToken =
+        typeof response.refresh_token === 'string' && response.refresh_token
+          ? response.refresh_token
+          : null;
+
+      const responseUser = normalizeUser(response.user, tenant.trim(), email.trim());
+
+      setSession(accessToken, responseUser, refreshToken);
+
+      try {
+        const me = await getMe();
+        setSession(
+          accessToken,
+          {
+            email: me.email,
+            tenant: me.tenant,
+            tenantId: me.tenantId,
+            role: me.role,
+            name: me.name,
+          },
+          refreshToken,
+        );
+      } catch {
+        // fallback: keep user from login response
+      }
 
       navigate(redirectTarget, { replace: true });
     } catch (err) {
@@ -97,67 +122,26 @@ export default function LoginPage() {
         <div style={{ display: 'grid', gap: 14 }}>
           <label style={{ display: 'grid', gap: 6 }}>
             <span>Tenant</span>
-            <input
-              value={tenant}
-              onChange={(event) => setTenant(event.target.value)}
-              placeholder="demo"
-              autoComplete="organization"
-              style={{ padding: 12, borderRadius: 12, border: '1px solid #cbd5e1' }}
-            />
+            <input value={tenant} onChange={(event) => setTenant(event.target.value)} placeholder="demo" autoComplete="organization" style={{ padding: 12, borderRadius: 12, border: '1px solid #cbd5e1' }} />
           </label>
 
           <label style={{ display: 'grid', gap: 6 }}>
             <span>E-mailadres</span>
-            <input
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="admin@demo.com"
-              autoComplete="username"
-              style={{ padding: 12, borderRadius: 12, border: '1px solid #cbd5e1' }}
-            />
+            <input value={email} onChange={(event) => setEmail(event.target.value)} placeholder="admin@demo.com" autoComplete="username" style={{ padding: 12, borderRadius: 12, border: '1px solid #cbd5e1' }} />
           </label>
 
           <label style={{ display: 'grid', gap: 6 }}>
             <span>Wachtwoord</span>
-            <input
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder="••••••••"
-              autoComplete="current-password"
-              style={{ padding: 12, borderRadius: 12, border: '1px solid #cbd5e1' }}
-            />
+            <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="••••••••" autoComplete="current-password" style={{ padding: 12, borderRadius: 12, border: '1px solid #cbd5e1' }} />
           </label>
 
           {error ? (
-            <div
-              style={{
-                borderRadius: 12,
-                border: '1px solid #fecaca',
-                background: '#fef2f2',
-                color: '#991b1b',
-                padding: 12,
-              }}
-            >
+            <div style={{ borderRadius: 12, border: '1px solid #fecaca', background: '#fef2f2', color: '#991b1b', padding: 12 }}>
               {error}
             </div>
           ) : null}
 
-          <button
-            type="submit"
-            disabled={submitting}
-            style={{
-              marginTop: 8,
-              padding: 12,
-              borderRadius: 12,
-              border: 'none',
-              background: '#0f172a',
-              color: '#ffffff',
-              fontWeight: 700,
-              cursor: submitting ? 'not-allowed' : 'pointer',
-              opacity: submitting ? 0.7 : 1,
-            }}
-          >
+          <button type="submit" disabled={submitting} style={{ marginTop: 8, padding: 12, borderRadius: 12, border: 'none', background: '#0f172a', color: '#ffffff', fontWeight: 700, cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.7 : 1 }}>
             {submitting ? 'Bezig met inloggen…' : 'Inloggen'}
           </button>
 
