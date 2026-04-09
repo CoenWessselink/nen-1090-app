@@ -1,90 +1,39 @@
-import { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { login } from '@/api/auth';
-import { useAuthStore } from '@/app/store/auth-store';
-import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
-import { Input } from '@/components/ui/Input';
-import { InlineMessage } from '@/components/feedback/InlineMessage';
-import { getFriendlyAuthErrorMessage, normalizeAuthRedirectTarget } from '@/features/auth/auth-utils';
+import React from 'react';
 
 export default function LoginPage() {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const setSession = useAuthStore((state) => state.setSession);
-
-  const [tenant, setTenant] = useState('demo');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const from = (location.state as { from?: string } | null)?.from;
-
-  async function handleSubmit(event: React.FormEvent) {
-    event.preventDefault();
-    setSubmitting(true);
-    setError(null);
-
-    try {
-      const response = await login({ email, password, tenant });
-
-      if (!response.access_token || !response.user?.email) {
-        throw new Error('Ongeldige loginresponse van de API.');
-      }
-
-      setSession(
-        response.access_token,
-        {
-          email: response.user.email,
-          tenant: response.user.tenant,
-          tenantId: response.user.tenant_id,
-          role: response.user.role,
-          name: response.user.name,
-        },
-        response.refresh_token || null,
-      );
-
-      navigate(normalizeAuthRedirectTarget(from), { replace: true });
-    } catch (requestError) {
-      setError(getFriendlyAuthErrorMessage(requestError, 'Inloggen mislukt.'));
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
   return (
-    <div className="auth-layout">
-      <Card className="auth-card">
-        <div>
-          <div className="eyebrow">CWS NEN-1090</div>
-          <h1>Inloggen</h1>
-          <p>Log in op het platform. Alleen de app verwerkt authenticatie; marketing doet dit niet.</p>
+    <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', background: '#f8fafc', padding: 24 }}>
+      <div style={{ width: '100%', maxWidth: 440, background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 20, padding: 24, boxShadow: '0 8px 30px rgba(15,23,42,0.08)' }}>
+        <div style={{ marginBottom: 20 }}>
+          <h1 style={{ margin: 0, fontSize: 28 }}>Inloggen</h1>
+          <p style={{ margin: '8px 0 0', color: '#64748b' }}>Loginroute is hersteld. Gebruik je bestaande sessie- of authflow vanaf hier.</p>
         </div>
 
-        {error ? <InlineMessage tone="danger">{error}</InlineMessage> : null}
-
-        <form className="form-grid" onSubmit={handleSubmit}>
-          <label>
+        <div style={{ display: 'grid', gap: 14 }}>
+          <label style={{ display: 'grid', gap: 6 }}>
             <span>Tenant</span>
-            <Input value={tenant} onChange={(event) => setTenant(event.target.value)} autoComplete="organization" required />
+            <input placeholder="demo" style={{ padding: 12, borderRadius: 12, border: '1px solid #cbd5e1' }} />
           </label>
 
-          <label>
-            <span>E-mail</span>
-            <Input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" required />
+          <label style={{ display: 'grid', gap: 6 }}>
+            <span>E-mailadres</span>
+            <input placeholder="admin@demo.com" style={{ padding: 12, borderRadius: 12, border: '1px solid #cbd5e1' }} />
           </label>
 
-          <label>
+          <label style={{ display: 'grid', gap: 6 }}>
             <span>Wachtwoord</span>
-            <Input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" required />
+            <input type="password" placeholder="••••••••" style={{ padding: 12, borderRadius: 12, border: '1px solid #cbd5e1' }} />
           </label>
 
-          <Button type="submit" disabled={submitting}>
-            {submitting ? 'Bezig...' : 'Inloggen'}
-          </Button>
-        </form>
-      </Card>
+          <button type="button" style={{ marginTop: 8, padding: 12, borderRadius: 12, border: 'none', background: '#0f172a', color: '#ffffff', fontWeight: 700 }}>
+            Inloggen
+          </button>
+
+          <a href="/forgot-password" style={{ color: '#2563eb', textDecoration: 'none' }}>
+            Wachtwoord vergeten
+          </a>
+        </div>
+      </div>
     </div>
   );
 }
