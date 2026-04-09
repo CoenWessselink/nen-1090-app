@@ -2,39 +2,34 @@
 import client, { apiRequest, optionalRequest } from './client';
 import type { ListParams } from '@/types/api';
 
-function toProjectId(input: unknown): string | null {
+function withQuery(path: string, params?: ListParams): string {
+  if (!params) return path;
+  const sp = new URLSearchParams();
+  Object.entries(params as Record<string, unknown>).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === '') return;
+    sp.set(key, String(value));
+  });
+  const qs = sp.toString();
+  return qs ? `${path}?${qs}` : path;
+}
+
+function getProjectId(input: unknown): string | null {
   if (typeof input === 'string' || typeof input === 'number') return String(input);
   if (input && typeof input === 'object') {
-    const projectId = (input as Record<string, unknown>).project_id ?? (input as Record<string, unknown>).projectId;
+    const projectId =
+      (input as Record<string, unknown>).project_id ??
+      (input as Record<string, unknown>).projectId;
     if (typeof projectId === 'string' || typeof projectId === 'number') return String(projectId);
   }
   return null;
 }
 
-function toWeldId(input: unknown): string | null {
-  if (typeof input === 'string' || typeof input === 'number') return String(input);
-  if (input && typeof input === 'object') {
-    const weldId = (input as Record<string, unknown>).id ?? (input as Record<string, unknown>).weld_id ?? (input as Record<string, unknown>).weldId;
-    if (typeof weldId === 'string' || typeof weldId === 'number') return String(weldId);
+export function getWelds(arg?: string | number | ListParams | Record<string, unknown>) {
+  const projectId = getProjectId(arg);
+  if (projectId) {
+    return apiRequest(`/projects/${projectId}/welds`);
   }
-  return null;
-}
-
-function listParams(input: unknown): Record<string, string> | undefined {
-  if (!input || typeof input !== 'object' || Array.isArray(input)) return undefined;
-  const raw = input as ListParams & Record<string, unknown>;
-  const out: Record<string, string> = {};
-  Object.entries(raw).forEach(([key, value]) => {
-    if (value === undefined || value === null || value === '') return;
-    out[key] = String(value);
-  });
-  return Object.keys(out).length ? out : undefined;
-}
-
-export function getWelds(arg?: string | number | (ListParams & Record<string, unknown>)) {
-  const projectId = toProjectId(arg);
-  if (projectId) return client.get(`/projects/${projectId}/welds`);
-  return apiRequest(`/welds${new URLSearchParams(listParams(arg) || {}).toString() ? `?${new URLSearchParams(listParams(arg) || {}).toString()}` : ''}`);
+  return apiRequest(withQuery('/welds', arg as ListParams | undefined));
 }
 
 export function getWeld(projectId: string | number, weldId: string | number) {
@@ -45,16 +40,13 @@ export function getWeld(projectId: string | number, weldId: string | number) {
 }
 
 export function createWeld(projectIdOrPayload: unknown, payload?: unknown) {
-  const inferredProjectId = toProjectId(projectIdOrPayload);
-  if (payload !== undefined && inferredProjectId) {
-    return client.post(`/projects/${inferredProjectId}/welds`, payload);
+  if (payload !== undefined) {
+    return client.post(`/projects/${projectIdOrPayload}/welds`, payload);
   }
 
   const body = (projectIdOrPayload || {}) as Record<string, unknown>;
-  const projectId = toProjectId(body);
-  if (projectId) {
-    return client.post(`/projects/${projectId}/welds`, body);
-  }
+  const projectId = getProjectId(body);
+  if (projectId) return client.post(`/projects/${projectId}/welds`, body);
   return client.post('/welds', body);
 }
 
@@ -114,8 +106,9 @@ export function getWeldInspection(projectId: string | number, weldId: string | n
   ]);
 }
 
-export function getWeldInspections(projectId: string | number, weldId: string | number) {
-  return getWeldInspection(projectId, weldId).then((result) => Array.isArray(result) ? result : result ? [result] : []);
+export async function getWeldInspections(projectId: string | number, weldId: string | number) {
+  const result = await getWeldInspection(projectId, weldId);
+  return Array.isArray(result) ? result : result ? [result] : [];
 }
 
 export function resetWeldToNorm(projectId: string | number, weldId: string | number) {
