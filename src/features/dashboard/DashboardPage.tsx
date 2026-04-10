@@ -8,7 +8,42 @@ import { useWelds } from '@/hooks/useWelds';
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { LoadingState } from '@/components/feedback/LoadingState';
 import { formatDatetime, toneFromStatus } from '@/utils/format';
-import { useDashboardSummary, useOpenDefectsSummary, usePendingInspectionsSummary, useRecentAudit, useRecentExports } from '@/hooks/useDashboardSummary';
+import {
+  useDashboardSummary,
+  useOpenDefectsSummary,
+  usePendingInspectionsSummary,
+  useRecentAudit,
+  useRecentExports,
+} from '@/hooks/useDashboardSummary';
+
+type ProjectRow = {
+  id: string | number;
+  projectnummer?: string;
+  name?: string;
+  omschrijving?: string;
+  status?: string;
+};
+
+type WeldRow = {
+  id: string | number;
+  project_id?: string | number;
+  weld_number?: string;
+  weld_no?: string;
+  location?: string;
+  status?: string;
+};
+
+type ActivityRow = {
+  id?: string | number;
+  project_id?: string | number;
+  weld_id?: string | number;
+  title?: string;
+  action?: string;
+  weld_number?: string;
+  location?: string;
+  description?: string;
+  created_at?: string;
+};
 
 export function DashboardPage() {
   const navigate = useNavigate();
@@ -20,14 +55,14 @@ export function DashboardPage() {
   const recentAudit = useRecentAudit();
   const recentExports = useRecentExports();
 
-  const projectRows = projects.data?.items || [];
-  const weldRows = welds.data?.items || [];
-  const summaryData = summary.data || {};
+  const projectRows = ((projects.data?.items || []) as unknown[]) as ProjectRow[];
+  const weldRows = ((welds.data?.items || []) as unknown[]) as WeldRow[];
+  const summaryData = (summary.data || {}) as Record<string, unknown>;
   const defects = Number(summaryData.open_weld_defects ?? openDefects.data?.total ?? 0);
   const readyDossiers = Number(summaryData.ce_dossier_ready ?? recentExports.data?.total ?? 0);
   const pendingCount = Number(summaryData.open_inspections ?? pendingInspections.data?.total ?? 0);
   const openProjects = Number(summaryData.open_projects ?? projects.data?.total ?? projectRows.length);
-  const activityRows = recentAudit.data?.length ? recentAudit.data : weldRows;
+  const activityRows = (((recentAudit.data?.length ? recentAudit.data : weldRows) || []) as unknown[]) as ActivityRow[];
 
   const kpis = [
     { title: 'Open projecten', value: openProjects, onClick: () => navigate('/projecten') },
@@ -53,7 +88,7 @@ export function DashboardPage() {
       <Card className="dashboard-action-bar">
         <div className="dashboard-action-bar-copy">
           <strong>Snelle acties</strong>
-          <div className="list-subtle">Direct onder de KPI's: start meteen een nieuw project of registreer een nieuwe las.</div>
+          <div className="list-subtle">Direct onder de KPI&apos;s: start meteen een nieuw project of registreer een nieuwe las.</div>
         </div>
         <div className="dashboard-action-bar-actions">
           <button type="button" className="btn btn-secondary" onClick={() => navigate('/projecten')}>Nieuw project</button>
@@ -124,8 +159,7 @@ export function DashboardPage() {
           </div>
           {activityRows.length ? (
             <div className="timeline-list">
-              {activityRows.slice(0, 5).map((item, index) => {
-                const row = item as Record<string, unknown>;
+              {activityRows.slice(0, 5).map((row, index) => {
                 const projectId = String(row.project_id || '');
                 const weldId = String(row.weld_id || row.id || '');
                 return (
@@ -133,7 +167,7 @@ export function DashboardPage() {
                     <div className="timeline-dot" />
                     <div>
                       <strong>{String(row.title || row.action || row.weld_number || `Activiteit ${index + 1}`)}</strong>
-                      <div className="list-subtle">{String(row.location || row.description || '')} · {formatDatetime(row.created_at as string | undefined)}</div>
+                      <div className="list-subtle">{String(row.location || row.description || '')} · {formatDatetime(row.created_at)}</div>
                     </div>
                   </button>
                 );
@@ -168,3 +202,5 @@ export function DashboardPage() {
     </div>
   );
 }
+
+export default DashboardPage;

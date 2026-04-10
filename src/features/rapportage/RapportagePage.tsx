@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -24,7 +23,7 @@ function toneFromType(type?: string) {
   return 'neutral' as const;
 }
 
-export default function RapportagePage() {
+export function RapportagePage() {
   const navigate = useNavigate();
   const reports = useReports({ page: 1, limit: 50 });
   const rows = (reports.data?.items || []) as ReportRow[];
@@ -85,3 +84,5 @@ export default function RapportagePage() {
     </div>
   );
 }
+
+export default RapportagePage;
