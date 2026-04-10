@@ -488,10 +488,12 @@ export async function openFirstProject360(page: Page) {
   ).toBeVisible();
 }
 
-export async function openTab(page: Page, name: RegExp) {
-  const tabButton = page.getByRole("tab", { name }).first();
-  const fallbackButton = page.getByRole("button", { name }).first();
-  const target = (await tabButton.count()) ? tabButton : fallbackButton;
-  await expect(target).toBeVisible();
-  await target.click();
+export async function openTab(page: Page, name: RegExp | string) {
+  const tabButton = page
+    .getByRole("button", {
+      name: typeof name === "string" ? new RegExp(name, "i") : name,
+    })
+    .first();
+  await expect(tabButton).toBeVisible();
+  await tabButton.click();
 }
