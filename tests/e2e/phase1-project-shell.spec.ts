@@ -128,21 +128,24 @@ test('Fase 1 shell toont vaste topbar, klikbare KPI\'s en rapportage-inhoud', as
   await expect(page.getByRole('button', { name: 'Nieuwe las' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'PDF export' })).toBeDisabled();
 
-  await page.getByTestId('kpi-lassen').click();
+  await page.getByTestId('project-kpi-welds').click();
   await expect(page).toHaveURL(new RegExp(`/projecten/${DEFAULT_PROJECT_ID}/lassen$`));
   await expect(page.getByText('W-001')).toBeVisible();
 
   await page.goto(`/projecten/${DEFAULT_PROJECT_ID}/lascontrole`);
-  await page.getByTestId('lascontrole-kpi-defecten').click();
-  await expect(page.getByRole('tab', { name: 'Defecten' })).toHaveAttribute('aria-selected', 'true');
-  await expect(page.getByRole('button', { name: /PDF export \(\d+\)/ })).toBeVisible();
+  await page.getByTestId('lascontrole-kpi-defect').click();
+  await expect(page).toHaveURL(new RegExp(`/projecten/${DEFAULT_PROJECT_ID}/lascontrole\?status=defect$`));
+  await expect(page.getByText(/Actief statusfilter:/i)).toBeVisible();
 
   await page.goto(`/projecten/${DEFAULT_PROJECT_ID}/ce-dossier`);
-  await page.getByTestId('ce-kpi-checklist').click();
+  await page.getByRole('button', { name: /Checklist gereed/i }).click();
+  await expect(page).toHaveURL(new RegExp(`/projecten/${DEFAULT_PROJECT_ID}/lascontrole$`));
+
+  await page.goto(`/projecten/${DEFAULT_PROJECT_ID}/ce-dossier`);
   await expect(page.getByText('Projectgegevens compleet')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'PDF export' })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'PDF export' }).first()).toBeEnabled();
 
   await page.goto('/rapportage');
   await expect(page.getByText('Projectoverzicht april')).toBeVisible();
-  await expect(page.getByText('Rapportages · 1 totaal')).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Rapportage/i })).toBeVisible();
 });

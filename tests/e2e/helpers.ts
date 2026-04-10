@@ -466,8 +466,7 @@ export async function bootstrapAuthenticatedPage(
 }
 
 export async function openProjects(page: Page) {
-  await seedAuth(page);
-  await page.goto("/projecten");
+  await bootstrapAuthenticatedPage(page, "/projecten");
   await expect(page.getByRole("heading", { name: /projecten/i })).toBeVisible();
   await expect(page).not.toHaveURL(/login/i);
 }
@@ -490,7 +489,9 @@ export async function openFirstProject360(page: Page) {
 }
 
 export async function openTab(page: Page, name: RegExp) {
-  const tabButton = page.getByRole("button", { name }).first();
-  await expect(tabButton).toBeVisible();
-  await tabButton.click();
+  const tabButton = page.getByRole("tab", { name }).first();
+  const fallbackButton = page.getByRole("button", { name }).first();
+  const target = (await tabButton.count()) ? tabButton : fallbackButton;
+  await expect(target).toBeVisible();
+  await target.click();
 }

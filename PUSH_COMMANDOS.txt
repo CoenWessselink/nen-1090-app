@@ -1,0 +1,10 @@
+cd C:\NEN1090\nen-1090-app
+git add src/api/client.ts src/api/projects.ts src/api/welds.ts src/hooks/useWelds.ts
+git commit -m "Fix auth refresh loop, safe project limits and weld endpoint fallbacks"
+git pull origin main --rebase
+git push origin main
+
+Daarna lokaal:
+cd C:\NEN1090\nen-1090-app
+npm run typecheck
+npm run build
