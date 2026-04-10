@@ -23,7 +23,11 @@ export function ProjectTopActionBar({
   exportSelectionLabel = 'PDF export',
 }: ProjectTopActionBarProps) {
   return (
-    <div className="card project-top-actionbar" data-project-structure="top-actionbar">
+    <div
+      className="card project-top-actionbar"
+      data-project-structure="actions"
+      data-project-structure-legacy="top-actionbar"
+    >
       <div className="project-top-actionbar-copy">
         <div className="project-top-actionbar-kicker">Uniforme bedieningslaag</div>
         <strong>Vaste hoofdacties op alle Project 360-tabbladen</strong>

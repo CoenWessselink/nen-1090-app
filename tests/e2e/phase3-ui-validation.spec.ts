@@ -13,9 +13,10 @@ test('projecttab structuur blijft overal gelijk', async ({ page }) => {
   await openFirstProject360(page);
   await expectStructuredProjectTab(page);
 
-  await openTab(page, /lascontrole/i);
+  await openTab(page, /lassen/i);
   await expectStructuredProjectTab(page);
 
-  await openTab(page, /ce dossier/i);
+  await page.goto(page.url().replace('/lassen', '/overzicht'));
+  await openTab(page, /documenten/i);
   await expectStructuredProjectTab(page);
 });

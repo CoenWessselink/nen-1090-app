@@ -130,7 +130,7 @@ test('Fase 1 shell toont vaste topbar, klikbare KPI\'s en rapportage-inhoud', as
 
   await page.getByTestId('project-kpi-welds').click();
   await expect(page).toHaveURL(new RegExp(`/projecten/${DEFAULT_PROJECT_ID}/lassen$`));
-  await expect(page.getByText('W-001')).toBeVisible();
+  await expect(page.getByText('W-001', { exact: true })).toBeVisible();
 
   await page.goto(`/projecten/${DEFAULT_PROJECT_ID}/lascontrole`);
   await page.getByTestId('lascontrole-kpi-defect').click();

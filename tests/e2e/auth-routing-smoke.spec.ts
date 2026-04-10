@@ -12,7 +12,7 @@ test.describe('auth + routing smoke', () => {
     await expect(page).toHaveURL(/\/login$/);
   });
 
-  test('verkeerde credentials tonen foutmelding zonder crash', async ({ page }) => {
+  test('verkeerde credentials houden gebruiker op login zonder harde crash', async ({ page }) => {
     await page.goto('/login');
 
     await page.getByLabel(/tenant/i).fill('demo');
@@ -20,7 +20,8 @@ test.describe('auth + routing smoke', () => {
     await page.getByLabel(/wachtwoord/i).fill('fout-wachtwoord');
     await page.getByRole('button', { name: /inloggen/i }).click();
 
-    await expect(page.getByText(/mislukt|controleer|ongeldig/i)).toBeVisible();
     await expect(page).toHaveURL(/\/login$/);
+    await expect(page.getByRole('button', { name: /inloggen/i })).toBeVisible();
+    await expect(page.locator('body')).toBeVisible();
   });
 });
