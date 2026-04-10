@@ -1,4 +1,3 @@
-
 import React from 'react';
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -17,10 +16,10 @@ import { AppShell } from '@/app/layout/AppShell';
 import { ProtectedRoute } from '@/app/router/ProtectedRoute';
 import { ProjectScopedRoute } from '@/app/router/ProjectScopedRoute';
 import LoginPage from '@/features/auth/LoginPage';
-import { ForgotPasswordPage } from '@/features/auth/ForgotPasswordPage';
-import { ResetPasswordPage } from '@/features/auth/ResetPasswordPage';
-import { ChangePasswordPage } from '@/features/auth/ChangePasswordPage';
-import { LogoutPage } from '@/features/auth/LogoutPage';
+import ForgotPasswordPage from '@/features/auth/ForgotPasswordPage';
+import ResetPasswordPage from '@/features/auth/ResetPasswordPage';
+import ChangePasswordPage from '@/features/auth/ChangePasswordPage';
+import LogoutPage from '@/features/auth/LogoutPage';
 import DashboardPage from '@/features/dashboard/DashboardPage';
 import { ProjectenPage } from '@/features/projecten/ProjectenPage';
 import { Project360Page } from '@/features/projecten/Project360Page';
