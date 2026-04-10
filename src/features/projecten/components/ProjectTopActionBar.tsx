@@ -26,7 +26,7 @@ export function ProjectTopActionBar({
     <div
       className="card project-top-actionbar"
       data-project-structure="actions"
-      data-project-structure-legacy="top-actionbar"
+      data-testid="project-top-actionbar"
     >
       <div className="project-top-actionbar-copy">
         <div className="project-top-actionbar-kicker">Uniforme bedieningslaag</div>

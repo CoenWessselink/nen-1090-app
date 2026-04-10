@@ -133,23 +133,34 @@ export function WeldInspectionModal({
     const source = (inspection || {}) as Record<string, unknown>;
     setInspectionStatus(normalizeStatus(source.status));
     setRemarks(String(source.remarks || source.notes || ''));
-    const rawChecks = Array.isArray(source.checks) ? source.checks as Array<Record<string, unknown>> : [];
+    const rawChecks = Array.isArray(source.checks) ? (source.checks as Array<Record<string, unknown>>) : [];
     if (rawChecks.length) {
-      setChecks(rawChecks.map((item, index) => ({
-        group_key: String(item.group_key || 'algemeen'),
-        criterion_key: String(item.criterion_key || `CHECK_${index + 1}`),
-        approved: Boolean(item.approved ?? normalizeStatus(item.status) === 'conform'),
-        status: normalizeStatus(item.status),
-        comment: String(item.comment || ''),
-      })));
+      setChecks(
+        rawChecks.map((item, index) => ({
+          group_key: String(item.group_key || 'algemeen'),
+          criterion_key: String(item.criterion_key || `CHECK_${index + 1}`),
+          approved: Boolean(item.approved ?? normalizeStatus(item.status) === 'conform'),
+          status: normalizeStatus(item.status),
+          comment: String(item.comment || ''),
+        })),
+      );
     }
   }, [inspection]);
 
   if (!open || !weld) return null;
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.35)', display: 'grid', placeItems: 'center', zIndex: 1000 }}>
-      <div style={{ width: 'min(1120px, 96vw)', maxHeight: '92vh', overflow: 'auto', background: '#fff', borderRadius: 20, border: '1px solid #e2e8f0', padding: 20 }}>
+    <div
+      style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.35)', display: 'grid', placeItems: 'center', zIndex: 1000 }}
+      data-testid="weld-inspection-overlay"
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Las wijzigen · ${String(weld.weld_number || weld.id)}`}
+        data-testid="weld-inspection-dialog"
+        style={{ width: 'min(1120px, 96vw)', maxHeight: '92vh', overflow: 'auto', background: '#fff', borderRadius: 20, border: '1px solid #e2e8f0', padding: 20 }}
+      >
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
           <div>
             <h2 style={{ margin: 0 }}>Las wijzigen · {String(weld.weld_number || weld.id)}</h2>
@@ -158,9 +169,25 @@ export function WeldInspectionModal({
           <button type="button" onClick={onClose}>Sluiten</button>
         </div>
 
-        <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
-          <button type="button" onClick={() => setTab('weld')} style={buttonStyle(tab === 'weld', 'conform')}>Gegevens van de las</button>
-          <button type="button" onClick={() => setTab('inspection')} style={buttonStyle(tab === 'inspection', 'conform')}>Gegevens van de lascontrole</button>
+        <div role="tablist" aria-label="Las wijzigen tabs" style={{ display: 'flex', gap: 12, marginTop: 16 }}>
+          <button
+            role="tab"
+            aria-selected={tab === 'weld'}
+            type="button"
+            onClick={() => setTab('weld')}
+            style={buttonStyle(tab === 'weld', 'conform')}
+          >
+            Gegevens van de las
+          </button>
+          <button
+            role="tab"
+            aria-selected={tab === 'inspection'}
+            type="button"
+            onClick={() => setTab('inspection')}
+            style={buttonStyle(tab === 'inspection', 'conform')}
+          >
+            Gegevens van de lascontrole
+          </button>
         </div>
 
         {tab === 'weld' ? (

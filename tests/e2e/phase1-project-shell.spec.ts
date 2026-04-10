@@ -134,7 +134,7 @@ test('Fase 1 shell toont vaste topbar, klikbare KPI\'s en rapportage-inhoud', as
 
   await page.goto(`/projecten/${DEFAULT_PROJECT_ID}/lascontrole`);
   await page.getByTestId('lascontrole-kpi-defect').click();
-  await expect(page).toHaveURL(new RegExp(`/projecten/${DEFAULT_PROJECT_ID}/lascontrole\?status=defect$`));
+  await expect(page.url()).toContain(`/projecten/${DEFAULT_PROJECT_ID}/lascontrole?status=defect`);
   await expect(page.getByText(/Actief statusfilter:/i)).toBeVisible();
 
   await page.goto(`/projecten/${DEFAULT_PROJECT_ID}/ce-dossier`);

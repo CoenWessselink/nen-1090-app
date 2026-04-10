@@ -24,11 +24,23 @@ export function resolveProjectContextTab(pathname: string) {
   return 'overzicht';
 }
 
-export function ProjectContextTabs({ projectId, value, searchSlot }: { projectId: string; value: string; searchSlot?: ReactNode }) {
+export function ProjectContextTabs({
+  projectId,
+  value,
+  searchSlot,
+}: {
+  projectId: string;
+  value: string;
+  searchSlot?: ReactNode;
+}) {
   const navigate = useNavigate();
 
   return (
-    <Card className="project-context-tabs-card" data-project-structure="tabs">
+    <Card
+      className="project-context-tabs-card"
+      data-project-structure="tabs"
+      data-testid="project-context-tabs"
+    >
       <div className="project-context-tabs-header">
         <div className="project-context-tabs-copy">
           <div className="project-context-tabs-kicker">
@@ -36,7 +48,9 @@ export function ProjectContextTabs({ projectId, value, searchSlot }: { projectId
             <span>Projectnavigatie</span>
           </div>
           <strong>Elke projectpagina gebruikt dezelfde vaste tabvolgorde</strong>
-          <div className="list-subtle">Tabs bovenin, daarna actiebalk, filters, KPI’s en de werktafel.</div>
+          <div className="list-subtle">
+            Tabs bovenin, daarna actiebalk, filters, KPI’s en de werktafel.
+          </div>
         </div>
         {searchSlot ? <div className="project-context-tabs-search">{searchSlot}</div> : null}
       </div>

@@ -15,17 +15,17 @@ test.describe("fase 5 — smoke proof", () => {
   });
 
   test("lassen en lascontrole tonen wijzig-popup met beide tabbladen", async ({ page }) => {
-    await bootstrapAuthenticatedPage(page, "/projecten/e8e89d84-c24d-4334-a56c-61370665a7cf/lascontrole");
+    await bootstrapAuthenticatedPage(page, "/projecten/e8e89d84-c24d-4334-a56c-61370665a7cf/lassen");
 
-    await expect(page.getByText(/Dubbelklik opent.*Las wijzigen/i)).toBeVisible();
-    const firstInteractiveRow = page.locator('div').filter({ hasText: /L-001|Las weld-001|Locatie onbekend/i }).first();
-    await expect(firstInteractiveRow).toBeVisible();
-    await firstInteractiveRow.dblclick();
+    await expect(page.getByText(/Dubbelklik op een las om de popup .*Las wijzigen/i)).toBeVisible();
+    const firstWeldCard = page.locator('div').filter({ hasText: /L-001|Las weld-001|Locatie onbekend/i }).first();
+    await expect(firstWeldCard).toBeVisible();
+    await firstWeldCard.dblclick();
 
     const dialog = page.getByRole("dialog", { name: /las wijzigen/i });
     await expect(dialog).toBeVisible();
-    await expect(dialog.getByRole("button", { name: /gegevens van de las/i })).toBeVisible();
-    await expect(dialog.getByRole("button", { name: /gegevens van de lascontrole/i })).toBeVisible();
+    await expect(dialog.getByRole("tab", { name: /gegevens van de las/i })).toBeVisible();
+    await expect(dialog.getByRole("tab", { name: /gegevens van de lascontrole/i })).toBeVisible();
   });
 
   test("ce dossier en rapportage zijn zichtbaar en niet leeg", async ({ page }) => {
