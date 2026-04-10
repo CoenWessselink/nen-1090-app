@@ -2,7 +2,14 @@ import React from 'react';
 
 export function ChangePasswordPage() {
   return (
-    <div style={ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 24 }>
+    <div
+      style={
+        minHeight: '100vh',
+        display: 'grid',
+        placeItems: 'center',
+        padding: 24,
+      }
+    >
       <div
         style={
           width: '100%',
