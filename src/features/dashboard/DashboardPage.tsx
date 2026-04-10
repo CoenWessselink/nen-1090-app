@@ -1,111 +1,169 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { useSession } from '@/app/session/SessionContext';
+import { Activity, AlertTriangle, CheckCircle2, ChevronRight, FolderKanban } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { PageHeader } from '@/components/layout/PageHeader';
+import { Card } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
+import { useProjects } from '@/hooks/useProjects';
+import { useWelds } from '@/hooks/useWelds';
+import { ErrorState } from '@/components/feedback/ErrorState';
+import { LoadingState } from '@/components/feedback/LoadingState';
+import { formatDatetime, toneFromStatus } from '@/utils/format';
+import { useDashboardSummary, useOpenDefectsSummary, usePendingInspectionsSummary, useRecentAudit, useRecentExports } from '@/hooks/useDashboardSummary';
 
-const cardStyle: React.CSSProperties = {
-  background: '#ffffff',
-  border: '1px solid #e2e8f0',
-  borderRadius: 20,
-  padding: 20,
-  boxShadow: '0 8px 24px rgba(15,23,42,0.06)',
-};
+export function DashboardPage() {
+  const navigate = useNavigate();
+  const projects = useProjects({ status: 'active', limit: 6 });
+  const welds = useWelds({ limit: 6 });
+  const summary = useDashboardSummary();
+  const pendingInspections = usePendingInspectionsSummary();
+  const openDefects = useOpenDefectsSummary();
+  const recentAudit = useRecentAudit();
+  const recentExports = useRecentExports();
 
-const statStyle: React.CSSProperties = {
-  ...cardStyle,
-  minHeight: 120,
-};
+  const projectRows = projects.data?.items || [];
+  const weldRows = welds.data?.items || [];
+  const summaryData = summary.data || {};
+  const defects = Number(summaryData.open_weld_defects ?? openDefects.data?.total ?? 0);
+  const readyDossiers = Number(summaryData.ce_dossier_ready ?? recentExports.data?.total ?? 0);
+  const pendingCount = Number(summaryData.open_inspections ?? pendingInspections.data?.total ?? 0);
+  const openProjects = Number(summaryData.open_projects ?? projects.data?.total ?? projectRows.length);
+  const activityRows = recentAudit.data?.length ? recentAudit.data : weldRows;
 
-const linkStyle: React.CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  minHeight: 44,
-  padding: '0 16px',
-  borderRadius: 12,
-  background: '#0f172a',
-  color: '#ffffff',
-  textDecoration: 'none',
-  fontWeight: 700,
-};
-
-export default function DashboardPage() {
-  const session = useSession();
+  const kpis = [
+    { title: 'Open projecten', value: openProjects, onClick: () => navigate('/projecten') },
+    { title: 'Open lasdefecten', value: defects, onClick: () => navigate('/projecten') },
+    { title: 'Open inspecties', value: pendingCount, onClick: () => navigate('/projecten') },
+    { title: 'CE dossier gereed', value: readyDossiers, onClick: () => navigate('/rapportage') },
+  ];
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        background: '#f8fafc',
-        padding: 24,
-      }}
-    >
-      <div style={{ maxWidth: 1280, margin: '0 auto', display: 'grid', gap: 20 }}>
-        <div style={cardStyle}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
-            <div>
-              <div style={{ color: '#64748b', fontSize: 14, marginBottom: 6 }}>CWS NEN-1090</div>
-              <h1 style={{ margin: 0, fontSize: 34 }}>Dashboard</h1>
-              <p style={{ margin: '10px 0 0', color: '#475569' }}>
-                Welkom {session.user?.name || session.user?.email || 'gebruiker'} · tenant {session.user?.tenant || '-'} · rol {session.user?.role || '-'}
-              </p>
-            </div>
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-              <Link to="/projecten" style={linkStyle}>Projecten</Link>
-              <Link to="/lascontrole" style={linkStyle}>Lascontrole</Link>
-              <Link to="/rapportage" style={linkStyle}>Rapportage</Link>
-            </div>
-          </div>
-        </div>
+    <div className="page-stack">
+      <PageHeader title="Dashboard" description="Operationeel overzicht met directe navigatie naar projecten, lassen en vervolgstappen." />
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 16 }}>
-          <div style={statStyle}>
-            <div style={{ color: '#64748b', fontSize: 14 }}>Sessie</div>
-            <div style={{ fontSize: 28, fontWeight: 800, marginTop: 10 }}>Actief</div>
-            <div style={{ color: '#475569', marginTop: 8 }}>De login is doorgelopen en de sessie is aanwezig.</div>
-          </div>
-          <div style={statStyle}>
-            <div style={{ color: '#64748b', fontSize: 14 }}>Tenant</div>
-            <div style={{ fontSize: 28, fontWeight: 800, marginTop: 10 }}>{session.user?.tenant || '-'}</div>
-            <div style={{ color: '#475569', marginTop: 8 }}>Actieve werkomgeving.</div>
-          </div>
-          <div style={statStyle}>
-            <div style={{ color: '#64748b', fontSize: 14 }}>Gebruiker</div>
-            <div style={{ fontSize: 28, fontWeight: 800, marginTop: 10 }}>{session.user?.email || '-'}</div>
-            <div style={{ color: '#475569', marginTop: 8 }}>Ingelogde gebruiker.</div>
-          </div>
-          <div style={statStyle}>
-            <div style={{ color: '#64748b', fontSize: 14 }}>Rol</div>
-            <div style={{ fontSize: 28, fontWeight: 800, marginTop: 10 }}>{session.user?.role || '-'}</div>
-            <div style={{ color: '#475569', marginTop: 8 }}>Huidige autorisatierol.</div>
-          </div>
-        </div>
+      <div className="dashboard-kpi-grid">
+        {kpis.map((item) => (
+          <button key={item.title} type="button" className="card stat-card card-button" onClick={item.onClick}>
+            <div className="stat-label">{item.title}</div>
+            <div className="stat-value">{item.value}</div>
+            <div className="stat-meta">Open detail</div>
+          </button>
+        ))}
+      </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: 16 }}>
-          <div style={cardStyle}>
-            <h2 style={{ marginTop: 0 }}>Systeemstatus</h2>
-            <div style={{ display: 'grid', gap: 12 }}>
-              <div style={{ padding: 14, borderRadius: 14, background: '#dcfce7', color: '#166534' }}>
-                /auth/me geeft 200, de sessie is dus aanwezig.
-              </div>
-              <div style={{ padding: 14, borderRadius: 14, background: '#fef3c7', color: '#92400e' }}>
-                /auth/refresh geeft nog 401 in jouw screenshot. Dat blokkeert nu het dashboard niet, maar moet later apart worden rechtgetrokken.
-              </div>
-              <div style={{ padding: 14, borderRadius: 14, background: '#e2e8f0', color: '#0f172a' }}>
-                Deze dashboardpagina is hersteld zodat je niet meer op een lege placeholder uitkomt.
-              </div>
-            </div>
-          </div>
-
-          <div style={cardStyle}>
-            <h2 style={{ marginTop: 0 }}>Snelle acties</h2>
-            <div style={{ display: 'grid', gap: 12 }}>
-              <Link to="/projecten" style={linkStyle}>Open projecten</Link>
-              <Link to="/lascontrole" style={linkStyle}>Open lascontrole</Link>
-              <Link to="/instellingen" style={linkStyle}>Open instellingen</Link>
-              <Link to="/logout" style={linkStyle}>Uitloggen</Link>
-            </div>
-          </div>
+      <Card className="dashboard-action-bar">
+        <div className="dashboard-action-bar-copy">
+          <strong>Snelle acties</strong>
+          <div className="list-subtle">Direct onder de KPI's: start meteen een nieuw project of registreer een nieuwe las.</div>
         </div>
+        <div className="dashboard-action-bar-actions">
+          <button type="button" className="btn btn-secondary" onClick={() => navigate('/projecten')}>Nieuw project</button>
+          <button type="button" className="btn btn-primary" onClick={() => navigate('/projecten')}>Nieuwe las</button>
+        </div>
+      </Card>
+
+      <div className="content-grid-2">
+        <Card>
+          <div className="section-title-row">
+            <h3><FolderKanban size={18} /> Projectvoortgang</h3>
+            <Badge tone="neutral">Direct openen</Badge>
+          </div>
+          {projects.isLoading ? <LoadingState label="Projecten laden..." /> : null}
+          {projects.isError ? <ErrorState title="Projecten niet geladen" description="Controleer of de projectenlijst bereikbaar is." /> : null}
+          {!projects.isLoading && !projects.isError ? (
+            <div className="list-stack">
+              {projectRows.slice(0, 6).map((project) => (
+                <button className="list-row list-row-button" type="button" key={String(project.id)} onClick={() => navigate(`/projecten/${project.id}/overzicht`)}>
+                  <div>
+                    <strong>{project.projectnummer || project.id}</strong>
+                    <div className="list-subtle">{project.name || project.omschrijving || 'Onbekende projectnaam'}</div>
+                  </div>
+                  <div className="row-actions">
+                    <Badge tone={toneFromStatus(String(project.status || ''))}>{String(project.status || 'Onbekend')}</Badge>
+                    <ChevronRight size={16} />
+                  </div>
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </Card>
+
+        <Card>
+          <div className="section-title-row">
+            <h3><AlertTriangle size={18} /> Open aandachtspunten</h3>
+            <Badge tone={defects > 0 ? 'warning' : 'success'}>{defects > 0 ? 'Actie nodig' : 'Stabiel'}</Badge>
+          </div>
+          <div className="metric-block">
+            <div className="metric-inline"><Activity size={16} /> Open inspecties: <strong>{pendingCount}</strong></div>
+            <div className="metric-inline"><CheckCircle2 size={16} /> Recente exports: <strong>{recentExports.data?.total || 0}</strong></div>
+          </div>
+          <div className="divider" />
+          <div className="list-stack compact-list">
+            {weldRows.slice(0, 5).map((weld) => {
+              const projectId = String(weld.project_id || '');
+              return (
+                <button className="list-row list-row-button" type="button" key={String(weld.id)} onClick={() => navigate(projectId ? `/projecten/${projectId}/lassen/${weld.id}` : '/projecten')}>
+                  <div>
+                    <strong>{weld.weld_number || weld.weld_no || `Las ${weld.id}`}</strong>
+                    <div className="list-subtle">{weld.location || 'Locatie onbekend'}</div>
+                  </div>
+                  <div className="row-actions">
+                    <Badge tone={toneFromStatus(String(weld.status || ''))}>{String(weld.status || 'Onbekend')}</Badge>
+                    <ChevronRight size={16} />
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </Card>
+      </div>
+
+      <div className="content-grid-2">
+        <Card>
+          <div className="section-title-row">
+            <h3>Recente activiteit</h3>
+          </div>
+          {activityRows.length ? (
+            <div className="timeline-list">
+              {activityRows.slice(0, 5).map((item, index) => {
+                const row = item as Record<string, unknown>;
+                const projectId = String(row.project_id || '');
+                const weldId = String(row.weld_id || row.id || '');
+                return (
+                  <button key={String(row.id || index)} type="button" className="timeline-item timeline-item-button" onClick={() => navigate(projectId ? `/projecten/${projectId}/lassen/${weldId}` : '/projecten')}>
+                    <div className="timeline-dot" />
+                    <div>
+                      <strong>{String(row.title || row.action || row.weld_number || `Activiteit ${index + 1}`)}</strong>
+                      <div className="list-subtle">{String(row.location || row.description || '')} · {formatDatetime(row.created_at as string | undefined)}</div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="state-box">Nog geen recente activiteit beschikbaar vanuit de backend.</div>
+          )}
+        </Card>
+        <Card>
+          <div className="section-title-row">
+            <h3>Volgende stap</h3>
+          </div>
+          <div className="list-stack compact-list">
+            <button className="list-row list-row-button" type="button" onClick={() => navigate('/projecten')}>
+              <div>
+                <strong>Open Projecten</strong>
+                <div className="list-subtle">Ga direct naar de operationele projectflow en open Project 360.</div>
+              </div>
+              <ChevronRight size={16} />
+            </button>
+            <button className="list-row list-row-button" type="button" onClick={() => navigate('/rapportage')}>
+              <div>
+                <strong>Open Rapportage</strong>
+                <div className="list-subtle">Bekijk exports, managementrapportages en CE-output.</div>
+              </div>
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        </Card>
       </div>
     </div>
   );
