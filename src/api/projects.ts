@@ -1,9 +1,18 @@
-import { apiRequest, listRequest, optionalRequest } from '@/api/client';
+import { ApiError, apiRequest, listRequest, optionalRequest } from '@/api/client';
 import type { ListParams } from '@/types/api';
 import type { Assembly, CeDocument, ComplianceOverview, ExportJob, Inspection, Project, Weld } from '@/types/domain';
 import type { ProjectAssemblyDraft, ProjectFormValues } from '@/types/forms';
 
 type PagedResponse<T> = T[] | { items?: T[]; total?: number; page?: number; limit?: number; data?: T[] };
+
+function sanitizeListParams(params?: ListParams): ListParams | undefined {
+  if (!params) return params;
+  return {
+    ...params,
+    page: typeof params.page === 'number' && params.page > 0 ? params.page : 1,
+    limit: typeof params.limit === 'number' ? Math.min(Math.max(params.limit, 1), 100) : params.limit,
+  };
+}
 
 function normalizeProjectRecord(payload: Record<string, unknown>): Project {
   return {
@@ -45,10 +54,7 @@ function normalizePagedList<T>(response: PagedResponse<T>, fallbackLimit = 25) {
 }
 
 function mapProjectPayload(
-  payload: Pick<
-    ProjectFormValues,
-    'projectnummer' | 'name' | 'client_name' | 'execution_class' | 'status' | 'start_date' | 'end_date' | 'inspection_template_id'
-  >,
+  payload: Pick<ProjectFormValues, 'projectnummer' | 'name' | 'client_name' | 'execution_class' | 'status' | 'start_date' | 'end_date' | 'inspection_template_id'>,
 ) {
   return {
     code: payload.projectnummer,
@@ -85,29 +91,35 @@ function mapProjectPatch(payload: Partial<ProjectFormValues>) {
 
 function needsProjectReadyStatus(status: string | null | undefined) {
   const normalized = String(status || '').trim().toLowerCase().replace(/_/g, '-');
-  return [
-    'concept',
-    'in-controle',
-    'in controle',
-    'in-uitvoering',
-    'in uitvoering',
-    'open',
-    'in-behandeling',
-    'in behandeling',
-  ].includes(normalized);
+  return ['concept', 'in-controle', 'in controle', 'in-uitvoering', 'in uitvoering', 'open', 'in-behandeling', 'in behandeling'].includes(normalized);
 }
 
 export async function getProjects(params?: ListParams) {
-  const response = await listRequest<Project[] | { items?: Project[]; total?: number; page?: number; limit?: number }>(
-    '/projects',
-    params,
-  );
-  const paged = normalizePagedList<Project>(response, params?.limit || 25);
-
-  return {
-    ...paged,
-    items: paged.items.map((row) => normalizeProjectRecord(row as unknown as Record<string, unknown>)),
-  };
+  const safeParams = sanitizeListParams(params);
+  try {
+    const response = await listRequest<Project[] | { items?: Project[]; total?: number; page?: number; limit?: number }>(
+      '/projects',
+      safeParams,
+    );
+    const paged = normalizePagedList<Project>(response, safeParams?.limit || 25);
+    return {
+      ...paged,
+      items: paged.items.map((row) => normalizeProjectRecord(row as unknown as Record<string, unknown>)),
+    };
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 422 && safeParams?.limit) {
+      const retry = await listRequest<Project[] | { items?: Project[]; total?: number; page?: number; limit?: number }>(
+        '/projects',
+        { ...safeParams, limit: 25 },
+      );
+      const paged = normalizePagedList<Project>(retry, 25);
+      return {
+        ...paged,
+        items: paged.items.map((row) => normalizeProjectRecord(row as unknown as Record<string, unknown>)),
+      };
+    }
+    throw error;
+  }
 }
 
 export async function getProject(projectId: string | number) {
@@ -121,29 +133,30 @@ export async function getProject(projectId: string | number) {
 }
 
 export async function getProjectAssemblies(projectId: string | number, params?: ListParams) {
-  const response = await listRequest<PagedResponse<Assembly>>(`/projects/${projectId}/assemblies`, params);
+  const response = await listRequest<PagedResponse<Assembly>>(`/projects/${projectId}/assemblies`, sanitizeListParams(params));
   return normalizePagedList<Assembly>(response, params?.limit || 25);
 }
 
 export async function getProjectWelds(projectId: string | number, params?: ListParams) {
-  const response = await listRequest<PagedResponse<Weld>>(`/projects/${projectId}/welds`, params);
+  const response = await listRequest<PagedResponse<Weld>>(`/projects/${projectId}/welds`, sanitizeListParams(params));
   return normalizePagedList<Weld>(response, params?.limit || 25);
 }
 
 export async function getProjectInspections(projectId: string | number, params?: ListParams) {
-  const response = await listRequest<PagedResponse<Inspection>>(`/projects/${projectId}/inspections`, params);
+  const response = await listRequest<PagedResponse<Inspection>>(`/projects/${projectId}/inspections`, sanitizeListParams(params));
   return normalizePagedList<Inspection>(response, params?.limit || 25);
 }
 
 export async function getProjectDocuments(projectId: string | number, params?: ListParams) {
+  const safeParams = sanitizeListParams(params);
   const response =
     (await optionalRequest<PagedResponse<CeDocument>>([`/projects/${projectId}/documents`])) ||
     (await listRequest<PagedResponse<CeDocument>>('/photos', {
-      ...(params || {}),
+      ...(safeParams || {}),
       project_id: String(projectId),
     }));
 
-  return normalizePagedList<CeDocument>(response, params?.limit || 25);
+  return normalizePagedList<CeDocument>(response, safeParams?.limit || 25);
 }
 
 export async function getProjectCompliance(projectId: string | number) {
@@ -165,7 +178,7 @@ export async function getProjectCompliance(projectId: string | number) {
 }
 
 export async function getProjectExports(projectId: string | number, params?: ListParams) {
-  const response = await listRequest<PagedResponse<ExportJob>>(`/projects/${projectId}/exports`, params);
+  const response = await listRequest<PagedResponse<ExportJob>>(`/projects/${projectId}/exports`, sanitizeListParams(params));
   return normalizePagedList<ExportJob>(response, params?.limit || 25);
 }
 
@@ -227,27 +240,24 @@ export async function applyProjectInspectionTemplate(projectId: string | number,
 }
 
 export async function addProjectMaterials(projectId: string | number) {
-  return (
-    (await optionalRequest<Record<string, unknown>>([`/projects/${projectId}/materials/add-all`], {
-      method: 'POST',
-    })) || { ok: true, projectId }
-  );
+  return ((await optionalRequest<Record<string, unknown>>([`/projects/${projectId}/materials/add-all`], { method: 'POST' })) || {
+    ok: true,
+    projectId,
+  });
 }
 
 export async function addProjectWps(projectId: string | number) {
-  return (
-    (await optionalRequest<Record<string, unknown>>([`/projects/${projectId}/wps/add-all`], {
-      method: 'POST',
-    })) || { ok: true, projectId }
-  );
+  return ((await optionalRequest<Record<string, unknown>>([`/projects/${projectId}/wps/add-all`], { method: 'POST' })) || {
+    ok: true,
+    projectId,
+  });
 }
 
 export async function addProjectWelders(projectId: string | number) {
-  return (
-    (await optionalRequest<Record<string, unknown>>([`/projects/${projectId}/welders/add-all`], {
-      method: 'POST',
-    })) || { ok: true, projectId }
-  );
+  return ((await optionalRequest<Record<string, unknown>>([`/projects/${projectId}/welders/add-all`], { method: 'POST' })) || {
+    ok: true,
+    projectId,
+  });
 }
 
 export async function createProject(payload: ProjectFormValues) {

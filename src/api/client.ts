@@ -1,4 +1,3 @@
-
 import { useAuthStore } from '@/app/store/auth-store';
 
 export class ApiError extends Error {
@@ -21,11 +20,26 @@ function isAbsoluteUrl(path: string): boolean {
   return /^https?:\/\//i.test(path);
 }
 
+function isAuthPath(path: string): boolean {
+  return path.includes('/auth/login') || path.includes('/auth/refresh') || path.includes('/auth/me');
+}
+
 function buildBasePath(path: string): string {
   if (isAbsoluteUrl(path)) return path;
   if (path.startsWith('/api/')) return path;
   if (path.startsWith('/')) return `/api/v1${path}`;
   return `/api/v1/${path}`;
+}
+
+function sanitizeQueryValue(key: string, value: QueryValue): QueryValue {
+  if (key === 'limit' && typeof value === 'number') {
+    if (value < 1) return 25;
+    if (value > 100) return 100;
+  }
+  if (key === 'page' && typeof value === 'number' && value < 1) {
+    return 1;
+  }
+  return value;
 }
 
 function buildUrl(path: string, params?: QueryParams): string {
@@ -34,8 +48,9 @@ function buildUrl(path: string, params?: QueryParams): string {
 
   const url = new URL(raw, window.location.origin);
   Object.entries(params).forEach(([key, value]) => {
-    if (value === undefined || value === null || value === '') return;
-    url.searchParams.set(key, String(value));
+    const next = sanitizeQueryValue(key, value);
+    if (next === undefined || next === null || next === '') return;
+    url.searchParams.set(key, String(next));
   });
   return `${url.pathname}${url.search}`;
 }
@@ -105,9 +120,9 @@ async function parseResponse<T>(response: Response, raw = false): Promise<T> {
     return (await response.json()) as T;
   }
   if (
-    contentType.includes('application/pdf')
-    || contentType.includes('application/octet-stream')
-    || contentType.includes('application/zip')
+    contentType.includes('application/pdf') ||
+    contentType.includes('application/octet-stream') ||
+    contentType.includes('application/zip')
   ) {
     return (await response.blob()) as T;
   }
@@ -118,24 +133,38 @@ async function tryRefreshSession(): Promise<boolean> {
   const store = getAuthSnapshot();
   if (!store.refreshToken || store.refreshToken === '__cookie_session__') return false;
 
+  const headers: Record<string, string> = {
+    Accept: 'application/json',
+    'Content-Type': 'application/json',
+  };
+
+  if (store.user?.tenant) headers['X-Tenant'] = String(store.user.tenant);
+  if (store.user?.tenantId) headers['X-Tenant-Id'] = String(store.user.tenantId);
+
   const response = await fetch(buildBasePath('/auth/refresh'), {
     method: 'POST',
     credentials: 'include',
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-    },
+    headers,
     body: JSON.stringify({ refresh_token: store.refreshToken }),
   });
 
-  if (!response.ok) return false;
-  const payload = await response.json() as {
+  if (!response.ok) {
+    if (response.status === 401 || response.status === 403) {
+      store.clearSession();
+    }
+    return false;
+  }
+
+  const payload = (await response.json()) as {
     access_token?: string;
     refresh_token?: string | null;
     user?: { email?: string; tenant?: string; tenant_id?: string; role?: string; name?: string };
   };
 
-  if (!payload.access_token || !payload.user?.email) return false;
+  if (!payload.access_token || !payload.user?.email) {
+    store.clearSession();
+    return false;
+  }
 
   store.setSession(
     payload.access_token,
@@ -159,7 +188,7 @@ export async function apiRequest<T = unknown>(
 ): Promise<T> {
   const response = await fetch(buildBasePath(path), normalizeInit(init));
 
-  if (response.status === 401 && retries < 1) {
+  if (response.status === 401 && retries < 1 && !isAuthPath(path)) {
     const refreshed = await tryRefreshSession().catch(() => false);
     if (refreshed) {
       return apiRequest<T>(path, init, retries + 1, raw);
@@ -177,11 +206,14 @@ export async function optionalRequest<T = unknown>(paths: string[], init?: Reque
   let lastError: unknown = null;
 
   for (const path of paths) {
+    if (!path || path.includes('/undefined') || path.includes('=undefined')) {
+      continue;
+    }
     try {
       return await apiRequest<T>(path, init);
     } catch (error) {
       lastError = error;
-      if (error instanceof ApiError && [404, 405].includes(error.status)) {
+      if (error instanceof ApiError && [404, 405, 422].includes(error.status)) {
         continue;
       }
       throw error;
@@ -215,8 +247,7 @@ export function healthRequest<T = unknown>(_arg?: unknown): Promise<T> {
 }
 
 const client = {
-  get: <T = unknown>(path: string, init?: RequestInit) =>
-    apiRequest<T>(path, { ...(init || {}), method: 'GET' }),
+  get: <T = unknown>(path: string, init?: RequestInit) => apiRequest<T>(path, { ...(init || {}), method: 'GET' }),
   post: <T = unknown>(path: string, body?: unknown, init?: RequestInit) =>
     apiRequest<T>(path, {
       ...(init || {}),
@@ -235,8 +266,7 @@ const client = {
       method: 'PATCH',
       body: isFormData(body) ? body : body === undefined ? undefined : JSON.stringify(body),
     }),
-  delete: <T = unknown>(path: string, init?: RequestInit) =>
-    apiRequest<T>(path, { ...(init || {}), method: 'DELETE' }),
+  delete: <T = unknown>(path: string, init?: RequestInit) => apiRequest<T>(path, { ...(init || {}), method: 'DELETE' }),
 };
 
 export default client;
