@@ -6,7 +6,6 @@ import { RoleGuard } from '@/app/router/RoleGuard';
 import { DashboardPage } from '@/features/dashboard/DashboardPage';
 import { Project360Page } from '@/features/projecten/Project360Page';
 import { ProjectenPage } from '@/features/projecten/ProjectenPage';
-import { LascontrolePage } from '@/features/lascontrole/LascontrolePage';
 import { CeDossierPage } from '@/features/ce-dossier/CeDossierPage';
 import { RapportagePage } from '@/features/rapportage/RapportagePage';
 import { InstellingenPage } from '@/features/instellingen/InstellingenPage';
@@ -70,7 +69,7 @@ export const routerConfig = [
       { path: 'projecten/:projectId/lassen/:weldId', element: <Project360Page /> },
       { path: 'projecten/:projectId/documenten', element: <Project360Page /> },
       { path: 'projecten/:projectId/historie', element: <Project360Page /> },
-      { path: 'projecten/:projectId/lascontrole', element: <LascontrolePage /> },
+      { path: 'projecten/:projectId/lascontrole', element: <Navigate to="../lassen" replace /> },
       { path: 'projecten/:projectId/ce-dossier', element: <CeDossierPage /> },
       { path: 'lascontrole', element: <Navigate to="/projecten" replace /> },
       { path: 'ce-dossier', element: <Navigate to="/projecten" replace /> },

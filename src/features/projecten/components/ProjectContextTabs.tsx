@@ -8,7 +8,6 @@ export const projectContextTabs = [
   { value: 'overzicht', label: 'Overzicht' },
   { value: 'assemblies', label: 'Assemblies' },
   { value: 'lassen', label: 'Lassen' },
-  { value: 'lascontrole', label: 'Lascontrole' },
   { value: 'documenten', label: 'Documenten' },
   { value: 'ce-dossier', label: 'CE Dossier' },
   { value: 'historie', label: 'Historie' },
@@ -17,7 +16,6 @@ export const projectContextTabs = [
 export function resolveProjectContextTab(pathname: string) {
   if (pathname.endsWith('/assemblies') || pathname.includes('/assemblies/')) return 'assemblies';
   if (pathname.endsWith('/lassen') || pathname.includes('/lassen/')) return 'lassen';
-  if (pathname.endsWith('/lascontrole')) return 'lascontrole';
   if (pathname.endsWith('/documenten')) return 'documenten';
   if (pathname.endsWith('/ce-dossier')) return 'ce-dossier';
   if (pathname.endsWith('/historie')) return 'historie';
@@ -36,11 +34,7 @@ export function ProjectContextTabs({
   const navigate = useNavigate();
 
   return (
-    <Card
-      className="project-context-tabs-card"
-      data-project-structure="tabs"
-      data-testid="project-context-tabs"
-    >
+    <Card className="project-context-tabs-card" data-project-structure="tabs" data-testid="project-context-tabs">
       <div className="project-context-tabs-header">
         <div className="project-context-tabs-copy">
           <div className="project-context-tabs-kicker">
@@ -49,16 +43,12 @@ export function ProjectContextTabs({
           </div>
           <strong>Elke projectpagina gebruikt dezelfde vaste tabvolgorde</strong>
           <div className="list-subtle">
-            Tabs bovenin, daarna actiebalk, filters, KPI’s en de werktafel.
+            Tabs bovenin, daarna projectkop, acties, filters, KPI’s en de werktafel.
           </div>
         </div>
         {searchSlot ? <div className="project-context-tabs-search">{searchSlot}</div> : null}
       </div>
-      <Tabs
-        tabs={projectContextTabs}
-        value={value}
-        onChange={(next) => navigate(`/projecten/${projectId}/${next}`)}
-      />
+      <Tabs tabs={projectContextTabs} value={value} onChange={(next) => navigate(`/projecten/${projectId}/${next}`)} />
     </Card>
   );
 }

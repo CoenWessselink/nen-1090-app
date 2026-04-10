@@ -82,7 +82,7 @@ export function InstellingenPage() {
 
   return (
     <div className="page-stack">
-      <PageHeader title="Instellingen" description="Masterdata, security en contractvalidatie op de bestaande settings-API." />
+      <PageHeader title="Instellingen" description="Masterdata onder elkaar, inclusief WPS, materialen, lassers en inspectietemplates." />
       {message ? <InlineMessage tone="success">{message}</InlineMessage> : null}
       <Tabs tabs={tabs} value={tab} onChange={setTab} />
 
@@ -135,14 +135,10 @@ export function InstellingenPage() {
 
       {tab === 'masterdata' ? (
         <div className="page-stack">
-          <div className="content-grid-2">
-            <MasterDataManager title="WPS" type="wps" rows={wps.data?.items || []} isLoading={wps.isLoading} isError={wps.isError} refetch={wps.refetch} />
-            <MasterDataManager title="Materialen" type="materials" rows={materials.data?.items || []} isLoading={materials.isLoading} isError={materials.isError} refetch={materials.refetch} />
-          </div>
-          <div className="content-grid-2">
-            <MasterDataManager title="Lassers" type="welders" rows={welders.data?.items || []} isLoading={welders.isLoading} isError={welders.isError} refetch={welders.refetch} />
-            <MasterDataManager title="Inspectietemplates" type="inspection-templates" rows={inspectionTemplates.data?.items || []} isLoading={inspectionTemplates.isLoading} isError={inspectionTemplates.isError} refetch={inspectionTemplates.refetch} />
-          </div>
+          <MasterDataManager title="WPS" type="wps" rows={wps.data?.items || []} isLoading={wps.isLoading} isError={wps.isError} refetch={wps.refetch} />
+          <MasterDataManager title="Materialen" type="materials" rows={materials.data?.items || []} isLoading={materials.isLoading} isError={materials.isError} refetch={materials.refetch} />
+          <MasterDataManager title="Lassers" type="welders" rows={welders.data?.items || []} isLoading={welders.isLoading} isError={welders.isError} refetch={welders.refetch} />
+          <MasterDataManager title="Inspectietemplates" type="inspection-templates" rows={inspectionTemplates.data?.items || []} isLoading={inspectionTemplates.isLoading} isError={inspectionTemplates.isError} refetch={inspectionTemplates.refetch} />
         </div>
       ) : null}
 
