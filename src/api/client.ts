@@ -1,3 +1,6 @@
+
+import { useAuthStore } from '@/app/store/auth-store';
+
 export class ApiError extends Error {
   status: number;
   details: unknown;
@@ -14,11 +17,8 @@ type Primitive = string | number | boolean;
 type QueryValue = Primitive | null | undefined;
 type QueryParams = Record<string, QueryValue> | undefined;
 
-const STORAGE_KEY = 'nen1090.session';
-const COOKIE_SESSION_MARKER = '__cookie_session__';
-
 function isAbsoluteUrl(path: string): boolean {
-  return /^https?:\/\/\/?/i.test(path);
+  return /^https?:\/\//i.test(path);
 }
 
 function buildBasePath(path: string): string {
@@ -44,39 +44,38 @@ function isFormData(value: unknown): value is FormData {
   return typeof FormData !== 'undefined' && value instanceof FormData;
 }
 
-function readStoredAccessToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as { token?: unknown };
-    if (typeof parsed.token !== 'string' || !parsed.token.trim()) return null;
-    if (parsed.token === COOKIE_SESSION_MARKER) return null;
-    return parsed.token;
-  } catch {
-    return null;
+function getAuthSnapshot() {
+  return useAuthStore.getState();
+}
+
+function buildAuthHeaders(headers: Headers) {
+  const { token, user } = getAuthSnapshot();
+
+  if (token && token !== '__cookie_session__' && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+
+  if (user?.tenant && !headers.has('X-Tenant')) {
+    headers.set('X-Tenant', String(user.tenant));
+  }
+
+  if (user?.tenantId && !headers.has('X-Tenant-Id')) {
+    headers.set('X-Tenant-Id', String(user.tenantId));
   }
 }
 
 function normalizeInit(init?: RequestInit): RequestInit {
   const headers = new Headers(init?.headers || {});
+  buildAuthHeaders(headers);
+
   const next: RequestInit = {
     ...init,
     credentials: init?.credentials || 'include',
     headers,
   };
 
-  const accessToken = readStoredAccessToken();
-  if (accessToken && !headers.has('Authorization')) {
-    headers.set('Authorization', `Bearer ${accessToken}`);
-  }
-
   if (init?.body && !isFormData(init.body) && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
-  }
-
-  if (!headers.has('Accept')) {
-    headers.set('Accept', 'application/json');
   }
 
   return next;
@@ -106,36 +105,75 @@ async function parseResponse<T>(response: Response, raw = false): Promise<T> {
     return (await response.json()) as T;
   }
   if (
-    contentType.includes('application/pdf') ||
-    contentType.includes('application/octet-stream') ||
-    contentType.includes('application/zip')
+    contentType.includes('application/pdf')
+    || contentType.includes('application/octet-stream')
+    || contentType.includes('application/zip')
   ) {
     return (await response.blob()) as T;
   }
   return (await response.text()) as T;
 }
 
+async function tryRefreshSession(): Promise<boolean> {
+  const store = getAuthSnapshot();
+  if (!store.refreshToken || store.refreshToken === '__cookie_session__') return false;
+
+  const response = await fetch(buildBasePath('/auth/refresh'), {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ refresh_token: store.refreshToken }),
+  });
+
+  if (!response.ok) return false;
+  const payload = await response.json() as {
+    access_token?: string;
+    refresh_token?: string | null;
+    user?: { email?: string; tenant?: string; tenant_id?: string; role?: string; name?: string };
+  };
+
+  if (!payload.access_token || !payload.user?.email) return false;
+
+  store.setSession(
+    payload.access_token,
+    {
+      email: payload.user.email,
+      tenant: payload.user.tenant || '',
+      tenantId: payload.user.tenant_id || '',
+      role: payload.user.role || '',
+      name: payload.user.name || '',
+    },
+    payload.refresh_token || store.refreshToken,
+  );
+  return true;
+}
+
 export async function apiRequest<T = unknown>(
   path: string,
   init?: RequestInit,
-  _retries = 0,
+  retries = 0,
   raw = false,
 ): Promise<T> {
   const response = await fetch(buildBasePath(path), normalizeInit(init));
+
+  if (response.status === 401 && retries < 1) {
+    const refreshed = await tryRefreshSession().catch(() => false);
+    if (refreshed) {
+      return apiRequest<T>(path, init, retries + 1, raw);
+    }
+  }
+
   return parseResponse<T>(response, raw);
 }
 
-export async function listRequest<T = unknown>(
-  path: string,
-  params?: QueryParams,
-): Promise<T> {
+export async function listRequest<T = unknown>(path: string, params?: QueryParams): Promise<T> {
   return apiRequest<T>(buildUrl(path, params));
 }
 
-export async function optionalRequest<T = unknown>(
-  paths: string[],
-  init?: RequestInit,
-): Promise<T> {
+export async function optionalRequest<T = unknown>(paths: string[], init?: RequestInit): Promise<T> {
   let lastError: unknown = null;
 
   for (const path of paths) {
@@ -154,10 +192,7 @@ export async function optionalRequest<T = unknown>(
   throw new ApiError('No matching endpoint path succeeded', 500);
 }
 
-export async function downloadRequest(
-  path: string,
-  init?: RequestInit,
-): Promise<Blob> {
+export async function downloadRequest(path: string, init?: RequestInit): Promise<Blob> {
   const response = await fetch(buildBasePath(path), normalizeInit(init));
   if (!response.ok) {
     let details: unknown = null;

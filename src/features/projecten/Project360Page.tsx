@@ -6,6 +6,7 @@ import { WeldInspectionModal } from '@/features/lascontrole/components/WeldInspe
 import { useUpsertWeldInspection, useWeldInspection } from '@/hooks/useInspections';
 import { useProject, useProjectAssemblies, useProjectInspections, useProjectWelds } from '@/hooks/useProjects';
 import { usePatchWeldStatus, useUpdateWeld } from '@/hooks/useWelds';
+import { useInspectionTemplates, useWelders, useWps } from '@/hooks/useSettings';
 import type { Assembly, AuditEntry, Inspection, Project, Weld, WeldStatus } from '@/types/domain';
 import type { WeldFormValues } from '@/types/forms';
 
@@ -74,6 +75,9 @@ export function Project360Page() {
   const saveInspection = useUpsertWeldInspection(String(projectId || ''), String(selectedWeld?.id || ''));
   const updateWeld = useUpdateWeld(String(projectId || ''));
   const patchWeldStatus = usePatchWeldStatus(String(projectId || ''));
+  const wpsQuery = useWps();
+  const weldersQuery = useWelders();
+  const templatesQuery = useInspectionTemplates();
 
   const project = projectQuery.data as Project | undefined;
   const assemblies = (assembliesQuery.data?.items || []) as Assembly[];
@@ -87,6 +91,11 @@ export function Project360Page() {
       style={{ width: '100%', padding: 14, borderRadius: 12, border: '1px solid #cbd5e1' }}
     />
   );
+
+  const assemblyOptions = assemblies.map((assembly) => ({ value: String(assembly.id), label: String(assembly.code || assembly.name || assembly.id) }));
+  const wpsOptions = (wpsQuery.data?.items || []).map((item) => ({ value: String(item.id || item.code || ''), label: String(item.code || item.title || item.id || '') }));
+  const welderOptions = (weldersQuery.data?.items || []).map((item) => ({ value: String(item.id || item.code || ''), label: String(item.name || item.code || item.id || '') }));
+  const templateOptions = (templatesQuery.data?.items || []).map((item) => ({ value: String(item.id || item.code || ''), label: String(item.name || item.code || item.id || '') }));
 
   const kpis = [
     <ProjectKpiActionCard
@@ -278,6 +287,10 @@ export function Project360Page() {
         inspection={selectedInspection}
         savingWeld={updateWeld.isPending}
         savingInspection={saveInspection.isPending}
+        assemblyOptions={assemblyOptions}
+        wpsOptions={wpsOptions}
+        welderOptions={welderOptions}
+        templateOptions={templateOptions}
         onClose={() => setSelectedWeld(null)}
         onQuickStatus={async (status) => {
           if (!selectedWeld) return;
