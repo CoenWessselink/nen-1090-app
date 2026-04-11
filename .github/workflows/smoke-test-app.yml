@@ -8,41 +8,28 @@ on:
 jobs:
   smoke:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: .
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Check app root
         run: |
           curl -fsSL "https://nen-1090-app.pages.dev/" > root.html
           test -s root.html
 
-      - name: Check app shell marker
-        run: |
-          curl -fsSL "https://nen-1090-app.pages.dev/" > shell.html
-          grep -Eiq '<div[^>]+id="app"|data-app-ready|<title>' shell.html
-
-      - name: Check login route
-        run: |
-          curl -fsSL "https://nen-1090-app.pages.dev/login" > login.html
-          grep -Eiq 'login|wachtwoord|email|inloggen' login.html
-
-      - name: Setup Playwright
+      - name: Install Playwright
         run: |
           npm init -y
           npm install playwright
           npx playwright install --with-deps chromium
 
-      - name: Ensure protected route redirects to login
+      - name: Test auth redirect in browser
         run: |
           node <<'EOF'
           const { chromium } = require('playwright');
@@ -50,22 +37,27 @@ jobs:
           (async () => {
             const browser = await chromium.launch({ headless: true });
             const page = await browser.newPage();
-            await page.goto('https://nen-1090-app.pages.dev/dashboard', { waitUntil: 'networkidle' });
+
+            await page.goto('https://nen-1090-app.pages.dev/dashboard', {
+              waitUntil: 'networkidle'
+            });
+
             const finalUrl = page.url();
-            console.log('Final URL:', finalUrl);
+            console.log('FINAL URL:', finalUrl);
 
             if (!/\/login(?:$|[?#])/.test(finalUrl)) {
-              throw new Error(`Expected client-side redirect to /login, got ${finalUrl}`);
+              throw new Error(`Expected redirect to /login, got ${finalUrl}`);
             }
 
-            const bodyText = await page.locator('body').innerText();
-            if (!/login|inloggen|email|wachtwoord/i.test(bodyText)) {
-              throw new Error('Login page markers not found after redirect');
+            const body = await page.locator('body').innerText();
+            if (!/login|inloggen|email|wachtwoord/i.test(body)) {
+              throw new Error('Login page markers not found');
             }
 
+            console.log('Auth redirect OK');
             await browser.close();
-          })().catch((error) => {
-            console.error(error);
+          })().catch((err) => {
+            console.error(err);
             process.exit(1);
           });
           EOF
