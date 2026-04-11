@@ -1,4 +1,4 @@
-import client, { apiRequest, optionalRequest } from './client';
+import client, { ApiError, apiRequest, optionalRequest } from './client';
 import type { ListParams } from '@/types/api';
 
 function withQuery(path: string, params?: ListParams): string {
@@ -32,6 +32,38 @@ function requireId(value: string | number | undefined | null, label: string) {
   return String(value);
 }
 
+async function tryRequest<T = unknown>(path: string, init?: RequestInit): Promise<T | null> {
+  try {
+    return await apiRequest<T>(path, init);
+  } catch (error) {
+    if (error instanceof ApiError && [404, 405, 422].includes(error.status)) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+async function tryMethods<T = unknown>(paths: string[], methods: Array<'PATCH' | 'PUT' | 'POST'>, payload: unknown): Promise<T> {
+  let lastError: unknown = null;
+  for (const path of paths) {
+    if (!path || path.includes('/undefined') || path.includes('=undefined')) continue;
+    for (const method of methods) {
+      try {
+        const result = await tryRequest<T>(path, {
+          method,
+          body: JSON.stringify(payload),
+        });
+        if (result !== null) return result;
+      } catch (error) {
+        lastError = error;
+        throw error;
+      }
+    }
+  }
+  if (lastError) throw lastError;
+  throw new ApiError('Geen geldige weld mutation route gevonden', 500);
+}
+
 export function getWelds(arg?: string | number | ListParams | Record<string, unknown>) {
   const projectId = getProjectId(arg);
   if (projectId) {
@@ -44,8 +76,8 @@ export function getWeld(projectId: string | number, weldId: string | number) {
   const safeWeldId = requireId(weldId, 'weldId');
   const safeProjectId = requireId(projectId, 'projectId');
   return optionalRequest([
-    `/welds/${safeWeldId}`,
     `/projects/${safeProjectId}/welds/${safeWeldId}`,
+    `/welds/${safeWeldId}`,
   ]);
 }
 
@@ -64,28 +96,31 @@ export function updateWeld(projectId: string | number, weldId: string | number, 
   const safeWeldId = requireId(weldId, 'weldId');
   const safeProjectId = requireId(projectId, 'projectId');
   return optionalRequest([
-    `/welds/${safeWeldId}`,
     `/projects/${safeProjectId}/welds/${safeWeldId}`,
+    `/welds/${safeWeldId}`,
   ], { method: 'PUT', body: JSON.stringify(payload) });
 }
 
 export function patchWeldStatus(projectId: string | number, weldId: string | number, status: string) {
   const safeWeldId = requireId(weldId, 'weldId');
   const safeProjectId = requireId(projectId, 'projectId');
-  return optionalRequest([
-    `/welds/${safeWeldId}/status`,
+  const payload = { status };
+
+  // Eerst de algemene weld update-routes proberen om 404 spam op /status-routes te voorkomen.
+  return tryMethods([
+    `/projects/${safeProjectId}/welds/${safeWeldId}`,
     `/welds/${safeWeldId}`,
     `/projects/${safeProjectId}/welds/${safeWeldId}/status`,
-    `/projects/${safeProjectId}/welds/${safeWeldId}`,
-  ], { method: 'PATCH', body: JSON.stringify({ status }) });
+    `/welds/${safeWeldId}/status`,
+  ], ['PATCH', 'PUT'], payload);
 }
 
 export function deleteWeld(projectId: string | number, weldId: string | number) {
   const safeWeldId = requireId(weldId, 'weldId');
   const safeProjectId = requireId(projectId, 'projectId');
   return optionalRequest([
-    `/welds/${safeWeldId}`,
     `/projects/${safeProjectId}/welds/${safeWeldId}`,
+    `/welds/${safeWeldId}`,
   ], { method: 'DELETE' });
 }
 
@@ -93,8 +128,8 @@ export function uploadWeldAttachment(projectId: string | number, weldId: string 
   const safeWeldId = requireId(weldId, 'weldId');
   const safeProjectId = requireId(projectId, 'projectId');
   return optionalRequest([
-    `/welds/${safeWeldId}/attachments`,
     `/projects/${safeProjectId}/welds/${safeWeldId}/attachments`,
+    `/welds/${safeWeldId}/attachments`,
   ], { method: 'POST', body: formData });
 }
 
@@ -102,8 +137,8 @@ export function getWeldAttachments(projectId: string | number, weldId: string | 
   const safeWeldId = requireId(weldId, 'weldId');
   const safeProjectId = requireId(projectId, 'projectId');
   return optionalRequest([
-    `/welds/${safeWeldId}/attachments`,
     `/projects/${safeProjectId}/welds/${safeWeldId}/attachments`,
+    `/welds/${safeWeldId}/attachments`,
   ]);
 }
 
@@ -111,8 +146,8 @@ export function getWeldCompliance(projectId: string | number, weldId: string | n
   const safeWeldId = requireId(weldId, 'weldId');
   const safeProjectId = requireId(projectId, 'projectId');
   return optionalRequest([
-    `/welds/${safeWeldId}/compliance`,
     `/projects/${safeProjectId}/welds/${safeWeldId}/compliance`,
+    `/welds/${safeWeldId}/compliance`,
   ]);
 }
 
@@ -120,8 +155,8 @@ export function getWeldDefects(projectId: string | number, weldId: string | numb
   const safeWeldId = requireId(weldId, 'weldId');
   const safeProjectId = requireId(projectId, 'projectId');
   return optionalRequest([
-    `/weld-defects?weld_id=${safeWeldId}&project_id=${safeProjectId}`,
     `/projects/${safeProjectId}/welds/${safeWeldId}/defects`,
+    `/weld-defects?weld_id=${safeWeldId}&project_id=${safeProjectId}`,
   ]);
 }
 
@@ -129,8 +164,9 @@ export function getWeldInspection(projectId: string | number, weldId: string | n
   const safeWeldId = requireId(weldId, 'weldId');
   const safeProjectId = requireId(projectId, 'projectId');
   return optionalRequest([
-    `/welds/${safeWeldId}/inspection`,
     `/projects/${safeProjectId}/welds/${safeWeldId}/inspection`,
+    `/welds/${safeWeldId}/inspection`,
+    `/projects/${safeProjectId}/welds/${safeWeldId}/inspections`,
   ]);
 }
 
@@ -143,8 +179,8 @@ export function resetWeldToNorm(projectId: string | number, weldId: string | num
   const safeWeldId = requireId(weldId, 'weldId');
   const safeProjectId = requireId(projectId, 'projectId');
   return optionalRequest([
-    `/welds/${safeWeldId}/reset-to-norm`,
     `/projects/${safeProjectId}/welds/${safeWeldId}/reset-to-norm`,
+    `/welds/${safeWeldId}/reset-to-norm`,
   ], { method: 'POST' });
 }
 
@@ -159,8 +195,8 @@ export function conformWeld(projectId: string | number, weldId: string | number)
   const safeWeldId = requireId(weldId, 'weldId');
   const safeProjectId = requireId(projectId, 'projectId');
   return optionalRequest([
-    `/welds/${safeWeldId}/conform`,
     `/projects/${safeProjectId}/welds/${safeWeldId}/conform`,
+    `/welds/${safeWeldId}/conform`,
   ], { method: 'POST' });
 }
 
@@ -168,7 +204,7 @@ export function copyWeld(projectId: string | number, weldId: string | number, we
   const safeWeldId = requireId(weldId, 'weldId');
   const safeProjectId = requireId(projectId, 'projectId');
   return optionalRequest([
-    `/welds/${safeWeldId}/copy`,
     `/projects/${safeProjectId}/welds/${safeWeldId}/copy`,
+    `/welds/${safeWeldId}/copy`,
   ], { method: 'POST', body: JSON.stringify({ weld_number: weldNumber }) });
 }

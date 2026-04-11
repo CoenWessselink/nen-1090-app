@@ -141,43 +141,48 @@ async function tryRefreshSession(): Promise<boolean> {
   if (store.user?.tenant) headers['X-Tenant'] = String(store.user.tenant);
   if (store.user?.tenantId) headers['X-Tenant-Id'] = String(store.user.tenantId);
 
-  const response = await fetch(buildBasePath('/auth/refresh'), {
-    method: 'POST',
-    credentials: 'include',
-    headers,
-    body: JSON.stringify({ refresh_token: store.refreshToken }),
-  });
+  try {
+    const response = await fetch(buildBasePath('/auth/refresh'), {
+      method: 'POST',
+      credentials: 'include',
+      headers,
+      body: JSON.stringify({ refresh_token: store.refreshToken }),
+    });
 
-  if (!response.ok) {
-    if (response.status === 401 || response.status === 403) {
-      store.clearSession();
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403 || response.status === 404 || response.status === 405) {
+        store.clearSession();
+      }
+      return false;
     }
-    return false;
-  }
 
-  const payload = (await response.json()) as {
-    access_token?: string;
-    refresh_token?: string | null;
-    user?: { email?: string; tenant?: string; tenant_id?: string; role?: string; name?: string };
-  };
+    const payload = (await response.json()) as {
+      access_token?: string;
+      refresh_token?: string | null;
+      user?: { email?: string; tenant?: string; tenant_id?: string; role?: string; name?: string };
+    };
 
-  if (!payload.access_token || !payload.user?.email) {
+    if (!payload.access_token || !payload.user?.email) {
+      store.clearSession();
+      return false;
+    }
+
+    store.setSession(
+      payload.access_token,
+      {
+        email: payload.user.email,
+        tenant: payload.user.tenant || '',
+        tenantId: payload.user.tenant_id || '',
+        role: payload.user.role || '',
+        name: payload.user.name || '',
+      },
+      payload.refresh_token || store.refreshToken,
+    );
+    return true;
+  } catch {
     store.clearSession();
     return false;
   }
-
-  store.setSession(
-    payload.access_token,
-    {
-      email: payload.user.email,
-      tenant: payload.user.tenant || '',
-      tenantId: payload.user.tenant_id || '',
-      role: payload.user.role || '',
-      name: payload.user.name || '',
-    },
-    payload.refresh_token || store.refreshToken,
-  );
-  return true;
 }
 
 export async function apiRequest<T = unknown>(
@@ -213,7 +218,7 @@ export async function optionalRequest<T = unknown>(paths: string[], init?: Reque
       return await apiRequest<T>(path, init);
     } catch (error) {
       lastError = error;
-      if (error instanceof ApiError && [404, 405, 422].includes(error.status)) {
+      if (error instanceof ApiError && [401, 404, 405, 422].includes(error.status)) {
         continue;
       }
       throw error;

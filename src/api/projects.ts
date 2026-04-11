@@ -143,8 +143,19 @@ export async function getProjectWelds(projectId: string | number, params?: ListP
 }
 
 export async function getProjectInspections(projectId: string | number, params?: ListParams) {
-  const response = await listRequest<PagedResponse<Inspection>>(`/projects/${projectId}/inspections`, sanitizeListParams(params));
-  return normalizePagedList<Inspection>(response, params?.limit || 25);
+  const safeParams = sanitizeListParams(params);
+  const query = new URLSearchParams();
+  Object.entries(safeParams || {}).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === '') return;
+    query.set(key, String(value));
+  });
+  const response =
+    (await optionalRequest<PagedResponse<Inspection>>([
+      `/projects/${projectId}/inspections${query.toString() ? `?${query.toString()}` : ''}`,
+      `/inspections?project_id=${projectId}${query.toString() ? `&${query.toString()}` : ''}`,
+      `/projects/${projectId}/inspection`,
+    ])) || { items: [], total: 0, page: 1, limit: safeParams?.limit || 25 };
+  return normalizePagedList<Inspection>(response, safeParams?.limit || 25);
 }
 
 export async function getProjectDocuments(projectId: string | number, params?: ListParams) {
