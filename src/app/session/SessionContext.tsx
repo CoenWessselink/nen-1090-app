@@ -47,6 +47,8 @@ const permissionMap: Record<string, AccessPermission[]> = {
   VIEWER: ['dashboard.read', 'projects.read', 'welds.read', 'documents.read'],
 };
 
+const COOKIE_SESSION_MARKER = '__cookie_session__';
+
 function normalizeRole(role?: string | null): string {
   return String(role || '').replace(/[^a-zA-Z]/g, '').toUpperCase();
 }
@@ -71,14 +73,22 @@ function isAuthPage(pathname: string) {
   ].includes(pathname);
 }
 
-const COOKIE_SESSION_MARKER = '__cookie_session__';
-
 function hasUsableBearerToken(token: string | null) {
   return Boolean(token && token !== COOKIE_SESSION_MARKER);
 }
 
 function hasUsableRefreshToken(refreshToken: string | null) {
   return Boolean(refreshToken && refreshToken !== COOKIE_SESSION_MARKER);
+}
+
+function mapUser(input: Partial<SessionUser> | null | undefined): SessionUser {
+  return {
+    email: input?.email || '',
+    tenant: input?.tenant || '',
+    tenantId: input?.tenantId || '',
+    role: input?.role || '',
+    name: input?.name || '',
+  };
 }
 
 export function SessionProvider({ children }: PropsWithChildren) {
@@ -107,76 +117,77 @@ export function SessionProvider({ children }: PropsWithChildren) {
         return;
       }
 
-      if (onAuthPage && bearerToken && !bearerRefresh) {
-        clearSession();
-        if (!cancelled) setIsBootstrapping(false);
-        return;
-      }
-
       try {
         let activeToken = bearerToken ? token : null;
         let nextRefreshToken = bearerRefresh ? refreshToken : null;
+        let resolvedUser = user ? mapUser(user) : null;
 
         if (!activeToken && bearerRefresh && refreshToken) {
           const refreshed = await refreshSession(refreshToken);
-          activeToken = refreshed.access_token;
+          activeToken = refreshed.access_token || null;
           nextRefreshToken = refreshed.refresh_token || refreshToken;
+          resolvedUser = refreshed.user
+            ? mapUser({
+                email: refreshed.user.email,
+                tenant: refreshed.user.tenant,
+                tenantId: refreshed.user.tenant_id,
+                role: refreshed.user.role,
+                name: refreshed.user.name,
+              })
+            : resolvedUser;
+
           if (!activeToken) throw new Error('NO_ACCESS_TOKEN_AFTER_REFRESH');
         }
 
         if (!activeToken && cookieSession && !onAuthPage) {
           const refreshed = await refreshCentralSession();
           activeToken = COOKIE_SESSION_MARKER;
-          if (!cancelled) {
-            setSession(
-              COOKIE_SESSION_MARKER,
-              {
-                email: refreshed.user?.email || '',
-                tenant: refreshed.user?.tenant || '',
-                tenantId: refreshed.user?.tenant_id || '',
-                role: refreshed.user?.role || '',
-                name: refreshed.user?.name || '',
-              },
-              null,
-            );
-          }
+          resolvedUser = mapUser({
+            email: refreshed.user?.email,
+            tenant: refreshed.user?.tenant,
+            tenantId: refreshed.user?.tenant_id,
+            role: refreshed.user?.role,
+            name: refreshed.user?.name,
+          });
         }
 
         if (!activeToken && !cookieSession) {
           throw new Error('NO_ACTIVE_SESSION');
         }
 
-        if (!onAuthPage) {
-          const me = await getMe();
+        // Belangrijk: op auth-pagina's NOOIT een geldige bearer-sessie wissen alleen omdat er geen refresh token is.
+        // Dat veroorzaakte dat login direct weer werd kwijtgeraakt voordat de app-shell kon laden.
+        if (onAuthPage && activeToken && resolvedUser?.email) {
           if (!cancelled) {
-            setSession(
-              activeToken || COOKIE_SESSION_MARKER,
-              {
-                email: me.email,
-                tenant: me.tenant,
-                tenantId: me.tenantId,
-                role: me.role,
-                name: me.name,
-              },
-              nextRefreshToken,
-            );
+            setSession(activeToken, resolvedUser, nextRefreshToken);
+            setIsBootstrapping(false);
           }
+          return;
+        }
+
+        if (!resolvedUser?.email) {
+          const me = await getMe();
+          resolvedUser = mapUser(me);
+        }
+
+        if (!cancelled) {
+          setSession(activeToken || COOKIE_SESSION_MARKER, resolvedUser, nextRefreshToken);
+          setIsBootstrapping(false);
         }
       } catch {
         if (!cancelled) {
           clearSession();
+          setIsBootstrapping(false);
         }
-      } finally {
-        if (!cancelled) setIsBootstrapping(false);
       }
     }
 
     void bootstrap();
 
     return () => {
-      cancelled = true
+      cancelled = true;
     };
-  }, [clearSession, refreshToken, setSession, token]);
+  }, [clearSession, refreshToken, setSession, token, user]);
 
   useEffect(() => {
     if (!user) return;
