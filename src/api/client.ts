@@ -16,6 +16,9 @@ type Primitive = string | number | boolean;
 type QueryValue = Primitive | null | undefined;
 type QueryParams = Record<string, QueryValue> | undefined;
 
+const COOKIE_SESSION_MARKER = '__cookie_session__';
+let refreshPromise: Promise<boolean> | null = null;
+
 function isAbsoluteUrl(path: string): boolean {
   return /^https?:\/\//i.test(path);
 }
@@ -66,7 +69,7 @@ function getAuthSnapshot() {
 function buildAuthHeaders(headers: Headers) {
   const { token, user } = getAuthSnapshot();
 
-  if (token && token !== '__cookie_session__' && !headers.has('Authorization')) {
+  if (token && token !== COOKIE_SESSION_MARKER && !headers.has('Authorization')) {
     headers.set('Authorization', `Bearer ${token}`);
   }
 
@@ -130,59 +133,72 @@ async function parseResponse<T>(response: Response, raw = false): Promise<T> {
 }
 
 async function tryRefreshSession(): Promise<boolean> {
-  const store = getAuthSnapshot();
-  if (!store.refreshToken || store.refreshToken === '__cookie_session__') return false;
+  if (refreshPromise) return refreshPromise;
 
-  const headers: Record<string, string> = {
-    Accept: 'application/json',
-    'Content-Type': 'application/json',
-  };
+  refreshPromise = (async () => {
+    const store = getAuthSnapshot();
 
-  if (store.user?.tenant) headers['X-Tenant'] = String(store.user.tenant);
-  if (store.user?.tenantId) headers['X-Tenant-Id'] = String(store.user.tenantId);
-
-  try {
-    const response = await fetch(buildBasePath('/auth/refresh'), {
-      method: 'POST',
-      credentials: 'include',
-      headers,
-      body: JSON.stringify({ refresh_token: store.refreshToken }),
-    });
-
-    if (!response.ok) {
-      if (response.status === 401 || response.status === 403 || response.status === 404 || response.status === 405) {
-        store.clearSession();
-      }
+    // Geen bruikbare refresh-token of alleen cookie marker -> geen bearer refresh doen.
+    if (!store.refreshToken || store.refreshToken === COOKIE_SESSION_MARKER) {
       return false;
     }
 
-    const payload = (await response.json()) as {
-      access_token?: string;
-      refresh_token?: string | null;
-      user?: { email?: string; tenant?: string; tenant_id?: string; role?: string; name?: string };
+    const headers: Record<string, string> = {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
     };
 
-    if (!payload.access_token || !payload.user?.email) {
+    if (store.user?.tenant) headers['X-Tenant'] = String(store.user.tenant);
+    if (store.user?.tenantId) headers['X-Tenant-Id'] = String(store.user.tenantId);
+
+    try {
+      const response = await fetch(buildBasePath('/auth/refresh'), {
+        method: 'POST',
+        credentials: 'include',
+        headers,
+        body: JSON.stringify({ refresh_token: store.refreshToken }),
+      });
+
+      if (!response.ok) {
+        // 401/403/404/405 -> direct sessie opruimen, anders blijf je refresh-spam zien.
+        if ([401, 403, 404, 405].includes(response.status)) {
+          store.clearSession();
+        }
+        return false;
+      }
+
+      const payload = (await response.json()) as {
+        access_token?: string;
+        refresh_token?: string | null;
+        user?: { email?: string; tenant?: string; tenant_id?: string; role?: string; name?: string };
+      };
+
+      if (!payload.access_token || !payload.user?.email) {
+        store.clearSession();
+        return false;
+      }
+
+      store.setSession(
+        payload.access_token,
+        {
+          email: payload.user.email,
+          tenant: payload.user.tenant || '',
+          tenantId: payload.user.tenant_id || '',
+          role: payload.user.role || '',
+          name: payload.user.name || '',
+        },
+        payload.refresh_token || store.refreshToken,
+      );
+      return true;
+    } catch {
       store.clearSession();
       return false;
+    } finally {
+      refreshPromise = null;
     }
+  })();
 
-    store.setSession(
-      payload.access_token,
-      {
-        email: payload.user.email,
-        tenant: payload.user.tenant || '',
-        tenantId: payload.user.tenant_id || '',
-        role: payload.user.role || '',
-        name: payload.user.name || '',
-      },
-      payload.refresh_token || store.refreshToken,
-    );
-    return true;
-  } catch {
-    store.clearSession();
-    return false;
-  }
+  return refreshPromise;
 }
 
 export async function apiRequest<T = unknown>(
@@ -218,6 +234,7 @@ export async function optionalRequest<T = unknown>(paths: string[], init?: Reque
       return await apiRequest<T>(path, init);
     } catch (error) {
       lastError = error;
+      // Doorlopen bij contractvarianten die in de ene omgeving wel en in de andere niet bestaan.
       if (error instanceof ApiError && [401, 404, 405, 422].includes(error.status)) {
         continue;
       }

@@ -142,6 +142,8 @@ export async function getProjectWelds(projectId: string | number, params?: ListP
   return normalizePagedList<Weld>(response, params?.limit || 25);
 }
 
+// Belangrijk: singular /inspection niet meer als primaire route gebruiken.
+// Eerst multi-inspections of centrale inspections-query gebruiken om 404-spam te voorkomen.
 export async function getProjectInspections(projectId: string | number, params?: ListParams) {
   const safeParams = sanitizeListParams(params);
   const query = new URLSearchParams();
@@ -153,7 +155,6 @@ export async function getProjectInspections(projectId: string | number, params?:
     (await optionalRequest<PagedResponse<Inspection>>([
       `/projects/${projectId}/inspections${query.toString() ? `?${query.toString()}` : ''}`,
       `/inspections?project_id=${projectId}${query.toString() ? `&${query.toString()}` : ''}`,
-      `/projects/${projectId}/inspection`,
     ])) || { items: [], total: 0, page: 1, limit: safeParams?.limit || 25 };
   return normalizePagedList<Inspection>(response, safeParams?.limit || 25);
 }

@@ -44,23 +44,16 @@ async function tryRequest<T = unknown>(path: string, init?: RequestInit): Promis
 }
 
 async function tryMethods<T = unknown>(paths: string[], methods: Array<'PATCH' | 'PUT' | 'POST'>, payload: unknown): Promise<T> {
-  let lastError: unknown = null;
   for (const path of paths) {
     if (!path || path.includes('/undefined') || path.includes('=undefined')) continue;
     for (const method of methods) {
-      try {
-        const result = await tryRequest<T>(path, {
-          method,
-          body: JSON.stringify(payload),
-        });
-        if (result !== null) return result;
-      } catch (error) {
-        lastError = error;
-        throw error;
-      }
+      const result = await tryRequest<T>(path, {
+        method,
+        body: JSON.stringify(payload),
+      });
+      if (result !== null) return result;
     }
   }
-  if (lastError) throw lastError;
   throw new ApiError('Geen geldige weld mutation route gevonden', 500);
 }
 
@@ -106,7 +99,7 @@ export function patchWeldStatus(projectId: string | number, weldId: string | num
   const safeProjectId = requireId(projectId, 'projectId');
   const payload = { status };
 
-  // Eerst de algemene weld update-routes proberen om 404 spam op /status-routes te voorkomen.
+  // Eerst bestaande generieke update-routes. Daarmee voorkom je 404-spam op /status.
   return tryMethods([
     `/projects/${safeProjectId}/welds/${safeWeldId}`,
     `/welds/${safeWeldId}`,
@@ -160,11 +153,26 @@ export function getWeldDefects(projectId: string | number, weldId: string | numb
   ]);
 }
 
-export function getWeldInspection(projectId: string | number, weldId: string | number) {
+// Belangrijk: géén /inspection-subroute meer als eerste kandidaat, want die veroorzaakt live 404-spam.
+// Eerst project-inspections lijst opvragen en lokaal filteren.
+export async function getWeldInspection(projectId: string | number, weldId: string | number) {
   const safeWeldId = requireId(weldId, 'weldId');
   const safeProjectId = requireId(projectId, 'projectId');
+
+  const fromProjectList = await optionalRequest<any>([
+    `/projects/${safeProjectId}/inspections?limit=100`,
+    `/inspections?project_id=${safeProjectId}&limit=100`,
+  ]).catch(() => null);
+
+  if (Array.isArray(fromProjectList)) {
+    return fromProjectList.find((row) => String(row?.weld_id || row?.weldId || '') === safeWeldId) || null;
+  }
+
+  if (fromProjectList && Array.isArray(fromProjectList.items)) {
+    return fromProjectList.items.find((row: any) => String(row?.weld_id || row?.weldId || '') === safeWeldId) || null;
+  }
+
   return optionalRequest([
-    `/projects/${safeProjectId}/welds/${safeWeldId}/inspection`,
     `/welds/${safeWeldId}/inspection`,
     `/projects/${safeProjectId}/welds/${safeWeldId}/inspections`,
   ]);
