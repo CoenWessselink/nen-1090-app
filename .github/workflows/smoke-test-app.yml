@@ -23,11 +23,16 @@ jobs:
           curl -fsSL "https://nen-1090-app.pages.dev/" > root.html
           test -s root.html
 
+      - name: Check app shell marker
+        run: |
+          curl -fsSL "https://nen-1090-app.pages.dev/" > shell.html
+          grep -Eiq '<div[^>]+id="app"|data-app-ready|<title>' shell.html
+
       - name: Install Playwright
         run: |
           npm init -y
           npm install playwright
-          npx playwright install --with-deps chromium
+          npx playwright install --with-deps
 
       - name: Test auth redirect in browser
         run: |
@@ -51,7 +56,7 @@ jobs:
 
             const body = await page.locator('body').innerText();
             if (!/login|inloggen|email|wachtwoord/i.test(body)) {
-              throw new Error('Login page markers not found');
+              throw new Error('Login page markers not found after redirect');
             }
 
             console.log('Auth redirect OK');
