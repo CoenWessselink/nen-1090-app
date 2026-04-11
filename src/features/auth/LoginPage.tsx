@@ -40,21 +40,25 @@ export default function LoginPage() {
 
     try {
       const response = await login({ tenant, email, password });
+      const accessToken = response.access_token || response.token;
+
+      if (!accessToken || !response.user?.email) {
+        throw new Error('Loginresponse bevat geen geldige sessie.');
+      }
 
       setSession(
-        response.access_token,
+        accessToken,
         {
-          email: response.user.email,
-          tenant: response.user.tenant || tenant,
-          tenantId: response.user.tenant_id || '',
+          email: response.user.email || email,
+          tenant: String(response.user.tenant || tenant),
+          tenantId: response.user.tenant_id ?? '',
           role: response.user.role || '',
           name: response.user.name || '',
         },
         response.refresh_token || null,
       );
 
-      // harde redirect na succesvolle login; niet alleen vertrouwen op react-state
-      window.location.replace(redirectTarget);
+      window.location.assign(redirectTarget);
       return;
     } catch (requestError) {
       setError(getFriendlyAuthErrorMessage(requestError, 'Inloggen mislukt.'));
@@ -76,37 +80,17 @@ export default function LoginPage() {
         <form className="form-grid" onSubmit={handleSubmit}>
           <label>
             <span>Tenant</span>
-            <Input
-              name="tenant"
-              value={tenant}
-              onChange={(event) => setTenant(event.target.value)}
-              autoComplete="organization"
-              required
-            />
+            <Input name="tenant" value={tenant} onChange={(event) => setTenant(event.target.value)} autoComplete="organization" required />
           </label>
 
           <label>
             <span>E-mail</span>
-            <Input
-              name="email"
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              autoComplete="email"
-              required
-            />
+            <Input name="email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" required />
           </label>
 
           <label>
             <span>Wachtwoord</span>
-            <Input
-              name="password"
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              autoComplete="current-password"
-              required
-            />
+            <Input name="password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" required />
           </label>
 
           <Button type="submit" disabled={submitting}>

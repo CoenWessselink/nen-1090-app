@@ -1,99 +1,125 @@
 import { create } from 'zustand';
+import type { SessionUser } from '@/types/domain';
 
-export type SessionUser = {
-  email: string;
-  tenant: string;
-  tenantId: string;
-  role: string;
-  name: string;
+type ImpersonationState = {
+  active: boolean;
+  tenantId?: string | number;
+  tenantName?: string;
+  originalUser?: SessionUser | null;
 };
 
 type AuthState = {
   token: string | null;
   refreshToken: string | null;
   user: SessionUser | null;
-  impersonation: {
-    active: boolean;
-    tenantId?: string;
-    tenantName?: string;
-  } | null;
+  impersonation: ImpersonationState | null;
   setSession: (token: string, user: SessionUser, refreshToken?: string | null) => void;
   updateToken: (token: string) => void;
+  startImpersonation: (token: string, user: SessionUser, originalUser: SessionUser) => void;
+  stopImpersonation: () => void;
   clearSession: () => void;
 };
 
-const STORAGE_KEY = 'nen1090.auth';
+const storageKey = 'nen1090.session';
+const cookieSessionMarker = '__cookie_session__';
 
-function loadPersistedState(): Pick<AuthState, 'token' | 'refreshToken' | 'user' | 'impersonation'> {
+function isValidSessionUser(value: unknown): value is SessionUser {
+  if (!value || typeof value !== 'object') return false;
+  const user = value as Record<string, unknown>;
+  return typeof user.email === 'string' && typeof user.tenant === 'string';
+}
+
+function isSupportedToken(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function loadInitialState(): Pick<AuthState, 'token' | 'refreshToken' | 'user' | 'impersonation'> {
+  if (typeof window === 'undefined') {
+    return { token: null, refreshToken: null, user: null, impersonation: null };
+  }
+
+  const raw = window.localStorage.getItem(storageKey);
+  if (!raw) {
+    return { token: null, refreshToken: null, user: null, impersonation: null };
+  }
+
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
+    const parsed = JSON.parse(raw) as Pick<AuthState, 'token' | 'refreshToken' | 'user' | 'impersonation'>;
+
+    if (!isSupportedToken(parsed.token) || !isValidSessionUser(parsed.user)) {
+      window.localStorage.removeItem(storageKey);
       return { token: null, refreshToken: null, user: null, impersonation: null };
     }
-    const parsed = JSON.parse(raw);
+
     return {
-      token: parsed?.token || null,
-      refreshToken: parsed?.refreshToken || null,
-      user: parsed?.user || null,
-      impersonation: parsed?.impersonation || null,
+      token: parsed.token,
+      refreshToken:
+        typeof parsed.refreshToken === 'string' && parsed.refreshToken.trim().length > 0
+          ? parsed.refreshToken
+          : null,
+      user: parsed.user,
+      impersonation: parsed.impersonation || null,
     };
   } catch {
+    window.localStorage.removeItem(storageKey);
     return { token: null, refreshToken: null, user: null, impersonation: null };
   }
 }
 
-function persistState(state: Pick<AuthState, 'token' | 'refreshToken' | 'user' | 'impersonation'>) {
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  } catch {
-    // ignore storage write failures
+function persistSession(
+  token: string | null,
+  user: SessionUser | null,
+  refreshToken: string | null,
+  impersonation: ImpersonationState | null,
+) {
+  if (typeof window === 'undefined') return;
+
+  if (!token || !user) {
+    window.localStorage.removeItem(storageKey);
+    return;
   }
-}
 
-const initial = typeof window !== 'undefined'
-  ? loadPersistedState()
-  : { token: null, refreshToken: null, user: null, impersonation: null };
-
-export const useAuthStore = create<AuthState>((set, get) => ({
-  token: initial.token,
-  refreshToken: initial.refreshToken,
-  user: initial.user,
-  impersonation: initial.impersonation,
-
-  setSession: (token, user, refreshToken = null) => {
-    const next = {
-      token,
+  window.localStorage.setItem(
+    storageKey,
+    JSON.stringify({
+      token: token === cookieSessionMarker ? cookieSessionMarker : token,
       refreshToken,
       user,
-      impersonation: null,
-    };
-    persistState(next);
-    set(next);
-  },
+      impersonation,
+    }),
+  );
+}
 
-  updateToken: (token) => {
-    const current = get();
-    const next = {
-      token,
-      refreshToken: current.refreshToken,
-      user: current.user,
-      impersonation: current.impersonation,
-    };
-    persistState(next);
-    set({ token });
+export const useAuthStore = create<AuthState>((set) => ({
+  ...loadInitialState(),
+  setSession: (token, user, refreshToken = null) => {
+    persistSession(token, user, refreshToken, null);
+    set({ token, user, refreshToken, impersonation: null });
   },
-
+  updateToken: (token) =>
+    set((state) => {
+      persistSession(token, state.user, state.refreshToken, state.impersonation);
+      return { token };
+    }),
+  startImpersonation: (token, user, originalUser) =>
+    set((state) => {
+      const impersonation: ImpersonationState = {
+        active: true,
+        tenantId: user.tenantId,
+        tenantName: user.tenant,
+        originalUser,
+      };
+      persistSession(token, user, state.refreshToken, impersonation);
+      return { token, user, impersonation };
+    }),
+  stopImpersonation: () =>
+    set((state) => {
+      const originalUser = state.impersonation?.originalUser || null;
+      persistSession(state.token, originalUser, state.refreshToken, null);
+      return { user: originalUser, impersonation: null };
+    }),
   clearSession: () => {
-    try {
-      window.localStorage.removeItem(STORAGE_KEY);
-    } catch {
-      // ignore
-    }
-    set({
-      token: null,
-      refreshToken: null,
-      user: null,
-      impersonation: null,
-    });
+    persistSession(null, null, null, null);
+    set({ token: null, refreshToken: null, user: null, impersonation: null });
   },
 }));
