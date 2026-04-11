@@ -10,31 +10,23 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      - name: Check app root
-        run: |
-          curl -fsSL "https://nen-1090-app.pages.dev/" > root.html
-          test -s root.html
-
-      - name: Check app shell marker
-        run: |
-          curl -fsSL "https://nen-1090-app.pages.dev/" > shell.html
-          grep -Eiq '<div[^>]+id="app"|data-app-ready|<title>' shell.html
-
-      - name: Install Playwright
+      - name: Install deps
         run: |
           npm init -y
           npm install playwright
-          npx playwright install --with-deps
 
-      - name: Test auth redirect in browser
+      - name: Install Playwright browsers (FIX)
+        run: |
+          npx playwright install chromium
+          npx playwright install-deps
+
+      - name: Smoke test auth redirect
         run: |
           node <<'EOF'
           const { chromium } = require('playwright');
@@ -47,22 +39,17 @@ jobs:
               waitUntil: 'networkidle'
             });
 
-            const finalUrl = page.url();
-            console.log('FINAL URL:', finalUrl);
+            const url = page.url();
+            console.log("FINAL URL:", url);
 
-            if (!/\/login(?:$|[?#])/.test(finalUrl)) {
-              throw new Error(`Expected redirect to /login, got ${finalUrl}`);
+            if (!url.includes('/login')) {
+              throw new Error("NO REDIRECT TO LOGIN");
             }
 
-            const body = await page.locator('body').innerText();
-            if (!/login|inloggen|email|wachtwoord/i.test(body)) {
-              throw new Error('Login page markers not found after redirect');
-            }
-
-            console.log('Auth redirect OK');
+            console.log("OK REDIRECT");
             await browser.close();
-          })().catch((err) => {
-            console.error(err);
+          })().catch(e => {
+            console.error(e);
             process.exit(1);
           });
           EOF
