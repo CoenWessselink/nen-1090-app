@@ -1,14 +1,19 @@
-import { Navigate, Outlet } from "react-router-dom";
-import { useAuthStore } from "@/app/store/auth-store";
+import { PropsWithChildren } from 'react';
+import { Navigate, useLocation } from 'react-router-dom';
+import { useSession } from '@/app/session/SessionContext';
 
-export function ProtectedRoute() {
-  const token = useAuthStore((s) => s.token);
-  const user = useAuthStore((s) => s.user);
+export function ProtectedRoute({ children }: PropsWithChildren) {
+  const location = useLocation();
+  const session = useSession();
 
-  // HARD SECURITY BLOCK
-  if (!token || !user || token === "__cookie_session__") {
-    return <Navigate to="/login" replace />;
+  if (session.isBootstrapping) {
+    return null;
   }
 
-  return <Outlet />;
+  if (!session.isAuthenticated) {
+    const from = `${location.pathname}${location.search}${location.hash}`;
+    return <Navigate to="/login" replace state={{ from, reason: 'Log in om verder te werken in het platform.' }} />;
+  }
+
+  return <>{children}</>;
 }
