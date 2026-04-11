@@ -1,68 +1,90 @@
-import { apiRequest } from '@/api/client';
-import { env } from '@/lib/env';
-import type { AuthRefreshResponse, ChangePasswordPayload, LoginPayload, LoginResponse, LogoutPayload } from '@/types/api';
-import type { SessionUser } from '@/types/domain';
+import client from '@/api/client';
 
-export function login(payload: LoginPayload) {
-  return apiRequest<LoginResponse>('/auth/login', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
+export type LoginRequest = {
+  tenant: string;
+  email: string;
+  password: string;
+};
+
+export type LoginUser = {
+  email: string;
+  tenant: string;
+  tenant_id: string;
+  role: string;
+  name: string;
+};
+
+export type LoginResponse = {
+  access_token: string;
+  refresh_token: string | null;
+  user: LoginUser;
+};
+
+function normalizeUser(input: any, fallbackTenant = ''): LoginUser {
+  return {
+    email: String(input?.email || input?.username || ''),
+    tenant: String(input?.tenant || input?.tenant_name || fallbackTenant || ''),
+    tenant_id: String(input?.tenant_id || input?.tenantId || ''),
+    role: String(input?.role || input?.user_role || ''),
+    name: String(input?.name || input?.full_name || input?.display_name || ''),
+  };
 }
 
-export function getMe() {
-  return apiRequest<SessionUser>('/auth/me');
+export function normalizeLoginResponse(raw: any, fallbackTenant = ''): LoginResponse {
+  const accessToken =
+    raw?.access_token ||
+    raw?.token ||
+    raw?.accessToken ||
+    raw?.data?.access_token ||
+    raw?.data?.token ||
+    '';
+
+  const refreshToken =
+    raw?.refresh_token ??
+    raw?.refreshToken ??
+    raw?.data?.refresh_token ??
+    raw?.data?.refreshToken ??
+    null;
+
+  const userSource =
+    raw?.user ||
+    raw?.data?.user ||
+    raw?.profile ||
+    raw?.me ||
+    raw;
+
+  const user = normalizeUser(userSource, fallbackTenant);
+
+  if (!accessToken) {
+    throw new Error('Loginresponse bevat geen access token.');
+  }
+
+  if (!user.email) {
+    throw new Error('Loginresponse bevat geen geldige gebruiker.');
+  }
+
+  return {
+    access_token: String(accessToken),
+    refresh_token: refreshToken ? String(refreshToken) : null,
+    user,
+  };
 }
 
-export function refreshSession(refreshToken: string) {
-  return apiRequest<AuthRefreshResponse>('/auth/refresh', {
-    method: 'POST',
-    body: JSON.stringify({ refresh_token: refreshToken }),
-  });
+export async function login(payload: LoginRequest): Promise<LoginResponse> {
+  const raw = await client.post<any>('/auth/login', payload);
+  return normalizeLoginResponse(raw, payload.tenant);
 }
 
-export function requestPasswordReset(email: string, tenant?: string) {
-  return apiRequest<{ ok?: boolean; message?: string }>('/auth/reset-password/request', {
-    method: 'POST',
-    body: JSON.stringify({ email, tenant }),
-  });
+export async function getMe() {
+  return client.get<any>('/auth/me');
 }
 
-export function confirmPasswordReset(payload: { token: string; password: string }) {
-  return apiRequest<{ ok?: boolean; message?: string }>('/auth/reset-password/confirm', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
-}
-
-export function changePassword(payload: ChangePasswordPayload) {
-  return apiRequest<{ ok?: boolean; message?: string }>('/auth/change-password', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
-}
-
-export function logout(payload?: LogoutPayload) {
-  return apiRequest<void>('/auth/logout', {
-    method: 'POST',
-    body: JSON.stringify(payload || {}),
-  });
+export async function refreshSession(refreshToken: string) {
+  const raw = await client.post<any>('/auth/refresh', { refresh_token: refreshToken });
+  return normalizeLoginResponse(raw);
 }
 
 export async function refreshCentralSession() {
-  const response = await fetch(`${env.apiBaseUrl}/auth/refresh`, {
-    method: 'POST',
-    credentials: 'include',
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({}),
-  });
-
-  if (!response.ok) {
-    throw new Error('CENTRAL_REFRESH_FAILED');
-  }
-
-  return (await response.json()) as AuthRefreshResponse;
+  const raw = await client.post<any>('/auth/refresh', {});
+  return normalizeLoginResponse(raw);
 }

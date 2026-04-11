@@ -11,13 +11,14 @@ import { getFriendlyAuthErrorMessage, normalizeAuthRedirectTarget } from '@/feat
 export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const setSession = useAuthStore((state) => state.setSession);
+
   const token = useAuthStore((state) => state.token);
   const user = useAuthStore((state) => state.user);
+  const setSession = useAuthStore((state) => state.setSession);
 
   const [tenant, setTenant] = useState('demo');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('admin@demo.com');
+  const [password, setPassword] = useState('Admin123!');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,15 +33,13 @@ export default function LoginPage() {
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
+    if (submitting) return;
+
     setSubmitting(true);
     setError(null);
 
     try {
-      const response = await login({ email, password, tenant });
-
-      if (!response.access_token || !response.user?.email) {
-        throw new Error('Ongeldige loginresponse van de API.');
-      }
+      const response = await login({ tenant, email, password });
 
       setSession(
         response.access_token,
@@ -54,10 +53,11 @@ export default function LoginPage() {
         response.refresh_token || null,
       );
 
-      navigate(redirectTarget, { replace: true });
+      // harde redirect na succesvolle login; niet alleen vertrouwen op react-state
+      window.location.replace(redirectTarget);
+      return;
     } catch (requestError) {
       setError(getFriendlyAuthErrorMessage(requestError, 'Inloggen mislukt.'));
-    } finally {
       setSubmitting(false);
     }
   }
@@ -76,17 +76,37 @@ export default function LoginPage() {
         <form className="form-grid" onSubmit={handleSubmit}>
           <label>
             <span>Tenant</span>
-            <Input value={tenant} onChange={(event) => setTenant(event.target.value)} autoComplete="organization" required />
+            <Input
+              name="tenant"
+              value={tenant}
+              onChange={(event) => setTenant(event.target.value)}
+              autoComplete="organization"
+              required
+            />
           </label>
 
           <label>
             <span>E-mail</span>
-            <Input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" required />
+            <Input
+              name="email"
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              autoComplete="email"
+              required
+            />
           </label>
 
           <label>
             <span>Wachtwoord</span>
-            <Input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" required />
+            <Input
+              name="password"
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              autoComplete="current-password"
+              required
+            />
           </label>
 
           <Button type="submit" disabled={submitting}>
