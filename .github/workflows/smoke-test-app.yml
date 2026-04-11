@@ -9,6 +9,9 @@ jobs:
   smoke:
     runs-on: ubuntu-latest
 
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: 0
+
     steps:
       - uses: actions/checkout@v4
 
@@ -21,10 +24,10 @@ jobs:
           npm init -y
           npm install playwright
 
-      - name: Install Playwright browsers (FIX)
+      - name: Install Playwright browsers (FORCE LOCAL)
         run: |
           npx playwright install chromium
-          npx playwright install-deps
+          ls -la node_modules/playwright-core/.local-browsers || true
 
       - name: Smoke test auth redirect
         run: |
