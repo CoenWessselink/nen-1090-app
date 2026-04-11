@@ -8,9 +8,8 @@ on:
 jobs:
   smoke:
     runs-on: ubuntu-latest
-
     env:
-      PLAYWRIGHT_BROWSERS_PATH: 0
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
 
     steps:
       - uses: actions/checkout@v4
@@ -19,40 +18,56 @@ jobs:
         with:
           node-version: 22
 
-      - name: Install deps
+      - name: Check app root
         run: |
-          npm init -y
-          npm install playwright
+          curl -fsSL "https://nen-1090-app.pages.dev/" > root.html
+          test -s root.html
 
-      - name: Install Playwright browsers (FORCE LOCAL)
+      - name: Check app shell marker
         run: |
-          npx playwright install chromium
-          ls -la node_modules/playwright-core/.local-browsers || true
+          curl -fsSL "https://nen-1090-app.pages.dev/" > shell.html
+          grep -Eiq '<div[^>]+id="app"|data-app-ready|<title>' shell.html
+
+      - name: Install Chromium
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y chromium-browser || sudo apt-get install -y chromium
 
       - name: Smoke test auth redirect
+        env:
+          CHROME_BIN: /usr/bin/chromium-browser
         run: |
+          if [ ! -x "$CHROME_BIN" ]; then export CHROME_BIN=/usr/bin/chromium; fi
           node <<'EOF'
           const { chromium } = require('playwright');
 
           (async () => {
-            const browser = await chromium.launch({ headless: true });
+            const browser = await chromium.launch({
+              headless: true,
+              executablePath: process.env.CHROME_BIN
+            });
             const page = await browser.newPage();
 
             await page.goto('https://nen-1090-app.pages.dev/dashboard', {
               waitUntil: 'networkidle'
             });
 
-            const url = page.url();
-            console.log("FINAL URL:", url);
+            const finalUrl = page.url();
+            console.log('FINAL URL:', finalUrl);
 
-            if (!url.includes('/login')) {
-              throw new Error("NO REDIRECT TO LOGIN");
+            if (!/\/login(?:$|[?#])/.test(finalUrl)) {
+              throw new Error(`Expected redirect to /login, got ${finalUrl}`);
             }
 
-            console.log("OK REDIRECT");
+            const body = await page.locator('body').innerText();
+            if (!/login|inloggen|email|wachtwoord/i.test(body)) {
+              throw new Error('Login page markers not found after redirect');
+            }
+
+            console.log('Auth redirect OK');
             await browser.close();
-          })().catch(e => {
-            console.error(e);
+          })().catch((err) => {
+            console.error(err);
             process.exit(1);
           });
           EOF

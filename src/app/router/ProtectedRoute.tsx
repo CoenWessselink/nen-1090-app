@@ -12,7 +12,13 @@ export function ProtectedRoute({ children }: PropsWithChildren) {
 
   if (!session.isAuthenticated) {
     const from = `${location.pathname}${location.search}${location.hash}`;
-    return <Navigate to="/login" replace state={{ from, reason: 'Log in om verder te werken in het platform.' }} />;
+    return (
+      <Navigate
+        to="/login"
+        replace
+        state={{ from, reason: 'Log in om verder te werken in het platform.' }}
+      />
+    );
   }
 
   return <>{children}</>;

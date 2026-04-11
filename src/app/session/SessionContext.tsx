@@ -71,6 +71,16 @@ function isAuthPage(pathname: string) {
   ].includes(pathname);
 }
 
+const COOKIE_SESSION_MARKER = '__cookie_session__';
+
+function hasUsableBearerToken(token: string | null) {
+  return Boolean(token && token !== COOKIE_SESSION_MARKER);
+}
+
+function hasUsableRefreshToken(refreshToken: string | null) {
+  return Boolean(refreshToken && refreshToken !== COOKIE_SESSION_MARKER);
+}
+
 export function SessionProvider({ children }: PropsWithChildren) {
   const token = useAuthStore((state) => state.token);
   const refreshToken = useAuthStore((state) => state.refreshToken);
@@ -87,44 +97,39 @@ export function SessionProvider({ children }: PropsWithChildren) {
     async function bootstrap() {
       const pathname = window.location.pathname;
       const onAuthPage = isAuthPage(pathname);
+      const bearerToken = hasUsableBearerToken(token);
+      const bearerRefresh = hasUsableRefreshToken(refreshToken);
+      const cookieSession = token === COOKIE_SESSION_MARKER || refreshToken === COOKIE_SESSION_MARKER;
 
-      if (!token && !refreshToken) {
+      if (!bearerToken && !bearerRefresh && !cookieSession) {
+        clearSession();
         if (!cancelled) setIsBootstrapping(false);
         return;
       }
 
-      if (onAuthPage && token && token !== '__cookie_session__' && !refreshToken) {
+      if (onAuthPage && bearerToken && !bearerRefresh) {
         clearSession();
         if (!cancelled) setIsBootstrapping(false);
         return;
       }
 
       try {
-        let activeToken = token;
+        let activeToken = bearerToken ? token : null;
+        let nextRefreshToken = bearerRefresh ? refreshToken : null;
 
-        if (!activeToken && refreshToken && refreshToken !== '__cookie_session__') {
+        if (!activeToken && bearerRefresh && refreshToken) {
           const refreshed = await refreshSession(refreshToken);
           activeToken = refreshed.access_token;
-          if (!cancelled && activeToken) {
-            setSession(
-              activeToken,
-              {
-                email: refreshed.user?.email || '',
-                tenant: refreshed.user?.tenant || '',
-                tenantId: refreshed.user?.tenant_id || '',
-                role: refreshed.user?.role || '',
-                name: refreshed.user?.name || '',
-              },
-              refreshed.refresh_token || refreshToken,
-            );
-          }
+          nextRefreshToken = refreshed.refresh_token || refreshToken;
+          if (!activeToken) throw new Error('NO_ACCESS_TOKEN_AFTER_REFRESH');
         }
 
-        if (!activeToken && refreshToken === '__cookie_session__') {
+        if (!activeToken && cookieSession && !onAuthPage) {
           const refreshed = await refreshCentralSession();
+          activeToken = COOKIE_SESSION_MARKER;
           if (!cancelled) {
             setSession(
-              '__cookie_session__',
+              COOKIE_SESSION_MARKER,
               {
                 email: refreshed.user?.email || '',
                 tenant: refreshed.user?.tenant || '',
@@ -135,28 +140,27 @@ export function SessionProvider({ children }: PropsWithChildren) {
               null,
             );
           }
-          activeToken = '__cookie_session__';
         }
 
-        if (onAuthPage && !refreshToken && activeToken && activeToken !== '__cookie_session__') {
-          clearSession();
-          if (!cancelled) setIsBootstrapping(false);
-          return;
+        if (!activeToken && !cookieSession) {
+          throw new Error('NO_ACTIVE_SESSION');
         }
 
-        const me = await getMe();
-        if (!cancelled) {
-          setSession(
-            activeToken || token || '__cookie_session__',
-            {
-              email: me.email,
-              tenant: me.tenant,
-              tenantId: me.tenantId,
-              role: me.role,
-              name: me.name,
-            },
-            refreshToken,
-          );
+        if (!onAuthPage) {
+          const me = await getMe();
+          if (!cancelled) {
+            setSession(
+              activeToken || COOKIE_SESSION_MARKER,
+              {
+                email: me.email,
+                tenant: me.tenant,
+                tenantId: me.tenantId,
+                role: me.role,
+                name: me.name,
+              },
+              nextRefreshToken,
+            );
+          }
         }
       } catch {
         if (!cancelled) {
@@ -170,24 +174,24 @@ export function SessionProvider({ children }: PropsWithChildren) {
     void bootstrap();
 
     return () => {
-      cancelled = true;
+      cancelled = true
     };
   }, [clearSession, refreshToken, setSession, token]);
 
   useEffect(() => {
     if (!user) return;
 
-    const hasBearerRefreshToken = Boolean(refreshToken && refreshToken !== '__cookie_session__');
-    const hasCookieSession = token === '__cookie_session__';
+    const bearerRefresh = hasUsableRefreshToken(refreshToken);
+    const cookieSession = token === COOKIE_SESSION_MARKER;
 
-    if (!hasBearerRefreshToken && !hasCookieSession) return;
+    if (!bearerRefresh && !cookieSession) return;
 
     let cancelled = false;
 
     async function refreshExistingSession() {
       try {
-        const payload = hasBearerRefreshToken
-          ? await refreshSession(refreshToken as string)
+        const payload = bearerRefresh && refreshToken
+          ? await refreshSession(refreshToken)
           : await refreshCentralSession();
 
         if (cancelled) return;
@@ -200,17 +204,17 @@ export function SessionProvider({ children }: PropsWithChildren) {
           name: payload.user?.name || user.name,
         };
 
-        if (hasBearerRefreshToken) {
-          if (!payload.access_token) return;
+        if (bearerRefresh) {
+          if (!payload.access_token) throw new Error('NO_REFRESHED_TOKEN');
           const nextRefreshToken = payload.refresh_token || refreshToken || null;
           setSession(payload.access_token, refreshedUser, nextRefreshToken);
           updateToken(payload.access_token);
           return;
         }
 
-        setSession('__cookie_session__', refreshedUser, null);
+        setSession(COOKIE_SESSION_MARKER, refreshedUser, null);
       } catch {
-        // houd bestaande UI-sessie intact om login/projectroutes niet te laten loopen.
+        if (!cancelled) clearSession();
       }
     }
 
@@ -226,10 +230,18 @@ export function SessionProvider({ children }: PropsWithChildren) {
       window.clearInterval(interval);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [refreshToken, setSession, token, updateToken, user]);
+  }, [clearSession, refreshToken, setSession, token, updateToken, user]);
 
   const normalizedRole = normalizeRole(user?.role);
   const permissions = permissionMap[normalizedRole] || [];
+  const isAuthenticated = Boolean(
+    user &&
+      (
+        hasUsableBearerToken(token) ||
+        hasUsableRefreshToken(refreshToken) ||
+        token === COOKIE_SESSION_MARKER
+      )
+  );
 
   const value = useMemo<SessionContextValue>(() => ({
     token,
@@ -237,14 +249,14 @@ export function SessionProvider({ children }: PropsWithChildren) {
     user,
     tenant: user?.tenant,
     role: user?.role,
-    isAuthenticated: Boolean(user && (token || refreshToken)),
+    isAuthenticated,
     isImpersonating: Boolean(impersonation?.active),
     isBootstrapping,
     impersonationTenantName: impersonation?.tenantName,
     hasRole: (roles) => roles.length === 0 || roles.some((role) => normalizeRole(String(role)) === normalizedRole),
     hasPermission: (permission) => permissions.includes(permission),
     clearSession,
-  }), [clearSession, impersonation, isBootstrapping, normalizedRole, permissions, refreshToken, token, user]);
+  }), [clearSession, impersonation, isAuthenticated, isBootstrapping, normalizedRole, permissions, refreshToken, token, user]);
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }
