@@ -138,7 +138,6 @@ async function tryRefreshSession(): Promise<boolean> {
   refreshPromise = (async () => {
     const store = getAuthSnapshot();
 
-    // Geen bruikbare refresh-token of alleen cookie marker -> geen bearer refresh doen.
     if (!store.refreshToken || store.refreshToken === COOKIE_SESSION_MARKER) {
       return false;
     }
@@ -160,10 +159,6 @@ async function tryRefreshSession(): Promise<boolean> {
       });
 
       if (!response.ok) {
-        // 401/403/404/405 -> direct sessie opruimen, anders blijf je refresh-spam zien.
-        if ([401, 403, 404, 405].includes(response.status)) {
-          store.clearSession();
-        }
         return false;
       }
 
@@ -174,7 +169,6 @@ async function tryRefreshSession(): Promise<boolean> {
       };
 
       if (!payload.access_token || !payload.user?.email) {
-        store.clearSession();
         return false;
       }
 
@@ -182,16 +176,15 @@ async function tryRefreshSession(): Promise<boolean> {
         payload.access_token,
         {
           email: payload.user.email,
-          tenant: payload.user.tenant || '',
-          tenantId: payload.user.tenant_id || '',
-          role: payload.user.role || '',
-          name: payload.user.name || '',
+          tenant: payload.user.tenant || store.user?.tenant || '',
+          tenantId: payload.user.tenant_id || store.user?.tenantId || '',
+          role: payload.user.role || store.user?.role || '',
+          name: payload.user.name || store.user?.name || '',
         },
         payload.refresh_token || store.refreshToken,
       );
       return true;
     } catch {
-      store.clearSession();
       return false;
     } finally {
       refreshPromise = null;
@@ -234,7 +227,6 @@ export async function optionalRequest<T = unknown>(paths: string[], init?: Reque
       return await apiRequest<T>(path, init);
     } catch (error) {
       lastError = error;
-      // Doorlopen bij contractvarianten die in de ene omgeving wel en in de andere niet bestaan.
       if (error instanceof ApiError && [401, 404, 405, 422].includes(error.status)) {
         continue;
       }

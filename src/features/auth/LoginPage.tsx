@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { login } from '@/api/auth';
 import { useAuthStore } from '@/app/store/auth-store';
@@ -12,6 +12,8 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const setSession = useAuthStore((state) => state.setSession);
+  const token = useAuthStore((state) => state.token);
+  const user = useAuthStore((state) => state.user);
 
   const [tenant, setTenant] = useState('demo');
   const [email, setEmail] = useState('');
@@ -20,6 +22,13 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
 
   const from = (location.state as { from?: string } | null)?.from;
+  const redirectTarget = normalizeAuthRedirectTarget(from);
+
+  useEffect(() => {
+    if (token && user?.email) {
+      navigate(redirectTarget, { replace: true });
+    }
+  }, [navigate, redirectTarget, token, user?.email]);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -37,15 +46,15 @@ export default function LoginPage() {
         response.access_token,
         {
           email: response.user.email,
-          tenant: response.user.tenant,
-          tenantId: response.user.tenant_id,
-          role: response.user.role,
-          name: response.user.name,
+          tenant: response.user.tenant || tenant,
+          tenantId: response.user.tenant_id || '',
+          role: response.user.role || '',
+          name: response.user.name || '',
         },
         response.refresh_token || null,
       );
 
-      navigate(normalizeAuthRedirectTarget(from), { replace: true });
+      navigate(redirectTarget, { replace: true });
     } catch (requestError) {
       setError(getFriendlyAuthErrorMessage(requestError, 'Inloggen mislukt.'));
     } finally {

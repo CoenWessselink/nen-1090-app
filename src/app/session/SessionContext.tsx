@@ -122,6 +122,17 @@ export function SessionProvider({ children }: PropsWithChildren) {
         let nextRefreshToken = bearerRefresh ? refreshToken : null;
         let resolvedUser = user ? mapUser(user) : null;
 
+        // Veilige hoofdregel:
+        // als we al een bearer token + user hebben, blijf die sessie vertrouwen.
+        // Niet eerst refresh of clearSession forceren, want dat veroorzaakte bounce terug naar /login.
+        if (activeToken && resolvedUser?.email) {
+          if (!cancelled) {
+            setSession(activeToken, resolvedUser, nextRefreshToken);
+            setIsBootstrapping(false);
+          }
+          return;
+        }
+
         if (!activeToken && bearerRefresh && refreshToken) {
           const refreshed = await refreshSession(refreshToken);
           activeToken = refreshed.access_token || null;
@@ -155,23 +166,13 @@ export function SessionProvider({ children }: PropsWithChildren) {
           throw new Error('NO_ACTIVE_SESSION');
         }
 
-        // Belangrijk: op auth-pagina's NOOIT een geldige bearer-sessie wissen alleen omdat er geen refresh token is.
-        // Dat veroorzaakte dat login direct weer werd kwijtgeraakt voordat de app-shell kon laden.
-        if (onAuthPage && activeToken && resolvedUser?.email) {
-          if (!cancelled) {
-            setSession(activeToken, resolvedUser, nextRefreshToken);
-            setIsBootstrapping(false);
-          }
-          return;
-        }
-
-        if (!resolvedUser?.email) {
+        if (!resolvedUser?.email && !onAuthPage) {
           const me = await getMe();
           resolvedUser = mapUser(me);
         }
 
         if (!cancelled) {
-          setSession(activeToken || COOKIE_SESSION_MARKER, resolvedUser, nextRefreshToken);
+          setSession(activeToken || COOKIE_SESSION_MARKER, resolvedUser || mapUser(null), nextRefreshToken);
           setIsBootstrapping(false);
         }
       } catch {
@@ -225,7 +226,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
 
         setSession(COOKIE_SESSION_MARKER, refreshedUser, null);
       } catch {
-        if (!cancelled) clearSession();
+        // refresh failure mag niet direct live sessie slopen
       }
     }
 
@@ -241,7 +242,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
       window.clearInterval(interval);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [clearSession, refreshToken, setSession, token, updateToken, user]);
+  }, [refreshToken, setSession, token, updateToken, user]);
 
   const normalizedRole = normalizeRole(user?.role);
   const permissions = permissionMap[normalizedRole] || [];
