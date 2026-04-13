@@ -1,4 +1,4 @@
-import { expect, Page, Locator } from '@playwright/test';
+import { expect, type Page, type Locator, type Request, type Response, type ConsoleMessage } from '@playwright/test';
 
 export const tenant = process.env.TEST_TENANT || 'demo';
 export const email = process.env.TEST_EMAIL || 'admin@demo.com';
@@ -101,7 +101,6 @@ export async function snapshotSession(page: Page) {
   }));
 }
 
-import { Request, Response, ConsoleMessage, Locator } from '@playwright/test';
 
 export type ErrorCapture = {
   consoleIssues: string[];

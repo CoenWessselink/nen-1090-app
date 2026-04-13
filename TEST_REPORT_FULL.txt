@@ -1,0 +1,177 @@
+CWS NEN-1090 – TEST REPORT FULL
+
+Validated in this environment:
+- npm run typecheck: PASS
+- npm run build: PASS
+- Playwright test discovery: PASS
+
+Notes:
+- Playwright discovery now works via node node_modules/@playwright/test/cli.js test --list
+- The repo contains 140 discovered tests in 63 files
+- Full live execution was not run in this container
+
+--- BUILD LOG ---
+
+> nen1090-frontend-enterprise-rebuild@0.2.0 build
+> node scripts/use-source-entry.mjs && tsc -b && node ./node_modules/vite/bin/vite.js build
+
+use-source-entry.mjs: source entry check OK
+[36mvite v6.4.1 [32mbuilding for production...[36m[39m
+transforming...
+[32m✓[39m 1811 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mdist/[22m[32mindex.html                 [39m[1m[2m  0.40 kB[22m[1m[22m[2m │ gzip:   0.27 kB[22m
+[2mdist/[22m[2massets/[22m[35mindex-K2NkDHOI.css  [39m[1m[2m 22.39 kB[22m[1m[22m[2m │ gzip:   4.83 kB[22m
+[2mdist/[22m[2massets/[22m[36mindex-CiSQGtz0.js   [39m[1m[33m583.63 kB[39m[22m[2m │ gzip: 168.44 kB[22m[2m │ map: 2,185.73 kB[22m
+[33m
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m
+[32m✓ built in 11.13s[39m
+
+
+--- PLAYWRIGHT TEST LIST ---
+Listing tests:
+  [desktop-chromium] › tests/e2e/00_auth_and_session.spec.ts:3:1 › login route reageert visueel
+  [desktop-chromium] › tests/e2e/00_auth_and_session.spec.ts:8:1 › dashboard route reageert zonder crash
+  [desktop-chromium] › tests/e2e/00_auth_and_session.spec.ts:13:1 › refresh op projecten route behoudt render
+  [desktop-chromium] › tests/e2e/00_routes.spec.ts:4:3 › route /login toont body
+  [desktop-chromium] › tests/e2e/00_routes.spec.ts:4:3 › route /dashboard toont body
+  [desktop-chromium] › tests/e2e/00_routes.spec.ts:4:3 › route /projecten toont body
+  [desktop-chromium] › tests/e2e/00_routes.spec.ts:4:3 › route /rapportage toont body
+  [desktop-chromium] › tests/e2e/01_core_routes.spec.ts:6:3 › route /projecten toont body
+  [desktop-chromium] › tests/e2e/01_core_routes.spec.ts:6:3 › route /rapportage toont body
+  [desktop-chromium] › tests/e2e/01_core_routes.spec.ts:6:3 › route /dashboard toont body
+  [desktop-chromium] › tests/e2e/01_errors.spec.ts:3:1 › rapportage route geeft geen pageerror explosie
+  [desktop-chromium] › tests/e2e/02_reports_and_ce.spec.ts:3:1 › rapportage pagina geeft response
+  [desktop-chromium] › tests/e2e/02_reports_and_ce.spec.ts:8:1 › mogelijke CE route geeft response als route bestaat
+  [desktop-chromium] › tests/e2e/03_project360_and_tabs.spec.ts:3:1 › projecten pagina kan geladen worden voor project360 smoke
+  [desktop-chromium] › tests/e2e/04_exports_and_errors.spec.ts:3:1 › geen harde frontend crash op rapportage route
+  [desktop-chromium] › tests/e2e/assemblies-flow.spec.ts:4:1 › assemblies tab is bereikbaar vanuit project 360
+  [desktop-chromium] › tests/e2e/auth-routing-smoke.spec.ts:4:3 › auth + routing smoke › login page opent stabiel
+  [desktop-chromium] › tests/e2e/auth-routing-smoke.spec.ts:10:3 › auth + routing smoke › beschermde route gaat naar login indien niet ingelogd
+  [desktop-chromium] › tests/e2e/auth-routing-smoke.spec.ts:16:3 › auth + routing smoke › verkeerde credentials houden gebruiker op login zonder harde crash
+  [desktop-chromium] › tests/e2e/auth-session-proof.spec.ts:3:1 › auth pagina laadt en basis shell reageert
+  [desktop-chromium] › tests/e2e/auth-session-proof.spec.ts:9:1 › beschermde route reageert zonder harde browsercrash
+  [desktop-chromium] › tests/e2e/full-platform-proof.spec.ts:3:1 › frontend shell en kernroutes antwoorden
+  [desktop-chromium] › tests/e2e/full-platform-proof.spec.ts:17:1 › projecten pagina geeft visuele response
+  [desktop-chromium] › tests/e2e/full-platform-proof.spec.ts:24:1 › rapportage pagina geeft visuele response
+  [desktop-chromium] › tests/e2e/live-auth.spec.ts:8:3 › live auth proof › demo login werkt end-to-end
+  [desktop-chromium] › tests/e2e/phase-11/auth-persistence-proof.spec.ts:5:3 › phase 11 expansion - auth persistence proof › login writes persistent auth state to storage or cookies
+  [desktop-chromium] › tests/e2e/phase-11/auth-persistence-proof.spec.ts:16:3 › phase 11 expansion - auth persistence proof › refresh on dashboard keeps user out of login screen
+  [desktop-chromium] › tests/e2e/phase-11/auth-persistence-proof.spec.ts:25:3 › phase 11 expansion - auth persistence proof › direct open of protected route after login keeps shell alive
+  [desktop-chromium] › tests/e2e/phase-11/auth-session-lifecycle.spec.ts:5:3 › phase 11 - auth session lifecycle › unauthenticated protected routes redirect to login
+  [desktop-chromium] › tests/e2e/phase-11/auth-session-lifecycle.spec.ts:11:3 › phase 11 - auth session lifecycle › live login works and opens shell
+  [desktop-chromium] › tests/e2e/phase-11/auth-session-lifecycle.spec.ts:16:3 › phase 11 - auth session lifecycle › refresh on protected route keeps shell alive
+  [desktop-chromium] › tests/e2e/phase-11/auth-session-lifecycle.spec.ts:24:3 › phase 11 - auth session lifecycle › deep link after login stays inside app shell
+  [desktop-chromium] › tests/e2e/phase-11/ce-dossier-network-clean.spec.ts:36:3 › phase 11 - ce dossier network clean › ce dossier route has no hidden 500 or project-inspection 404 spam
+  [desktop-chromium] › tests/e2e/phase-11/dashboard-project-shell.spec.ts:36:3 › phase 11 - dashboard and project shell › dashboard renders without critical api noise
+  [desktop-chromium] › tests/e2e/phase-11/dashboard-project-shell.spec.ts:44:3 › phase 11 - dashboard and project shell › project shell renders from project route
+  [desktop-chromium] › tests/e2e/phase-11/live-network-assertions.spec.ts:5:3 › phase 11 expansion - live network assertions › dashboard load after login has no unexpected api failures
+  [desktop-chromium] › tests/e2e/phase-11/live-network-assertions.spec.ts:14:3 › phase 11 expansion - live network assertions › project shell load after login has no unexpected api failures
+  [desktop-chromium] › tests/e2e/phase-11/live-network-assertions.spec.ts:23:3 › phase 11 expansion - live network assertions › ce dossier load after login has no unexpected api failures
+  [desktop-chromium] › tests/e2e/phase-11/project-tabs-consistency.spec.ts:37:5 › phase 11 - project tabs consistency › project tab overzicht preserves shared tab shell
+  [desktop-chromium] › tests/e2e/phase-11/project-tabs-consistency.spec.ts:37:5 › phase 11 - project tabs consistency › project tab assemblies preserves shared tab shell
+  [desktop-chromium] › tests/e2e/phase-11/project-tabs-consistency.spec.ts:37:5 › phase 11 - project tabs consistency › project tab lassen preserves shared tab shell
+  [desktop-chromium] › tests/e2e/phase-11/project-tabs-consistency.spec.ts:37:5 › phase 11 - project tabs consistency › project tab documenten preserves shared tab shell
+  [desktop-chromium] › tests/e2e/phase-11/project-tabs-consistency.spec.ts:37:5 › phase 11 - project tabs consistency › project tab ce-dossier preserves shared tab shell
+  [desktop-chromium] › tests/e2e/phase-11/project-tabs-consistency.spec.ts:37:5 › phase 11 - project tabs consistency › project tab historie preserves shared tab shell
+  [desktop-chromium] › tests/e2e/phase-11/protected-route-continuity.spec.ts:15:5 › phase 11 expansion - protected route continuity › route /projecten/28f5ed98-71b8-4692-83b8-c9df5904489a/overzicht does not fall back to login after live login
+  [desktop-chromium] › tests/e2e/phase-11/protected-route-continuity.spec.ts:15:5 › phase 11 expansion - protected route continuity › route /projecten/28f5ed98-71b8-4692-83b8-c9df5904489a/assemblies does not fall back to login after live login
+  [desktop-chromium] › tests/e2e/phase-11/protected-route-continuity.spec.ts:15:5 › phase 11 expansion - protected route continuity › route /projecten/28f5ed98-71b8-4692-83b8-c9df5904489a/lassen does not fall back to login after live login
+  [desktop-chromium] › tests/e2e/phase-11/protected-route-continuity.spec.ts:15:5 › phase 11 expansion - protected route continuity › route /projecten/28f5ed98-71b8-4692-83b8-c9df5904489a/documenten does not fall back to login after live login
+  [desktop-chromium] › tests/e2e/phase-11/protected-route-continuity.spec.ts:15:5 › phase 11 expansion - protected route continuity › route /projecten/28f5ed98-71b8-4692-83b8-c9df5904489a/ce-dossier does not fall back to login after live login
+  [desktop-chromium] › tests/e2e/phase-11/protected-route-continuity.spec.ts:15:5 › phase 11 expansion - protected route continuity › route /projecten/28f5ed98-71b8-4692-83b8-c9df5904489a/historie does not fall back to login after live login
+  [desktop-chromium] › tests/e2e/phase-11/protected-route-continuity.spec.ts:24:3 › phase 11 expansion - protected route continuity › tab shell survives sequential route changes
+  [desktop-chromium] › tests/e2e/phase-11/settings-billing-superadmin.spec.ts:36:3 › phase 11 - settings billing superadmin › settings route renders without crash
+  [desktop-chromium] › tests/e2e/phase-11/settings-billing-superadmin.spec.ts:42:3 › phase 11 - settings billing superadmin › billing route responds without critical shell failure
+  [desktop-chromium] › tests/e2e/phase-11/settings-billing-superadmin.spec.ts:48:3 › phase 11 - settings billing superadmin › superadmin route either renders or cleanly denies
+  [desktop-chromium] › tests/e2e/phase-11/shell-continuity-proof.spec.ts:5:3 › phase 11 expansion - shell continuity proof › sidebar and topbar remain visible after refresh inside project shell
+  [desktop-chromium] › tests/e2e/phase-11/shell-continuity-proof.spec.ts:14:3 › phase 11 expansion - shell continuity proof › settings survives hard navigation after login
+  [desktop-chromium] › tests/e2e/phase-11/shell-continuity-proof.spec.ts:22:3 › phase 11 expansion - shell continuity proof › lassen survives hard navigation after login
+  [desktop-chromium] › tests/e2e/phase-11/weld-detail-mutation-hard.spec.ts:36:3 › phase 11 - weld mutation hard proof › lassen route has no unexpected 404/422/500 on passive load
+  [desktop-chromium] › tests/e2e/phase-11/weld-detail-mutation-hard.spec.ts:50:3 › phase 11 - weld mutation hard proof › weld detail area becomes visible if a weld card exists
+  [desktop-chromium] › tests/e2e/phase-11-error-hunter/all-critical-status-catcher.spec.ts:22:5 › phase 11 error hunter - critical api status catcher › no critical 404/422/500-class api failures on /dashboard
+  [desktop-chromium] › tests/e2e/phase-11-error-hunter/all-critical-status-catcher.spec.ts:22:5 › phase 11 error hunter - critical api status catcher › no critical 404/422/500-class api failures on /projecten
+  [desktop-chromium] › tests/e2e/phase-11-error-hunter/all-critical-status-catcher.spec.ts:22:5 › phase 11 error hunter - critical api status catcher › no critical 404/422/500-class api failures on /instellingen
+  [desktop-chromium] › tests/e2e/phase-11-error-hunter/all-critical-status-catcher.spec.ts:22:5 › phase 11 error hunter - critical api status catcher › no critical 404/422/500-class api failures on /projecten/28f5ed98-71b8-4692-83b8-c9df5904489a/overzicht
+  [desktop-chromium] › tests/e2e/phase-11-error-hunter/all-critical-status-catcher.spec.ts:22:5 › phase 11 error hunter - critical api status catcher › no critical 404/422/500-class api failures on /projecten/28f5ed98-71b8-4692-83b8-c9df5904489a/lassen
+  [desktop-chromium] › tests/e2e/phase-11-error-hunter/all-critical-status-catcher.spec.ts:22:5 › phase 11 error hunter - critical api status catcher › no critical 404/422/500-class api failures on /projecten/28f5ed98-71b8-4692-83b8-c9df5904489a/documenten
+  [desktop-chromium] › tests/e2e/phase-11-error-hunter/all-critical-status-catcher.spec.ts:22:5 › phase 11 error hunter - critical api status catcher › no critical 404/422/500-class api failures on /projecten/28f5ed98-71b8-4692-83b8-c9df5904489a/ce-dossier
+  [desktop-chromium] › tests/e2e/phase-11-error-hunter/console-pageerror-catcher.spec.ts:5:3 › phase 11 error hunter - console and pageerror catcher › dashboard emits no critical console or page errors
+  [desktop-chromium] › tests/e2e/phase-11-error-hunter/resource-request-failure-catcher.spec.ts:5:3 › phase 11 error hunter - resource and request failures › projecten route has no failed resources or failed requests
+  [desktop-chromium] › tests/e2e/phase-11-error-hunter/route-by-route-error-matrix.spec.ts:25:5 › phase 11 error hunter - route matrix › dashboard has no critical console/page/api/request failures
+  [desktop-chromium] › tests/e2e/phase-11-error-hunter/route-by-route-error-matrix.spec.ts:25:5 › phase 11 error hunter - route matrix › projecten has no critical console/page/api/request failures
+  [desktop-chromium] › tests/e2e/phase-11-error-hunter/route-by-route-error-matrix.spec.ts:25:5 › phase 11 error hunter - route matrix › instellingen has no critical console/page/api/request failures
+  [desktop-chromium] › tests/e2e/phase-11-error-hunter/route-by-route-error-matrix.spec.ts:25:5 › phase 11 error hunter - route matrix › project-overzicht has no critical console/page/api/request failures
+  [desktop-chromium] › tests/e2e/phase-11-error-hunter/route-by-route-error-matrix.spec.ts:25:5 › phase 11 error hunter - route matrix › project-assemblies has no critical console/page/api/request failures
+  [desktop-chromium] › tests/e2e/phase-11-error-hunter/route-by-route-error-matrix.spec.ts:25:5 › phase 11 error hunter - route matrix › project-lassen has no critical console/page/api/request failures
+  [desktop-chromium] › tests/e2e/phase-11-error-hunter/route-by-route-error-matrix.spec.ts:25:5 › phase 11 error hunter - route matrix › project-documenten has no critical console/page/api/request failures
+  [desktop-chromium] › tests/e2e/phase-11-error-hunter/route-by-route-error-matrix.spec.ts:25:5 › phase 11 error hunter - route matrix › project-ce-dossier has no critical console/page/api/request failures
+  [desktop-chromium] › tests/e2e/phase-11-error-hunter/route-by-route-error-matrix.spec.ts:25:5 › phase 11 error hunter - route matrix › project-historie has no critical console/page/api/request failures
+  [desktop-chromium] › tests/e2e/phase-11-error-hunter/uncaught-promise-apierror-catcher.spec.ts:11:3 › phase 11 error hunter - uncaught promise catcher › lassen flow has no uncaught ApiError or promise rejection noise
+  [desktop-chromium] › tests/e2e/phase-11-error-hunter/weld-endpoint-error-catcher.spec.ts:14:3 › phase 11 error hunter - weld endpoint catcher › lassen route and weld detail emit no 404/422/500 weld-flow failures
+  [desktop-chromium] › tests/e2e/phase-11-heavy/auth-header-proof.spec.ts:5:3 › phase 11 heavy - auth header proof › auth/me request after login carries authorization or valid session flow
+  [desktop-chromium] › tests/e2e/phase-11-heavy/console-and-network-proof.spec.ts:5:3 › phase 11 heavy - console and network proof › dashboard opens without unexpected console noise
+  [desktop-chromium] › tests/e2e/phase-11-heavy/console-and-network-proof.spec.ts:17:3 › phase 11 heavy - console and network proof › project shell opens without unexpected console or api failures
+  [desktop-chromium] › tests/e2e/phase-11-heavy/direct-protected-entry-after-login.spec.ts:5:3 › phase 11 heavy - direct protected entry after login › deep link to ce dossier stays authenticated
+  [desktop-chromium] › tests/e2e/phase-11-heavy/direct-protected-entry-after-login.spec.ts:11:3 › phase 11 heavy - direct protected entry after login › deep link to lassen stays authenticated
+  [desktop-chromium] › tests/e2e/phase-11-heavy/logout-relogin-lifecycle.spec.ts:5:3 › phase 11 heavy - logout relogin lifecycle › logout route clears access and relogin restores shell
+  [desktop-chromium] › tests/e2e/phase-11-heavy/multi-route-refresh-proof.spec.ts:18:5 › phase 11 heavy - multi route refresh proof › refresh on /dashboard does not dump back to login
+  [desktop-chromium] › tests/e2e/phase-11-heavy/multi-route-refresh-proof.spec.ts:18:5 › phase 11 heavy - multi route refresh proof › refresh on /projecten does not dump back to login
+  [desktop-chromium] › tests/e2e/phase-11-heavy/multi-route-refresh-proof.spec.ts:18:5 › phase 11 heavy - multi route refresh proof › refresh on /instellingen does not dump back to login
+  [desktop-chromium] › tests/e2e/phase-11-heavy/multi-route-refresh-proof.spec.ts:18:5 › phase 11 heavy - multi route refresh proof › refresh on /projecten/28f5ed98-71b8-4692-83b8-c9df5904489a/overzicht does not dump back to login
+  [desktop-chromium] › tests/e2e/phase-11-heavy/multi-route-refresh-proof.spec.ts:18:5 › phase 11 heavy - multi route refresh proof › refresh on /projecten/28f5ed98-71b8-4692-83b8-c9df5904489a/assemblies does not dump back to login
+  [desktop-chromium] › tests/e2e/phase-11-heavy/multi-route-refresh-proof.spec.ts:18:5 › phase 11 heavy - multi route refresh proof › refresh on /projecten/28f5ed98-71b8-4692-83b8-c9df5904489a/lassen does not dump back to login
+  [desktop-chromium] › tests/e2e/phase-11-heavy/multi-route-refresh-proof.spec.ts:18:5 › phase 11 heavy - multi route refresh proof › refresh on /projecten/28f5ed98-71b8-4692-83b8-c9df5904489a/documenten does not dump back to login
+  [desktop-chromium] › tests/e2e/phase-11-heavy/multi-route-refresh-proof.spec.ts:18:5 › phase 11 heavy - multi route refresh proof › refresh on /projecten/28f5ed98-71b8-4692-83b8-c9df5904489a/ce-dossier does not dump back to login
+  [desktop-chromium] › tests/e2e/phase-11-heavy/multi-route-refresh-proof.spec.ts:18:5 › phase 11 heavy - multi route refresh proof › refresh on /projecten/28f5ed98-71b8-4692-83b8-c9df5904489a/historie does not dump back to login
+  [desktop-chromium] › tests/e2e/phase-11-heavy/multi-tab-session-consistency.spec.ts:5:3 › phase 11 heavy - multi tab session consistency › new tab inherits usable session after login in first tab
+  [desktop-chromium] › tests/e2e/phase-11-heavy/storage-cookie-proof.spec.ts:5:3 › phase 11 heavy - storage and cookie proof › login leaves persistent session evidence before and after refresh
+  [desktop-chromium] › tests/e2e/phase-11-heavy/tab-shell-proof.spec.ts:7:3 › phase 11 heavy - tab shell proof › all project tabs preserve shared shell labels after sequential navigation
+  [desktop-chromium] › tests/e2e/phase-11-ultra/artifact-proof-pack.spec.ts:5:3 › phase 11 ultra - artifact proof pack › dashboard and project shell emit screenshots with clean logs
+  [desktop-chromium] › tests/e2e/phase-11-ultra/corrupt-session-resilience.spec.ts:5:3 › phase 11 ultra - corrupt session resilience › corrupt local session does not white-screen the app
+  [desktop-chromium] › tests/e2e/phase-11-ultra/desktop-baseline-screenshots.spec.ts:15:5 › phase 11 ultra - desktop screenshot baselines › desktop-dashboard renders after login
+  [desktop-chromium] › tests/e2e/phase-11-ultra/desktop-baseline-screenshots.spec.ts:15:5 › phase 11 ultra - desktop screenshot baselines › desktop-projecten renders after login
+  [desktop-chromium] › tests/e2e/phase-11-ultra/desktop-baseline-screenshots.spec.ts:15:5 › phase 11 ultra - desktop screenshot baselines › desktop-project-overzicht renders after login
+  [desktop-chromium] › tests/e2e/phase-11-ultra/desktop-baseline-screenshots.spec.ts:15:5 › phase 11 ultra - desktop screenshot baselines › desktop-project-lassen renders after login
+  [desktop-chromium] › tests/e2e/phase-11-ultra/desktop-baseline-screenshots.spec.ts:15:5 › phase 11 ultra - desktop screenshot baselines › desktop-project-ce-dossier renders after login
+  [desktop-chromium] › tests/e2e/phase-11-ultra/desktop-baseline-screenshots.spec.ts:15:5 › phase 11 ultra - desktop screenshot baselines › desktop-instellingen renders after login
+  [desktop-chromium] › tests/e2e/phase-11-ultra/desktop-mobile-parity.spec.ts:5:3 › phase 11 ultra - desktop/mobile parity › desktop shell remains usable after login
+  [desktop-chromium] › tests/e2e/phase-11-ultra/desktop-mobile-parity.spec.ts:14:3 › phase 11 ultra - desktop/mobile parity › mobile shell remains usable after login
+  [desktop-chromium] › tests/e2e/phase-11-ultra/forced-token-expiry.spec.ts:5:3 › phase 11 ultra - forced token expiry scenarios › route refresh attempts recovery after local session removal
+  [desktop-chromium] › tests/e2e/phase-11-ultra/mobile-baseline-screenshots.spec.ts:16:5 › phase 11 ultra - mobile screenshot baselines › mobile-dashboard renders after login
+  [desktop-chromium] › tests/e2e/phase-11-ultra/mobile-baseline-screenshots.spec.ts:16:5 › phase 11 ultra - mobile screenshot baselines › mobile-projecten renders after login
+  [desktop-chromium] › tests/e2e/phase-11-ultra/mobile-baseline-screenshots.spec.ts:16:5 › phase 11 ultra - mobile screenshot baselines › mobile-project-overzicht renders after login
+  [desktop-chromium] › tests/e2e/phase-11-ultra/mobile-baseline-screenshots.spec.ts:16:5 › phase 11 ultra - mobile screenshot baselines › mobile-project-lassen renders after login
+  [desktop-chromium] › tests/e2e/phase-11-ultra/mobile-baseline-screenshots.spec.ts:16:5 › phase 11 ultra - mobile screenshot baselines › mobile-instellingen renders after login
+  [desktop-chromium] › tests/e2e/phase-11-ultra/refresh-rollover-proof.spec.ts:5:3 › phase 11 ultra - refresh rollover proof › protected route reload records auth lifecycle requests
+  [desktop-chromium] › tests/e2e/phase-8/auth-redirect.spec.ts:4:3 › phase 8 - auth › dashboard redirects to login when unauthenticated
+  [desktop-chromium] › tests/e2e/phase-8/auth-redirect.spec.ts:9:3 › phase 8 - auth › login form is visible
+  [desktop-chromium] › tests/e2e/phase-8/login-flow.spec.ts:8:3 › phase 8 - login flow › can submit login form
+  [desktop-chromium] › tests/e2e/phase-9/contract-proof.spec.ts:4:3 › phase 9 - api/ui contract proof › dashboard unauthenticated redirects to login
+  [desktop-chromium] › tests/e2e/phase-9/contract-proof.spec.ts:9:3 › phase 9 - api/ui contract proof › login page is visible
+  [desktop-chromium] › tests/e2e/phase-a/auth-and-routing-live.spec.ts:6:3 › phase A - auth and routing live proof › login route rendert zonder kritieke browser/network fouten
+  [desktop-chromium] › tests/e2e/phase-a/auth-and-routing-live.spec.ts:19:3 › phase A - auth and routing live proof › projecten route veroorzaakt geen onverwachte api 401/404/500
+  [desktop-chromium] › tests/e2e/phase-a/project-welds-live.spec.ts:6:3 › phase A - project welds live proof › project shell veroorzaakt geen onverwachte kritieke api fouten
+  [desktop-chromium] › tests/e2e/phase-b/project-360-hardcore.spec.ts:6:3 › phase B hardcore - project 360 › project routes mogen geen onverwachte kritieke API fouten genereren
+  [desktop-chromium] › tests/e2e/phase-b/project-360-hardcore.spec.ts:20:3 › phase B hardcore - project 360 › ce dossier route veroorzaakt geen onverwachte ce/api crash
+  [desktop-chromium] › tests/e2e/phase-b/weld-mutations-hardcore.spec.ts:6:3 › phase B hardcore - weld mutations › lassen flow logt kritieke weld endpoint fouten expliciet
+  [desktop-chromium] › tests/e2e/phase-c/live-project-flow-ultra.spec.ts:6:3 › phase C ultra - live project flow › projecten pagina rendert en veroorzaakt geen onverwachte kritieke API fouten
+  [desktop-chromium] › tests/e2e/phase-c/live-project-flow-ultra.spec.ts:19:3 › phase C ultra - live project flow › ce dossier pagina rendert zonder onverwachte 500 crash
+  [desktop-chromium] › tests/e2e/phase-c/live-weld-api-ultra.spec.ts:6:3 › phase C ultra - weld api visibility › weld gerelateerde API fouten worden hard zichtbaar
+  [desktop-chromium] › tests/e2e/phase-d/live-console-proof.spec.ts:6:3 › phase D final proof - console and network hard fail › lassen route mag geen 404 inspectie/status en geen 401 refresh fouten produceren
+  [desktop-chromium] › tests/e2e/phase-d/live-route-proof.spec.ts:6:3 › phase D final proof - route assertions › ce dossier route mag geen verborgen 500 of 404 project-inspection fouten geven
+  [desktop-chromium] › tests/e2e/phase1-project-shell.spec.ts:19:1 › Fase 1 shell toont vaste topbar, klikbare KPIs en rapportage-inhoud
+  [desktop-chromium] › tests/e2e/phase2-weld-inspection.spec.ts:19:1 › fase 2 weld inspection opent lassenroute na echte login
+  [desktop-chromium] › tests/e2e/phase3-rapportage-pdf.spec.ts:5:1 › fase 3 rapportage toont zoekveld en pdf-paneel
+  [desktop-chromium] › tests/e2e/phase3-ui-validation.spec.ts:28:1 › projecttab structuur blijft overal gelijk
+  [desktop-chromium] › tests/e2e/phase5-proof.spec.ts:20:3 › fase 5 — smoke proof › lassen en lascontrole tonen bruikbare project-shell
+  [desktop-chromium] › tests/e2e/phase5-routing-refresh.spec.ts:5:3 › fase 5 — routing en refresh › refresh op projectroute verliest projectcontext niet
+  [desktop-chromium] › tests/e2e/phase5-routing-refresh.spec.ts:15:3 › fase 5 — routing en refresh › oude of lege projectroute blijft binnen project-shell
+  [desktop-chromium] › tests/e2e/project-approve-all-proof.spec.ts:3:1 › approve all toont diepe terugkoppeling
+  [desktop-chromium] › tests/e2e/project-flow.spec.ts:4:1 › project overview opent via project-centrische flow
+  [desktop-chromium] › tests/e2e/welds-ce-flow.spec.ts:4:1 › ce dossier is bereikbaar vanuit project 360
+Total: 140 tests in 63 files

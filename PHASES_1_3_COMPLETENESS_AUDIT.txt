@@ -1,0 +1,30 @@
+CWS NEN-1090 – FASE 1-3 COMPLETENESS AUDIT
+
+Uitgevoerde controle:
+- Project-contextheader aanwezig via ProjectTabShell + ProjectContextHeader
+- Header velden aanwezig: Projectnaam, Projectnummer, Opdrachtgever, Executieklasse
+- Oude lascontrole-route omgeleid naar lassen
+- Lassenflow bevat Wijzigen / Conform / Defect / Gerepareerd
+- Lascontrole zit in WeldInspectionModal binnen Lassen
+- Inspectietemplate checks worden omgezet naar controlepunten
+- Inspection save payload gebruikt overall_status, template_id, remarks, checks
+- WPS documentupload aanwezig in Documenten-tab
+- Materiaaldocument upload aanwezig in Documenten-tab
+- Masterdata staat onder elkaar in Instellingen > Masterdata
+- Rapportage zoekt op projectnaam / projectnummer / opdrachtgever
+- Rapportage heeft inline PDF / rapportviewer-paneel
+- run_all_tests.ps1 toegevoegd
+- Typecheck: PASS
+- Build: PASS
+- Playwright test discovery: PASS (140 tests in 63 files)
+
+Doorgevoerde extra reparaties in deze stap:
+- Derived report fallback verrijkt met project_name, projectnummer en client_name
+- RapportagePage uitgebreid met geselecteerde rapportregel en ingebouwd viewer-paneel
+- tests/e2e/helpers.ts hersteld met bootstrapAuthenticatedPage en openFirstProject360
+- tests/e2e/phase-11-error-hunter/_error-hunter-helper.ts hersteld voor geldige imports
+- tests/e2e/phase3-rapportage-pdf.spec.ts toegevoegd
+- run_all_tests.ps1 laat nu typecheck, build en Playwright test discovery rapporteren naar TEST_REPORT_FULL.txt
+
+Open punt:
+- Volledige live Playwright-run tegen echte omgeving is in deze container niet uitgevoerd; alleen discovery/parse is bewezen.
