@@ -1,38 +1,22 @@
 name: Deploy App to Cloudflare Pages
 
 on:
-  workflow_run:
-    workflows: ["App CI + Pages Validation"]
-    types: [completed]
-  workflow_dispatch:
+  push:
+    branches:
+      - main
 
 jobs:
   deploy:
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/pages-action@v1
         with:
-          node-version: 20
-          cache: npm
-
-      - name: Install deps
-        run: npm ci
-
-      - name: Build release for Pages
-        run: npm run build:pages
-
-      - name: Install Wrangler
-        run: npm install -g wrangler
-
-      - name: Publish to Cloudflare Pages
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          wrangler pages deploy dist --project-name nen-1090-app
+          apiToken: ${{ secrets.CF_API_TOKEN }}
+          accountId: ${{ secrets.CF_ACCOUNT_ID }}
+          projectName: nen-1090-app
+          directory: release
