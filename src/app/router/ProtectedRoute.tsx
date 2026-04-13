@@ -6,6 +6,10 @@ export function ProtectedRoute({ children }: PropsWithChildren) {
   const location = useLocation();
   const session = useSession();
 
+  if (session.isBootstrapping && session.isAuthenticated) {
+    return <>{children}</>;
+  }
+
   if (session.isBootstrapping) {
     return null;
   }

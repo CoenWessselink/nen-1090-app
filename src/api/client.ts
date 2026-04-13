@@ -16,12 +16,27 @@ type Primitive = string | number | boolean;
 type QueryValue = Primitive | null | undefined;
 type QueryParams = Record<string, QueryValue> | undefined;
 
+const STORAGE_KEY = 'nen1090.session';
+const COOKIE_SESSION_MARKER = '__cookie_session__';
+
+type PersistedSession = {
+  token: string | null;
+  refreshToken: string | null;
+  user: {
+    email?: string;
+    tenant?: string;
+    tenantId?: string | number;
+    role?: string;
+    name?: string;
+  } | null;
+};
+
 function isAbsoluteUrl(path: string): boolean {
   return /^https?:\/\//i.test(path);
 }
 
-function isRefreshExemptPath(path: string): boolean {
-  return path.includes('/auth/login') || path.includes('/auth/refresh');
+function isAuthPath(path: string): boolean {
+  return path.includes('/auth/login') || path.includes('/auth/refresh') || path.includes('/auth/me');
 }
 
 function buildBasePath(path: string): string {
@@ -59,14 +74,53 @@ function isFormData(value: unknown): value is FormData {
   return typeof FormData !== 'undefined' && value instanceof FormData;
 }
 
+function getPersistedSession(): PersistedSession {
+  if (typeof window === 'undefined') {
+    return { token: null, refreshToken: null, user: null };
+  }
+
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return { token: null, refreshToken: null, user: null };
+    const parsed = JSON.parse(raw) as PersistedSession;
+    return {
+      token: typeof parsed?.token === 'string' && parsed.token.trim() ? parsed.token : null,
+      refreshToken:
+        typeof parsed?.refreshToken === 'string' && parsed.refreshToken.trim() ? parsed.refreshToken : null,
+      user: parsed?.user && typeof parsed.user === 'object' ? parsed.user : null,
+    };
+  } catch {
+    return { token: null, refreshToken: null, user: null };
+  }
+}
+
 function getAuthSnapshot() {
-  return useAuthStore.getState();
+  const state = useAuthStore.getState();
+  if (state?.token || state?.refreshToken || state?.user) {
+    return state;
+  }
+
+  const persisted = getPersistedSession();
+  return {
+    ...state,
+    token: persisted.token,
+    refreshToken: persisted.refreshToken,
+    user: persisted.user
+      ? {
+          email: String(persisted.user.email || ''),
+          tenant: String(persisted.user.tenant || ''),
+          tenantId: persisted.user.tenantId ?? '',
+          role: String(persisted.user.role || ''),
+          name: String(persisted.user.name || ''),
+        }
+      : null,
+  };
 }
 
 function buildAuthHeaders(headers: Headers) {
   const { token, user } = getAuthSnapshot();
 
-  if (token && token !== '__cookie_session__' && !headers.has('Authorization')) {
+  if (token && token !== COOKIE_SESSION_MARKER && !headers.has('Authorization')) {
     headers.set('Authorization', `Bearer ${token}`);
   }
 
@@ -76,6 +130,10 @@ function buildAuthHeaders(headers: Headers) {
 
   if (user?.tenantId && !headers.has('X-Tenant-Id')) {
     headers.set('X-Tenant-Id', String(user.tenantId));
+  }
+
+  if (!headers.has('Accept')) {
+    headers.set('Accept', 'application/json');
   }
 }
 
@@ -131,7 +189,7 @@ async function parseResponse<T>(response: Response, raw = false): Promise<T> {
 
 async function tryRefreshSession(): Promise<boolean> {
   const store = getAuthSnapshot();
-  if (!store.refreshToken || store.refreshToken === '__cookie_session__') return false;
+  if (!store.refreshToken || store.refreshToken === COOKIE_SESSION_MARKER) return false;
 
   const headers: Record<string, string> = {
     Accept: 'application/json',
@@ -150,7 +208,7 @@ async function tryRefreshSession(): Promise<boolean> {
 
   if (!response.ok) {
     if (response.status === 401 || response.status === 403) {
-      store.clearSession();
+      useAuthStore.getState().clearSession();
     }
     return false;
   }
@@ -162,11 +220,11 @@ async function tryRefreshSession(): Promise<boolean> {
   };
 
   if (!payload.access_token || !payload.user?.email) {
-    store.clearSession();
+    useAuthStore.getState().clearSession();
     return false;
   }
 
-  store.setSession(
+  useAuthStore.getState().setSession(
     payload.access_token,
     {
       email: payload.user.email,
@@ -188,7 +246,7 @@ export async function apiRequest<T = unknown>(
 ): Promise<T> {
   const response = await fetch(buildBasePath(path), normalizeInit(init));
 
-  if (response.status === 401 && retries < 1 && !isRefreshExemptPath(path)) {
+  if (response.status === 401 && retries < 1 && !isAuthPath(path)) {
     const refreshed = await tryRefreshSession().catch(() => false);
     if (refreshed) {
       return apiRequest<T>(path, init, retries + 1, raw);
