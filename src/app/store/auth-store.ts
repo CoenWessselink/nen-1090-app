@@ -23,6 +23,14 @@ type AuthState = {
 const storageKey = 'nen1090.session';
 const cookieSessionMarker = '__cookie_session__';
 
+const cookieNames = {
+  token: 'nen1090_access_token',
+  refreshToken: 'nen1090_refresh_token',
+  tenant: 'nen1090_tenant',
+  role: 'nen1090_role',
+  user: 'nen1090_user',
+};
+
 const legacySessionKeys = {
   accessTokens: ['auth_token', 'access_token', 'token'],
   refreshTokens: ['refresh_token'],
@@ -72,24 +80,12 @@ function removeCookie(name: string) {
   document.cookie = `${name}=; path=/; max-age=0; SameSite=Lax`;
 }
 
-const cookieNames = {
-  token: 'nen1090_access_token',
-  refreshToken: 'nen1090_refresh_token',
-  tenant: 'nen1090_tenant',
-  role: 'nen1090_role',
-  user: 'nen1090_user',
-};
-
 function loadCanonicalStateFromStorage(storage: Storage) {
   const raw = storage.getItem(storageKey);
   if (!raw) return null;
-
   try {
     const parsed = JSON.parse(raw) as Pick<AuthState, 'token' | 'refreshToken' | 'user' | 'impersonation'>;
-    if (!isSupportedToken(parsed.token) || !isValidSessionUser(parsed.user)) {
-      return null;
-    }
-
+    if (!isSupportedToken(parsed.token) || !isValidSessionUser(parsed.user)) return null;
     return {
       token: parsed.token,
       refreshToken:
@@ -141,21 +137,17 @@ function loadFromWebStorage(storage: Storage) {
       },
     };
   }
-
   return null;
 }
 
 function loadFromCookies() {
   if (typeof document === 'undefined') return null;
-
   const token = getCookie(cookieNames.token);
   const refreshToken = getCookie(cookieNames.refreshToken);
   const user = parseUser(getCookie(cookieNames.user));
   const tenant = getCookie(cookieNames.tenant) || '';
   const role = getCookie(cookieNames.role) || '';
-
   if (!token || !user) return null;
-
   return {
     token,
     refreshToken,
@@ -168,7 +160,7 @@ function loadFromCookies() {
   };
 }
 
-function readLegacyState(): Pick<AuthState, 'token' | 'refreshToken' | 'user' | 'impersonation'> | null {
+function readPersistedState(): Pick<AuthState, 'token' | 'refreshToken' | 'user' | 'impersonation'> | null {
   if (typeof window === 'undefined') return null;
 
   const canonicalLocal = loadCanonicalStateFromStorage(window.localStorage);
@@ -191,7 +183,6 @@ function readLegacyState(): Pick<AuthState, 'token' | 'refreshToken' | 'user' | 
 
 function persistLegacySession(token: string | null, user: SessionUser | null, refreshToken: string | null) {
   if (typeof window === 'undefined') return;
-
   const safeToken = token === cookieSessionMarker ? '' : token || '';
   const storages: Storage[] = [window.localStorage, window.sessionStorage];
 
@@ -200,22 +191,18 @@ function persistLegacySession(token: string | null, user: SessionUser | null, re
       if (safeToken) storage.setItem(key, safeToken);
       else storage.removeItem(key);
     }
-
     for (const key of legacySessionKeys.refreshTokens) {
       if (refreshToken) storage.setItem(key, refreshToken);
       else storage.removeItem(key);
     }
-
     for (const key of legacySessionKeys.userKeys) {
       if (user) storage.setItem(key, JSON.stringify(user));
       else storage.removeItem(key);
     }
-
     for (const key of legacySessionKeys.tenantKeys) {
       if (user?.tenant) storage.setItem(key, user.tenant);
       else storage.removeItem(key);
     }
-
     for (const key of legacySessionKeys.roleKeys) {
       if (user?.role) storage.setItem(key, user.role);
       else storage.removeItem(key);
@@ -239,14 +226,13 @@ function persistLegacySession(token: string | null, user: SessionUser | null, re
   }
 }
 
-function clearLegacySession() {
+function clearPersistedSession() {
   if (typeof window === 'undefined') return;
   const storages: Storage[] = [window.localStorage, window.sessionStorage];
   for (const storage of storages) {
     storage.removeItem(storageKey);
     Object.values(legacySessionKeys).flat().forEach((key) => storage.removeItem(key));
   }
-
   removeCookie(cookieNames.token);
   removeCookie(cookieNames.refreshToken);
   removeCookie(cookieNames.user);
@@ -258,8 +244,7 @@ function loadInitialState(): Pick<AuthState, 'token' | 'refreshToken' | 'user' |
   if (typeof window === 'undefined') {
     return { token: null, refreshToken: null, user: null, impersonation: null };
   }
-
-  return readLegacyState() || { token: null, refreshToken: null, user: null, impersonation: null };
+  return readPersistedState() || { token: null, refreshToken: null, user: null, impersonation: null };
 }
 
 function persistSession(
@@ -269,9 +254,8 @@ function persistSession(
   impersonation: ImpersonationState | null,
 ) {
   if (typeof window === 'undefined') return;
-
   if (!token || !user) {
-    clearLegacySession();
+    clearPersistedSession();
     return;
   }
 
@@ -293,11 +277,7 @@ export function readAnyPersistedSession(): {
   user: SessionUser | null;
 } {
   const state = loadInitialState();
-  return {
-    token: state.token,
-    refreshToken: state.refreshToken,
-    user: state.user,
-  };
+  return { token: state.token, refreshToken: state.refreshToken, user: state.user };
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -329,7 +309,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       return { user: originalUser, impersonation: null };
     }),
   clearSession: () => {
-    clearLegacySession();
+    clearPersistedSession();
     set({ token: null, refreshToken: null, user: null, impersonation: null });
   },
 }));
