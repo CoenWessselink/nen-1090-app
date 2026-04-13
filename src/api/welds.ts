@@ -32,11 +32,88 @@ function requireId(value: string | number | undefined | null, label: string) {
   return String(value);
 }
 
+function toOptionalUuid(value: unknown) {
+  if (value === undefined || value === null) return undefined;
+  const text = String(value).trim();
+  return text ? text : null;
+}
+
+function toOptionalText(value: unknown) {
+  if (value === undefined || value === null) return undefined;
+  const text = String(value).trim();
+  return text ? text : null;
+}
+
+function sanitizeWeldPayload(payload: unknown) {
+  const source = (payload || {}) as Record<string, unknown>;
+  const normalized: Record<string, unknown> = {};
+
+  const weldNo = toOptionalText(source.weld_no ?? source.weld_number);
+  if (weldNo !== undefined) normalized.weld_no = weldNo;
+
+  const location = toOptionalText(source.location);
+  if (location !== undefined) normalized.location = location;
+
+  const assemblyId = toOptionalUuid(source.assembly_id);
+  if (assemblyId !== undefined) normalized.assembly_id = assemblyId;
+
+  const wps = toOptionalText(source.wps ?? source.wps_id);
+  if (wps !== undefined) normalized.wps = wps;
+
+  const executionClass = toOptionalText(source.execution_class);
+  if (executionClass !== undefined) normalized.execution_class = executionClass;
+
+  const templateId = toOptionalUuid(source.template_id);
+  if (templateId !== undefined) normalized.template_id = templateId;
+
+  const process = toOptionalText(source.process);
+  if (process !== undefined) normalized.process = process;
+
+  const material = toOptionalText(source.material);
+  if (material !== undefined) normalized.material = material;
+
+  const thickness = toOptionalText(source.thickness);
+  if (thickness !== undefined) normalized.thickness = thickness;
+
+  const welders = toOptionalText(source.welders ?? source.welder_name);
+  if (welders !== undefined) normalized.welders = welders;
+
+  const vtStatus = toOptionalText(source.vt_status);
+  if (vtStatus !== undefined) normalized.vt_status = vtStatus;
+
+  const ndoStatus = toOptionalText(source.ndo_status);
+  if (ndoStatus !== undefined) normalized.ndo_status = ndoStatus;
+
+  if (source.photos !== undefined && source.photos !== null && source.photos !== '') {
+    const numericPhotos = Number(source.photos);
+    normalized.photos = Number.isFinite(numericPhotos) ? numericPhotos : 0;
+  }
+
+  const status = toOptionalText(source.status);
+  if (status !== undefined) normalized.status = status;
+
+  const result = toOptionalText(source.result);
+  if (result !== undefined) normalized.result = result;
+
+  const inspector = toOptionalText(source.inspector);
+  if (inspector !== undefined) normalized.inspector = inspector;
+
+  if (source.inspected_at !== undefined) {
+    normalized.inspected_at = source.inspected_at || null;
+  }
+
+  if (source.notes !== undefined) {
+    normalized.notes = toOptionalText(source.notes);
+  }
+
+  return normalized;
+}
+
 async function tryRequest<T = unknown>(path: string, init?: RequestInit): Promise<T | null> {
   try {
     return await apiRequest<T>(path, init);
   } catch (error) {
-    if (error instanceof ApiError && [404, 405, 422].includes(error.status)) {
+    if (error instanceof ApiError && [404, 405].includes(error.status)) {
       return null;
     }
     throw error;
@@ -76,22 +153,20 @@ export function getWeld(projectId: string | number, weldId: string | number) {
 
 export function createWeld(projectIdOrPayload: unknown, payload?: unknown) {
   if (payload !== undefined) {
-    return client.post(`/projects/${projectIdOrPayload}/welds`, payload);
+    return client.post(`/projects/${projectIdOrPayload}/welds`, sanitizeWeldPayload(payload));
   }
 
   const body = (projectIdOrPayload || {}) as Record<string, unknown>;
   const projectId = getProjectId(body);
-  if (projectId) return client.post(`/projects/${projectId}/welds`, body);
-  return client.post('/welds', body);
+  if (projectId) return client.post(`/projects/${projectId}/welds`, sanitizeWeldPayload(body));
+  return client.post('/welds', sanitizeWeldPayload(body));
 }
 
 export function updateWeld(projectId: string | number, weldId: string | number, payload: unknown) {
   const safeWeldId = requireId(weldId, 'weldId');
   const safeProjectId = requireId(projectId, 'projectId');
-  return optionalRequest([
-    `/projects/${safeProjectId}/welds/${safeWeldId}`,
-    `/welds/${safeWeldId}`,
-  ], { method: 'PUT', body: JSON.stringify(payload) });
+  const body = sanitizeWeldPayload(payload);
+  return apiRequest(`/projects/${safeProjectId}/welds/${safeWeldId}`, { method: 'PUT', body: JSON.stringify(body) });
 }
 
 export function patchWeldStatus(projectId: string | number, weldId: string | number, status: string) {
@@ -99,7 +174,6 @@ export function patchWeldStatus(projectId: string | number, weldId: string | num
   const safeProjectId = requireId(projectId, 'projectId');
   const payload = { status };
 
-  // Eerst bestaande generieke update-routes. Daarmee voorkom je 404-spam op /status.
   return tryMethods([
     `/projects/${safeProjectId}/welds/${safeWeldId}`,
     `/welds/${safeWeldId}`,
@@ -153,29 +227,33 @@ export function getWeldDefects(projectId: string | number, weldId: string | numb
   ]);
 }
 
-// Belangrijk: géén /inspection-subroute meer als eerste kandidaat, want die veroorzaakt live 404-spam.
-// Eerst project-inspections lijst opvragen en lokaal filteren.
 export async function getWeldInspection(projectId: string | number, weldId: string | number) {
   const safeWeldId = requireId(weldId, 'weldId');
   const safeProjectId = requireId(projectId, 'projectId');
 
   const fromProjectList = await optionalRequest<any>([
-    `/projects/${safeProjectId}/inspections?limit=100`,
-    `/inspections?project_id=${safeProjectId}&limit=100`,
+    `/projects/${safeProjectId}/welds/${safeWeldId}/inspections`,
+    `/projects/${safeProjectId}/inspections?weld_id=${safeWeldId}&limit=1`,
+    `/inspections?project_id=${safeProjectId}&weld_id=${safeWeldId}&limit=1`,
   ]).catch(() => null);
 
   if (Array.isArray(fromProjectList)) {
-    return fromProjectList.find((row) => String(row?.weld_id || row?.weldId || '') === safeWeldId) || null;
+    return fromProjectList.find((row) => String(row?.weld_id || row?.weldId || '') === safeWeldId) || fromProjectList[0] || null;
   }
 
   if (fromProjectList && Array.isArray(fromProjectList.items)) {
-    return fromProjectList.items.find((row: any) => String(row?.weld_id || row?.weldId || '') === safeWeldId) || null;
+    return fromProjectList.items.find((row: any) => String(row?.weld_id || row?.weldId || '') === safeWeldId) || fromProjectList.items[0] || null;
   }
 
-  return optionalRequest([
+  const direct = await optionalRequest([
     `/welds/${safeWeldId}/inspection`,
-    `/projects/${safeProjectId}/welds/${safeWeldId}/inspections`,
-  ]);
+  ]).catch(() => null);
+
+  if (direct && typeof direct === 'object' && 'inspection' in (direct as Record<string, unknown>)) {
+    return ((direct as Record<string, unknown>).inspection as Record<string, unknown> | null) ?? null;
+  }
+
+  return direct;
 }
 
 export async function getWeldInspections(projectId: string | number, weldId: string | number) {

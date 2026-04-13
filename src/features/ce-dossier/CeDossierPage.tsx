@@ -44,7 +44,6 @@ import { CePdfLayoutCard } from '@/features/ce-dossier/components/CePdfBlocks';
 import type { ExportJob } from '@/types/domain';
 import { resolveProjectContextTab } from '@/features/projecten/components/ProjectContextTabs';
 import { ProjectTabShell } from '@/features/projecten/components/ProjectTabShell';
-import { ProjectContextHeader } from '@/features/projecten/components/ProjectContextHeader';
 import { ProjectKpiActionCard } from '@/features/projecten/components/ProjectKpiActionCard';
 import { downloadCsv, downloadJson, downloadText, openPrintWindow } from '@/utils/export';
 
@@ -536,8 +535,6 @@ export function CeDossierPage() {
 
   return (
     <div className="page-stack">
-      <ProjectContextHeader projectId={projectId} title="CE dossier" />
-
       <ProjectTabShell
         projectId={projectId}
         currentTab={currentProjectTab}

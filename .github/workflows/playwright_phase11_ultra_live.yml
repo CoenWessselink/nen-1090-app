@@ -26,14 +26,14 @@ jobs:
         run: npm ci
 
       - name: Install Playwright browsers
-        run: npx playwright install chromium
+        run: npx playwright install --with-deps chromium
 
       - name: Run ultra live suite
         env:
           TEST_TENANT: demo
           TEST_EMAIL: admin@demo.com
           TEST_PASSWORD: Admin123!
-        run: npx playwright test tests/e2e/phase-11-ultra --project=desktop-chromium --reporter=line
+        run: npx playwright test tests/e2e/phase-11-ultra --project=desktop-chromium
 
       - name: Upload Playwright artifacts
         if: always()

@@ -11,9 +11,9 @@ import { useProjectContext } from '@/context/ProjectContext';
 
 function targetPathForSelection(pathname: string, projectId: string) {
   if (pathname.includes('/ce-dossier')) return `/projecten/${projectId}/ce-dossier`;
-  if (pathname.includes('/welds') || pathname.includes('/lascontrole')) return `/projecten/${projectId}/welds`;
-  if (pathname.includes('/projecten/')) return `/projecten/${projectId}`;
-  if (pathname.includes('/projecten')) return `/projecten/${projectId}`;
+  if (pathname.includes('/welds') || pathname.includes('/lascontrole')) return `/projecten/${projectId}/lassen`;
+  if (pathname.includes('/projecten/')) return `/projecten/${projectId}/overzicht`;
+  if (pathname.includes('/projecten')) return `/projecten/${projectId}/overzicht`;
   return '';
 }
 

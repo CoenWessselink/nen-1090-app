@@ -48,9 +48,9 @@ export function SearchResultsPopover() {
     const buckets = [
       { group: 'Projecten', rows: payload.projects || [], path: '/projecten', icon: FolderKanban },
       { group: 'Assemblies', rows: payload.assemblies || [], path: '/projecten', icon: FolderKanban },
-      { group: 'Lassen', rows: payload.welds || [], path: '/lascontrole', icon: ShieldCheck },
+      { group: 'Lassen', rows: payload.welds || [], path: '/projecten', icon: ShieldCheck },
       { group: 'Documenten', rows: payload.documents || [], path: '/ce-dossier', icon: FileText },
-      { group: 'Inspecties', rows: payload.inspections || [], path: '/lascontrole', icon: Search },
+      { group: 'Inspecties', rows: payload.inspections || [], path: '/projecten', icon: Search },
     ];
 
     return buckets.flatMap((bucket) =>

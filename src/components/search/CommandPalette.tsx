@@ -55,9 +55,9 @@ export function CommandPalette() {
     const groups = [
       ['Projecten', payload.projects, '/projecten'],
       ['Assemblies', payload.assemblies, '/projecten'],
-      ['Lassen', payload.welds, '/lascontrole'],
+      ['Lassen', payload.welds, '/projecten'],
       ['Documenten', payload.documents, '/ce-dossier'],
-      ['Inspecties', payload.inspections, '/lascontrole'],
+      ['Inspecties', payload.inspections, '/projecten'],
     ] as const;
 
     return groups.flatMap(([group, rows, path]) => (rows || []).slice(0, 4).map((row) => ({

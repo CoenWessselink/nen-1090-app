@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Card } from '@/components/ui/Card';
 import { ProjectContextTabs } from '@/features/projecten/components/ProjectContextTabs';
 import { ProjectTopActionBar } from '@/features/projecten/components/ProjectTopActionBar';
+import { ProjectContextHeader } from '@/features/projecten/components/ProjectContextHeader';
 
 export type ProjectTabShellProps = {
   projectId: string;
@@ -48,6 +49,8 @@ export function ProjectTabShell({
         exportSelectionDisabled={exportSelectionDisabled}
         exportSelectionLabel={exportSelectionLabel}
       />
+
+      <ProjectContextHeader projectId={projectId} />
 
       {filters ? (
         <Card className="project-tab-section project-tab-section-filters" data-project-structure="filters">

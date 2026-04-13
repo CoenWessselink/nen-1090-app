@@ -1,8 +1,7 @@
-
-import { apiRequest, optionalRequest } from './client';
+import { ApiError, apiRequest, optionalRequest } from './client';
 import type { ListParams } from '@/types/api';
 
-function withQuery(path: string, params?: ListParams): string {
+function withQuery(path: string, params?: ListParams) {
   if (!params) return path;
   const sp = new URLSearchParams();
   Object.entries(params as Record<string, unknown>).forEach(([key, value]) => {
@@ -13,6 +12,19 @@ function withQuery(path: string, params?: ListParams): string {
   return qs ? `${path}?${qs}` : path;
 }
 
+function unwrapInspectionPayload<T = Record<string, unknown> | null>(value: unknown): T | null {
+  if (!value || typeof value !== 'object') return (value ?? null) as T | null;
+
+  const record = value as Record<string, unknown>;
+  if ('inspection' in record) {
+    return (record.inspection ?? null) as T | null;
+  }
+  if (Array.isArray(record.items)) {
+    return ((record.items[0] as T | undefined) ?? null);
+  }
+  return record as T;
+}
+
 export function getInspections(params?: ListParams) {
   return apiRequest(withQuery('/inspections', params));
 }
@@ -21,18 +33,31 @@ export function getInspection(inspectionId: string | number) {
   return apiRequest(`/inspections/${inspectionId}`);
 }
 
-export function getInspectionForWeld(projectId: string | number, weldId: string | number) {
-  return optionalRequest([
-    `/projects/${projectId}/welds/${weldId}/inspection`,
+export async function getInspectionForWeld(projectId: string | number, weldId: string | number) {
+  const response = await optionalRequest([
+    `/projects/${projectId}/welds/${weldId}/inspections`,
+    `/projects/${projectId}/inspections?weld_id=${weldId}&limit=1`,
+    `/inspections?project_id=${projectId}&weld_id=${weldId}&limit=1`,
     `/welds/${weldId}/inspection`,
   ]);
+
+  return unwrapInspectionPayload(response);
 }
 
-export function upsertInspectionForWeld(projectId: string | number, weldId: string | number, data: unknown) {
-  return optionalRequest([
-    `/welds/${weldId}/inspection`,
-    `/projects/${projectId}/welds/${weldId}/inspection`,
-  ], { method: 'PUT', body: JSON.stringify(data) });
+export async function upsertInspectionForWeld(projectId: string | number, weldId: string | number, data: unknown) {
+  try {
+    return await apiRequest(`/welds/${weldId}/inspection`, { method: 'PUT', body: JSON.stringify(data) });
+  } catch (error) {
+    if (!(error instanceof ApiError) || ![404, 405].includes(error.status)) {
+      throw error;
+    }
+  }
+
+  const fallback = await optionalRequest([
+    `/projects/${projectId}/welds/${weldId}/inspections`,
+  ], { method: 'POST', body: JSON.stringify(data) });
+
+  return unwrapInspectionPayload(fallback);
 }
 
 export function createInspection(projectId: string | number, weldId: string | number, payload: unknown) {

@@ -2,13 +2,14 @@ import { useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import ProjectTabShell from '@/app/layout/ProjectTabShell';
 import { ProjectKpiActionCard } from '@/features/projecten/components/ProjectKpiActionCard';
-import { ProjectContextHeader } from '@/features/projecten/components/ProjectContextHeader';
 import { WeldInspectionModal } from '@/features/lascontrole/components/WeldInspectionModal';
 import { useUpsertWeldInspection, useWeldInspection } from '@/hooks/useInspections';
+import { useCreateProjectDocument, useProjectDocuments } from '@/hooks/useDocuments';
 import { useProject, useProjectAssemblies, useProjectInspections, useProjectWelds } from '@/hooks/useProjects';
 import { usePatchWeldStatus, useUpdateWeld } from '@/hooks/useWelds';
 import { useInspectionTemplates, useWelders, useWps } from '@/hooks/useSettings';
-import type { Assembly, AuditEntry, Inspection, Project, Weld, WeldStatus } from '@/types/domain';
+import { useAuthStore } from '@/app/store/auth-store';
+import type { Assembly, AuditEntry, CeDocument, Inspection, Project, Weld, WeldStatus } from '@/types/domain';
 import type { WeldFormValues } from '@/types/forms';
 
 function titleFromProject(project?: Project | null) {
@@ -52,7 +53,7 @@ function actionButtonStyle(kind: 'default' | 'blue' | 'conform' | 'defect' | 'ge
     blue: { border: '#93c5fd', bg: '#dbeafe', color: '#1d4ed8' },
     conform: { border: active ? '#16a34a' : '#cbd5e1', bg: active ? '#dcfce7' : '#fff', color: active ? '#166534' : '#0f172a' },
     defect: { border: active ? '#ef4444' : '#cbd5e1', bg: active ? '#fee2e2' : '#fff', color: active ? '#991b1b' : '#0f172a' },
-    gerepareerd: { border: active ? '#16a34a' : '#cbd5e1', bg: active ? '#dcfce7' : '#fff', color: active ? '#166534' : '#0f172a' },
+    gerepareerd: { border: active ? '#3b82f6' : '#cbd5e1', bg: active ? '#dbeafe' : '#fff', color: active ? '#1d4ed8' : '#0f172a' },
   }[kind];
 
   return {
@@ -66,6 +67,70 @@ function actionButtonStyle(kind: 'default' | 'blue' | 'conform' | 'defect' | 'ge
   };
 }
 
+function matchesSearch(value: unknown, searchText: string) {
+  return JSON.stringify(value).toLowerCase().includes(searchText);
+}
+
+function parseTemplateItems(template: Record<string, unknown>) {
+  const items = template.items_json ?? template.items ?? [];
+  if (Array.isArray(items)) return items as Array<Record<string, unknown>>;
+  if (typeof items === 'string') {
+    try {
+      const parsed = JSON.parse(items);
+      return Array.isArray(parsed) ? (parsed as Array<Record<string, unknown>>) : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
+function DocumentUploadCard({
+  title,
+  description,
+  tone = 'wps',
+  onUpload,
+  uploading,
+  documents,
+}: {
+  title: string;
+  description: string;
+  tone?: 'wps' | 'materials';
+  onUpload: (file: File) => Promise<void>;
+  uploading: boolean;
+  documents: CeDocument[];
+}) {
+  return (
+    <div style={surfaceStyle()}>
+      <strong>{title}</strong>
+      <div style={{ marginTop: 8, color: '#64748b' }}>{description}</div>
+      <label style={{ ...actionButtonStyle('blue'), marginTop: 12, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+        {uploading ? 'Uploaden...' : 'Document toevoegen'}
+        <input
+          type="file"
+          hidden
+          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp,.xlsx,.xls"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            if (!file) return;
+            void onUpload(file).finally(() => {
+              event.currentTarget.value = '';
+            });
+          }}
+        />
+      </label>
+      <div style={{ marginTop: 12, display: 'grid', gap: 8 }}>
+        {documents.length ? documents.map((document) => (
+          <div key={String(document.id)} style={{ border: '1px solid #e2e8f0', borderRadius: 12, padding: 12, background: tone === 'wps' ? '#eff6ff' : '#f8fafc' }}>
+            <strong>{String(document.title || document.filename || document.uploaded_filename || `Document ${document.id}`)}</strong>
+            <div style={{ color: '#64748b', marginTop: 6 }}>{String(document.type || document.mime_type || 'Document')}</div>
+          </div>
+        )) : <div style={{ color: '#64748b' }}>Nog geen documenten toegevoegd.</div>}
+      </div>
+    </div>
+  );
+}
+
 export function Project360Page() {
   const { projectId } = useParams();
   const navigate = useNavigate();
@@ -73,6 +138,8 @@ export function Project360Page() {
   const currentTab = currentTabFromPath(location.pathname);
   const [selectedWeld, setSelectedWeld] = useState<Weld | null>(null);
   const [search, setSearch] = useState('');
+  const [uploadingScope, setUploadingScope] = useState<'wps' | 'materials' | null>(null);
+  const user = useAuthStore((state) => state.user);
 
   const projectQuery = useProject(projectId);
   const assembliesQuery = useProjectAssemblies(projectId, { page: 1, limit: 25 });
@@ -82,6 +149,8 @@ export function Project360Page() {
   const saveInspection = useUpsertWeldInspection(String(projectId || ''), String(selectedWeld?.id || ''));
   const updateWeld = useUpdateWeld(String(projectId || ''));
   const patchWeldStatus = usePatchWeldStatus(String(projectId || ''));
+  const documentsQuery = useProjectDocuments(String(projectId || ''), { page: 1, limit: 200 });
+  const createDocument = useCreateProjectDocument(String(projectId || ''));
   const wpsQuery = useWps();
   const weldersQuery = useWelders();
   const templatesQuery = useInspectionTemplates();
@@ -91,11 +160,14 @@ export function Project360Page() {
   const welds = (weldsQuery.data?.items || []) as Weld[];
   const inspections = (inspectionsQuery.data?.items || []) as AuditEntry[];
   const selectedInspection = selectedInspectionQuery.data as Inspection | null;
+  const documents = (documentsQuery.data?.items || []) as CeDocument[];
 
   const searchText = search.trim().toLowerCase();
-  const visibleAssemblies = useMemo(() => assemblies.filter((a) => JSON.stringify(a).toLowerCase().includes(searchText)), [assemblies, searchText]);
-  const visibleWelds = useMemo(() => welds.filter((w) => JSON.stringify(w).toLowerCase().includes(searchText)), [welds, searchText]);
-  const visibleHistory = useMemo(() => inspections.filter((i) => JSON.stringify(i).toLowerCase().includes(searchText)), [inspections, searchText]);
+  const visibleAssemblies = useMemo(() => assemblies.filter((a) => matchesSearch(a, searchText)), [assemblies, searchText]);
+  const visibleWelds = useMemo(() => welds.filter((w) => matchesSearch(w, searchText)), [welds, searchText]);
+  const visibleHistory = useMemo(() => inspections.filter((i) => matchesSearch(i, searchText)), [inspections, searchText]);
+  const visibleWpsDocuments = useMemo(() => documents.filter((item) => matchesSearch(item, 'wps') || matchesSearch(item.tags || [], 'wps') || matchesSearch(item.notes || '', 'wps')), [documents]);
+  const visibleMaterialDocuments = useMemo(() => documents.filter((item) => matchesSearch(item, 'materiaal') || matchesSearch(item, 'material') || matchesSearch(item.tags || [], 'materiaal') || matchesSearch(item.notes || '', 'materiaal')), [documents]);
 
   const filters = (
     <input
@@ -109,7 +181,29 @@ export function Project360Page() {
   const assemblyOptions = assemblies.map((assembly) => ({ value: String(assembly.id), label: String(assembly.code || assembly.name || assembly.id) }));
   const wpsOptions = (wpsQuery.data?.items || []).map((item) => ({ value: String(item.id || item.code || ''), label: String(item.code || item.title || item.id || '') }));
   const welderOptions = (weldersQuery.data?.items || []).map((item) => ({ value: String(item.id || item.code || ''), label: String(item.name || item.code || item.id || '') }));
-  const templateOptions = (templatesQuery.data?.items || []).map((item) => ({ value: String(item.id || item.code || ''), label: String(item.name || item.code || item.id || '') }));
+  const templateRows = (templatesQuery.data?.items || []) as Array<Record<string, unknown>>;
+  const templateOptions = templateRows.map((item) => ({ value: String(item.id || item.code || ''), label: String(item.name || item.code || item.id || '') }));
+  const inspectionTemplateMap = useMemo(
+    () => Object.fromEntries(templateRows.map((item) => [String(item.id || item.code || ''), parseTemplateItems(item)])),
+    [templateRows],
+  );
+
+  async function uploadScopedDocument(scope: 'wps' | 'materials', file: File) {
+    if (!projectId) return;
+    setUploadingScope(scope);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('title', file.name);
+      formData.append('type', scope === 'wps' ? 'WPS document' : 'Materiaaldocument');
+      formData.append('notes', scope === 'wps' ? 'wps' : 'materiaal');
+      formData.append('tags', JSON.stringify([scope === 'wps' ? 'wps' : 'materiaal']));
+      await createDocument.mutateAsync(formData);
+      await documentsQuery.refetch();
+    } finally {
+      setUploadingScope(null);
+    }
+  }
 
   const kpis = [
     <ProjectKpiActionCard
@@ -131,7 +225,7 @@ export function Project360Page() {
     <ProjectKpiActionCard
       key="documenten"
       label="Documenten"
-      value={0}
+      value={documents.length}
       meta="Klik om documentbeheer te openen"
       onClick={() => navigate(`/projecten/${projectId}/documenten`)}
       testId="project-kpi-documents"
@@ -209,16 +303,22 @@ export function Project360Page() {
         <section style={surfaceStyle()}>
           <h3 style={{ margin: 0 }}>Documenten</h3>
           <div style={{ marginTop: 12, display: 'grid', gap: 12 }}>
-            <div style={surfaceStyle()}>
-              <strong>WPS document</strong>
-              <div style={{ marginTop: 8, color: '#64748b' }}>WPS-documenten moeten toegevoegd kunnen worden vanuit masterdata en projectcontext.</div>
-              <button type="button" style={{ ...actionButtonStyle('blue'), marginTop: 12 }}>Document toevoegen</button>
-            </div>
-            <div style={surfaceStyle()}>
-              <strong>Materiaaldocumenten</strong>
-              <div style={{ marginTop: 8, color: '#64748b' }}>Materialen moeten ook documenten kunnen bevatten, zoals certificaten en productsheets.</div>
-              <button type="button" style={{ ...actionButtonStyle('blue'), marginTop: 12 }}>Materiaaldocument toevoegen</button>
-            </div>
+            <DocumentUploadCard
+              title="WPS document"
+              description="Voeg hier WPS-documenten toe. De upload loopt via het bestaande projectdocument-contract."
+              tone="wps"
+              uploading={uploadingScope === 'wps'}
+              documents={visibleWpsDocuments}
+              onUpload={async (file) => await uploadScopedDocument('wps', file)}
+            />
+            <DocumentUploadCard
+              title="Materiaaldocumenten"
+              description="Voeg hier materiaaldocumenten toe, zoals certificaten en productsheets."
+              tone="materials"
+              uploading={uploadingScope === 'materials'}
+              documents={visibleMaterialDocuments}
+              onUpload={async (file) => await uploadScopedDocument('materials', file)}
+            />
           </div>
         </section>
       );
@@ -248,7 +348,7 @@ export function Project360Page() {
         </section>
       </div>
     );
-  }, [projectQuery.isLoading, projectId, projectQuery.isError, project, currentTab, visibleAssemblies, visibleWelds, visibleHistory, navigate, patchWeldStatus, assemblies.length, welds.length, inspections.length]);
+  }, [projectQuery.isLoading, projectId, projectQuery.isError, project, currentTab, visibleAssemblies, visibleWelds, visibleHistory, navigate, patchWeldStatus, assemblies.length, welds.length, inspections.length, documents.length, visibleWpsDocuments, visibleMaterialDocuments, uploadingScope]);
 
   return (
     <>
@@ -265,7 +365,6 @@ export function Project360Page() {
         filters={filters}
         kpis={kpis}
       >
-        <ProjectContextHeader projectId={String(projectId || '')} />
         {content}
       </ProjectTabShell>
 
@@ -279,6 +378,7 @@ export function Project360Page() {
         wpsOptions={wpsOptions}
         welderOptions={welderOptions}
         templateOptions={templateOptions}
+        inspectionTemplateMap={inspectionTemplateMap}
         onClose={() => setSelectedWeld(null)}
         onQuickStatus={async (status) => {
           if (!selectedWeld) return;
@@ -293,7 +393,13 @@ export function Project360Page() {
         }}
         onSaveInspection={async (payload) => {
           if (!selectedWeld) return;
-          await saveInspection.mutateAsync(payload);
+          await saveInspection.mutateAsync({
+            inspector: user?.email || undefined,
+            overall_status: payload.overall_status,
+            template_id: payload.template_id,
+            remarks: payload.remarks,
+            checks: payload.checks,
+          });
           await selectedInspectionQuery.refetch();
           await weldsQuery.refetch();
           setSelectedWeld(null);

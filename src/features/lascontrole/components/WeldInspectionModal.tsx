@@ -1,5 +1,4 @@
-
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import type { Inspection, Weld } from '@/types/domain';
 import type { WeldFormValues } from '@/types/forms';
 
@@ -28,33 +27,86 @@ type Props = {
   wpsOptions?: SelectOption[];
   welderOptions?: SelectOption[];
   templateOptions?: SelectOption[];
+  inspectionTemplateMap?: Record<string, Array<Record<string, unknown>>>;
   onClose: () => void;
   onQuickStatus: (status: WeldStatus) => Promise<void> | void;
   onSaveWeld: (payload: WeldFormValues) => Promise<void> | void;
   onSaveInspection: (payload: {
-    status: WeldStatus;
+    overall_status: WeldStatus;
     template_id?: string;
     remarks?: string;
-    checks: CheckItem[];
+    checks: Array<CheckItem & { applicable: boolean }>;
   }) => Promise<void> | void;
 };
 
 function normalizeStatus(value: unknown): WeldStatus {
   const raw = String(value || '').toLowerCase();
   if (raw === 'defect') return 'defect';
-  if (raw === 'gerepareerd') return 'gerepareerd';
+  if (raw === 'gerepareerd' || raw === 'repaired') return 'gerepareerd';
   return 'conform';
 }
 
+function statusPalette(status: WeldStatus, active: boolean) {
+  if (status === 'defect') {
+    return active
+      ? { border: '#ef4444', background: '#fee2e2', color: '#991b1b' }
+      : { border: '#cbd5e1', background: '#ffffff', color: '#0f172a' };
+  }
+  if (status === 'gerepareerd') {
+    return active
+      ? { border: '#3b82f6', background: '#dbeafe', color: '#1d4ed8' }
+      : { border: '#cbd5e1', background: '#ffffff', color: '#0f172a' };
+  }
+  return active
+    ? { border: '#16a34a', background: '#dcfce7', color: '#166534' }
+    : { border: '#cbd5e1', background: '#ffffff', color: '#0f172a' };
+}
+
 function buttonStyle(active: boolean, status: WeldStatus): React.CSSProperties {
-  const isDefect = status === 'defect';
+  const palette = statusPalette(status, active);
   return {
     borderRadius: 12,
-    border: `1px solid ${active ? (isDefect ? '#ef4444' : '#16a34a') : '#cbd5e1'}`,
-    background: active ? (isDefect ? '#fee2e2' : '#dcfce7') : '#ffffff',
-    color: active ? (isDefect ? '#991b1b' : '#166534') : '#0f172a',
+    border: `1px solid ${palette.border}`,
+    background: palette.background,
+    color: palette.color,
     fontWeight: 600,
     padding: '10px 14px',
+    cursor: 'pointer',
+  };
+}
+
+function tabStyle(active: boolean): React.CSSProperties {
+  return {
+    borderRadius: 12,
+    border: `1px solid ${active ? '#3b82f6' : '#cbd5e1'}`,
+    background: active ? '#dbeafe' : '#ffffff',
+    color: active ? '#1d4ed8' : '#0f172a',
+    fontWeight: 600,
+    padding: '10px 14px',
+    cursor: 'pointer',
+  };
+}
+
+function primaryButtonStyle(): React.CSSProperties {
+  return {
+    borderRadius: 12,
+    border: '1px solid #93c5fd',
+    background: '#dbeafe',
+    color: '#1d4ed8',
+    fontWeight: 700,
+    padding: '12px 16px',
+    cursor: 'pointer',
+  };
+}
+
+function secondaryButtonStyle(): React.CSSProperties {
+  return {
+    borderRadius: 12,
+    border: '1px solid #cbd5e1',
+    background: '#ffffff',
+    color: '#0f172a',
+    fontWeight: 600,
+    padding: '12px 16px',
     cursor: 'pointer',
   };
 }
@@ -73,6 +125,28 @@ function inputStyle(): React.CSSProperties {
   };
 }
 
+function parseTemplateChecks(items: Array<Record<string, unknown>> | undefined): CheckItem[] {
+  if (!items?.length) {
+    return [
+      {
+        group_key: 'algemeen',
+        criterion_key: 'VISUAL_BASE',
+        approved: true,
+        status: 'conform',
+        comment: '',
+      },
+    ];
+  }
+
+  return items.map((item, index) => ({
+    group_key: String(item.group || item.group_key || item.norm || 'algemeen'),
+    criterion_key: String(item.code || item.criterion_key || item.title || `CHECK_${index + 1}`),
+    approved: String(item.default_status || 'conform').toLowerCase() !== 'defect',
+    status: normalizeStatus(item.default_status || 'conform'),
+    comment: '',
+  }));
+}
+
 export function WeldInspectionModal({
   open,
   weld,
@@ -83,6 +157,7 @@ export function WeldInspectionModal({
   wpsOptions = [],
   welderOptions = [],
   templateOptions = [],
+  inspectionTemplateMap = {},
   onClose,
   onQuickStatus,
   onSaveWeld,
@@ -103,24 +178,22 @@ export function WeldInspectionModal({
   });
   const [inspectionStatus, setInspectionStatus] = useState<WeldStatus>('conform');
   const [remarks, setRemarks] = useState('');
-  const [checks, setChecks] = useState<CheckItem[]>([
-    {
-      group_key: 'algemeen',
-      criterion_key: 'VISUAL_BASE',
-      approved: true,
-      status: 'conform',
-      comment: '',
-    },
-  ]);
+  const [checks, setChecks] = useState<CheckItem[]>(parseTemplateChecks(undefined));
+
+  const activeTemplateChecks = useMemo(
+    () => parseTemplateChecks(inspectionTemplateMap[String(weldForm.template_id || '')]),
+    [inspectionTemplateMap, weldForm.template_id],
+  );
 
   useEffect(() => {
     if (!weld) return;
+    setTab('weld');
     setWeldForm({
       project_id: String(weld.project_id || ''),
       weld_number: String(weld.weld_number || weld.weld_no || ''),
       assembly_id: String(weld.assembly_id || ''),
-      wps_id: String(weld.wps_id || ''),
-      welder_name: String(weld.welder_name || ''),
+      wps_id: String(weld.wps_id || weld.wps || ''),
+      welder_name: String(weld.welder_name || weld.welders || ''),
       process: String(weld.process || '135'),
       location: String(weld.location || ''),
       status: normalizeStatus(weld.status),
@@ -131,7 +204,8 @@ export function WeldInspectionModal({
 
   useEffect(() => {
     const source = (inspection || {}) as Record<string, unknown>;
-    setInspectionStatus(normalizeStatus(source.status));
+    const nextStatus = normalizeStatus(source.overall_status || source.status || source.result);
+    setInspectionStatus(nextStatus);
     setRemarks(String(source.remarks || source.notes || ''));
     const rawChecks = Array.isArray(source.checks) ? (source.checks as Array<Record<string, unknown>>) : [];
     if (rawChecks.length) {
@@ -144,8 +218,15 @@ export function WeldInspectionModal({
           comment: String(item.comment || ''),
         })),
       );
+      return;
     }
-  }, [inspection]);
+    setChecks(activeTemplateChecks);
+  }, [inspection, activeTemplateChecks]);
+
+  useEffect(() => {
+    if (inspection) return;
+    setChecks(activeTemplateChecks);
+  }, [activeTemplateChecks, inspection]);
 
   if (!open || !weld) return null;
 
@@ -164,28 +245,16 @@ export function WeldInspectionModal({
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
           <div>
             <h2 style={{ margin: 0 }}>Las wijzigen · {String(weld.weld_number || weld.id)}</h2>
-            <div style={{ color: '#64748b', marginTop: 6 }}>Volledige lasgegevens met dropdowns vanuit masterdata en aparte inspectietab.</div>
+            <div style={{ color: '#64748b', marginTop: 6 }}>Lasgegevens en lascontrole in één popup, afgestemd op inspectietemplate en normpunten.</div>
           </div>
-          <button type="button" onClick={onClose}>Sluiten</button>
+          <button type="button" onClick={onClose} style={secondaryButtonStyle()}>Sluiten</button>
         </div>
 
         <div role="tablist" aria-label="Las wijzigen tabs" style={{ display: 'flex', gap: 12, marginTop: 16 }}>
-          <button
-            role="tab"
-            aria-selected={tab === 'weld'}
-            type="button"
-            onClick={() => setTab('weld')}
-            style={buttonStyle(tab === 'weld', 'conform')}
-          >
+          <button role="tab" aria-selected={tab === 'weld'} type="button" onClick={() => setTab('weld')} style={tabStyle(tab === 'weld')}>
             Gegevens van de las
           </button>
-          <button
-            role="tab"
-            aria-selected={tab === 'inspection'}
-            type="button"
-            onClick={() => setTab('inspection')}
-            style={buttonStyle(tab === 'inspection', 'conform')}
-          >
+          <button role="tab" aria-selected={tab === 'inspection'} type="button" onClick={() => setTab('inspection')} style={tabStyle(tab === 'inspection')}>
             Gegevens van de lascontrole
           </button>
         </div>
@@ -244,67 +313,71 @@ export function WeldInspectionModal({
                 </select>
               </label>
             </div>
-
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
               <button type="button" style={buttonStyle(weldForm.status === 'conform', 'conform')} onClick={() => setWeldForm((p) => ({ ...p, status: 'conform' }))}>Conform</button>
               <button type="button" style={buttonStyle(weldForm.status === 'defect', 'defect')} onClick={() => setWeldForm((p) => ({ ...p, status: 'defect' }))}>Defect</button>
               <button type="button" style={buttonStyle(weldForm.status === 'gerepareerd', 'gerepareerd')} onClick={() => setWeldForm((p) => ({ ...p, status: 'gerepareerd' }))}>Gerepareerd</button>
             </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-              <div style={{ display: 'flex', gap: 12 }}>
-                <button type="button" style={buttonStyle(false, 'conform')} onClick={() => void onQuickStatus('conform')}>Snel Conform</button>
-                <button type="button" style={buttonStyle(false, 'defect')} onClick={() => void onQuickStatus('defect')}>Snel Defect</button>
-                <button type="button" style={buttonStyle(false, 'gerepareerd')} onClick={() => void onQuickStatus('gerepareerd')}>Snel Gerepareerd</button>
-              </div>
-              <button type="button" style={buttonStyle(false, 'conform')} disabled={savingWeld} onClick={() => void onSaveWeld(weldForm)}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+              <button type="button" onClick={onClose} style={secondaryButtonStyle()}>Annuleren</button>
+              <button
+                type="button"
+                style={primaryButtonStyle()}
+                disabled={savingWeld}
+                onClick={() => void onSaveWeld(weldForm)}
+              >
                 {savingWeld ? 'Opslaan...' : 'Las opslaan'}
               </button>
             </div>
           </div>
         ) : (
           <div style={{ marginTop: 20, display: 'grid', gap: 16 }}>
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              <button type="button" style={buttonStyle(inspectionStatus === 'conform', 'conform')} onClick={() => setInspectionStatus('conform')}>Conform</button>
-              <button type="button" style={buttonStyle(inspectionStatus === 'defect', 'defect')} onClick={() => setInspectionStatus('defect')}>Defect</button>
-              <button type="button" style={buttonStyle(inspectionStatus === 'gerepareerd', 'gerepareerd')} onClick={() => setInspectionStatus('gerepareerd')}>Gerepareerd</button>
+            <div style={{ display: 'grid', gap: 8 }}>
+              <div style={{ color: '#0f172a', fontWeight: 600 }}>Controle volgens standaard tabel / inspectietemplate</div>
+              <div style={{ color: '#64748b' }}>Kies per controlepunt de status conform, defect of gerepareerd. De checks komen uit de geselecteerde inspectietemplate.</div>
             </div>
-
-            {checks.map((check, index) => (
-              <div key={`${check.group_key}-${check.criterion_key}-${index}`} style={{ border: '1px solid #e2e8f0', borderRadius: 14, padding: 14 }}>
-                <div style={{ fontWeight: 700 }}>{check.criterion_key}</div>
-                <div style={{ color: '#64748b', marginTop: 6 }}>{check.group_key}</div>
-                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 12 }}>
-                  {(['conform', 'defect', 'gerepareerd'] as WeldStatus[]).map((status) => (
-                    <button
-                      key={status}
-                      type="button"
-                      style={buttonStyle(check.status === status, status)}
-                      onClick={() => setChecks((current) => current.map((row, rowIndex) => rowIndex === index ? { ...row, status, approved: status !== 'defect' } : row))}
-                    >
-                      {status === 'conform' ? 'Conform' : status === 'defect' ? 'Defect' : 'Gerepareerd'}
-                    </button>
-                  ))}
-                </div>
-                <textarea
-                  style={{ ...inputStyle(), minHeight: 88, marginTop: 12 }}
-                  value={check.comment}
-                  onChange={(event) => setChecks((current) => current.map((row, rowIndex) => rowIndex === index ? { ...row, comment: event.target.value } : row))}
-                />
-              </div>
-            ))}
-
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+              <button type="button" style={buttonStyle(inspectionStatus === 'conform', 'conform')} onClick={() => { setInspectionStatus('conform'); void onQuickStatus('conform'); }}>Conform</button>
+              <button type="button" style={buttonStyle(inspectionStatus === 'defect', 'defect')} onClick={() => { setInspectionStatus('defect'); void onQuickStatus('defect'); }}>Defect</button>
+              <button type="button" style={buttonStyle(inspectionStatus === 'gerepareerd', 'gerepareerd')} onClick={() => { setInspectionStatus('gerepareerd'); void onQuickStatus('gerepareerd'); }}>Gerepareerd</button>
+            </div>
             <label style={fieldLabelStyle()}>
-              <span>Algemene opmerkingen</span>
-              <textarea style={{ ...inputStyle(), minHeight: 120 }} value={remarks} onChange={(e) => setRemarks(e.target.value)} />
+              <span>Opmerking</span>
+              <textarea style={{ ...inputStyle(), minHeight: 92 }} value={remarks} onChange={(e) => setRemarks(e.target.value)} />
             </label>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <div style={{ display: 'grid', gap: 12 }}>
+              {checks.map((check, index) => (
+                <div key={`${check.group_key}-${check.criterion_key}-${index}`} style={{ border: '1px solid #e2e8f0', borderRadius: 14, padding: 14, display: 'grid', gap: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div>
+                      <strong>{check.criterion_key}</strong>
+                      <div style={{ color: '#64748b', marginTop: 4 }}>{check.group_key}</div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <button type="button" style={buttonStyle(check.status === 'conform', 'conform')} onClick={() => setChecks((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, status: 'conform', approved: true } : item))}>Conform</button>
+                      <button type="button" style={buttonStyle(check.status === 'defect', 'defect')} onClick={() => setChecks((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, status: 'defect', approved: false } : item))}>Defect</button>
+                      <button type="button" style={buttonStyle(check.status === 'gerepareerd', 'gerepareerd')} onClick={() => setChecks((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, status: 'gerepareerd', approved: true } : item))}>Gerepareerd</button>
+                    </div>
+                  </div>
+                  <label style={fieldLabelStyle()}>
+                    <span>Commentaar</span>
+                    <textarea style={{ ...inputStyle(), minHeight: 70 }} value={check.comment} onChange={(e) => setChecks((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, comment: e.target.value } : item))} />
+                  </label>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+              <button type="button" onClick={onClose} style={secondaryButtonStyle()}>Annuleren</button>
               <button
                 type="button"
-                style={buttonStyle(false, 'conform')}
+                style={primaryButtonStyle()}
                 disabled={savingInspection}
-                onClick={() => void onSaveInspection({ status: inspectionStatus, template_id: weldForm.template_id || undefined, remarks, checks })}
+                onClick={() => void onSaveInspection({
+                  overall_status: inspectionStatus,
+                  template_id: weldForm.template_id || undefined,
+                  remarks: remarks || undefined,
+                  checks: checks.map((item) => ({ ...item, applicable: true })),
+                })}
               >
                 {savingInspection ? 'Opslaan...' : 'Lascontrole opslaan'}
               </button>
