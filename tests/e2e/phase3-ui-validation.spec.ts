@@ -17,6 +17,8 @@ async function login(page: import('@playwright/test').Page) {
 }
 
 async function expectStructuredProjectTab(page: import('@playwright/test').Page) {
+  await expect(page.getByTestId('project-context-tabs')).toBeVisible();
+  await expect(page.getByTestId('project-context-header')).toBeVisible();
   await expect(page.locator('body')).toContainText(/overzicht/i);
   await expect(page.locator('body')).toContainText(/assemblies/i);
   await expect(page.locator('body')).toContainText(/lassen/i);

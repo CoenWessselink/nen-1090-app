@@ -29,11 +29,9 @@ function toneFromType(type?: string) {
   return 'neutral' as const;
 }
 
-function buildViewerUrl(row: ReportRow | null) {
-  if (!row) return '';
-  if (row.pdf_url) return String(row.pdf_url);
-  if (row.project_id) return `/projecten/${row.project_id}/ce-dossier?report_preview=1`;
-  return '';
+function projectSummaryLabel(row: ReportRow) {
+  const parts = [row.project_name, row.projectnummer, row.client_name].filter(Boolean);
+  return parts.length ? parts.join(' · ') : '—';
 }
 
 export function RapportagePage() {
@@ -63,36 +61,30 @@ export function RapportagePage() {
       setSelectedReportId(null);
       return;
     }
-    const selectedStillVisible = visibleRows.some((row) => String(row.id) === String(selectedReportId));
-    if (!selectedStillVisible) setSelectedReportId(visibleRows[0].id);
-  }, [selectedReportId, visibleRows]);
+    const stillVisible = visibleRows.some((row) => String(row.id) === String(selectedReportId));
+    if (!stillVisible) setSelectedReportId(visibleRows[0].id);
+  }, [visibleRows, selectedReportId]);
 
-  const selectedRow = visibleRows.find((row) => String(row.id) === String(selectedReportId)) || null;
-  const viewerUrl = buildViewerUrl(selectedRow);
-  const selectedProjectPath = selectedRow?.project_id ? `/projecten/${selectedRow.project_id}/overzicht` : null;
+  const selectedRow = useMemo(
+    () => visibleRows.find((row) => String(row.id) === String(selectedReportId)) || visibleRows[0] || null,
+    [selectedReportId, visibleRows],
+  );
 
-  const openPdfInNewTab = (row: ReportRow) => {
-    const target = buildViewerUrl(row);
-    if (!target) return;
-    window.open(target, '_blank', 'noopener,noreferrer');
-  };
+  const inlinePdfUrl = selectedRow?.pdf_url || (selectedRow?.project_id ? `/api/v1/projects/${selectedRow.project_id}/exports/pdf` : '');
 
   return (
     <div className="page-stack">
-      <PageHeader title="Rapportage" description="Rapportages zijn direct te bekijken in het ingebouwde PDF-paneel of openen het gekoppelde projectdossier." />
+      <PageHeader title="Rapportage" description="Zoek op projectnaam, projectnummer of opdrachtgever en bekijk het rapport direct in het PDF-paneel." />
 
       <Card>
-        <div className="toolbar-cluster" style={{ justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+        <div className="toolbar-cluster" style={{ justifyContent: 'space-between', gap: 12 }}>
           <Input
             data-testid="reports-search-input"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Zoek op projectnaam, projectnummer of opdrachtgever"
           />
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <Button variant="secondary" onClick={() => setSearch('')}>Wis filter</Button>
-            {selectedRow ? <Button onClick={() => openPdfInNewTab(selectedRow)}>Open in nieuw tabblad</Button> : null}
-          </div>
+          <Button variant="secondary" onClick={() => setSearch('')}>Wis filter</Button>
         </div>
       </Card>
 
@@ -103,9 +95,9 @@ export function RapportagePage() {
       ) : null}
 
       {!reports.isLoading && !reports.isError && visibleRows.length > 0 ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(320px, 480px) minmax(0, 1fr)', gap: 16, alignItems: 'start' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(360px, 0.95fr) minmax(420px, 1.35fr)', gap: 16 }}>
           <Card>
-            <table className="table">
+            <table className="table" data-testid="reports-table">
               <thead>
                 <tr>
                   <th>Titel</th>
@@ -118,28 +110,27 @@ export function RapportagePage() {
               <tbody>
                 {visibleRows.map((row) => {
                   const projectPath = row.project_id ? `/projecten/${row.project_id}/overzicht` : null;
-                  const isActive = String(selectedReportId) === String(row.id);
+                  const active = String(selectedRow?.id || '') === String(row.id);
                   return (
                     <tr
                       key={String(row.id)}
                       data-testid={`report-row-${row.id}`}
-                      style={{ cursor: 'pointer', background: isActive ? '#eff6ff' : undefined }}
-                      onClick={() => setSelectedReportId(row.id)}
+                      style={{ background: active ? '#eff6ff' : undefined }}
                     >
                       <td><strong>{row.title || `Rapport ${row.id}`}</strong></td>
-                      <td>{row.project_name || row.projectnummer || row.client_name || '—'}</td>
+                      <td>{projectSummaryLabel(row)}</td>
                       <td><Badge tone={toneFromType(row.type)}>{row.type || 'project_summary'}</Badge></td>
                       <td>{row.created_at || '—'}</td>
                       <td>
                         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                          <button className="icon-button" type="button" onClick={() => setSelectedReportId(row.id)}>
+                            Bekijk PDF
+                          </button>
                           {projectPath ? (
-                            <button className="icon-button" type="button" onClick={(event) => { event.stopPropagation(); navigate(projectPath); }}>
+                            <button className="icon-button" type="button" onClick={() => navigate(projectPath)}>
                               Open project
                             </button>
                           ) : null}
-                          <button className="icon-button" type="button" onClick={(event) => { event.stopPropagation(); openPdfInNewTab(row); }}>
-                            Bekijk PDF
-                          </button>
                         </div>
                       </td>
                     </tr>
@@ -150,28 +141,26 @@ export function RapportagePage() {
           </Card>
 
           <Card data-testid="reports-pdf-panel">
-            <div className="section-title-row">
-              <h3 style={{ margin: 0 }}>PDF voorbeeld</h3>
-              {selectedProjectPath ? <Button variant="secondary" onClick={() => navigate(selectedProjectPath)}>Open gekoppeld project</Button> : null}
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', marginBottom: 12 }}>
+              <div>
+                <strong>{selectedRow?.title || 'PDF preview'}</strong>
+                <div className="list-subtle">Directe rapportweergave in de pagina</div>
+              </div>
+              {selectedRow?.project_id ? (
+                <Button variant="secondary" onClick={() => navigate(`/projecten/${selectedRow.project_id}/ce-dossier`)}>
+                  Open CE Dossier
+                </Button>
+              ) : null}
             </div>
-            {selectedRow ? (
-              <>
-                <div style={{ color: '#64748b', marginTop: 8 }}>
-                  {selectedRow.title || `Rapport ${selectedRow.id}`} · {selectedRow.project_name || selectedRow.projectnummer || selectedRow.client_name || 'Geen projectcontext'}
-                </div>
-                {viewerUrl ? (
-                  <iframe
-                    key={viewerUrl}
-                    src={viewerUrl}
-                    title={String(selectedRow.title || `Rapport ${selectedRow.id}`)}
-                    style={{ width: '100%', minHeight: 860, border: '1px solid #e2e8f0', borderRadius: 12, marginTop: 16, background: '#fff' }}
-                  />
-                ) : (
-                  <EmptyState title="Geen directe PDF beschikbaar" description="Voor deze rapportregel is geen pdf_url aanwezig. Open het gekoppelde projectdossier voor verdere rapportdetails." />
-                )}
-              </>
+            {inlinePdfUrl ? (
+              <iframe
+                title={selectedRow?.title || 'Rapport PDF'}
+                src={inlinePdfUrl}
+                data-testid="reports-pdf-iframe"
+                style={{ width: '100%', minHeight: 760, border: '1px solid #e2e8f0', borderRadius: 12, background: '#fff' }}
+              />
             ) : (
-              <EmptyState title="Geen rapport geselecteerd" description="Kies links een rapport om de PDF direct te bekijken." />
+              <EmptyState title="Geen PDF beschikbaar" description="Er is nog geen PDF-route gevonden voor dit rapport." />
             )}
           </Card>
         </div>

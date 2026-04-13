@@ -21,6 +21,6 @@ test('fase 2 weld inspection opent lassenroute na echte login', async ({ page })
   await page.goto(`/projecten/${DEFAULT_PROJECT_ID}/lassen`, { waitUntil: 'networkidle' });
 
   await expect(page.url()).toMatch(/\/projecten\/.*\/lassen/i);
-  await expect(page.locator('body')).toBeVisible();
-  await expect(page.locator('body')).toContainText(/lassen|ce dossier|historie|projectnavigatie/i);
+  await expect(page.getByTestId('project-context-header')).toBeVisible();
+  await expect(page.locator('body')).toContainText(/lassen|projectnavigatie/i);
 });
