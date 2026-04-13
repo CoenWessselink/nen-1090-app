@@ -22,8 +22,9 @@ jobs:
       - name: Check login route
         run: curl -fL "https://nen-1090-app.pages.dev/login" || exit 1
 
-      - name: Ensure protected route redirects to login
+      - name: Ensure protected route resolves to SPA shell
         run: |
           FINAL_URL=$(curl -Ls -o /dev/null -w "%{url_effective}" "https://nen-1090-app.pages.dev/dashboard")
           echo "Final URL: $FINAL_URL"
-          echo "$FINAL_URL" | grep -q "/login"
+          echo "$FINAL_URL" | grep -q "/dashboard$"
+          curl -fsSL "https://nen-1090-app.pages.dev/dashboard" | grep -q "<div id=\"root\"></div>"
