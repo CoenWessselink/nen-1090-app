@@ -18,7 +18,6 @@ import { useSystemHealth } from '@/hooks/useSystemHealth';
 import { useInspectionTemplates, useMaterials, useSettings, useWelders, useWps } from '@/hooks/useSettings';
 import { validateObjectPayload } from '@/utils/contracts';
 import { MasterDataManager } from '@/features/instellingen/components/MasterDataManager';
-import { InspectionTemplatesManager } from '@/features/instellingen/components/InspectionTemplatesManager';
 
 const tabs = [
   { value: 'organisatie', label: 'Organisatie' },
@@ -139,7 +138,7 @@ export function InstellingenPage() {
           <MasterDataManager title="WPS" type="wps" rows={wps.data?.items || []} isLoading={wps.isLoading} isError={wps.isError} refetch={wps.refetch} />
           <MasterDataManager title="Materialen" type="materials" rows={materials.data?.items || []} isLoading={materials.isLoading} isError={materials.isError} refetch={materials.refetch} />
           <MasterDataManager title="Lassers" type="welders" rows={welders.data?.items || []} isLoading={welders.isLoading} isError={welders.isError} refetch={welders.refetch} />
-          <InspectionTemplatesManager />
+          <MasterDataManager title="Inspectietemplates" type="inspection-templates" rows={inspectionTemplates.data?.items || []} isLoading={inspectionTemplates.isLoading} isError={inspectionTemplates.isError} refetch={inspectionTemplates.refetch} />
         </div>
       ) : null}
 

@@ -1,0 +1,39 @@
+V7 hardening build uitgevoerd op aangeleverde repo.
+
+Aangepast in deze ronde:
+- src/features/instellingen/components/InspectionTemplatesManager.tsx
+  * werkende beheerlaag voor inspectietemplates
+  * aanmaken, wijzigen, dupliceren, verwijderen
+  * EXC1 t/m EXC4 presets
+  * normvelden voor NEN-EN 1090 / ISO 3834 / ISO 5817
+- src/features/projecten/components/ProjectContextTabs.tsx
+  * tabvolgorde aangepast naar CE-Dossier, Assemblies, Lassen, Documenten, Historie
+  * overzicht niet meer als primaire tab
+- src/app/router/routes.tsx
+  * project default redirect naar CE-Dossier
+  * /overzicht redirect naar CE-Dossier
+- src/features/projecten/Project360Page.tsx
+  * Lasrapport label op exportactie
+  * templateMetaMap / projectcontext doorgegeven aan weld-popup
+- src/features/lascontrole/components/WeldInspectionModal.tsx
+  * kopregel naar Projectnaam – Projectnummer – Lasnummer
+  * automatische templatekoppeling op basis van executieklasse
+  * controlepunten standaard op conform
+  * per controlepunt Conform / Niet conform
+  * geen snelle overall knoppen meer in lascontrolepaneel
+  * gerepareerd visueel oranje
+  * overall_status afgeleid uit controlepunten
+- src/features/rapportage/RapportagePage.tsx
+  * uitgelijnde rapportagepagina
+  * zoekveld voor projectnaam / projectnummer / opdrachtgever
+  * PDF-tegel
+  * inline PDF-preview
+  * direct openen van PDF
+
+Validatie:
+- npm run typecheck: geslaagd
+- npm run build: geslaagd
+
+Niet volledig live bewezen in deze container:
+- backend-specifieke documentflows voor WPS/materialen
+- volledige live E2E-run tegen Cloudflare/Azure

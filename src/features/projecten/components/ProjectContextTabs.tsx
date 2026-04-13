@@ -5,11 +5,10 @@ import { Card } from '@/components/ui/Card';
 import { Tabs } from '@/components/ui/Tabs';
 
 export const projectContextTabs = [
-  { value: 'overzicht', label: 'Overzicht' },
+  { value: 'ce-dossier', label: 'CE-Dossier' },
   { value: 'assemblies', label: 'Assemblies' },
   { value: 'lassen', label: 'Lassen' },
   { value: 'documenten', label: 'Documenten' },
-  { value: 'ce-dossier', label: 'CE Dossier' },
   { value: 'historie', label: 'Historie' },
 ];
 
@@ -19,7 +18,7 @@ export function resolveProjectContextTab(pathname: string) {
   if (pathname.endsWith('/documenten')) return 'documenten';
   if (pathname.endsWith('/ce-dossier')) return 'ce-dossier';
   if (pathname.endsWith('/historie')) return 'historie';
-  return 'overzicht';
+  return 'ce-dossier';
 }
 
 export function ProjectContextTabs({

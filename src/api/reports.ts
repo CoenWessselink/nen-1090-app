@@ -41,10 +41,6 @@ function deriveProjectReports(projects: Awaited<ReturnType<typeof getProjects>>)
     owner: String(project.client_name || project.opdrachtgever || 'Projectteam'),
     created_at: String(project.updated_at || project.created_at || project.start_date || new Date().toISOString()),
     project_id: project.id,
-    project_name: String(project.name || project.omschrijving || ''),
-    projectnummer: String(project.projectnummer || project.code || ''),
-    client_name: String(project.client_name || project.opdrachtgever || ''),
-    pdf_url: typeof project.id !== 'undefined' && project.id !== null ? `/api/v1/projects/${project.id}/exports/pdf` : undefined,
   }));
 
   return {

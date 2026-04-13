@@ -187,6 +187,10 @@ export function Project360Page() {
     () => Object.fromEntries(templateRows.map((item) => [String(item.id || item.code || ''), parseTemplateItems(item)])),
     [templateRows],
   );
+  const templateMetaMap = useMemo(
+    () => Object.fromEntries(templateRows.map((item) => [String(item.id || item.code || ''), { exc_class: String(item.exc_class || item.execution_class || ''), name: String(item.name || item.code || '') }])),
+    [templateRows],
+  );
 
   async function uploadScopedDocument(scope: 'wps' | 'materials', file: File) {
     if (!projectId) return;
@@ -360,8 +364,9 @@ export function Project360Page() {
         onEditProject={() => navigate('/projecten', { state: { intent: 'edit-project', projectId } })}
         onCreateAssembly={() => navigate(`/projecten/${projectId}/assemblies`)}
         onCreateWeld={() => navigate(`/projecten/${projectId}/lassen`)}
-        exportSelectionLabel="PDF export bij selectie"
-        exportSelectionDisabled
+        exportSelectionLabel="Lasrapport"
+        exportSelectionDisabled={!projectId}
+        onExportSelectionPdf={() => navigate(`/projecten/${projectId}/ce-dossier`)}
         filters={filters}
         kpis={kpis}
       >
@@ -379,6 +384,9 @@ export function Project360Page() {
         welderOptions={welderOptions}
         templateOptions={templateOptions}
         inspectionTemplateMap={inspectionTemplateMap}
+        templateMetaMap={templateMetaMap}
+        projectName={String(project?.name || project?.omschrijving || '')}
+        projectNumber={String(project?.projectnummer || project?.code || '')}
         onClose={() => setSelectedWeld(null)}
         onQuickStatus={async (status) => {
           if (!selectedWeld) return;

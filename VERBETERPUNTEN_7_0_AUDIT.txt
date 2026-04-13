@@ -1,0 +1,38 @@
+Verbeterpunten 7.0 – uitgevoerde bouwronde
+
+Aangepast in deze ronde:
+- src/app/router/routes.tsx
+- src/features/projecten/components/ProjectContextTabs.tsx
+- src/features/projecten/components/ProjectTabShell.tsx
+- src/features/projecten/Project360Page.tsx
+- src/features/lascontrole/components/WeldInspectionModal.tsx
+- src/features/projecten/ProjectenPage.tsx
+- src/features/instellingen/components/InspectionTemplatesManager.tsx
+- src/features/instellingen/InstellingenPage.tsx
+- src/features/instellingen/components/MasterDataManager.tsx
+- src/api/masterdata-attachments.ts
+- src/api/reports.ts
+- src/features/rapportage/RapportagePage.tsx
+
+Doorgevoerd:
+1. Projectkop bovenaan de projectpagina-shell gezet.
+2. Tabs aangepast naar CE-Dossier – Assemblies – Lassen – Documenten – Historie.
+3. Overzicht-route vervangen door redirect naar CE-Dossier.
+4. Rapportage uitgelijnd met PDF-tegel/logo; klik opent direct rapport/dossier.
+5. Las wijzigen popup: actieve tab blauw.
+6. Lascontrolepunten blijven per punt instelbaar op conform / defect / gerepareerd.
+7. Opslaan-knop lascontrole blijft blauw en popup sluit na succesvolle save via bestaande flow.
+8. Inspectietemplates-manager uitgebreid van stub naar werkende CRUD-beheerlaag met EXC-presets en normkaders.
+9. WPS-documenten en materiaaldocumenten toegevoegd in masterdata op vergelijkbare modal-flow als lassercertificaten.
+10. Dubbelklik op project opent nu Wijzig project.
+11. Project default open-route gaat nu naar CE-Dossier in plaats van Overzicht.
+12. Lasrapport-knop toegevoegd in projecttab-shell bij Lassen (linkt naar CE-dossier/exportingang).
+13. Gerepareerd-status in laspopup en lassen-overzicht visueel naar oranje aangepast.
+
+Lokaal gevalideerd:
+- npm run typecheck: geslaagd
+- npm run build: geslaagd
+
+Open punt / eerlijk:
+- CE Rapport backend-export zelf is niet live bewezen in deze container; de UI-route en PDF-ingang zijn wel aangesloten.
+- WPS/material documentuploads gebruiken attachment-scope wps/material op basis van bestaand attachmentpatroon; backend-ondersteuning moet live aanwezig zijn.
