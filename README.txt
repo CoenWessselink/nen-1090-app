@@ -1,18 +1,14 @@
-Compatibele auth-fix overschrijfset.
+Gerichte herstelset voor de actuele blokkades.
 
-Deze set behoudt het bestaande SessionContext-contract:
-- isBootstrapping
-- isAuthenticated
-- hasRole
-- hasPermission
-- isImpersonating
-- impersonationTenantName
-- tenant
-- role
+Deze ZIP fixt alleen de bestanden die nu aantoonbaar de build breken:
+- src/app/router/requireAuth.tsx
+- src/pages/LoginPage.tsx
+- src/services/apiClient.ts
+- playwright.config.ts
 
-Bestanden:
-- src/app/store/auth-store.ts
-- src/app/session/SessionContext.tsx
-- src/app/router/ProtectedRoute.tsx
-- src/features/auth/LoginPage.tsx
-- src/features/auth/LogoutPage.tsx
+Doel:
+- typecheck herstellen
+- axios-dependency verwijderen
+- apiRequest named export herstellen
+- Playwright project 'desktop-chromium' terugzetten
+- RequireAuth laten aansluiten op huidig SessionContext-contract
