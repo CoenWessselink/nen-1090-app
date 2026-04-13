@@ -1,5 +1,6 @@
 import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useState } from 'react';
 import { getMe, refreshCentralSession, refreshSession } from '@/api/auth';
+import { ApiError } from '@/api/client';
 import { useAuthStore } from '@/app/store/auth-store';
 import type { Role, SessionUser } from '@/types/domain';
 
@@ -34,6 +35,7 @@ type SessionContextValue = {
 };
 
 const SessionContext = createContext<SessionContextValue | null>(null);
+const cookieSessionMarker = '__cookie_session__';
 
 const permissionMap: Record<string, AccessPermission[]> = {
   SUPERADMIN: ['dashboard.read', 'projects.read', 'projects.write', 'welds.read', 'welds.write', 'documents.read', 'documents.write', 'settings.read', 'settings.write', 'billing.read', 'billing.manage', 'tenants.read', 'tenants.impersonate'],
@@ -71,6 +73,31 @@ function isAuthPage(pathname: string) {
   ].includes(pathname);
 }
 
+function buildSessionUser(input: Partial<SessionUser> | undefined, fallback?: SessionUser | null): SessionUser {
+  return {
+    email: input?.email || fallback?.email || '',
+    tenant: input?.tenant || fallback?.tenant || '',
+    tenantId: input?.tenantId || fallback?.tenantId || '',
+    role: input?.role || fallback?.role || '',
+    name: input?.name || fallback?.name || '',
+  };
+}
+
+function buildApiUser(input: any, fallback?: SessionUser | null): SessionUser {
+  return {
+    email: String(input?.email || fallback?.email || ''),
+    tenant: String(input?.tenant || fallback?.tenant || ''),
+    tenantId: String(input?.tenantId || input?.tenant_id || fallback?.tenantId || ''),
+    role: String(input?.role || fallback?.role || ''),
+    name: String(input?.name || fallback?.name || ''),
+  };
+}
+
+async function readCurrentUser(): Promise<SessionUser> {
+  const me = await getMe();
+  return buildApiUser(me);
+}
+
 export function SessionProvider({ children }: PropsWithChildren) {
   const token = useAuthStore((state) => state.token);
   const refreshToken = useAuthStore((state) => state.refreshToken);
@@ -93,7 +120,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
         return;
       }
 
-      if (onAuthPage && token && token !== '__cookie_session__' && !refreshToken) {
+      if (onAuthPage && token && token !== cookieSessionMarker && !refreshToken) {
         clearSession();
         if (!cancelled) setIsBootstrapping(false);
         return;
@@ -101,65 +128,72 @@ export function SessionProvider({ children }: PropsWithChildren) {
 
       try {
         let activeToken = token;
+        let activeRefreshToken = refreshToken;
+        let activeUser = user;
 
-        if (!activeToken && refreshToken && refreshToken !== '__cookie_session__') {
-          const refreshed = await refreshSession(refreshToken);
-          activeToken = refreshed.access_token;
+        if (!activeToken && activeRefreshToken && activeRefreshToken !== cookieSessionMarker) {
+          const refreshed = await refreshSession(activeRefreshToken);
+          activeToken = refreshed.access_token || null;
+          activeRefreshToken = refreshed.refresh_token || activeRefreshToken;
+          activeUser = buildApiUser(refreshed.user, activeUser);
+
           if (!cancelled && activeToken) {
-            setSession(
-              activeToken,
-              {
-                email: refreshed.user?.email || '',
-                tenant: refreshed.user?.tenant || '',
-                tenantId: refreshed.user?.tenant_id || '',
-                role: refreshed.user?.role || '',
-                name: refreshed.user?.name || '',
-              },
-              refreshed.refresh_token || refreshToken,
-            );
+            setSession(activeToken, activeUser, activeRefreshToken);
           }
         }
 
-        if (!activeToken && refreshToken === '__cookie_session__') {
+        if (!activeToken && activeRefreshToken === cookieSessionMarker) {
           const refreshed = await refreshCentralSession();
+          activeToken = cookieSessionMarker;
+          activeRefreshToken = null;
+          activeUser = buildApiUser(refreshed.user, activeUser);
+
           if (!cancelled) {
-            setSession(
-              '__cookie_session__',
-              {
-                email: refreshed.user?.email || '',
-                tenant: refreshed.user?.tenant || '',
-                tenantId: refreshed.user?.tenant_id || '',
-                role: refreshed.user?.role || '',
-                name: refreshed.user?.name || '',
-              },
-              null,
-            );
+            setSession(cookieSessionMarker, activeUser, null);
           }
-          activeToken = '__cookie_session__';
         }
 
-        if (onAuthPage && !refreshToken && activeToken && activeToken !== '__cookie_session__') {
+        if (onAuthPage && !activeRefreshToken && activeToken && activeToken !== cookieSessionMarker) {
           clearSession();
           if (!cancelled) setIsBootstrapping(false);
           return;
         }
 
-        const me = await getMe();
-        if (!cancelled) {
-          setSession(
-            activeToken || token || '__cookie_session__',
-            {
-              email: me.email,
-              tenant: me.tenant,
-              tenantId: me.tenantId,
-              role: me.role,
-              name: me.name,
-            },
-            refreshToken,
-          );
+        if (!activeToken && !activeRefreshToken) {
+          if (!cancelled) setIsBootstrapping(false);
+          return;
         }
-      } catch {
-        if (!cancelled) {
+
+        try {
+          const meUser = await readCurrentUser();
+          if (!cancelled) {
+            setSession(activeToken || token || cookieSessionMarker, buildSessionUser(meUser, activeUser), activeRefreshToken || null);
+          }
+        } catch (error) {
+          const unauthorized = error instanceof ApiError && (error.status === 401 || error.status === 403);
+
+          if (unauthorized && activeRefreshToken && activeRefreshToken !== cookieSessionMarker) {
+            const refreshed = await refreshSession(activeRefreshToken);
+            const nextToken = refreshed.access_token || activeToken;
+            const nextRefreshToken = refreshed.refresh_token || activeRefreshToken;
+            const refreshedUser = buildApiUser(refreshed.user, activeUser);
+            const verifiedUser = await readCurrentUser().catch(() => refreshedUser);
+
+            if (!cancelled && nextToken) {
+              setSession(nextToken, buildSessionUser(verifiedUser, refreshedUser), nextRefreshToken);
+              updateToken(nextToken);
+            }
+          } else if (unauthorized) {
+            if (!cancelled) {
+              clearSession();
+            }
+          } else if (!cancelled && activeToken && activeUser) {
+            setSession(activeToken, activeUser, activeRefreshToken || null);
+          }
+        }
+      } catch (error) {
+        const unauthorized = error instanceof ApiError && (error.status === 401 || error.status === 403);
+        if (!cancelled && unauthorized) {
           clearSession();
         }
       } finally {
@@ -172,13 +206,13 @@ export function SessionProvider({ children }: PropsWithChildren) {
     return () => {
       cancelled = true;
     };
-  }, [clearSession, refreshToken, setSession, token]);
+  }, [clearSession, refreshToken, setSession, token, updateToken, user]);
 
   useEffect(() => {
     if (!user) return;
 
-    const hasBearerRefreshToken = Boolean(refreshToken && refreshToken !== '__cookie_session__');
-    const hasCookieSession = token === '__cookie_session__';
+    const hasBearerRefreshToken = Boolean(refreshToken && refreshToken !== cookieSessionMarker);
+    const hasCookieSession = token === cookieSessionMarker;
 
     if (!hasBearerRefreshToken && !hasCookieSession) return;
 
@@ -208,7 +242,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
           return;
         }
 
-        setSession('__cookie_session__', refreshedUser, null);
+        setSession(cookieSessionMarker, refreshedUser, null);
       } catch {
         // houd bestaande UI-sessie intact om login/projectroutes niet te laten loopen.
       }

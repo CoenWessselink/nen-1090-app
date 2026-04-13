@@ -20,8 +20,8 @@ function isAbsoluteUrl(path: string): boolean {
   return /^https?:\/\//i.test(path);
 }
 
-function isAuthPath(path: string): boolean {
-  return path.includes('/auth/login') || path.includes('/auth/refresh') || path.includes('/auth/me');
+function isRefreshExemptPath(path: string): boolean {
+  return path.includes('/auth/login') || path.includes('/auth/refresh');
 }
 
 function buildBasePath(path: string): string {
@@ -188,7 +188,7 @@ export async function apiRequest<T = unknown>(
 ): Promise<T> {
   const response = await fetch(buildBasePath(path), normalizeInit(init));
 
-  if (response.status === 401 && retries < 1 && !isAuthPath(path)) {
+  if (response.status === 401 && retries < 1 && !isRefreshExemptPath(path)) {
     const refreshed = await tryRefreshSession().catch(() => false);
     if (refreshed) {
       return apiRequest<T>(path, init, retries + 1, raw);
