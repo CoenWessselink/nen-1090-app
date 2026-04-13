@@ -1,3 +1,5 @@
+import { useAuthStore } from '@/app/store/auth-store';
+
 const APP_LOGIN_PATH = '/login';
 
 function buildLoginRedirect() {
@@ -12,6 +14,19 @@ function buildLoginRedirect() {
   return url.toString();
 }
 
+function getBearerHeaders() {
+  const state = useAuthStore.getState();
+  const headers = {
+    Accept: 'application/json',
+  } as Record<string, string>;
+
+  if (state.token && state.token !== '__cookie_session__') {
+    headers.Authorization = `Bearer ${state.token}`;
+  }
+
+  return headers;
+}
+
 export async function checkAuth() {
   try {
     const apiBase =
@@ -20,9 +35,7 @@ export async function checkAuth() {
 
     const res = await fetch(`${apiBase}/auth/me`, {
       credentials: 'include',
-      headers: {
-        Accept: 'application/json',
-      },
+      headers: getBearerHeaders(),
     });
 
     if (!res.ok) {
@@ -31,7 +44,7 @@ export async function checkAuth() {
     }
 
     const data = await res.json();
-    if (!data) {
+    if (!data?.email) {
       window.location.href = buildLoginRedirect();
     }
   } catch {

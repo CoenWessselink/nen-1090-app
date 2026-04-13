@@ -1,19 +1,28 @@
+import client from '@/api/client';
 
-export async function apiRequest(url: string, options: any = {}) {
-  const token = localStorage.getItem("auth_token");
-  const headers = {
-    "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {})
-  };
+export async function apiRequest(url: string, options: RequestInit = {}) {
+  const method = (options.method || 'GET').toUpperCase();
+  const body = options.body;
 
-  const response = await fetch(url, {
-    ...options,
-    headers
-  });
-
-  if (response.status === 401) {
-    window.location.href = "/login";
+  if (method === 'GET') {
+    return client.get(url, options);
   }
 
-  return response.json();
+  if (method === 'POST') {
+    return client.post(url, body, options);
+  }
+
+  if (method === 'PUT') {
+    return client.put(url, body, options);
+  }
+
+  if (method === 'PATCH') {
+    return client.patch(url, body, options);
+  }
+
+  if (method === 'DELETE') {
+    return client.delete(url, options);
+  }
+
+  return client.get(url, options);
 }
