@@ -1,28 +1,29 @@
-import client from '@/api/client';
+import axios from "axios";
 
-export async function apiRequest<T = unknown>(url: string, options: RequestInit = {}): Promise<T> {
-  const method = (options.method || 'GET').toUpperCase();
-  const body = options.body;
+const apiClient = axios.create({
+  baseURL: "/api/v1",
+});
 
-  if (method === 'GET') {
-    return client.get<T>(url, options);
+apiClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem("auth_token");
+
+  if (token) {
+    config.headers = config.headers || {};
+    config.headers.Authorization = `Bearer ${token}`;
   }
 
-  if (method === 'POST') {
-    return client.post<T>(url, body, options);
-  }
+  return config;
+});
 
-  if (method === 'PUT') {
-    return client.put<T>(url, body, options);
+apiClient.interceptors.response.use(
+  (res) => res,
+  (err) => {
+    if (err.response?.status === 401) {
+      localStorage.removeItem("auth_token");
+      window.location.href = "/login";
+    }
+    return Promise.reject(err);
   }
+);
 
-  if (method === 'PATCH') {
-    return client.patch<T>(url, body, options);
-  }
-
-  if (method === 'DELETE') {
-    return client.delete<T>(url, options);
-  }
-
-  return client.get<T>(url, options);
-}
+export default apiClient;

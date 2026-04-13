@@ -1,21 +1,15 @@
-README
+Deze ZIP bevat de voorgestelde auth hard fix bestanden zoals aangeleverd in de chat.
 
-This package contains the complete APP patch for Block B plus the supporting push and handoff files.
+Pad:
+C:\NEN1090\nen-1090-app
 
-FILES TO REPLACE IN APP REPO
-- src/api/dashboard.ts
-- src/api/welds.ts
-- src/api/documents.ts
-- src/types/api.ts
-- src/types/domain.ts
-- src/utils/api.ts
-- src/features/dashboard/DashboardPage.tsx
+Bestanden:
+- src/app/router/RequireAuth.tsx
+- src/app/session/SessionContext.tsx
+- src/services/apiClient.ts
+- src/pages/LoginPage.tsx
+- tests/e2e/phase-11-ultra/_ultra-helper.ts
+- playwright.config.ts
 
-ALSO INCLUDED
-- API_PUSH_COMMANDS.txt
-- APP_PUSH_COMMANDS.txt
-- AGENT_HANDOFF_BLOCK_A_B.txt
-- GPT_HANDOFF_BLOCK_A_B.txt
-
-The API patch zip is separate and was already delivered as:
-- NEN10900_API_BLOCK_A_PATCH.zip
+Let op:
+dit is een voorgestelde overschrijfset uit de chat en niet lokaal tegen de volledige repo gecompileerd in deze omgeving.

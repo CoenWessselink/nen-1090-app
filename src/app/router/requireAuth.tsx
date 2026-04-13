@@ -1,15 +1,17 @@
-import { Navigate } from 'react-router-dom';
-import { useAuthStore } from '@/app/store/auth-store';
-import type { ReactElement } from 'react';
+import { Navigate, useLocation } from "react-router-dom";
+import { useSession } from "@/app/session/SessionContext";
 
-export function requireAuth(element: ReactElement) {
-  const state = useAuthStore.getState();
-  const token = state?.token;
-  const user = state?.user;
+export default function RequireAuth({ children }: { children: JSX.Element }) {
+  const { user, loading } = useSession();
+  const location = useLocation();
 
-  if (!token || !user || token === '__cookie_session__') {
-    return <Navigate to="/login" replace />;
+  if (loading) {
+    return <div data-testid="auth-loading">Loading...</div>;
   }
 
-  return element;
+  if (!user) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  return children;
 }
