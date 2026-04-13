@@ -1,16 +1,13 @@
-import React from 'react';
-import ReactDOM from 'react-dom/client';
-import { AppProviders } from '@/app/providers/AppProviders';
-import { AppRouter } from '@/app/router/AppRouter';
-import { ErrorBoundary } from '@/components/error/ErrorBoundary';
-import '@/styles/global.css';
+import React, { useEffect } from "react";
+import ReactDOM from "react-dom/client";
+import App from "./App";
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <ErrorBoundary>
-      <AppProviders>
-        <AppRouter />
-      </AppProviders>
-    </ErrorBoundary>
-  </React.StrictMode>,
-);
+function Root() {
+  useEffect(() => {
+    document.body.setAttribute("data-app-ready", "1");
+  }, []);
+
+  return <App />;
+}
+
+ReactDOM.createRoot(document.getElementById("root")!).render(<Root />);
