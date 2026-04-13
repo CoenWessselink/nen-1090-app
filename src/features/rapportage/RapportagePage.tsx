@@ -29,9 +29,21 @@ function toneFromType(type?: string) {
   return 'neutral' as const;
 }
 
-function projectSummaryLabel(row: ReportRow) {
-  const parts = [row.project_name, row.projectnummer, row.client_name].filter(Boolean);
-  return parts.length ? parts.join(' · ') : '—';
+function derivePdfUrl(row: ReportRow | null) {
+  if (!row) return '';
+  if (row.pdf_url && /(^https?:\/\/)|(^\/api\/)|(^\/projects\/.*\/pdf)/i.test(row.pdf_url)) return String(row.pdf_url);
+  if (row.project_id) return `/api/v1/projects/${row.project_id}/exports/pdf`;
+  return row.pdf_url ? String(row.pdf_url) : '';
+}
+
+function isPdfUrl(url?: string) {
+  return Boolean(url && (url.includes('/exports/pdf') || /\.pdf($|\?)/i.test(url)));
+}
+
+function formatCreatedAt(value?: string) {
+  if (!value) return '—';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString('nl-NL');
 }
 
 export function RapportagePage() {
@@ -39,7 +51,7 @@ export function RapportagePage() {
   const reports = useReports({ page: 1, limit: 50 });
   const rows = (reports.data?.items || []) as ReportRow[];
   const [search, setSearch] = useState('');
-  const [selectedReportId, setSelectedReportId] = useState<string | number | null>(null);
+  const [selectedId, setSelectedId] = useState<string | number | null>(null);
 
   const visibleRows = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -58,28 +70,26 @@ export function RapportagePage() {
 
   useEffect(() => {
     if (!visibleRows.length) {
-      setSelectedReportId(null);
+      setSelectedId(null);
       return;
     }
-    const stillVisible = visibleRows.some((row) => String(row.id) === String(selectedReportId));
-    if (!stillVisible) setSelectedReportId(visibleRows[0].id);
-  }, [visibleRows, selectedReportId]);
+    if (selectedId == null || !visibleRows.some((row) => String(row.id) === String(selectedId))) {
+      const preferred = visibleRows.find((row) => row.pdf_url) || visibleRows[0];
+      setSelectedId(preferred.id);
+    }
+  }, [visibleRows, selectedId]);
 
-  const selectedRow = useMemo(
-    () => visibleRows.find((row) => String(row.id) === String(selectedReportId)) || visibleRows[0] || null,
-    [selectedReportId, visibleRows],
-  );
-
-  const inlinePdfUrl = selectedRow?.pdf_url || (selectedRow?.project_id ? `/api/v1/projects/${selectedRow.project_id}/exports/pdf` : '');
+  const selectedRow = visibleRows.find((row) => String(row.id) === String(selectedId)) || null;
+  const selectedPdfUrl = derivePdfUrl(selectedRow);
+  const canPreviewPdf = isPdfUrl(selectedPdfUrl);
 
   return (
     <div className="page-stack">
-      <PageHeader title="Rapportage" description="Zoek op projectnaam, projectnummer of opdrachtgever en bekijk het rapport direct in het PDF-paneel." />
+      <PageHeader title="Rapportage" description="Rapportages zijn direct te filteren op projectnaam, projectnummer en opdrachtgever en worden inline als PDF getoond zodra een PDF-link beschikbaar is." />
 
       <Card>
-        <div className="toolbar-cluster" style={{ justifyContent: 'space-between', gap: 12 }}>
+        <div className="toolbar-cluster" style={{ justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
           <Input
-            data-testid="reports-search-input"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Zoek op projectnaam, projectnummer of opdrachtgever"
@@ -95,9 +105,9 @@ export function RapportagePage() {
       ) : null}
 
       {!reports.isLoading && !reports.isError && visibleRows.length > 0 ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(360px, 0.95fr) minmax(420px, 1.35fr)', gap: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(360px, 420px) minmax(0, 1fr)', gap: 16, alignItems: 'start' }}>
           <Card>
-            <table className="table" data-testid="reports-table">
+            <table className="table">
               <thead>
                 <tr>
                   <th>Titel</th>
@@ -110,20 +120,16 @@ export function RapportagePage() {
               <tbody>
                 {visibleRows.map((row) => {
                   const projectPath = row.project_id ? `/projecten/${row.project_id}/overzicht` : null;
-                  const active = String(selectedRow?.id || '') === String(row.id);
+                  const isSelected = String(row.id) === String(selectedId);
                   return (
-                    <tr
-                      key={String(row.id)}
-                      data-testid={`report-row-${row.id}`}
-                      style={{ background: active ? '#eff6ff' : undefined }}
-                    >
+                    <tr key={String(row.id)} style={{ background: isSelected ? '#eff6ff' : undefined }}>
                       <td><strong>{row.title || `Rapport ${row.id}`}</strong></td>
-                      <td>{projectSummaryLabel(row)}</td>
+                      <td>{row.project_name || row.projectnummer || row.client_name || '—'}</td>
                       <td><Badge tone={toneFromType(row.type)}>{row.type || 'project_summary'}</Badge></td>
-                      <td>{row.created_at || '—'}</td>
+                      <td>{formatCreatedAt(row.created_at)}</td>
                       <td>
                         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                          <button className="icon-button" type="button" onClick={() => setSelectedReportId(row.id)}>
+                          <button className="icon-button" type="button" onClick={() => setSelectedId(row.id)}>
                             Bekijk PDF
                           </button>
                           {projectPath ? (
@@ -140,27 +146,35 @@ export function RapportagePage() {
             </table>
           </Card>
 
-          <Card data-testid="reports-pdf-panel">
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', marginBottom: 12 }}>
-              <div>
-                <strong>{selectedRow?.title || 'PDF preview'}</strong>
-                <div className="list-subtle">Directe rapportweergave in de pagina</div>
-              </div>
-              {selectedRow?.project_id ? (
-                <Button variant="secondary" onClick={() => navigate(`/projecten/${selectedRow.project_id}/ce-dossier`)}>
-                  Open CE Dossier
-                </Button>
+          <Card data-testid="rapportage-pdf-panel">
+            <div className="section-title-row">
+              <h3>PDF voorbeeld</h3>
+              {selectedRow?.pdf_url ? (
+                <a href={selectedRow.pdf_url} target="_blank" rel="noreferrer" className="button button-secondary">
+                  Open in nieuw tabblad
+                </a>
               ) : null}
             </div>
-            {inlinePdfUrl ? (
-              <iframe
-                title={selectedRow?.title || 'Rapport PDF'}
-                src={inlinePdfUrl}
-                data-testid="reports-pdf-iframe"
-                style={{ width: '100%', minHeight: 760, border: '1px solid #e2e8f0', borderRadius: 12, background: '#fff' }}
-              />
+            {selectedRow ? (
+              <div className="page-stack">
+                <div className="list-subtle">
+                  {selectedRow.project_name || selectedRow.projectnummer || selectedRow.client_name || selectedRow.title || 'Geselecteerd rapport'}
+                </div>
+                {canPreviewPdf ? (
+                  <iframe
+                    title={`PDF preview ${selectedRow.title || selectedRow.id}`}
+                    src={selectedPdfUrl}
+                    style={{ width: '100%', minHeight: 780, border: '1px solid #e2e8f0', borderRadius: 16, background: '#fff' }}
+                  />
+                ) : (
+                  <EmptyState
+                    title="Nog geen directe PDF-link"
+                    description="Voor dit rapport is nog geen pdf_url beschikbaar. Open het gekoppelde project of voeg een backend-PDF endpoint toe om hier direct te renderen."
+                  />
+                )}
+              </div>
             ) : (
-              <EmptyState title="Geen PDF beschikbaar" description="Er is nog geen PDF-route gevonden voor dit rapport." />
+              <EmptyState title="Geen rapport geselecteerd" description="Selecteer links een rapport om het PDF-paneel te vullen." />
             )}
           </Card>
         </div>

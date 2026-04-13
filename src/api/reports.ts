@@ -4,16 +4,7 @@ import type { ReportItem } from '@/types/domain';
 import type { ListParams } from '@/types/api';
 import { withQuery } from '@/utils/api';
 
-type ReportResponse =
-  | ReportItem[]
-  | {
-      items?: ReportItem[];
-      data?: ReportItem[];
-      results?: ReportItem[];
-      total?: number;
-      page?: number;
-      limit?: number;
-    };
+type ReportResponse = ReportItem[] | { items?: ReportItem[]; data?: ReportItem[]; results?: ReportItem[]; total?: number; page?: number; limit?: number };
 
 function normalizeItems(payload: ReportResponse | null | undefined) {
   if (Array.isArray(payload)) {
@@ -41,10 +32,6 @@ function normalizeItems(payload: ReportResponse | null | undefined) {
   };
 }
 
-function buildProjectPdfUrl(projectId: string | number) {
-  return `/api/v1/projects/${projectId}/exports/pdf`;
-}
-
 function deriveProjectReports(projects: Awaited<ReturnType<typeof getProjects>>) {
   const items: ReportItem[] = (projects.items || []).map((project, index) => ({
     id: `project-summary-${project.id}`,
@@ -57,46 +44,26 @@ function deriveProjectReports(projects: Awaited<ReturnType<typeof getProjects>>)
     project_name: String(project.name || project.omschrijving || ''),
     projectnummer: String(project.projectnummer || project.code || ''),
     client_name: String(project.client_name || project.opdrachtgever || ''),
-    pdf_url: buildProjectPdfUrl(project.id),
+    pdf_url: typeof project.id !== 'undefined' && project.id !== null ? `/api/v1/projects/${project.id}/exports/pdf` : undefined,
   }));
 
   return {
     items,
     total: items.length,
-    page: Number(projects.page || 1),
+    page: 1,
     limit: Number(projects.limit || items.length || 25),
     source: 'derived-projects',
   };
 }
 
-function enrichReportItem(row: ReportItem) {
-  const projectId = row.project_id;
-  return {
-    ...row,
-    project_name: String(row.project_name || row.name || row.title || ''),
-    projectnummer: String(row.projectnummer || row.project_number || row.code || ''),
-    client_name: String(row.client_name || row.owner || row.opdrachtgever || ''),
-    pdf_url: row.pdf_url || (projectId !== undefined && projectId !== null && projectId !== '' ? buildProjectPdfUrl(String(projectId)) : undefined),
-  } satisfies ReportItem;
-}
-
 export async function getReports(params?: ListParams) {
   const response = await optionalRequest<ReportResponse>([
     withQuery('/reports', params),
-  ]).catch(() => null);
+  ]);
 
   const normalized = normalizeItems(response);
-  if (normalized.items.length > 0) {
-    return {
-      ...normalized,
-      items: normalized.items.map(enrichReportItem),
-    };
-  }
+  if (normalized.items.length > 0) return normalized;
 
-  const projects = await getProjects({
-    limit: Number(params?.limit || 25),
-    page: Number(params?.page || 1),
-    search: params?.search,
-  });
+  const projects = await getProjects({ limit: Number(params?.limit || 25), page: Number(params?.page || 1), search: params?.search });
   return deriveProjectReports(projects);
 }
