@@ -1,7 +1,7 @@
 import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useState } from 'react';
 import { ApiError } from '@/api/client';
-import { getMe, refreshCentralSession, refreshSession } from '@/api/auth';
-import { useAuthStore } from '@/app/store/auth-store';
+import { getMe, refreshSession } from '@/api/auth';
+import { readAnyPersistedSession, useAuthStore } from '@/app/store/auth-store';
 import type { Role, SessionUser } from '@/types/domain';
 
 export type AccessPermission =
@@ -36,9 +36,6 @@ type SessionContextValue = {
 
 const SessionContext = createContext<SessionContextValue | null>(null);
 
-const STORAGE_KEY = 'nen1090.session';
-const COOKIE_SESSION_MARKER = '__cookie_session__';
-
 const permissionMap: Record<string, AccessPermission[]> = {
   SUPERADMIN: ['dashboard.read', 'projects.read', 'projects.write', 'welds.read', 'welds.write', 'documents.read', 'documents.write', 'settings.read', 'settings.write', 'billing.read', 'billing.manage', 'tenants.read', 'tenants.impersonate'],
   SUPER_ADMIN: ['dashboard.read', 'projects.read', 'projects.write', 'welds.read', 'welds.write', 'documents.read', 'documents.write', 'settings.read', 'settings.write', 'billing.read', 'billing.manage', 'tenants.read', 'tenants.impersonate'],
@@ -53,50 +50,6 @@ const permissionMap: Record<string, AccessPermission[]> = {
 
 function normalizeRole(role?: string | null): string {
   return String(role || '').replace(/[^a-zA-Z]/g, '').toUpperCase();
-}
-
-function isAuthPage(pathname: string) {
-  return [
-    '/login',
-    '/forgot-password',
-    '/reset-password',
-    '/logout',
-    '/change-password',
-    '/app/login',
-    '/app/login.html',
-    '/app/forgot-password',
-    '/app/forgot-password.html',
-    '/app/reset-password',
-    '/app/reset-password.html',
-    '/app/logout',
-    '/app/logout.html',
-    '/app/change-password',
-    '/app/change-password.html',
-  ].includes(pathname);
-}
-
-function readPersistedSession(): { token: string | null; refreshToken: string | null; user: SessionUser | null } {
-  if (typeof window === 'undefined') {
-    return { token: null, refreshToken: null, user: null };
-  }
-
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { token: null, refreshToken: null, user: null };
-    const parsed = JSON.parse(raw) as {
-      token?: string | null;
-      refreshToken?: string | null;
-      user?: SessionUser | null;
-    };
-
-    return {
-      token: typeof parsed?.token === 'string' && parsed.token.trim() ? parsed.token : null,
-      refreshToken: typeof parsed?.refreshToken === 'string' && parsed.refreshToken.trim() ? parsed.refreshToken : null,
-      user: parsed?.user && typeof parsed.user === 'object' ? parsed.user : null,
-    };
-  } catch {
-    return { token: null, refreshToken: null, user: null };
-  }
 }
 
 function isUnauthorized(error: unknown): boolean {
@@ -124,178 +77,88 @@ export function SessionProvider({ children }: PropsWithChildren) {
   const [isBootstrapping, setIsBootstrapping] = useState(true);
 
   useEffect(() => {
+    const persisted = readAnyPersistedSession();
+    if (!token && persisted.token && persisted.user) {
+      useAuthStore.setState({
+        token: persisted.token,
+        refreshToken: persisted.refreshToken,
+        user: persisted.user,
+        impersonation: null,
+      });
+    }
+  }, [token]);
+
+  useEffect(() => {
     let cancelled = false;
 
-    const persisted = readPersistedSession();
-    const effectiveToken = token || persisted.token;
-    const effectiveRefreshToken = refreshToken || persisted.refreshToken;
-    const effectiveUser = user || persisted.user;
-    const onAuthPage = isAuthPage(window.location.pathname);
-    const hasStoredSession = Boolean(effectiveUser && (effectiveToken || effectiveRefreshToken));
-
-    if (hasStoredSession) {
-      setIsBootstrapping(false);
-    }
-
     async function bootstrap() {
-      if (!hasStoredSession) {
+      const persisted = readAnyPersistedSession();
+      const effectiveToken = token || persisted.token;
+      const effectiveRefreshToken = refreshToken || persisted.refreshToken;
+      const effectiveUser = user || persisted.user;
+
+      if (!effectiveToken || !effectiveUser) {
         if (!cancelled) setIsBootstrapping(false);
         return;
       }
 
+      if (!token && effectiveToken && effectiveUser) {
+        setSession(effectiveToken, effectiveUser, effectiveRefreshToken || null);
+      }
+
       try {
-        let activeToken = effectiveToken;
-        let activeRefreshToken = effectiveRefreshToken;
-        let activeUser = effectiveUser;
-
-        if ((!activeToken || activeToken === COOKIE_SESSION_MARKER) && activeRefreshToken && activeRefreshToken !== COOKIE_SESSION_MARKER) {
-          const refreshed = await refreshSession(activeRefreshToken);
-          if (refreshed.access_token && refreshed.user?.email) {
-            activeToken = refreshed.access_token;
-            activeRefreshToken = refreshed.refresh_token || activeRefreshToken;
-            activeUser = {
-              email: refreshed.user.email,
-              tenant: refreshed.user.tenant || '',
-              tenantId: refreshed.user.tenant_id || '',
-              role: refreshed.user.role || '',
-              name: refreshed.user.name || '',
-            };
-            if (!cancelled) {
-              setSession(activeToken, activeUser, activeRefreshToken);
-            }
-          }
-        }
-
-        if ((!activeToken || activeToken === COOKIE_SESSION_MARKER) && !activeRefreshToken) {
-          const refreshed = await refreshCentralSession();
-          if (refreshed.user?.email) {
-            activeToken = COOKIE_SESSION_MARKER;
-            activeUser = {
-              email: refreshed.user.email,
-              tenant: refreshed.user.tenant || '',
-              tenantId: refreshed.user.tenant_id || '',
-              role: refreshed.user.role || '',
-              name: refreshed.user.name || '',
-            };
-            if (!cancelled) {
-              setSession(COOKIE_SESSION_MARKER, activeUser, null);
-            }
-          }
-        }
-
         const me = await getMe();
         if (!cancelled) {
-          setSession(
-            activeToken || effectiveToken || COOKIE_SESSION_MARKER,
-            normalizeMeUser(me),
-            activeRefreshToken || null,
-          );
+          setSession(effectiveToken, normalizeMeUser(me), effectiveRefreshToken || null);
         }
       } catch (error) {
-        if (!cancelled) {
-          if (isUnauthorized(error) && effectiveRefreshToken && effectiveRefreshToken !== COOKIE_SESSION_MARKER) {
-            try {
-              const refreshed = await refreshSession(effectiveRefreshToken);
-              if (refreshed.access_token && refreshed.user?.email) {
-                const refreshedUser: SessionUser = {
-                  email: refreshed.user.email,
-                  tenant: refreshed.user.tenant || '',
-                  tenantId: refreshed.user.tenant_id || '',
-                  role: refreshed.user.role || '',
-                  name: refreshed.user.name || '',
-                };
-                setSession(
-                  refreshed.access_token,
-                  refreshedUser,
-                  refreshed.refresh_token || effectiveRefreshToken,
-                );
-              }
-            } catch {
-              if (onAuthPage) clearSession();
+        if (isUnauthorized(error) && effectiveRefreshToken) {
+          try {
+            const refreshed = await refreshSession(effectiveRefreshToken);
+            if (!cancelled && refreshed.access_token && refreshed.user?.email) {
+              const refreshedUser: SessionUser = {
+                email: refreshed.user.email,
+                tenant: refreshed.user.tenant || '',
+                tenantId: refreshed.user.tenant_id || '',
+                role: refreshed.user.role || '',
+                name: refreshed.user.name || '',
+              };
+              setSession(
+                refreshed.access_token,
+                refreshedUser,
+                refreshed.refresh_token || effectiveRefreshToken,
+              );
+              updateToken(refreshed.access_token);
             }
-          } else if (onAuthPage) {
-            clearSession();
+          } catch {
+            // Keep existing persisted session intact instead of forcing logout.
           }
         }
       } finally {
-        if (!cancelled) {
-          setIsBootstrapping(false);
-        }
+        if (!cancelled) setIsBootstrapping(false);
       }
     }
 
     void bootstrap();
-
     return () => {
       cancelled = true;
     };
-  }, [clearSession, refreshToken, setSession, token, user]);
-
-  useEffect(() => {
-    if (!user) return;
-
-    const hasBearerRefreshToken = Boolean(refreshToken && refreshToken !== COOKIE_SESSION_MARKER);
-    const hasCookieSession = token === COOKIE_SESSION_MARKER;
-
-    if (!hasBearerRefreshToken && !hasCookieSession) return;
-
-    let cancelled = false;
-
-    async function refreshExistingSession() {
-      try {
-        const payload = hasBearerRefreshToken
-          ? await refreshSession(refreshToken as string)
-          : await refreshCentralSession();
-
-        if (cancelled) return;
-
-        const refreshedUser: SessionUser = {
-          email: payload.user?.email || user.email,
-          tenant: payload.user?.tenant || user.tenant,
-          tenantId: payload.user?.tenant_id || user.tenantId,
-          role: payload.user?.role || user.role,
-          name: payload.user?.name || user.name,
-        };
-
-        if (hasBearerRefreshToken) {
-          if (!payload.access_token) return;
-          const nextRefreshToken = payload.refresh_token || refreshToken || null;
-          setSession(payload.access_token, refreshedUser, nextRefreshToken);
-          updateToken(payload.access_token);
-          return;
-        }
-
-        setSession(COOKIE_SESSION_MARKER, refreshedUser, null);
-      } catch {
-        // optimistic session intact houden; protected routes mogen niet terugvallen naar login
-      }
-    }
-
-    const interval = window.setInterval(refreshExistingSession, 10 * 60 * 1000);
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') void refreshExistingSession();
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      cancelled = true;
-      window.clearInterval(interval);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [refreshToken, setSession, token, updateToken, user]);
+  }, [clearSession, refreshToken, setSession, token, updateToken, user]);
 
   const normalizedRole = normalizeRole(user?.role);
   const permissions = permissionMap[normalizedRole] || [];
+  const persisted = readAnyPersistedSession();
+  const effectiveToken = token || persisted.token;
+  const effectiveUser = user || persisted.user;
 
   const value = useMemo<SessionContextValue>(
     () => ({
-      token,
-      refreshToken,
-      user,
-      tenant: user?.tenant,
-      role: user?.role,
-      isAuthenticated: Boolean(user && (token || refreshToken)),
+      token: effectiveToken,
+      refreshToken: refreshToken || persisted.refreshToken,
+      user: effectiveUser,
+      tenant: effectiveUser?.tenant,
+      role: effectiveUser?.role,
+      isAuthenticated: Boolean(effectiveUser && effectiveToken),
       isImpersonating: Boolean(impersonation?.active),
       isBootstrapping,
       impersonationTenantName: impersonation?.tenantName,
@@ -303,7 +166,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
       hasPermission: (permission) => permissions.includes(permission),
       clearSession,
     }),
-    [clearSession, impersonation, isBootstrapping, normalizedRole, permissions, refreshToken, token, user],
+    [clearSession, effectiveToken, effectiveUser, impersonation, isBootstrapping, normalizedRole, permissions, persisted.refreshToken, refreshToken],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

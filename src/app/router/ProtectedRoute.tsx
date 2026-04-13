@@ -1,17 +1,16 @@
 import { PropsWithChildren } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
+import { readAnyPersistedSession } from '@/app/store/auth-store';
 import { useSession } from '@/app/session/SessionContext';
 
 export function ProtectedRoute({ children }: PropsWithChildren) {
   const location = useLocation();
   const session = useSession();
+  const persisted = readAnyPersistedSession();
+  const hasPersistedSession = Boolean(persisted.token && persisted.user);
 
-  if (session.isBootstrapping && session.isAuthenticated) {
+  if (session.isBootstrapping || hasPersistedSession) {
     return <>{children}</>;
-  }
-
-  if (session.isBootstrapping) {
-    return null;
   }
 
   if (!session.isAuthenticated) {

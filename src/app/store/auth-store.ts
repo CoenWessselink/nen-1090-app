@@ -41,109 +41,112 @@ function isSupportedToken(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;
 }
 
-function clearLegacySession() {
-  if (typeof window === 'undefined') return;
+function parseUser(raw: string | null): SessionUser | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as SessionUser;
+    return isValidSessionUser(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
 
-  for (const key of legacySessionKeys.accessTokens) {
-    window.localStorage.removeItem(key);
-    window.sessionStorage.removeItem(key);
+function loadFromWebStorage(storage: Storage) {
+  const token =
+    legacySessionKeys.accessTokens
+      .map((key) => storage.getItem(key))
+      .find((value) => typeof value === 'string' && value.trim().length > 0) || null;
+
+  const refreshToken =
+    legacySessionKeys.refreshTokens
+      .map((key) => storage.getItem(key))
+      .find((value) => typeof value === 'string' && value.trim().length > 0) || null;
+
+  const user =
+    legacySessionKeys.userKeys
+      .map((key) => parseUser(storage.getItem(key)))
+      .find((value) => value !== null) || null;
+
+  const tenant =
+    legacySessionKeys.tenantKeys
+      .map((key) => storage.getItem(key))
+      .find((value) => typeof value === 'string' && value.trim().length > 0) || '';
+
+  const role =
+    legacySessionKeys.roleKeys
+      .map((key) => storage.getItem(key))
+      .find((value) => typeof value === 'string' && value.trim().length > 0) || '';
+
+  if (user) {
+    return {
+      token,
+      refreshToken,
+      user: {
+        ...user,
+        tenant: user.tenant || tenant,
+        role: user.role || role,
+      },
+    };
   }
-  for (const key of legacySessionKeys.refreshTokens) {
-    window.localStorage.removeItem(key);
-    window.sessionStorage.removeItem(key);
+
+  return null;
+}
+
+function readLegacyState(): Pick<AuthState, 'token' | 'refreshToken' | 'user' | 'impersonation'> | null {
+  if (typeof window === 'undefined') return null;
+
+  const fromLocal = loadFromWebStorage(window.localStorage);
+  if (fromLocal?.token && fromLocal.user) {
+    return { ...fromLocal, impersonation: null };
   }
-  for (const key of legacySessionKeys.userKeys) {
-    window.localStorage.removeItem(key);
-    window.sessionStorage.removeItem(key);
+
+  const fromSession = loadFromWebStorage(window.sessionStorage);
+  if (fromSession?.token && fromSession.user) {
+    return { ...fromSession, impersonation: null };
   }
-  for (const key of legacySessionKeys.tenantKeys) {
-    window.localStorage.removeItem(key);
-    window.sessionStorage.removeItem(key);
-  }
-  for (const key of legacySessionKeys.roleKeys) {
-    window.localStorage.removeItem(key);
-    window.sessionStorage.removeItem(key);
-  }
+
+  return null;
 }
 
 function persistLegacySession(token: string | null, user: SessionUser | null, refreshToken: string | null) {
   if (typeof window === 'undefined') return;
 
-  if (!token || !user) {
-    clearLegacySession();
-    return;
-  }
+  const safeToken = token === cookieSessionMarker ? '' : token || '';
+  const storages: Storage[] = [window.localStorage, window.sessionStorage];
 
-  const safeToken = token === cookieSessionMarker ? '' : token;
-
-  for (const key of legacySessionKeys.accessTokens) {
-    if (safeToken) {
-      window.localStorage.setItem(key, safeToken);
-      window.sessionStorage.setItem(key, safeToken);
-    } else {
-      window.localStorage.removeItem(key);
-      window.sessionStorage.removeItem(key);
+  for (const storage of storages) {
+    for (const key of legacySessionKeys.accessTokens) {
+      if (safeToken) storage.setItem(key, safeToken);
+      else storage.removeItem(key);
     }
-  }
 
-  for (const key of legacySessionKeys.refreshTokens) {
-    if (refreshToken) {
-      window.localStorage.setItem(key, refreshToken);
-      window.sessionStorage.setItem(key, refreshToken);
-    } else {
-      window.localStorage.removeItem(key);
-      window.sessionStorage.removeItem(key);
+    for (const key of legacySessionKeys.refreshTokens) {
+      if (refreshToken) storage.setItem(key, refreshToken);
+      else storage.removeItem(key);
     }
-  }
 
-  const userPayload = JSON.stringify(user);
-  for (const key of legacySessionKeys.userKeys) {
-    window.localStorage.setItem(key, userPayload);
-    window.sessionStorage.setItem(key, userPayload);
-  }
+    for (const key of legacySessionKeys.userKeys) {
+      if (user) storage.setItem(key, JSON.stringify(user));
+      else storage.removeItem(key);
+    }
 
-  for (const key of legacySessionKeys.tenantKeys) {
-    window.localStorage.setItem(key, user.tenant || '');
-    window.sessionStorage.setItem(key, user.tenant || '');
-  }
+    for (const key of legacySessionKeys.tenantKeys) {
+      if (user?.tenant) storage.setItem(key, user.tenant);
+      else storage.removeItem(key);
+    }
 
-  for (const key of legacySessionKeys.roleKeys) {
-    window.localStorage.setItem(key, user.role || '');
-    window.sessionStorage.setItem(key, user.role || '');
+    for (const key of legacySessionKeys.roleKeys) {
+      if (user?.role) storage.setItem(key, user.role);
+      else storage.removeItem(key);
+    }
   }
 }
 
-function loadLegacyState(): Pick<AuthState, 'token' | 'refreshToken' | 'user' | 'impersonation'> | null {
-  if (typeof window === 'undefined') return null;
-
-  const legacyToken =
-    legacySessionKeys.accessTokens
-      .map((key) => window.localStorage.getItem(key) || window.sessionStorage.getItem(key))
-      .find((value) => typeof value === 'string' && value.trim().length > 0) || null;
-
-  const legacyRefreshToken =
-    legacySessionKeys.refreshTokens
-      .map((key) => window.localStorage.getItem(key) || window.sessionStorage.getItem(key))
-      .find((value) => typeof value === 'string' && value.trim().length > 0) || null;
-
-  const rawUser =
-    legacySessionKeys.userKeys
-      .map((key) => window.localStorage.getItem(key) || window.sessionStorage.getItem(key))
-      .find((value) => typeof value === 'string' && value.trim().length > 0) || null;
-
-  if (!legacyToken || !rawUser) return null;
-
-  try {
-    const parsedUser = JSON.parse(rawUser) as SessionUser;
-    if (!isValidSessionUser(parsedUser)) return null;
-    return {
-      token: legacyToken,
-      refreshToken: legacyRefreshToken,
-      user: parsedUser,
-      impersonation: null,
-    };
-  } catch {
-    return null;
+function clearLegacySession() {
+  if (typeof window === 'undefined') return;
+  const storages: Storage[] = [window.localStorage, window.sessionStorage];
+  for (const storage of storages) {
+    Object.values(legacySessionKeys).flat().forEach((key) => storage.removeItem(key));
   }
 }
 
@@ -153,31 +156,26 @@ function loadInitialState(): Pick<AuthState, 'token' | 'refreshToken' | 'user' |
   }
 
   const raw = window.localStorage.getItem(storageKey);
-  if (!raw) {
-    return loadLegacyState() || { token: null, refreshToken: null, user: null, impersonation: null };
-  }
-
-  try {
-    const parsed = JSON.parse(raw) as Pick<AuthState, 'token' | 'refreshToken' | 'user' | 'impersonation'>;
-
-    if (!isSupportedToken(parsed.token) || !isValidSessionUser(parsed.user)) {
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw) as Pick<AuthState, 'token' | 'refreshToken' | 'user' | 'impersonation'>;
+      if (isSupportedToken(parsed.token) && isValidSessionUser(parsed.user)) {
+        return {
+          token: parsed.token,
+          refreshToken:
+            typeof parsed.refreshToken === 'string' && parsed.refreshToken.trim().length > 0
+              ? parsed.refreshToken
+              : null,
+          user: parsed.user,
+          impersonation: parsed.impersonation || null,
+        };
+      }
+    } catch {
       window.localStorage.removeItem(storageKey);
-      return loadLegacyState() || { token: null, refreshToken: null, user: null, impersonation: null };
     }
-
-    return {
-      token: parsed.token,
-      refreshToken:
-        typeof parsed.refreshToken === 'string' && parsed.refreshToken.trim().length > 0
-          ? parsed.refreshToken
-          : null,
-      user: parsed.user,
-      impersonation: parsed.impersonation || null,
-    };
-  } catch {
-    window.localStorage.removeItem(storageKey);
-    return loadLegacyState() || { token: null, refreshToken: null, user: null, impersonation: null };
   }
+
+  return readLegacyState() || { token: null, refreshToken: null, user: null, impersonation: null };
 }
 
 function persistSession(
@@ -205,6 +203,19 @@ function persistSession(
   );
 
   persistLegacySession(token, user, refreshToken);
+}
+
+export function readAnyPersistedSession(): {
+  token: string | null;
+  refreshToken: string | null;
+  user: SessionUser | null;
+} {
+  const state = loadInitialState();
+  return {
+    token: state.token,
+    refreshToken: state.refreshToken,
+    user: state.user,
+  };
 }
 
 export const useAuthStore = create<AuthState>((set) => ({

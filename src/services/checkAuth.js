@@ -1,4 +1,4 @@
-import { useAuthStore } from '@/app/store/auth-store';
+import { readAnyPersistedSession } from '@/app/store/auth-store';
 
 const APP_LOGIN_PATH = '/login';
 
@@ -14,40 +14,9 @@ function buildLoginRedirect() {
   return url.toString();
 }
 
-function getBearerHeaders() {
-  const state = useAuthStore.getState();
-  const headers = {
-    Accept: 'application/json',
-  } as Record<string, string>;
-
-  if (state.token && state.token !== '__cookie_session__') {
-    headers.Authorization = `Bearer ${state.token}`;
-  }
-
-  return headers;
-}
-
 export async function checkAuth() {
-  try {
-    const apiBase =
-      (import.meta?.env?.VITE_API_BASE_URL || 'https://nen1090-api-prod-f5ddagedbrftb4ew.westeurope-01.azurewebsites.net/api/v1')
-        .replace(/\/+$/, '');
-
-    const res = await fetch(`${apiBase}/auth/me`, {
-      credentials: 'include',
-      headers: getBearerHeaders(),
-    });
-
-    if (!res.ok) {
-      window.location.href = buildLoginRedirect();
-      return;
-    }
-
-    const data = await res.json();
-    if (!data?.email) {
-      window.location.href = buildLoginRedirect();
-    }
-  } catch {
+  const persisted = readAnyPersistedSession();
+  if (!persisted.token || !persisted.user) {
     window.location.href = buildLoginRedirect();
   }
 }

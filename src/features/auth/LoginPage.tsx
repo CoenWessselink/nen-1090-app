@@ -67,17 +67,37 @@ export default function LoginPage() {
         <form className="form-grid" onSubmit={handleSubmit}>
           <label>
             <span>Tenant</span>
-            <Input value={tenant} onChange={(event) => setTenant(event.target.value)} autoComplete="organization" required />
+            <Input
+              name="tenant"
+              value={tenant}
+              onChange={(event) => setTenant(event.target.value)}
+              autoComplete="organization"
+              required
+            />
           </label>
 
           <label>
             <span>E-mail</span>
-            <Input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" required />
+            <Input
+              name="email"
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              autoComplete="email"
+              required
+            />
           </label>
 
           <label>
             <span>Wachtwoord</span>
-            <Input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" required />
+            <Input
+              name="password"
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              autoComplete="current-password"
+              required
+            />
           </label>
 
           <Button type="submit" disabled={submitting}>
