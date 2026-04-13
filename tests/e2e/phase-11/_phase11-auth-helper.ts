@@ -100,26 +100,3 @@ export async function snapshotSession(page: Page) {
     body: document.body?.innerText || '',
   }));
 }
-
-export const desktopViewport = { width: 1440, height: 900 };
-export const mobileViewport = { width: 390, height: 844 };
-
-export async function saveRouteScreenshot(page: Page, name: string) {
-  const safe = name.replace(/[^a-z0-9_-]+/gi, '-').toLowerCase();
-  await page.screenshot({ path: `test-results/${safe}.png`, fullPage: true });
-}
-
-export async function expireLocalSession(page: Page) {
-  await page.evaluate(() => {
-    window.localStorage.removeItem('nen1090.session');
-    window.sessionStorage.removeItem('nen1090.session');
-    document.cookie = 'nen1090_access_token=; path=/; max-age=0';
-  });
-}
-
-export async function corruptLocalSession(page: Page) {
-  await page.evaluate(() => {
-    window.localStorage.setItem('nen1090.session', '{"token":"broken","user":null}');
-    window.sessionStorage.setItem('nen1090.session', '{"token":"broken","user":null}');
-  });
-}
