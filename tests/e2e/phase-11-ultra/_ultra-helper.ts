@@ -29,58 +29,36 @@ async function fillIfPresent(page: Page, selectors: string[], value: string) {
 
 export async function collectConsoleIssues(page: Page) {
   const issues: string[] = [];
-
   page.on('console', (msg: ConsoleMessage) => {
     const type = msg.type();
-    if (type === 'error' || type === 'warning') {
-      issues.push(`${type}: ${msg.text()}`);
-    }
+    if (type === 'error' || type === 'warning') issues.push(`${type}: ${msg.text()}`);
   });
-
-  page.on('pageerror', (error) => {
-    issues.push(`pageerror: ${error.message}`);
-  });
-
+  page.on('pageerror', (error) => issues.push(`pageerror: ${error.message}`));
   return issues;
 }
 
 export async function collectApiFailures(page: Page) {
   const issues: string[] = [];
-
   page.on('response', async (response) => {
     const url = response.url();
     const status = response.status();
-
     if (!url.includes('/api/')) return;
-
     const allowRefresh = url.includes('/auth/refresh') && [200, 401, 403].includes(status);
     const allowMe = url.includes('/auth/me') && [200, 401, 403].includes(status);
-
     if (allowRefresh || allowMe) return;
-
-    if (status >= 400) {
-      issues.push(`${status} ${url}`);
-    }
+    if (status >= 400) issues.push(`${status} ${url}`);
   });
-
   return issues;
 }
 
 export async function captureAuthRequests(page: Page) {
   const requests: Array<{ url: string; auth: string | null }> = [];
-
   page.on('request', (request: Request) => {
     const url = request.url();
-
     if (!url.includes('/api/')) return;
     if (!url.includes('/auth/me') && !url.includes('/auth/refresh')) return;
-
-    requests.push({
-      url,
-      auth: request.headers()['authorization'] || null,
-    });
+    requests.push({ url, auth: request.headers()['authorization'] || null });
   });
-
   return requests;
 }
 
@@ -96,10 +74,7 @@ export async function expectAppShell(page: Page) {
 
 export async function saveRouteScreenshot(page: Page, name: string) {
   const safe = name.replace(/[^a-z0-9_-]+/gi, '-').toLowerCase();
-  await page.screenshot({
-    path: `test-results/${safe}.png`,
-    fullPage: true,
-  });
+  await page.screenshot({ path: `test-results/${safe}.png`, fullPage: true });
 }
 
 export async function expireLocalSession(page: Page) {
@@ -124,15 +99,12 @@ export async function corruptLocalSession(page: Page) {
 }
 
 export async function login(page: Page) {
-  await page.goto('/login', { waitUntil: 'networkidle' });
-
+  page.setDefaultTimeout(15000);
+  await page.goto('/login', { waitUntil: 'domcontentloaded' });
   await fillIfPresent(page, ['input[name="tenant"]', 'input[placeholder*="tenant" i]'], TENANT);
   const emailFilled = await fillIfPresent(page, ['input[name="email"]', 'input[type="email"]'], EMAIL);
   const passwordFilled = await fillIfPresent(page, ['input[name="password"]', 'input[type="password"]'], PASSWORD);
-
-  if (!emailFilled || !passwordFilled) {
-    throw new Error('Login fields not found in ultra helper.');
-  }
+  if (!emailFilled || !passwordFilled) throw new Error('Login fields not found in ultra helper.');
 
   const submitCandidates = [
     page.locator('button[type="submit"]').first(),
@@ -146,15 +118,13 @@ export async function login(page: Page) {
         await button.click();
         submitted = true;
         break;
-      } catch {
-        // continue
-      }
+      } catch {}
     }
   }
+  if (!submitted) throw new Error('Login submit button not found in ultra helper.');
 
-  if (!submitted) {
-    throw new Error('Login submit button not found in ultra helper.');
-  }
-
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
+  try {
+    await page.waitForLoadState('networkidle', { timeout: 5000 });
+  } catch {}
 }
