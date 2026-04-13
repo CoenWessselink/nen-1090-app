@@ -47,8 +47,6 @@ const permissionMap: Record<string, AccessPermission[]> = {
   VIEWER: ['dashboard.read', 'projects.read', 'welds.read', 'documents.read'],
 };
 
-const COOKIE_SESSION_MARKER = '__cookie_session__';
-
 function normalizeRole(role?: string | null): string {
   return String(role || '').replace(/[^a-zA-Z]/g, '').toUpperCase();
 }
@@ -73,24 +71,6 @@ function isAuthPage(pathname: string) {
   ].includes(pathname);
 }
 
-function hasUsableBearerToken(token: string | null) {
-  return Boolean(token && token !== COOKIE_SESSION_MARKER);
-}
-
-function hasUsableRefreshToken(refreshToken: string | null) {
-  return Boolean(refreshToken && refreshToken !== COOKIE_SESSION_MARKER);
-}
-
-function mapUser(input: Partial<SessionUser> | null | undefined): SessionUser {
-  return {
-    email: input?.email || '',
-    tenant: input?.tenant || '',
-    tenantId: input?.tenantId || '',
-    role: input?.role || '',
-    name: input?.name || '',
-  };
-}
-
 export function SessionProvider({ children }: PropsWithChildren) {
   const token = useAuthStore((state) => state.token);
   const refreshToken = useAuthStore((state) => state.refreshToken);
@@ -107,79 +87,83 @@ export function SessionProvider({ children }: PropsWithChildren) {
     async function bootstrap() {
       const pathname = window.location.pathname;
       const onAuthPage = isAuthPage(pathname);
-      const bearerToken = hasUsableBearerToken(token);
-      const bearerRefresh = hasUsableRefreshToken(refreshToken);
-      const cookieSession = token === COOKIE_SESSION_MARKER || refreshToken === COOKIE_SESSION_MARKER;
 
-      if (!bearerToken && !bearerRefresh && !cookieSession) {
+      if (!token && !refreshToken) {
+        if (!cancelled) setIsBootstrapping(false);
+        return;
+      }
+
+      if (onAuthPage && token && token !== '__cookie_session__' && !refreshToken) {
         clearSession();
         if (!cancelled) setIsBootstrapping(false);
         return;
       }
 
       try {
-        let activeToken = bearerToken ? token : null;
-        let nextRefreshToken = bearerRefresh ? refreshToken : null;
-        let resolvedUser = user ? mapUser(user) : null;
+        let activeToken = token;
 
-        // Veilige hoofdregel:
-        // als we al een bearer token + user hebben, blijf die sessie vertrouwen.
-        // Niet eerst refresh of clearSession forceren, want dat veroorzaakte bounce terug naar /login.
-        if (activeToken && resolvedUser?.email) {
-          if (!cancelled) {
-            setSession(activeToken, resolvedUser, nextRefreshToken);
-            setIsBootstrapping(false);
+        if (!activeToken && refreshToken && refreshToken !== '__cookie_session__') {
+          const refreshed = await refreshSession(refreshToken);
+          activeToken = refreshed.access_token;
+          if (!cancelled && activeToken) {
+            setSession(
+              activeToken,
+              {
+                email: refreshed.user?.email || '',
+                tenant: refreshed.user?.tenant || '',
+                tenantId: refreshed.user?.tenant_id || '',
+                role: refreshed.user?.role || '',
+                name: refreshed.user?.name || '',
+              },
+              refreshed.refresh_token || refreshToken,
+            );
           }
+        }
+
+        if (!activeToken && refreshToken === '__cookie_session__') {
+          const refreshed = await refreshCentralSession();
+          if (!cancelled) {
+            setSession(
+              '__cookie_session__',
+              {
+                email: refreshed.user?.email || '',
+                tenant: refreshed.user?.tenant || '',
+                tenantId: refreshed.user?.tenant_id || '',
+                role: refreshed.user?.role || '',
+                name: refreshed.user?.name || '',
+              },
+              null,
+            );
+          }
+          activeToken = '__cookie_session__';
+        }
+
+        if (onAuthPage && !refreshToken && activeToken && activeToken !== '__cookie_session__') {
+          clearSession();
+          if (!cancelled) setIsBootstrapping(false);
           return;
         }
 
-        if (!activeToken && bearerRefresh && refreshToken) {
-          const refreshed = await refreshSession(refreshToken);
-          activeToken = refreshed.access_token || null;
-          nextRefreshToken = refreshed.refresh_token || refreshToken;
-          resolvedUser = refreshed.user
-            ? mapUser({
-                email: refreshed.user.email,
-                tenant: refreshed.user.tenant,
-                tenantId: refreshed.user.tenant_id,
-                role: refreshed.user.role,
-                name: refreshed.user.name,
-              })
-            : resolvedUser;
-
-          if (!activeToken) throw new Error('NO_ACCESS_TOKEN_AFTER_REFRESH');
-        }
-
-        if (!activeToken && cookieSession && !onAuthPage) {
-          const refreshed = await refreshCentralSession();
-          activeToken = COOKIE_SESSION_MARKER;
-          resolvedUser = mapUser({
-            email: refreshed.user?.email,
-            tenant: refreshed.user?.tenant,
-            tenantId: refreshed.user?.tenant_id,
-            role: refreshed.user?.role,
-            name: refreshed.user?.name,
-          });
-        }
-
-        if (!activeToken && !cookieSession) {
-          throw new Error('NO_ACTIVE_SESSION');
-        }
-
-        if (!resolvedUser?.email && !onAuthPage) {
-          const me = await getMe();
-          resolvedUser = mapUser(me);
-        }
-
+        const me = await getMe();
         if (!cancelled) {
-          setSession(activeToken || COOKIE_SESSION_MARKER, resolvedUser || mapUser(null), nextRefreshToken);
-          setIsBootstrapping(false);
+          setSession(
+            activeToken || token || '__cookie_session__',
+            {
+              email: me.email,
+              tenant: me.tenant,
+              tenantId: me.tenantId,
+              role: me.role,
+              name: me.name,
+            },
+            refreshToken,
+          );
         }
       } catch {
         if (!cancelled) {
           clearSession();
-          setIsBootstrapping(false);
         }
+      } finally {
+        if (!cancelled) setIsBootstrapping(false);
       }
     }
 
@@ -188,22 +172,22 @@ export function SessionProvider({ children }: PropsWithChildren) {
     return () => {
       cancelled = true;
     };
-  }, [clearSession, refreshToken, setSession, token, user]);
+  }, [clearSession, refreshToken, setSession, token]);
 
   useEffect(() => {
     if (!user) return;
 
-    const bearerRefresh = hasUsableRefreshToken(refreshToken);
-    const cookieSession = token === COOKIE_SESSION_MARKER;
+    const hasBearerRefreshToken = Boolean(refreshToken && refreshToken !== '__cookie_session__');
+    const hasCookieSession = token === '__cookie_session__';
 
-    if (!bearerRefresh && !cookieSession) return;
+    if (!hasBearerRefreshToken && !hasCookieSession) return;
 
     let cancelled = false;
 
     async function refreshExistingSession() {
       try {
-        const payload = bearerRefresh && refreshToken
-          ? await refreshSession(refreshToken)
+        const payload = hasBearerRefreshToken
+          ? await refreshSession(refreshToken as string)
           : await refreshCentralSession();
 
         if (cancelled) return;
@@ -216,17 +200,17 @@ export function SessionProvider({ children }: PropsWithChildren) {
           name: payload.user?.name || user.name,
         };
 
-        if (bearerRefresh) {
-          if (!payload.access_token) throw new Error('NO_REFRESHED_TOKEN');
+        if (hasBearerRefreshToken) {
+          if (!payload.access_token) return;
           const nextRefreshToken = payload.refresh_token || refreshToken || null;
           setSession(payload.access_token, refreshedUser, nextRefreshToken);
           updateToken(payload.access_token);
           return;
         }
 
-        setSession(COOKIE_SESSION_MARKER, refreshedUser, null);
+        setSession('__cookie_session__', refreshedUser, null);
       } catch {
-        // refresh failure mag niet direct live sessie slopen
+        // houd bestaande UI-sessie intact om login/projectroutes niet te laten loopen.
       }
     }
 
@@ -246,14 +230,6 @@ export function SessionProvider({ children }: PropsWithChildren) {
 
   const normalizedRole = normalizeRole(user?.role);
   const permissions = permissionMap[normalizedRole] || [];
-  const isAuthenticated = Boolean(
-    user &&
-      (
-        hasUsableBearerToken(token) ||
-        hasUsableRefreshToken(refreshToken) ||
-        token === COOKIE_SESSION_MARKER
-      )
-  );
 
   const value = useMemo<SessionContextValue>(() => ({
     token,
@@ -261,14 +237,14 @@ export function SessionProvider({ children }: PropsWithChildren) {
     user,
     tenant: user?.tenant,
     role: user?.role,
-    isAuthenticated,
+    isAuthenticated: Boolean(user && (token || refreshToken)),
     isImpersonating: Boolean(impersonation?.active),
     isBootstrapping,
     impersonationTenantName: impersonation?.tenantName,
     hasRole: (roles) => roles.length === 0 || roles.some((role) => normalizeRole(String(role)) === normalizedRole),
     hasPermission: (permission) => permissions.includes(permission),
     clearSession,
-  }), [clearSession, impersonation, isAuthenticated, isBootstrapping, normalizedRole, permissions, refreshToken, token, user]);
+  }), [clearSession, impersonation, isBootstrapping, normalizedRole, permissions, refreshToken, token, user]);
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }
