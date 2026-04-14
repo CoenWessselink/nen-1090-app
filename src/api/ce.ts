@@ -117,8 +117,7 @@ async function buildFallbackCeDossier(projectId: string | number) {
 
 function mergeCePayload(livePayload: Record<string, unknown> | null, fallbackPayload: Record<string, unknown>) {
   const live = asRecord(livePayload);
-  const liveChecklist = asArray<Record<string, unknown>>(live.checklist).length ? asArray<Record<string, unknown>>(live.checklist) : asArray<Record<string, unknown>>(live.sections);
-  const mergedChecklist = liveChecklist.length ? liveChecklist : asArray<Record<string, unknown>>(fallbackPayload.checklist);
+  const mergedChecklist = asArray<Record<string, unknown>>(live.checklist).length ? asArray<Record<string, unknown>>(live.checklist) : asArray<Record<string, unknown>>(fallbackPayload.checklist);
   const mergedMissing = asArray<Record<string, unknown>>(live.missing_items).length ? asArray<Record<string, unknown>>(live.missing_items) : asArray<Record<string, unknown>>(fallbackPayload.missing_items);
 
   return {

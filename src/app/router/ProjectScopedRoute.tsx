@@ -18,7 +18,7 @@ function normalizeProjectId(value: string | undefined) {
 function inferTarget(pathname: string, projectId: string) {
   if (pathname.endsWith('/welds') || pathname.includes('/lascontrole')) return `/projecten/${projectId}/lassen`;
   if (pathname.endsWith('/ce-dossier') || pathname.includes('/documents') || pathname.includes('/exports')) return `/projecten/${projectId}/ce-dossier`;
-  return `/projecten/${projectId}`;
+  return `/projecten/${projectId}/overzicht`;
 }
 
 export function ProjectScopedRoute() {

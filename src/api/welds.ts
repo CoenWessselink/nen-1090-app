@@ -151,25 +151,23 @@ export function getWeld(projectId: string | number, weldId: string | number) {
   ]);
 }
 
-export function createWeld(projectIdOrPayload: unknown, payload?: unknown) {
+export async function createWeld(projectIdOrPayload: unknown, payload?: unknown) {
   if (payload !== undefined) {
-    return client.post(`/projects/${projectIdOrPayload}/welds`, sanitizeWeldPayload(payload));
+    const body = sanitizeWeldPayload(payload);
+    return (await optionalRequest([`/projects/${projectIdOrPayload}/welds`, `/welds`], { method: 'POST', body: JSON.stringify(body) })) || {};
   }
 
   const body = (projectIdOrPayload || {}) as Record<string, unknown>;
   const projectId = getProjectId(body);
-  if (projectId) return client.post(`/projects/${projectId}/welds`, sanitizeWeldPayload(body));
-  return client.post('/welds', sanitizeWeldPayload(body));
+  const normalized = sanitizeWeldPayload(body);
+  return (await optionalRequest(projectId ? [`/projects/${projectId}/welds`, `/welds`] : ['/welds'], { method: 'POST', body: JSON.stringify(normalized) })) || {};
 }
 
 export function updateWeld(projectId: string | number, weldId: string | number, payload: unknown) {
   const safeWeldId = requireId(weldId, 'weldId');
   const safeProjectId = requireId(projectId, 'projectId');
   const body = sanitizeWeldPayload(payload);
-  return tryMethods([
-    `/projects/${safeProjectId}/welds/${safeWeldId}`,
-    `/welds/${safeWeldId}`,
-  ], ['PATCH', 'PUT'], body);
+  return tryMethods([`/projects/${safeProjectId}/welds/${safeWeldId}`, `/welds/${safeWeldId}`], ['PATCH', 'PUT'], body);
 }
 
 export function patchWeldStatus(projectId: string | number, weldId: string | number, status: string) {

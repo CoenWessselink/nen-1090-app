@@ -57,7 +57,7 @@ export function RapportagePage() {
       return;
     }
     if (row.project_id) {
-      navigate(`/projecten/${row.project_id}/ce-dossier`);
+      navigate(`/projecten/${row.project_id}/overzicht`);
     }
   }
 
@@ -138,7 +138,7 @@ export function RapportagePage() {
               </thead>
               <tbody>
                 {visibleRows.map((row) => {
-                  const projectPath = row.project_id ? `/projecten/${row.project_id}/ce-dossier` : null;
+                  const projectPath = row.project_id ? `/projecten/${row.project_id}/overzicht` : null;
                   return (
                     <tr key={String(row.id)}>
                       <td><strong>{row.title || `Rapport ${row.id}`}</strong></td>
