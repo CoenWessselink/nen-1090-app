@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { FileText, FolderOpen, History, ListChecks, PanelsTopLeft, Weld } from 'lucide-react';
+import { Construction, FileText, FolderOpen, History, ListChecks, PanelsTopLeft } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getProject } from '@/api/projects';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
@@ -37,7 +37,7 @@ export function MobileProject360Page() {
   const actions = useMemo(
     () => [
       { label: 'Assemblies', color: 'primary', icon: PanelsTopLeft, to: `/projecten/${projectId}/assemblies` },
-      { label: 'Lassen', color: 'success', icon: Weld, to: `/projecten/${projectId}/lassen` },
+      { label: 'Lassen', color: 'success', icon: Construction, to: `/projecten/${projectId}/lassen` },
       { label: 'Documenten', color: 'danger', icon: FolderOpen, to: `/projecten/${projectId}/documenten` },
       { label: 'CE-Dossier', color: 'warning', icon: FileText, to: `/projecten/${projectId}/ce-dossier` },
       { label: 'Historie', color: 'neutral', icon: History, to: `/projecten/${projectId}/historie` },

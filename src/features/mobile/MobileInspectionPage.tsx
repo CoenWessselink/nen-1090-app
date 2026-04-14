@@ -4,6 +4,7 @@ import { getInspectionForWeld, upsertInspectionForWeld } from '@/api/inspections
 import { getWeld } from '@/api/welds';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
 import { weldNumber } from '@/features/mobile/mobile-utils';
+import type { Weld } from '@/types/domain';
 
 const inspectionFields = ['Positie 1', 'Positie 2', 'Visuele Inspectie'];
 
@@ -26,7 +27,7 @@ export function MobileInspectionPage() {
     Promise.all([getWeld(projectId, weldId).catch(() => null), getInspectionForWeld(projectId, weldId).catch(() => null)])
       .then(([weld, inspection]) => {
         if (!active) return;
-        if (weld) setWeldLabel(weldNumber(weld as Record<string, unknown>));
+        if (weld) setWeldLabel(weldNumber(weld as Weld));
         const inspectionRecord = inspection && typeof inspection === 'object' ? (inspection as Record<string, unknown>) : {};
         const checks = Array.isArray(inspectionRecord.checks) ? (inspectionRecord.checks as Array<Record<string, unknown>>) : [];
         const nextMap = { ...statusMap };
