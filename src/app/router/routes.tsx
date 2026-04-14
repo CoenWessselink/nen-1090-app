@@ -3,10 +3,15 @@ import { Navigate } from 'react-router-dom';
 import { AppShell } from '@/app/layout/AppShell';
 import { ProtectedRoute } from '@/app/router/ProtectedRoute';
 import { RoleGuard } from '@/app/router/RoleGuard';
-import { DashboardPage } from '@/features/dashboard/DashboardPage';
-import { Project360Page } from '@/features/projecten/Project360Page';
-import { ProjectenPage } from '@/features/projecten/ProjectenPage';
-import { CeDossierPage } from '@/features/ce-dossier/CeDossierPage';
+import { MobileDashboardPage } from '@/features/mobile/MobileDashboardPage';
+import { MobileProjectsPage } from '@/features/mobile/MobileProjectsPage';
+import { MobileProject360Page } from '@/features/mobile/MobileProject360Page';
+import { MobileWeldsPage } from '@/features/mobile/MobileWeldsPage';
+import { MobileWeldEditPage } from '@/features/mobile/MobileWeldEditPage';
+import { MobileInspectionPage } from '@/features/mobile/MobileInspectionPage';
+import { MobileDocumentsPage } from '@/features/mobile/MobileDocumentsPage';
+import { MobileCeDossierPage } from '@/features/mobile/MobileCeDossierPage';
+import { MobilePdfViewerPage } from '@/features/mobile/MobilePdfViewerPage';
 import { RapportagePage } from '@/features/rapportage/RapportagePage';
 import { InstellingenPage } from '@/features/instellingen/InstellingenPage';
 import { InspectionTemplatesPage } from '@/features/instellingen/InspectionTemplatesPage';
@@ -59,18 +64,21 @@ export const routerConfig = [
     ),
     children: [
       { index: true, element: <Navigate to="/dashboard" replace /> },
-      { path: 'dashboard', element: <DashboardPage /> },
-      { path: 'projecten', element: <ProjectenPage /> },
+      { path: 'dashboard', element: <MobileDashboardPage /> },
+      { path: 'projecten', element: <MobileProjectsPage /> },
       { path: 'projecten/:projectId', element: <Navigate to="overzicht" replace /> },
-      { path: 'projecten/:projectId/overzicht', element: <Project360Page /> },
-      { path: 'projecten/:projectId/assemblies', element: <Project360Page /> },
-      { path: 'projecten/:projectId/assemblies/:assemblyId', element: <Project360Page /> },
-      { path: 'projecten/:projectId/lassen', element: <Project360Page /> },
-      { path: 'projecten/:projectId/lassen/:weldId', element: <Project360Page /> },
-      { path: 'projecten/:projectId/documenten', element: <Project360Page /> },
-      { path: 'projecten/:projectId/historie', element: <Project360Page /> },
+      { path: 'projecten/:projectId/overzicht', element: <MobileProject360Page /> },
+      { path: 'projecten/:projectId/assemblies', element: <Navigate to="../overzicht" replace /> },
+      { path: 'projecten/:projectId/assemblies/:assemblyId', element: <Navigate to="../../overzicht" replace /> },
+      { path: 'projecten/:projectId/lassen', element: <MobileWeldsPage /> },
+      { path: 'projecten/:projectId/lassen/:weldId', element: <Navigate to="inspectie" replace /> },
+      { path: 'projecten/:projectId/lassen/:weldId/bewerken', element: <MobileWeldEditPage /> },
+      { path: 'projecten/:projectId/lassen/:weldId/inspectie', element: <MobileInspectionPage /> },
+      { path: 'projecten/:projectId/documenten', element: <MobileDocumentsPage /> },
+      { path: 'projecten/:projectId/documenten/:documentId/viewer', element: <MobilePdfViewerPage /> },
+      { path: 'projecten/:projectId/historie', element: <Navigate to="../overzicht" replace /> },
       { path: 'projecten/:projectId/lascontrole', element: <Navigate to="../lassen" replace /> },
-      { path: 'projecten/:projectId/ce-dossier', element: <CeDossierPage /> },
+      { path: 'projecten/:projectId/ce-dossier', element: <MobileCeDossierPage /> },
       { path: 'lascontrole', element: <Navigate to="/projecten" replace /> },
       { path: 'ce-dossier', element: <Navigate to="/projecten" replace /> },
       { path: 'planning', element: <Navigate to="/projecten" replace /> },
