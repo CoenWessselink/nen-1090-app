@@ -117,7 +117,8 @@ async function buildFallbackCeDossier(projectId: string | number) {
 
 function mergeCePayload(livePayload: Record<string, unknown> | null, fallbackPayload: Record<string, unknown>) {
   const live = asRecord(livePayload);
-  const mergedChecklist = asArray<Record<string, unknown>>(live.checklist).length ? asArray<Record<string, unknown>>(live.checklist) : asArray<Record<string, unknown>>(fallbackPayload.checklist);
+  const liveChecklist = asArray<Record<string, unknown>>(live.checklist).length ? asArray<Record<string, unknown>>(live.checklist) : asArray<Record<string, unknown>>(live.sections);
+  const mergedChecklist = liveChecklist.length ? liveChecklist : asArray<Record<string, unknown>>(fallbackPayload.checklist);
   const mergedMissing = asArray<Record<string, unknown>>(live.missing_items).length ? asArray<Record<string, unknown>>(live.missing_items) : asArray<Record<string, unknown>>(fallbackPayload.missing_items);
 
   return {
@@ -187,7 +188,7 @@ export async function getCeDossier(projectId: string | number) {
   let livePayload: Record<string, unknown> | null = null;
 
   try {
-    livePayload = await optionalRequest<Record<string, unknown>>([`/projects/${projectId}/ce-dossier`, `/ce_export/${projectId}`]);
+    livePayload = await optionalRequest<Record<string, unknown>>([`/projects/${projectId}/exports/preview`, `/projects/${projectId}/ce-dossier`, `/ce_export/${projectId}`]);
   } catch {
     livePayload = null;
   }
