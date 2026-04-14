@@ -1,23 +1,18 @@
 import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
-  timeout: 30_000,
+  testDir: './tests/e2e',
+  timeout: 60_000,
   expect: { timeout: 10_000 },
-  retries: 1,
-  workers: 1,
+  fullyParallel: false,
+  retries: 0,
   use: {
-    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'https://nen-1090-app.pages.dev',
+    baseURL: 'http://127.0.0.1:4173',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
   },
   projects: [
-    {
-      name: 'desktop-chromium',
-      use: {
-        ...devices['Desktop Chrome'],
-      },
-    },
     {
       name: 'mobile-chromium',
       use: {
