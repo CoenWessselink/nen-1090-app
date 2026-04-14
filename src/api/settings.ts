@@ -1,7 +1,7 @@
 import { apiRequest, listRequest, optionalRequest } from '@/api/client';
 import type { Tenant } from '@/types/domain';
 
-type MasterDataItem = Record<string, unknown>;
+export type MasterDataItem = Record<string, unknown>;
 type MasterDataListResponse =
   | MasterDataItem[]
   | {
@@ -183,4 +183,49 @@ export async function duplicateInspectionTemplate(templateId: string | number) {
   delete clone.created_at;
   delete clone.updated_at;
   return createInspectionTemplate(clone);
+}
+
+
+export function getWeldCoordinators() {
+  return listRequest<MasterDataListResponse>('/settings/weld-coordinators');
+}
+
+export function createWeldCoordinator(payload: Record<string, unknown>) {
+  return apiRequest<MasterDataItem>('/settings/weld-coordinators', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateWeldCoordinator(coordinatorId: string | number, payload: Record<string, unknown>) {
+  return apiRequest<MasterDataItem>(`/settings/weld-coordinators/${coordinatorId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function deleteWeldCoordinator(coordinatorId: string | number) {
+  return apiRequest<void>(`/settings/weld-coordinators/${coordinatorId}`, {
+    method: 'DELETE',
+  });
+}
+
+export function getCompanySettings() {
+  return apiRequest<MasterDataItem>('/settings/company');
+}
+
+export function updateCompanySettings(payload: Record<string, unknown>) {
+  return apiRequest<MasterDataItem>('/settings/company', {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function uploadCompanyLogo(file: File) {
+  const formData = new FormData();
+  formData.append('file', file);
+  return apiRequest<MasterDataItem>('/settings/company/logo', {
+    method: 'POST',
+    body: formData,
+  });
 }

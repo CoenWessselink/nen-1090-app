@@ -37,6 +37,8 @@ export type Weld = {
   weld_number?: string;
   weld_no?: string;
   welder_name?: string;
+  coordinator_id?: string;
+  coordinator_name?: string;
   process?: string;
   inspector_name?: string;
   inspection_date?: string;

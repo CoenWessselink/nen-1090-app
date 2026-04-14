@@ -9,7 +9,7 @@ import { FormField } from '@/components/forms/FormField';
 import { UploadDropzone } from '@/components/upload/UploadDropzone';
 import { useAssemblies } from '@/hooks/useAssemblies';
 import { useProjects } from '@/hooks/useProjects';
-import { useInspectionTemplates, useWelders, useWps } from '@/hooks/useSettings';
+import { useInspectionTemplates, useWeldCoordinators, useWelders, useWps } from '@/hooks/useSettings';
 import type { WeldFormValues } from '@/types/forms';
 
 const schema = z.object({
@@ -23,6 +23,7 @@ const schema = z.object({
   status: z.enum(['conform', 'defect', 'gerepareerd']),
   execution_class: z.enum(['', 'EXC1', 'EXC2', 'EXC3', 'EXC4']).optional(),
   template_id: z.string().optional(),
+  coordinator_id: z.string().optional(),
 });
 
 function optionLabel(row: Record<string, unknown>, keys: string[], fallback: string) {
@@ -53,6 +54,7 @@ export function WeldForm({
   const assemblies = useAssemblies(projectId, { limit: 200, sort: 'code' });
   const wps = useWps();
   const welders = useWelders();
+  const coordinators = useWeldCoordinators();
   const templates = useInspectionTemplates();
 
   const projectRows = useMemo(() => projects.data?.items || [], [projects.data]);
@@ -60,6 +62,7 @@ export function WeldForm({
   const wpsRows = useMemo(() => wps.data?.items || [], [wps.data]);
   const welderRows = useMemo(() => welders.data?.items || [], [welders.data]);
   const templateRows = useMemo(() => templates.data?.items || [], [templates.data]);
+  const coordinatorRows = useMemo(() => coordinators.data?.items || [], [coordinators.data]);
   const activeProject = useMemo(() => projectRows.find((project) => String(project.id) === String(projectId)), [projectRows, projectId]);
   const projectExecutionClass = String(initial?.execution_class || activeProject?.execution_class || '').trim();
   const projectTemplateId = String(initial?.template_id || activeProject?.default_template_id || '').trim();
@@ -163,6 +166,17 @@ export function WeldForm({
             {welderRows.map((row) => <option key={String(row.id)} value={String(row.name || row.code || row.id)}>{String(row.name || row.code || row.id)}</option>)}
           </Select>
         </FormField>
+        <FormField label="Lascoördinator" error={errors.coordinator_id?.message}>
+          <Select {...register('coordinator_id')}>
+            <option value="">Selecteer lascoördinator</option>
+            {coordinatorRows.map((row) => (
+              <option key={String(row.id || row.code || '')} value={String(row.id || '')}>
+                {optionLabel(row, ['name', 'code'], 'Lascoördinator')}
+              </option>
+            ))}
+          </Select>
+        </FormField>
+
         <FormField label="Proces" error={errors.process?.message}>
           <Select {...register('process')}>
             <option value="135">135 (MAG)</option>

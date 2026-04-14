@@ -37,12 +37,15 @@ const LABEL_MAP: Record<string, string> = {
   version: 'Versie',
 };
 
-function pickEditableKeys(rows: Array<Record<string, unknown>>, type: 'wps' | 'materials' | 'welders' | 'inspection-templates') {
+function pickEditableKeys(rows: Array<Record<string, unknown>>, type: 'wps' | 'materials' | 'welders' | 'weld-coordinators' | 'inspection-templates') {
   if (type === 'inspection-templates') {
     return ['name', 'exc_class', 'version', 'is_default', 'items_json'];
   }
   if (type === 'welders') {
     return ['code', 'name'];
+  }
+  if (type === 'weld-coordinators') {
+    return ['code', 'name', 'process', 'qualification', 'certificate_no', 'notes'];
   }
   const source = rows[0] || { code: '', name: '', description: '', status: '' };
   return Object.keys(source)
@@ -50,7 +53,7 @@ function pickEditableKeys(rows: Array<Record<string, unknown>>, type: 'wps' | 'm
     .slice(0, 6);
 }
 
-function defaultDraft(type: 'wps' | 'materials' | 'welders' | 'inspection-templates', rows: Array<Record<string, unknown>>) {
+function defaultDraft(type: 'wps' | 'materials' | 'welders' | 'weld-coordinators' | 'inspection-templates', rows: Array<Record<string, unknown>>) {
   const keys = pickEditableKeys(rows, type);
   const draft: Record<string, unknown> = Object.fromEntries(keys.map((key) => [key, '']));
   if (type === 'inspection-templates') {
@@ -92,7 +95,7 @@ export function MasterDataManager({
   refetch,
 }: {
   title: string;
-  type: 'wps' | 'materials' | 'welders' | 'inspection-templates';
+  type: 'wps' | 'materials' | 'welders' | 'weld-coordinators' | 'inspection-templates';
   rows: Array<Record<string, unknown>>;
   isLoading: boolean;
   isError: boolean;

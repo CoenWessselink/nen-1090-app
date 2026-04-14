@@ -15,6 +15,8 @@ export type ProjectWeldDraft = {
   assembly_id?: string;
   wps_id?: string;
   welder_name?: string;
+  coordinator_id?: string;
+  coordinator_name?: string;
   process?: string;
   location: string;
   status: string;
@@ -46,6 +48,8 @@ export type WeldFormValues = {
   assembly_id?: string;
   wps_id?: string;
   welder_name?: string;
+  coordinator_id?: string;
+  coordinator_name?: string;
   process?: string;
   location: string;
   status: 'conform' | 'defect' | 'gerepareerd';

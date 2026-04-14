@@ -14,6 +14,13 @@ import {
   getSettings,
   getWelders,
   getWps,
+  getWeldCoordinators,
+  getCompanySettings,
+  updateCompanySettings,
+  uploadCompanyLogo,
+  createWeldCoordinator,
+  updateWeldCoordinator,
+  deleteWeldCoordinator,
   updateInspectionTemplate,
   updateMaterial,
   updateWelder,
@@ -21,7 +28,7 @@ import {
 } from '@/api/settings';
 import { normalizeListResponse } from '@/utils/api';
 
-type MasterDataType = 'wps' | 'materials' | 'welders' | 'inspection-templates';
+type MasterDataType = 'wps' | 'materials' | 'welders' | 'weld-coordinators' | 'inspection-templates';
 type MasterDataRecord = Record<string, unknown>;
 type MasterDataResponse =
   | MasterDataRecord[]
@@ -66,10 +73,19 @@ export function useInspectionTemplates(enabled = true) {
   return useMasterDataQuery('settings-inspection-templates', getInspectionTemplates, enabled);
 }
 
+export function useWeldCoordinators(enabled = true) {
+  return useMasterDataQuery('settings-weld-coordinators', getWeldCoordinators, enabled);
+}
+
+export function useCompanySettings(enabled = true) {
+  return useQuery({ queryKey: ['settings-company'], queryFn: () => getCompanySettings(), enabled });
+}
+
 const createHandlers: Record<MasterDataType, (payload: MasterDataRecord) => Promise<unknown>> = {
   wps: createWps,
   materials: createMaterial,
   welders: createWelder,
+  'weld-coordinators': createWeldCoordinator,
   'inspection-templates': createInspectionTemplate,
 };
 
@@ -77,6 +93,7 @@ const updateHandlers: Record<MasterDataType, (id: string | number, payload: Mast
   wps: updateWps,
   materials: updateMaterial,
   welders: updateWelder,
+  'weld-coordinators': updateWeldCoordinator,
   'inspection-templates': updateInspectionTemplate,
 };
 
@@ -84,6 +101,7 @@ const deleteHandlers: Record<MasterDataType, (id: string | number) => Promise<un
   wps: deleteWps,
   materials: deleteMaterial,
   welders: deleteWelder,
+  'weld-coordinators': deleteWeldCoordinator,
   'inspection-templates': deleteInspectionTemplate,
 };
 
@@ -116,5 +134,22 @@ export function useDuplicateInspectionTemplate() {
   return useMutation({
     mutationFn: (id: string | number) => duplicateInspectionTemplate(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['settings-inspection-templates'] }),
+  });
+}
+
+
+export function useUpdateCompanySettings() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: Record<string, unknown>) => updateCompanySettings(payload),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['settings-company'] }),
+  });
+}
+
+export function useUploadCompanyLogo() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) => uploadCompanyLogo(file),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['settings-company'] }),
   });
 }

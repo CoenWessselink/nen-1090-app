@@ -15,9 +15,10 @@ import { LoadingState } from '@/components/feedback/LoadingState';
 import { useAuthStore } from '@/app/store/auth-store';
 import { useUiStore } from '@/app/store/ui-store';
 import { useSystemHealth } from '@/hooks/useSystemHealth';
-import { useInspectionTemplates, useMaterials, useSettings, useWelders, useWps } from '@/hooks/useSettings';
+import { useInspectionTemplates, useMaterials, useSettings, useWeldCoordinators, useWelders, useWps } from '@/hooks/useSettings';
 import { validateObjectPayload } from '@/utils/contracts';
 import { MasterDataManager } from '@/features/instellingen/components/MasterDataManager';
+import { CompanySettingsCard } from '@/features/instellingen/components/CompanySettingsCard';
 
 const tabs = [
   { value: 'organisatie', label: 'Organisatie' },
@@ -63,6 +64,7 @@ export function InstellingenPage() {
   const wps = useWps();
   const materials = useMaterials();
   const welders = useWelders();
+  const weldCoordinators = useWeldCoordinators();
   const inspectionTemplates = useInspectionTemplates();
   const [notificationEmail, setNotificationEmail] = useState(loadFrontendSettings(user?.email || '').notificationEmail);
 
@@ -109,6 +111,7 @@ export function InstellingenPage() {
             </Card>
           </div>
           <div className="content-grid-2">
+            <CompanySettingsCard />
             <Card>
               <div className="section-title-row"><h3><LockKeyhole size={18} /> Organisatievoorkeuren</h3></div>
               <div className="form-grid">
@@ -138,6 +141,7 @@ export function InstellingenPage() {
           <MasterDataManager title="WPS" type="wps" rows={wps.data?.items || []} isLoading={wps.isLoading} isError={wps.isError} refetch={wps.refetch} />
           <MasterDataManager title="Materialen" type="materials" rows={materials.data?.items || []} isLoading={materials.isLoading} isError={materials.isError} refetch={materials.refetch} />
           <MasterDataManager title="Lassers" type="welders" rows={welders.data?.items || []} isLoading={welders.isLoading} isError={welders.isError} refetch={welders.refetch} />
+          <MasterDataManager title="Lascoördinatoren" type="weld-coordinators" rows={weldCoordinators.data?.items || []} isLoading={weldCoordinators.isLoading} isError={weldCoordinators.isError} refetch={weldCoordinators.refetch} />
           <MasterDataManager title="Inspectietemplates" type="inspection-templates" rows={inspectionTemplates.data?.items || []} isLoading={inspectionTemplates.isLoading} isError={inspectionTemplates.isError} refetch={inspectionTemplates.refetch} />
         </div>
       ) : null}
@@ -192,12 +196,13 @@ export function InstellingenPage() {
 
       {tab === 'contractvalidatie' ? (
         <Card>
-          <div className="section-title-row"><h3><DatabaseZap size={18} /> Contractvalidatie</h3><Button variant="secondary" onClick={() => { backendSettings.refetch(); wps.refetch(); materials.refetch(); welders.refetch(); inspectionTemplates.refetch(); }}>Opnieuw controleren</Button></div>
+          <div className="section-title-row"><h3><DatabaseZap size={18} /> Contractvalidatie</h3><Button variant="secondary" onClick={() => { backendSettings.refetch(); wps.refetch(); materials.refetch(); welders.refetch(); weldCoordinators.refetch(); inspectionTemplates.refetch(); }}>Opnieuw controleren</Button></div>
           <div className="list-stack compact-list">
             <div className="list-row"><div><strong>/settings</strong><div className="list-subtle">Object contract</div></div><Badge tone={contractValidation.ok ? 'success' : 'danger'}>{contractValidation.ok ? 'Bevestigd' : 'Fout'}</Badge></div>
             <div className="list-row"><div><strong>/settings/wps</strong><div className="list-subtle">WPS lijstcontract</div></div><Badge tone={wps.isError ? 'danger' : 'success'}>{wps.isError ? 'Fout' : 'Actief'}</Badge></div>
             <div className="list-row"><div><strong>/settings/materials</strong><div className="list-subtle">Materialen lijstcontract</div></div><Badge tone={materials.isError ? 'danger' : 'success'}>{materials.isError ? 'Fout' : 'Actief'}</Badge></div>
             <div className="list-row"><div><strong>/settings/welders</strong><div className="list-subtle">Lassers lijstcontract</div></div><Badge tone={welders.isError ? 'danger' : 'success'}>{welders.isError ? 'Fout' : 'Actief'}</Badge></div>
+            <div className="list-row"><div><strong>/settings/weld-coordinators</strong><div className="list-subtle">Lascoördinatoren lijstcontract</div></div><Badge tone={weldCoordinators.isError ? 'danger' : 'success'}>{weldCoordinators.isError ? 'Fout' : 'Actief'}</Badge></div>
             <div className="list-row"><div><strong>/settings/inspection-templates</strong><div className="list-subtle">Inspectietemplates lijstcontract</div></div><Badge tone={inspectionTemplates.isError ? 'danger' : 'success'}>{inspectionTemplates.isError ? 'Fout' : 'Actief'}</Badge></div>
           </div>
         </Card>
