@@ -59,7 +59,7 @@ export function formatDate(value: unknown) {
   if (Number.isNaN(date.getTime())) return String(value);
   return new Intl.DateTimeFormat('nl-NL', {
     day: '2-digit',
-    month: '2-digit',
+    month: 'short',
     year: 'numeric',
   }).format(date);
 }
@@ -73,17 +73,45 @@ export function formatFileSize(value: unknown) {
 }
 
 export function normalizeChecklist(input: unknown) {
-  if (!Array.isArray(input)) return [] as Array<{ label: string; status: string }>;
+  if (!Array.isArray(input)) return [] as Array<{ label: string; status: string; group: string }>;
   return input.map((item, index) => {
     const record = item && typeof item === 'object' ? (item as Record<string, unknown>) : {};
     const label = formatValue(record.label || record.title || record.key, `Onderdeel ${index + 1}`);
     const ok = Boolean(record.ok);
     const detail = String(record.detail || record.status || '').toLowerCase();
     let status = 'Vereist';
-    if (ok) status = 'Compleet';
+    if (ok || ['compleet', 'complete', 'ok', 'ready'].includes(detail)) status = 'Compleet';
     else if (detail.includes('ontbre')) status = 'Ontbreekt';
-    return { label, status };
+    return { label, status, group: inferChecklistGroup(label) };
   });
+}
+
+function inferChecklistGroup(label: string) {
+  const value = label.toLowerCase();
+  if (value.includes('project') || value.includes('exc') || value.includes('opdracht')) return 'Project';
+  if (value.includes('las') || value.includes('wps') || value.includes('wpqr') || value.includes('materiaal')) return 'Lassen';
+  if (value.includes('inspect') || value.includes('ndt') || value.includes('controle')) return 'Inspecties';
+  if (value.includes('document') || value.includes('certific')) return 'Documenten';
+  return 'Overig';
+}
+
+export function groupChecklist(items: Array<{ label: string; status: string; group?: string }>) {
+  const groups = new Map<string, Array<{ label: string; status: string }>>();
+  items.forEach((item) => {
+    const key = item.group || inferChecklistGroup(item.label);
+    const rows = groups.get(key) || [];
+    rows.push({ label: item.label, status: item.status });
+    groups.set(key, rows);
+  });
+  return Array.from(groups.entries()).map(([group, rows]) => ({ group, rows }));
+}
+
+export function summarizeChecklist(items: Array<{ label: string; status: string }>) {
+  const total = items.length;
+  const complete = items.filter((item) => item.status === 'Compleet').length;
+  const missing = items.filter((item) => item.status === 'Ontbreekt').length;
+  const required = items.filter((item) => item.status === 'Vereist').length;
+  return { total, complete, missing, required };
 }
 
 export function documentPreviewUrl(projectId: string | number, document: CeDocument | null | undefined) {
@@ -101,7 +129,27 @@ export function firstPdfDocument(documents: CeDocument[]) {
   }) || null;
 }
 
-
 export function apiProjectPdfUrl(projectId: string | number) {
   return `/api/v1/projects/${projectId}/ce-dossier/pdf`;
+}
+
+export function normalizeApiError(error: unknown, fallback = 'Opslaan mislukt. Probeer het opnieuw.') {
+  const message = String((error as { message?: unknown })?.message || '').toLowerCase();
+  if (!message) return fallback;
+  if (message.includes('bad request') || message.includes('422') || message.includes('400')) {
+    return 'Opslaan mislukt. Controleer de ingevulde gegevens.';
+  }
+  if (message.includes('network') || message.includes('fetch')) {
+    return 'Netwerkfout. Controleer je verbinding en probeer opnieuw.';
+  }
+  if (message.includes('403') || message.includes('forbidden')) {
+    return 'Je hebt geen rechten voor deze actie.';
+  }
+  if (message.includes('404')) {
+    return 'De gevraagde actie is niet beschikbaar in deze omgeving.';
+  }
+  if (message.includes('500') || message.includes('server')) {
+    return 'Serverfout. Probeer het later opnieuw.';
+  }
+  return fallback;
 }

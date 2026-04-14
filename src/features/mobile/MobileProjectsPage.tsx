@@ -3,7 +3,7 @@ import { Plus, Search, SlidersHorizontal } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getProjects } from '@/api/projects';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
-import { formatValue, projectCode, projectTitle } from '@/features/mobile/mobile-utils';
+import { formatValue, normalizeApiError, projectCode, projectExecutionClass, projectTitle } from '@/features/mobile/mobile-utils';
 import type { Project } from '@/types/domain';
 
 export function MobileProjectsPage() {
@@ -24,7 +24,7 @@ export function MobileProjectsPage() {
       })
       .catch((err) => {
         if (!active) return;
-        setError(err instanceof Error ? err.message : 'Projecten konden niet worden geladen.');
+        setError(normalizeApiError(err, 'Projecten konden niet worden geladen.'));
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -50,27 +50,29 @@ export function MobileProjectsPage() {
         </button>
       }
     >
-      <div className="mobile-toolbar-card">
+      <div className="mobile-toolbar-card compact-project-toolbar">
         <label className="mobile-search-shell">
           <Search size={16} />
-          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Zoek project" />
+          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search" />
         </label>
-        <button type="button" className="mobile-secondary-button" onClick={() => navigate('/projecten/nieuw')}>
-          <Plus size={16} /> Nieuw project
-        </button>
       </div>
       {loading ? <div className="mobile-state-card">Projecten laden…</div> : null}
-      {error ? <div className="mobile-state-card mobile-state-card-error">{error}</div> : null}
+      {error ? <div className="mobile-inline-alert is-error">{error}</div> : null}
       {!loading && !error ? (
-        <div className="mobile-list-stack">
+        <div className="mobile-list-stack compact-project-list">
           {filtered.map((project) => (
-            <button key={String(project.id)} type="button" className="mobile-list-card" onClick={() => navigate(`/projecten/${project.id}/overzicht`)}>
-              <div className="mobile-list-card-head">
-                <strong>{projectTitle(project)}</strong>
+            <button key={String(project.id)} type="button" className="mobile-list-card compact-project-card" onClick={() => navigate(`/projecten/${project.id}/overzicht`)}>
+              <div className="mobile-list-card-head compact-project-card-head">
+                <div>
+                  <strong>{projectTitle(project)}</strong>
+                  <span className="mobile-list-card-subtitle">{projectCode(project)}</span>
+                </div>
                 <span className="mobile-list-card-link">Filters <SlidersHorizontal size={14} /></span>
               </div>
-              <span className="mobile-list-card-subtitle">{projectCode(project)}</span>
-              <span className="mobile-list-card-meta">{formatValue(project.client_name || project.opdrachtgever, 'Geen opdrachtgever')}</span>
+              <div className="compact-project-meta">{formatValue(project.client_name || project.opdrachtgever, 'Geen opdrachtgever')}</div>
+              <div className="compact-project-bottom">
+                <span className="mobile-pill mobile-pill-neutral">{projectExecutionClass(project)}</span>
+              </div>
             </button>
           ))}
           {!filtered.length ? (

@@ -4,14 +4,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { createPdfExport, getCeDossier } from '@/api/ce';
 import { getProjectDocuments } from '@/api/documents';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
-import { firstPdfDocument, formatValue, normalizeChecklist } from '@/features/mobile/mobile-utils';
+import { firstPdfDocument, formatValue, groupChecklist, normalizeApiError, normalizeChecklist, summarizeChecklist } from '@/features/mobile/mobile-utils';
 import type { CeDocument } from '@/types/domain';
-
-function toChecklistGroups(checklist: Array<{ label: string; status: string }>) {
-  const primary = checklist.slice(0, 4);
-  const secondary = checklist.slice(4);
-  return { primary, secondary };
-}
 
 export function MobileCeDossierPage() {
   const navigate = useNavigate();
@@ -41,7 +35,7 @@ export function MobileCeDossierPage() {
       })
       .catch((err) => {
         if (!active) return;
-        setError(err instanceof Error ? err.message : 'CE-dossier kon niet worden geladen.');
+        setError(normalizeApiError(err, 'CE-dossier kon niet worden geladen.'));
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -52,11 +46,11 @@ export function MobileCeDossierPage() {
   }, [projectId]);
 
   const checklist = useMemo(() => normalizeChecklist(payload?.checklist || payload?.sections), [payload]);
-  const score = Math.max(0, Math.min(100, Number(payload?.score || 0)));
+  const checklistGroups = useMemo(() => groupChecklist(checklist), [checklist]);
+  const summary = useMemo(() => summarizeChecklist(checklist), [checklist]);
+  const score = Math.max(0, Math.min(100, Number(payload?.score || (summary.total ? Math.round((summary.complete / summary.total) * 100) : 0))));
   const status = formatValue(payload?.status, score >= 80 ? 'Voldoende' : 'In behandeling');
   const pdf = firstPdfDocument(documents);
-  const { primary, secondary } = toChecklistGroups(checklist);
-  const completed = checklist.filter((item) => item.status === 'Compleet').length;
 
   async function handleCreatePdf() {
     try {
@@ -70,7 +64,7 @@ export function MobileCeDossierPage() {
       }
       navigate(`/projecten/${projectId}/pdf-viewer`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'PDF kon niet worden aangemaakt.');
+      setError(normalizeApiError(err, 'PDF kon niet worden aangemaakt.'));
     } finally {
       setExporting(false);
     }
@@ -79,19 +73,26 @@ export function MobileCeDossierPage() {
   return (
     <MobilePageScaffold title="CE-Dossier" backTo={`/projecten/${projectId}/overzicht`}>
       {loading ? <div className="mobile-state-card">CE-dossier laden…</div> : null}
-      {error ? <div className="mobile-state-card mobile-state-card-error">{error}</div> : null}
+      {error ? <div className="mobile-inline-alert is-error">{error}</div> : null}
       {!loading ? (
         <div className="mobile-list-stack">
           <div className="mobile-progress-card">
             <div className="mobile-progress-head">
               <div>
-                <strong>Dossier Progressie</strong>
+                <strong>Dossier progressie</strong>
                 <span>{status}</span>
               </div>
-              <div className="mobile-progress-value">{completed}/{checklist.length || 10}</div>
+              <div className="mobile-progress-value">{summary.complete}/{summary.total || 10}</div>
             </div>
             <div className="mobile-progress-bar"><span style={{ width: `${Math.max(score, 6)}%` }} /></div>
             <small>{score}% compleet</small>
+          </div>
+
+          <div className="mobile-summary-grid">
+            <div className="mobile-summary-card"><span>Compleet</span><strong>{summary.complete}</strong></div>
+            <div className="mobile-summary-card"><span>Vereist</span><strong>{summary.required}</strong></div>
+            <div className="mobile-summary-card"><span>Ontbreekt</span><strong>{summary.missing}</strong></div>
+            <div className="mobile-summary-card"><span>PDF</span><strong>{pdf ? 'Ja' : 'Nee'}</strong></div>
           </div>
 
           <div className="mobile-detail-card">
@@ -100,27 +101,19 @@ export function MobileCeDossierPage() {
             <div className="mobile-field-row"><span>Documenten gekoppeld</span><strong>{formatValue(payload?.attachments_count || documents.length, '0')}</strong></div>
           </div>
 
-          <div className="mobile-checklist-card">
-            {primary.map((item) => (
-              <div key={item.label} className="mobile-checklist-row">
-                <strong>{item.label}</strong>
-                <span className={`mobile-checklist-status status-${item.status.toLowerCase().replace(/\s+/g, '-')}`}>{item.status}</span>
-              </div>
-            ))}
-          </div>
-
-          {secondary.length ? (
-            <div className="mobile-checklist-card">
-              {secondary.map((item) => (
-                <div key={item.label} className="mobile-checklist-row">
+          {checklistGroups.map((group) => (
+            <div key={group.group} className="mobile-checklist-card grouped-checklist-card">
+              <div className="mobile-section-kicker">{group.group}</div>
+              {group.rows.map((item) => (
+                <div key={`${group.group}-${item.label}`} className="mobile-checklist-row">
                   <strong>{item.label}</strong>
                   <span className={`mobile-checklist-status status-${item.status.toLowerCase().replace(/\s+/g, '-')}`}>{item.status}</span>
                 </div>
               ))}
             </div>
-          ) : null}
+          ))}
 
-          <div className="mobile-inline-actions">
+          <div className="mobile-inline-actions stack-on-mobile">
             <button type="button" className="mobile-primary-button" onClick={() => navigate(pdf ? `/projecten/${projectId}/documenten/${pdf.id}/viewer` : `/projecten/${projectId}/pdf-viewer`)}>
               <FileText size={16} /> Open PDF viewer
             </button>
