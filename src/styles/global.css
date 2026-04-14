@@ -1115,3 +1115,50 @@ pre { margin: 0; white-space: pre-wrap; word-break: break-word; }
     padding-top: 0;
   }
 }
+
+
+.mobile-progress-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.mobile-report-highlight {
+  cursor: pointer;
+}
+
+.mobile-report-cta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.mobile-report-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: #2d5fb0;
+  color: #fff;
+  display: grid;
+  place-items: center;
+}
+
+.mobile-search-shell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid #d9e1ef;
+  border-radius: 20px;
+  background: #fff;
+}
+
+.mobile-search-shell input {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: #1f2a44;
+  outline: 0;
+}

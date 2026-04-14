@@ -100,3 +100,8 @@ export function firstPdfDocument(documents: CeDocument[]) {
     return mime.includes('pdf') || filename.endsWith('.pdf');
   }) || null;
 }
+
+
+export function apiProjectPdfUrl(projectId: string | number) {
+  return `/api/v1/projects/${projectId}/ce-dossier/pdf`;
+}

@@ -14,7 +14,7 @@ import { MobileInspectionPage } from '@/features/mobile/MobileInspectionPage';
 import { MobileDocumentsPage } from '@/features/mobile/MobileDocumentsPage';
 import { MobileCeDossierPage } from '@/features/mobile/MobileCeDossierPage';
 import { MobilePdfViewerPage } from '@/features/mobile/MobilePdfViewerPage';
-import { RapportagePage } from '@/features/rapportage/RapportagePage';
+import { MobileRapportagePage } from '@/features/mobile/MobileRapportagePage';
 import { InstellingenPage } from '@/features/instellingen/InstellingenPage';
 import { InspectionTemplatesPage } from '@/features/instellingen/InspectionTemplatesPage';
 import { SuperadminPage } from '@/features/superadmin/SuperadminPage';
@@ -83,10 +83,11 @@ export const routerConfig = [
       { path: 'projecten/:projectId/historie', element: <Navigate to="../overzicht" replace /> },
       { path: 'projecten/:projectId/lascontrole', element: <Navigate to="../lassen" replace /> },
       { path: 'projecten/:projectId/ce-dossier', element: <MobileCeDossierPage /> },
+      { path: 'projecten/:projectId/pdf-viewer', element: <MobilePdfViewerPage /> },
       { path: 'lascontrole', element: <Navigate to="/projecten" replace /> },
       { path: 'ce-dossier', element: <Navigate to="/projecten" replace /> },
       { path: 'planning', element: <Navigate to="/projecten" replace /> },
-      { path: 'rapportage', element: <RapportagePage /> },
+      { path: 'rapportage', element: <MobileRapportagePage /> },
       { path: 'billing', element: <BillingPage /> },
       { path: 'instellingen', element: <InstellingenPage /> },
       { path: 'instellingen/templates', element: <InspectionTemplatesPage /> },
