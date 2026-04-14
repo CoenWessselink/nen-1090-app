@@ -244,7 +244,10 @@ export async function approveAllProject(projectId: string | number) {
 export async function applyProjectInspectionTemplate(projectId: string | number, templateId?: string | null) {
   if (!templateId) return { ok: true, skipped: true, projectId };
   return (
-    (await optionalRequest<Record<string, unknown>>([`/projects/${projectId}/apply-inspection-template`], {
+    (await optionalRequest<Record<string, unknown>>([
+      `/projects/${projectId}/inspection-template/apply`,
+      `/projects/${projectId}/apply-inspection-template`,
+    ], {
       method: 'POST',
       body: JSON.stringify({ template_id: templateId, mode: 'merge' }),
     })) || { ok: true, skipped: true, projectId, templateId }

@@ -166,7 +166,10 @@ export function updateWeld(projectId: string | number, weldId: string | number, 
   const safeWeldId = requireId(weldId, 'weldId');
   const safeProjectId = requireId(projectId, 'projectId');
   const body = sanitizeWeldPayload(payload);
-  return apiRequest(`/projects/${safeProjectId}/welds/${safeWeldId}`, { method: 'PUT', body: JSON.stringify(body) });
+  return tryMethods([
+    `/projects/${safeProjectId}/welds/${safeWeldId}`,
+    `/welds/${safeWeldId}`,
+  ], ['PATCH', 'PUT'], body);
 }
 
 export function patchWeldStatus(projectId: string | number, weldId: string | number, status: string) {
