@@ -3,16 +3,30 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { getInspectionForWeld, upsertInspectionForWeld } from '@/api/inspections';
 import { getWeld } from '@/api/welds';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
-import { projectWeldsPath, weldNumber } from '@/features/mobile/mobile-utils';
+import { weldNumber } from '@/features/mobile/mobile-utils';
 import type { Weld } from '@/types/domain';
 
+type UiStatus = 'Conform' | 'In controle' | 'Niet conform';
 const inspectionFields = ['Positie 1', 'Positie 2', 'Visuele Inspectie'];
+
+function toBackendStatus(value: UiStatus) {
+  if (value === 'Conform') return 'conform';
+  if (value === 'Niet conform') return 'defect';
+  return 'gerepareerd';
+}
+
+function toUiStatus(value: unknown): UiStatus {
+  const raw = String(value || '').toLowerCase();
+  if (['conform', 'approved', 'ok'].includes(raw)) return 'Conform';
+  if (['defect', 'rejected', 'niet conform', 'non_conform'].includes(raw)) return 'Niet conform';
+  return 'In controle';
+}
 
 export function MobileInspectionPage() {
   const navigate = useNavigate();
   const { projectId = '', weldId = '' } = useParams();
   const [weldLabel, setWeldLabel] = useState('Las');
-  const [statusMap, setStatusMap] = useState<Record<string, string>>({
+  const [statusMap, setStatusMap] = useState<Record<string, UiStatus>>({
     'Positie 1': 'Niet conform',
     'Positie 2': 'Niet conform',
     'Visuele Inspectie': 'Niet conform',
@@ -22,37 +36,33 @@ export function MobileInspectionPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  async function loadInspection() {
-    setLoading(true);
-    try {
-      const [weld, inspection] = await Promise.all([
-        getWeld(projectId, weldId).catch(() => null),
-        getInspectionForWeld(projectId, weldId).catch(() => null),
-      ]);
-      if (weld) setWeldLabel(weldNumber(weld as Weld));
-      const inspectionRecord = inspection && typeof inspection === 'object' ? (inspection as Record<string, unknown>) : {};
-      const checks = Array.isArray(inspectionRecord.checks) ? (inspectionRecord.checks as Array<Record<string, unknown>>) : [];
-      const nextMap: Record<string, string> = {
-        'Positie 1': 'Niet conform',
-        'Positie 2': 'Niet conform',
-        'Visuele Inspectie': 'Niet conform',
-      };
-      inspectionFields.forEach((label) => {
-        const found = checks.find((item) => String(item.group_key || item.label || item.criterion_key || '').toLowerCase() === label.toLowerCase());
-        if (found?.status) nextMap[label] = String(found.status);
-      });
-      setStatusMap(nextMap);
-      setRemarks(String(inspectionRecord.remarks || inspectionRecord.notes || ''));
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Inspectie kon niet worden geladen.');
-    } finally {
-      setLoading(false);
-    }
-  }
-
   useEffect(() => {
-    void loadInspection();
+    let active = true;
+    Promise.all([getWeld(projectId, weldId).catch(() => null), getInspectionForWeld(projectId, weldId).catch(() => null)])
+      .then(([weld, inspection]) => {
+        if (!active) return;
+        if (weld) setWeldLabel(weldNumber(weld as Weld));
+        const inspectionRecord = inspection && typeof inspection === 'object' ? (inspection as Record<string, unknown>) : {};
+        const checks = Array.isArray(inspectionRecord.checks) ? (inspectionRecord.checks as Array<Record<string, unknown>>) : [];
+        const nextMap = { ...statusMap };
+        inspectionFields.forEach((label) => {
+          const found = checks.find((item) => String(item.group_key || item.label || item.criterion_key || '').toLowerCase() === label.toLowerCase());
+          if (found) nextMap[label] = toUiStatus(found.status);
+        });
+        setStatusMap(nextMap);
+        setRemarks(String(inspectionRecord.remarks || inspectionRecord.notes || ''));
+      })
+      .catch((err) => {
+        if (!active) return;
+        setError(err instanceof Error ? err.message : 'Inspectie kon niet worden geladen.');
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
   }, [projectId, weldId]);
 
   const checks = useMemo(
@@ -60,16 +70,32 @@ export function MobileInspectionPage() {
     [statusMap],
   );
 
+  const overallStatus = useMemo(() => {
+    const values = Object.values(statusMap);
+    if (values.some((value) => value === 'Niet conform')) return 'defect';
+    if (values.every((value) => value === 'Conform')) return 'conform';
+    return 'gerepareerd';
+  }, [statusMap]);
+
   async function handleSave() {
     setSaving(true);
     setError(null);
     try {
       await upsertInspectionForWeld(projectId, weldId, {
-        overall_status: 'in controle',
+        inspector: 'Mobiel',
+        inspected_at: new Date().toISOString(),
+        overall_status: overallStatus,
         remarks,
-        checks: checks.map((item) => ({ group_key: item.label, label: item.label, status: item.status })),
+        checks: checks.map((item, index) => ({
+          group_key: `groep-${index + 1}`,
+          criterion_key: item.label,
+          applicable: true,
+          approved: item.status === 'Conform',
+          status: toBackendStatus(item.status),
+          comment: remarks || null,
+        })),
       });
-      navigate(projectWeldsPath(projectId));
+      navigate(`/projecten/${projectId}/lassen`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Inspectie opslaan mislukt.');
     } finally {
@@ -78,29 +104,23 @@ export function MobileInspectionPage() {
   }
 
   return (
-    <MobilePageScaffold title={weldLabel} backTo={projectWeldsPath(projectId)} testId="mobile-inspection-page">
-      {loading ? <div className="mobile-state-card" data-testid="mobile-inspection-loading">Inspectie laden…</div> : null}
-      {error ? (
-        <div className="mobile-state-card mobile-state-card-error" data-testid="mobile-inspection-error">
-          <strong>Inspectie niet beschikbaar</strong>
-          <span>{error}</span>
-          {!saving ? <button type="button" className="mobile-secondary-button" onClick={() => void loadInspection()}>Opnieuw proberen</button> : null}
-        </div>
-      ) : null}
+    <MobilePageScaffold title={weldLabel} backTo={`/projecten/${projectId}/lassen`}>
+      {loading ? <div className="mobile-state-card">Inspectie laden…</div> : null}
+      {error ? <div className="mobile-state-card mobile-state-card-error">{error}</div> : null}
       {!loading ? (
-        <div className="mobile-form-card">
+        <div className="mobile-form-card" data-testid="mobile-inspection-form">
           <div className="mobile-inline-actions">
-            <div className="mobile-pill mobile-pill-info">In controle</div>
-            <button type="button" className="mobile-secondary-button" onClick={() => navigate(projectWeldsPath(projectId))}>Annuleren</button>
+            <div className="mobile-pill mobile-pill-info">{overallStatus === 'conform' ? 'Conform' : overallStatus === 'defect' ? 'Niet conform' : 'In controle'}</div>
+            <button type="button" className="mobile-secondary-button" onClick={() => navigate(`/projecten/${projectId}/lassen`)}>Annuleren</button>
           </div>
           {checks.map((item) => (
-            <div key={item.label} className="mobile-status-row" data-testid={`mobile-inspection-row-${item.label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}>
+            <div key={item.label} className="mobile-status-row">
               <div>
                 <strong>{item.label}</strong>
                 <small>{item.status}</small>
               </div>
               <div className="mobile-segmented">
-                {['Conform', 'In controle', 'Niet conform'].map((option) => (
+                {(['Conform', 'In controle', 'Niet conform'] as UiStatus[]).map((option) => (
                   <button
                     key={option}
                     type="button"
@@ -115,7 +135,7 @@ export function MobileInspectionPage() {
             </div>
           ))}
           <label className="mobile-form-field"><span>Opmerking</span><textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} rows={3} /></label>
-          <button type="button" className="mobile-primary-button" onClick={handleSave} disabled={saving} data-testid="mobile-inspection-save-button">{saving ? 'Opslaan…' : 'Opslaan inspectie'}</button>
+          <button type="button" className="mobile-primary-button" onClick={handleSave} disabled={saving}>{saving ? 'Opslaan…' : 'Opslaan inspectie'}</button>
         </div>
       ) : null}
     </MobilePageScaffold>

@@ -12,21 +12,25 @@ export function MobileDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  async function loadSummary() {
-    setLoading(true);
-    try {
-      const result = await getDashboardSummary();
-      setSummary(result || {});
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Dashboard kon niet worden geladen.');
-    } finally {
-      setLoading(false);
-    }
-  }
-
   useEffect(() => {
-    void loadSummary();
+    let active = true;
+    setLoading(true);
+    getDashboardSummary()
+      .then((result) => {
+        if (!active) return;
+        setSummary(result || {});
+        setError(null);
+      })
+      .catch((err) => {
+        if (!active) return;
+        setError(err instanceof Error ? err.message : 'Dashboard kon niet worden geladen.');
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
   const cards = useMemo(
@@ -40,19 +44,11 @@ export function MobileDashboardPage() {
   );
 
   return (
-    <MobilePageScaffold title="Dashboard" subtitle="Mobiel overzicht" testId="mobile-dashboard-page">
-      {loading ? <div className="mobile-state-card" data-testid="mobile-dashboard-loading">Dashboard laden…</div> : null}
-      {error ? (
-        <div className="mobile-state-card mobile-state-card-error" data-testid="mobile-dashboard-error">
-          <strong>Dashboard niet beschikbaar</strong>
-          <span>{error}</span>
-          <button type="button" className="mobile-secondary-button" onClick={() => void loadSummary()}>
-            Opnieuw proberen
-          </button>
-        </div>
-      ) : null}
+    <MobilePageScaffold title="Dashboard" subtitle="Mobiel overzicht">
+      {loading ? <div className="mobile-state-card">Dashboard laden…</div> : null}
+      {error ? <div className="mobile-state-card mobile-state-card-error">{error}</div> : null}
       {!loading && !error ? (
-        <div className="mobile-kpi-grid" data-testid="mobile-dashboard-grid">
+        <div className="mobile-kpi-grid">
           {cards.map((card) => {
             const Icon = card.icon;
             return (
@@ -61,7 +57,6 @@ export function MobileDashboardPage() {
                 type="button"
                 className={`mobile-kpi-card mobile-kpi-card-${card.tone}`}
                 onClick={() => navigate('/projecten')}
-                data-testid={`mobile-kpi-${card.label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
               >
                 <div className="mobile-kpi-top"><Icon size={18} /><span>{card.label}</span></div>
                 <strong>{card.value}</strong>

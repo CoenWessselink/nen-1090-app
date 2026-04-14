@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { getCeDossier } from '@/api/ce';
 import { getProjectDocuments } from '@/api/documents';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
-import { firstPdfDocument, normalizeChecklist, projectOverviewPath } from '@/features/mobile/mobile-utils';
+import { firstPdfDocument, normalizeChecklist } from '@/features/mobile/mobile-utils';
 import type { CeDocument } from '@/types/domain';
 
 export function MobileCeDossierPage() {
@@ -14,25 +14,26 @@ export function MobileCeDossierPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  async function loadDossier() {
-    setLoading(true);
-    try {
-      const [dossier, docs] = await Promise.all([
-        getCeDossier(projectId),
-        getProjectDocuments(projectId, { page: 1, limit: 50 }).catch(() => ({ items: [] as CeDocument[] })),
-      ]);
-      setPayload((dossier || {}) as Record<string, unknown>);
-      setDocuments(Array.isArray(docs?.items) ? docs.items : []);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'CE-dossier kon niet worden geladen.');
-    } finally {
-      setLoading(false);
-    }
-  }
-
   useEffect(() => {
-    void loadDossier();
+    let active = true;
+    setLoading(true);
+    Promise.all([getCeDossier(projectId), getProjectDocuments(projectId, { page: 1, limit: 50 }).catch(() => ({ items: [] as CeDocument[] }))])
+      .then(([dossier, docs]) => {
+        if (!active) return;
+        setPayload((dossier || {}) as Record<string, unknown>);
+        setDocuments(Array.isArray(docs?.items) ? docs.items : []);
+        setError(null);
+      })
+      .catch((err) => {
+        if (!active) return;
+        setError(err instanceof Error ? err.message : 'CE-dossier kon niet worden geladen.');
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, [projectId]);
 
   const checklist = useMemo(() => normalizeChecklist(payload?.checklist || payload?.sections), [payload]);
@@ -40,19 +41,11 @@ export function MobileCeDossierPage() {
   const pdf = firstPdfDocument(documents);
 
   return (
-    <MobilePageScaffold title="CE-Dossier" backTo={projectOverviewPath(projectId)} testId="mobile-ce-page">
-      {loading ? <div className="mobile-state-card" data-testid="mobile-ce-loading">CE-dossier laden…</div> : null}
-      {error ? (
-        <div className="mobile-state-card mobile-state-card-error" data-testid="mobile-ce-error">
-          <strong>CE-dossier niet beschikbaar</strong>
-          <span>{error}</span>
-          <button type="button" className="mobile-secondary-button" onClick={() => void loadDossier()}>
-            Opnieuw proberen
-          </button>
-        </div>
-      ) : null}
+    <MobilePageScaffold title="CE-Dossier" backTo={`/projecten/${projectId}/overzicht`}>
+      {loading ? <div className="mobile-state-card">CE-dossier laden…</div> : null}
+      {error ? <div className="mobile-state-card mobile-state-card-error">{error}</div> : null}
       {!loading ? (
-        <div className="mobile-list-stack" data-testid="mobile-ce-content">
+        <div className="mobile-list-stack">
           <div className="mobile-progress-card">
             <div>
               <strong>Dossier Progressie</strong>
@@ -71,7 +64,7 @@ export function MobileCeDossierPage() {
             ))}
             {!checklist.length ? <div className="mobile-state-card">Nog geen CE-checklist beschikbaar.</div> : null}
           </div>
-          <button type="button" className="mobile-primary-button" onClick={() => (pdf ? navigate(`/projecten/${projectId}/documenten/${pdf.id}/viewer`) : navigate(`/projecten/${projectId}/documenten`))} data-testid="mobile-ce-open-pdf">
+          <button type="button" className="mobile-primary-button" onClick={() => pdf ? navigate(`/projecten/${projectId}/documenten/${pdf.id}/viewer`) : navigate(`/projecten/${projectId}/documenten`)}>
             Open PDF viewer
           </button>
         </div>

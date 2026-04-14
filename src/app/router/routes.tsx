@@ -6,7 +6,9 @@ import { RoleGuard } from '@/app/router/RoleGuard';
 import { MobileDashboardPage } from '@/features/mobile/MobileDashboardPage';
 import { MobileProjectsPage } from '@/features/mobile/MobileProjectsPage';
 import { MobileProject360Page } from '@/features/mobile/MobileProject360Page';
+import { MobileProjectCreatePage } from '@/features/mobile/MobileProjectCreatePage';
 import { MobileWeldsPage } from '@/features/mobile/MobileWeldsPage';
+import { MobileWeldCreatePage } from '@/features/mobile/MobileWeldCreatePage';
 import { MobileWeldEditPage } from '@/features/mobile/MobileWeldEditPage';
 import { MobileInspectionPage } from '@/features/mobile/MobileInspectionPage';
 import { MobileDocumentsPage } from '@/features/mobile/MobileDocumentsPage';
@@ -66,11 +68,13 @@ export const routerConfig = [
       { index: true, element: <Navigate to="/dashboard" replace /> },
       { path: 'dashboard', element: <MobileDashboardPage /> },
       { path: 'projecten', element: <MobileProjectsPage /> },
+      { path: 'projecten/nieuw', element: <MobileProjectCreatePage /> },
       { path: 'projecten/:projectId', element: <Navigate to="overzicht" replace /> },
       { path: 'projecten/:projectId/overzicht', element: <MobileProject360Page /> },
       { path: 'projecten/:projectId/assemblies', element: <Navigate to="../overzicht" replace /> },
       { path: 'projecten/:projectId/assemblies/:assemblyId', element: <Navigate to="../../overzicht" replace /> },
       { path: 'projecten/:projectId/lassen', element: <MobileWeldsPage /> },
+      { path: 'projecten/:projectId/lassen/nieuw', element: <MobileWeldCreatePage /> },
       { path: 'projecten/:projectId/lassen/:weldId', element: <Navigate to="inspectie" replace /> },
       { path: 'projecten/:projectId/lassen/:weldId/bewerken', element: <MobileWeldEditPage /> },
       { path: 'projecten/:projectId/lassen/:weldId/inspectie', element: <MobileInspectionPage /> },

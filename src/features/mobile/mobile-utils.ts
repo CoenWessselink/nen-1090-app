@@ -23,14 +23,6 @@ export function projectExecutionClass(project: Project | null | undefined) {
   return String(value).toUpperCase().startsWith('EXC') ? String(value).toUpperCase() : `EXC ${value}`;
 }
 
-export function projectOverviewPath(projectId: string | number) {
-  return `/projecten/${projectId}/overzicht`;
-}
-
-export function projectWeldsPath(projectId: string | number) {
-  return `/projecten/${projectId}/lassen`;
-}
-
 export function weldNumber(weld: Weld | null | undefined) {
   return formatValue(weld?.weld_no || weld?.weld_number || weld?.id, 'Onbekende las');
 }
@@ -40,10 +32,10 @@ export function weldSubtitle(weld: Weld | null | undefined) {
 }
 
 export function weldStatusLabel(value: unknown) {
-  const raw = String(value || '').trim().toLowerCase().replace(/_/g, ' ');
+  const raw = String(value || '').trim().toLowerCase();
   if (['goedgekeurd', 'approved', 'conform', 'ok'].includes(raw)) return 'Conform';
   if (['gerepareerd', 'repaired', 'in controle', 'controle', 'pending'].includes(raw)) return 'In controle';
-  if (['afgekeurd', 'defect', 'rejected', 'niet conform', 'non conform'].includes(raw)) return 'Niet conform';
+  if (['afgekeurd', 'defect', 'rejected', 'niet conform', 'non_conform'].includes(raw)) return 'Niet conform';
   return raw ? raw.charAt(0).toUpperCase() + raw.slice(1) : 'Open';
 }
 
@@ -57,11 +49,7 @@ export function weldStatusTone(value: unknown) {
 
 export function latestInspectionDate(weld: Weld | null | undefined, inspection: Inspection | null | undefined) {
   return formatDate(
-    (inspection as Record<string, unknown> | null | undefined)?.updated_at ||
-      (inspection as Record<string, unknown> | null | undefined)?.inspection_date ||
-      weld?.inspection_date ||
-      weld?.updated_at ||
-      weld?.created_at,
+    inspection?.updated_at || inspection?.inspection_date || weld?.inspection_date || weld?.updated_at || weld?.created_at,
   );
 }
 
@@ -89,8 +77,8 @@ export function normalizeChecklist(input: unknown) {
   return input.map((item, index) => {
     const record = item && typeof item === 'object' ? (item as Record<string, unknown>) : {};
     const label = formatValue(record.label || record.title || record.key, `Onderdeel ${index + 1}`);
+    const ok = Boolean(record.ok);
     const detail = String(record.detail || record.status || '').toLowerCase();
-    const ok = Boolean(record.ok) || detail.includes('compleet') || detail.includes('complete');
     let status = 'Vereist';
     if (ok) status = 'Compleet';
     else if (detail.includes('ontbre')) status = 'Ontbreekt';
@@ -106,11 +94,9 @@ export function documentPreviewUrl(projectId: string | number, document: CeDocum
 }
 
 export function firstPdfDocument(documents: CeDocument[]) {
-  return (
-    documents.find((document) => {
-      const mime = String(document.mime_type || '').toLowerCase();
-      const filename = String(document.filename || document.uploaded_filename || '').toLowerCase();
-      return mime.includes('pdf') || filename.endsWith('.pdf');
-    }) || null
-  );
+  return documents.find((document) => {
+    const mime = String(document.mime_type || '').toLowerCase();
+    const filename = String(document.filename || document.uploaded_filename || '').toLowerCase();
+    return mime.includes('pdf') || filename.endsWith('.pdf');
+  }) || null;
 }

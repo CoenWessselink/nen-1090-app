@@ -9,16 +9,15 @@ type Props = {
   children: ReactNode;
   backTo?: string | null;
   rightSlot?: ReactNode;
-  testId?: string;
 };
 
-export function MobilePageScaffold({ title, subtitle, children, backTo = null, rightSlot, testId }: Props) {
+export function MobilePageScaffold({ title, subtitle, children, backTo = null, rightSlot }: Props) {
   const navigate = useNavigate();
   const toggleSidebar = useUiStore((state) => state.toggleSidebar);
   const toggleNotificationCenter = useUiStore((state) => state.toggleNotificationCenter);
 
   return (
-    <div className="mobile-page" data-testid={testId || 'mobile-page'}>
+    <div className="mobile-page">
       <header className="mobile-page-header">
         <div className="mobile-page-header-row">
           {backTo ? (
