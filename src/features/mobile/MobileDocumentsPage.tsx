@@ -3,7 +3,7 @@ import { Download, Eye, Upload } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { createProjectDocument, downloadDocument, getProjectDocuments } from '@/api/documents';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
-import { firstPdfDocument, formatFileSize, formatValue } from '@/features/mobile/mobile-utils';
+import { firstPdfDocument, formatFileSize, projectOverviewPath } from '@/features/mobile/mobile-utils';
 import type { CeDocument } from '@/types/domain';
 
 export function MobileDocumentsPage() {
@@ -75,37 +75,35 @@ export function MobileDocumentsPage() {
   }
 
   return (
-    <MobilePageScaffold title="Documents" backTo={`/projecten/${projectId}/overzicht`}>
+    <MobilePageScaffold title="Documents" backTo={projectOverviewPath(projectId)} testId="mobile-documents-page">
       <div className="mobile-toolbar-card">
         <input ref={inputRef} type="file" hidden onChange={handleUpload} />
         <button type="button" className="mobile-primary-button" onClick={() => inputRef.current?.click()} disabled={uploading}>
           <Upload size={16} /> {uploading ? 'Uploaden…' : 'Upload Document'}
         </button>
       </div>
-      {loading ? <div className="mobile-state-card">Documenten laden…</div> : null}
-      {error ? <div className="mobile-state-card mobile-state-card-error">{error}</div> : null}
+      {loading ? <div className="mobile-state-card" data-testid="mobile-documents-loading">Documenten laden…</div> : null}
+      {error ? <div className="mobile-state-card mobile-state-card-error" data-testid="mobile-documents-error">{error}</div> : null}
       {!loading ? (
-        <div className="mobile-list-stack">
-          {documents.map((document) => {
-            const filename = formatValue(document.filename || document.uploaded_filename || document.title, 'Document');
-            return (
-              <div key={String(document.id)} className="mobile-list-card">
-                <div className="mobile-list-card-head">
-                  <strong>{filename}</strong>
-                </div>
-                <span className="mobile-list-card-meta">{formatFileSize(document.size_bytes)}</span>
-                <div className="mobile-inline-actions">
-                  <button type="button" className="mobile-secondary-button" onClick={() => navigate(`/projecten/${projectId}/documenten/${document.id}/viewer`)}>
-                    <Eye size={16} /> Bekijken
-                  </button>
-                  <button type="button" className="mobile-primary-button" onClick={() => handleDownload(document.id, filename)}>
-                    <Download size={16} /> Downloaden
-                  </button>
-                </div>
+        <div className="mobile-list-stack" data-testid="mobile-documents-list">
+          {documents.map((document) => (
+            <div key={String(document.id)} className="mobile-list-card" data-testid={`mobile-document-card-${document.id}`}>
+              <div className="mobile-list-card-head">
+                <strong>{String(document.filename || document.uploaded_filename || document.title || 'Document')}</strong>
+                <button type="button" className="mobile-link-button" onClick={() => navigate(`/projecten/${projectId}/documenten/${document.id}/viewer`)}>
+                  <Eye size={14} /> Bekijken
+                </button>
               </div>
-            );
-          })}
-          {!documents.length ? <div className="mobile-state-card">Nog geen documenten beschikbaar.</div> : null}
+              <span className="mobile-list-card-subtitle">{formatFileSize(document.size_bytes)}</span>
+              <div className="mobile-inline-actions">
+                <button type="button" className="mobile-secondary-button" onClick={() => navigate(`/projecten/${projectId}/documenten/${document.id}/viewer`)}>Bekijken</button>
+                <button type="button" className="mobile-primary-button" onClick={() => void handleDownload(document.id, String(document.filename || document.uploaded_filename || document.title || 'document'))}>
+                  <Download size={14} /> Downloaden
+                </button>
+              </div>
+            </div>
+          ))}
+          {!documents.length ? <div className="mobile-state-card">Nog geen documenten gekoppeld aan dit project.</div> : null}
         </div>
       ) : null}
     </MobilePageScaffold>

@@ -12,35 +12,39 @@ export function MobilePdfViewerPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let active = true;
+  async function loadDocument() {
     setLoading(true);
-    getDocument(documentId)
-      .then((result) => {
-        if (!active) return;
-        setDocument(result || null);
-        setError(null);
-      })
-      .catch((err) => {
-        if (!active) return;
-        setError(err instanceof Error ? err.message : 'PDF kon niet worden geladen.');
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
+    try {
+      const result = await getDocument(documentId);
+      setDocument(result || null);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'PDF kon niet worden geladen.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void loadDocument();
   }, [documentId]);
 
   const src = useMemo(() => documentPreviewUrl(projectId, document), [document, projectId]);
 
   return (
-    <MobilePageScaffold title={formatValue(document?.filename || document?.uploaded_filename || document?.title, 'PDF Viewer')} backTo={`/projecten/${projectId}/documenten`}>
-      {loading ? <div className="mobile-state-card">PDF laden…</div> : null}
-      {error ? <div className="mobile-state-card mobile-state-card-error">{error}</div> : null}
+    <MobilePageScaffold title={formatValue(document?.filename || document?.uploaded_filename || document?.title, 'PDF Viewer')} backTo={`/projecten/${projectId}/documenten`} testId="mobile-pdf-page">
+      {loading ? <div className="mobile-state-card" data-testid="mobile-pdf-loading">PDF laden…</div> : null}
+      {error ? (
+        <div className="mobile-state-card mobile-state-card-error" data-testid="mobile-pdf-error">
+          <strong>PDF niet beschikbaar</strong>
+          <span>{error}</span>
+          <button type="button" className="mobile-secondary-button" onClick={() => void loadDocument()}>
+            Opnieuw proberen
+          </button>
+        </div>
+      ) : null}
       {!loading && !error ? (
-        <div className="mobile-pdf-viewer-card">
+        <div className="mobile-pdf-viewer-card" data-testid="mobile-pdf-viewer-card">
           <div className="mobile-pdf-toolbar">
             <div className="mobile-pdf-toolbar-left"><Video size={16} /><span>1 / 7</span></div>
             <div className="mobile-pdf-toolbar-right"><Square size={16} /><Square size={16} /></div>

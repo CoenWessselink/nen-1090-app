@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getWeld, updateWeld } from '@/api/welds';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
+import { projectWeldsPath } from '@/features/mobile/mobile-utils';
 
 type WeldFormState = {
   assembly_id: string;
@@ -12,48 +13,46 @@ type WeldFormState = {
   welders: string;
 };
 
+const emptyForm: WeldFormState = {
+  assembly_id: '',
+  weld_no: '',
+  inspected_at: '',
+  process: '',
+  material: '',
+  welders: '',
+};
+
 export function MobileWeldEditPage() {
   const navigate = useNavigate();
   const { projectId = '', weldId = '' } = useParams();
-  const [form, setForm] = useState<WeldFormState>({
-    assembly_id: '',
-    weld_no: '',
-    inspected_at: '',
-    process: '',
-    material: '',
-    welders: '',
-  });
+  const [form, setForm] = useState<WeldFormState>(emptyForm);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let active = true;
+  async function loadWeld() {
     setLoading(true);
-    getWeld(projectId, weldId)
-      .then((result) => {
-        if (!active) return;
-        const record = (result || {}) as Record<string, unknown>;
-        setForm({
-          assembly_id: String(record.assembly_id || record.assemblyId || ''),
-          weld_no: String(record.weld_no || record.weld_number || ''),
-          inspected_at: String(record.inspected_at || record.inspection_date || '').slice(0, 10),
-          process: String(record.process || record.lasmethode || ''),
-          material: String(record.material || ''),
-          welders: String(record.welders || record.welder_name || ''),
-        });
-        setError(null);
-      })
-      .catch((err) => {
-        if (!active) return;
-        setError(err instanceof Error ? err.message : 'Las kon niet worden geladen.');
-      })
-      .finally(() => {
-        if (active) setLoading(false);
+    try {
+      const result = await getWeld(projectId, weldId);
+      const record = (result || {}) as Record<string, unknown>;
+      setForm({
+        assembly_id: String(record.assembly_id || record.assemblyId || ''),
+        weld_no: String(record.weld_no || record.weld_number || ''),
+        inspected_at: String(record.inspected_at || record.inspection_date || '').slice(0, 10),
+        process: String(record.process || record.lasmethode || ''),
+        material: String(record.material || ''),
+        welders: String(record.welders || record.welder_name || ''),
       });
-    return () => {
-      active = false;
-    };
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Las kon niet worden geladen.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void loadWeld();
   }, [projectId, weldId]);
 
   async function handleSave() {
@@ -68,7 +67,7 @@ export function MobileWeldEditPage() {
         material: form.material,
         welders: form.welders,
       });
-      navigate(`/projecten/${projectId}/lassen`);
+      navigate(projectWeldsPath(projectId));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Opslaan mislukt.');
     } finally {
@@ -77,9 +76,9 @@ export function MobileWeldEditPage() {
   }
 
   return (
-    <MobilePageScaffold title="Las Bewerken" backTo={`/projecten/${projectId}/lassen`}>
-      {loading ? <div className="mobile-state-card">Las laden…</div> : null}
-      {error ? <div className="mobile-state-card mobile-state-card-error">{error}</div> : null}
+    <MobilePageScaffold title="Las Bewerken" backTo={projectWeldsPath(projectId)} testId="mobile-weld-edit-page">
+      {loading ? <div className="mobile-state-card" data-testid="mobile-weld-edit-loading">Las laden…</div> : null}
+      {error ? <div className="mobile-state-card mobile-state-card-error" data-testid="mobile-weld-edit-error">{error}</div> : null}
       {!loading ? (
         <div className="mobile-form-card">
           <label className="mobile-form-field"><span>Assemblage</span><input value={form.assembly_id} onChange={(e) => setForm((s) => ({ ...s, assembly_id: e.target.value }))} /></label>
@@ -89,8 +88,8 @@ export function MobileWeldEditPage() {
           <label className="mobile-form-field"><span>Materiaal</span><input value={form.material} onChange={(e) => setForm((s) => ({ ...s, material: e.target.value }))} /></label>
           <label className="mobile-form-field"><span>Lasser</span><input value={form.welders} onChange={(e) => setForm((s) => ({ ...s, welders: e.target.value }))} /></label>
           <div className="mobile-form-actions">
-            <button type="button" className="mobile-primary-button" onClick={handleSave} disabled={saving}>{saving ? 'Opslaan…' : 'Opslaan'}</button>
-            <button type="button" className="mobile-danger-button" onClick={() => navigate(`/projecten/${projectId}/lassen`)}>Annuleren</button>
+            <button type="button" className="mobile-primary-button" onClick={handleSave} disabled={saving} data-testid="mobile-weld-save-button">{saving ? 'Opslaan…' : 'Opslaan'}</button>
+            <button type="button" className="mobile-danger-button" onClick={() => navigate(projectWeldsPath(projectId))}>Annuleren</button>
           </div>
         </div>
       ) : null}

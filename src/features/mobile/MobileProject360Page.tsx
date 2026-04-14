@@ -13,25 +13,21 @@ export function MobileProject360Page() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let active = true;
+  async function loadProject() {
     setLoading(true);
-    getProject(projectId)
-      .then((result) => {
-        if (!active) return;
-        setProject(result || null);
-        setError(null);
-      })
-      .catch((err) => {
-        if (!active) return;
-        setError(err instanceof Error ? err.message : 'Project kon niet worden geladen.');
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
+    try {
+      const result = await getProject(projectId);
+      setProject(result || null);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Project kon niet worden geladen.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void loadProject();
   }, [projectId]);
 
   const actions = useMemo(
@@ -47,22 +43,36 @@ export function MobileProject360Page() {
   );
 
   return (
-    <MobilePageScaffold title="Project 360" backTo="/projecten">
-      {loading ? <div className="mobile-state-card">Project laden…</div> : null}
-      {error ? <div className="mobile-state-card mobile-state-card-error">{error}</div> : null}
+    <MobilePageScaffold title="Project 360" backTo="/projecten" testId="mobile-project360-page">
+      {loading ? <div className="mobile-state-card" data-testid="mobile-project360-loading">Project laden…</div> : null}
+      {error ? (
+        <div className="mobile-state-card mobile-state-card-error" data-testid="mobile-project360-error">
+          <strong>Project 360 niet beschikbaar</strong>
+          <span>{error}</span>
+          <button type="button" className="mobile-secondary-button" onClick={() => void loadProject()}>
+            Opnieuw proberen
+          </button>
+        </div>
+      ) : null}
       {!loading && !error && project ? (
         <>
-          <div className="mobile-detail-card">
+          <div className="mobile-detail-card" data-testid="mobile-project360-summary">
             <div className="mobile-field-row"><span>Projectnaam</span><strong>{projectTitle(project)}</strong></div>
             <div className="mobile-field-row"><span>Projectnummer</span><strong>{projectCode(project)}</strong></div>
             <div className="mobile-field-row"><span>Opdrachtgever</span><strong>{projectClient(project)}</strong></div>
             <div className="mobile-field-row"><span>ExecutieKlasse</span><strong>{projectExecutionClass(project)}</strong></div>
           </div>
-          <div className="mobile-action-grid">
+          <div className="mobile-action-grid" data-testid="mobile-project360-actions">
             {actions.map((action) => {
               const Icon = action.icon;
               return (
-                <button key={action.label} type="button" className={`mobile-action-card mobile-action-card-${action.color}`} onClick={() => navigate(action.to)}>
+                <button
+                  key={action.label}
+                  type="button"
+                  className={`mobile-action-card mobile-action-card-${action.color}`}
+                  onClick={() => navigate(action.to)}
+                  data-testid={`mobile-project360-action-${action.label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
+                >
                   <Icon size={18} />
                   <span>{action.label}</span>
                 </button>
