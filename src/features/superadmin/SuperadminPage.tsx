@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Activity, BadgeCheck, Building2, Download, LogIn, LogOut, ShieldCheck, Users } from 'lucide-react';
+import { Activity, BadgeCheck, Building2, CreditCard, LogIn, LogOut, Search, ShieldCheck, Users } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -17,9 +17,11 @@ import { ConfirmActionDialog } from '@/components/dialogs/ConfirmActionDialog';
 import { useSession } from '@/app/session/SessionContext';
 import { useAuthStore } from '@/app/store/auth-store';
 import { useUiStore } from '@/app/store/ui-store';
-import { useExitImpersonation, useImpersonateTenant, usePlatformSummary, useTenantStatusActions, useTenants } from '@/hooks/useTenants';
-import { useTenantAudit, useTenantAuditSummary, useTenantBillingPanel, useTenantDetail, useTenantUserActions, useTenantUsers } from '@/hooks/useTenantAdmin';
-import type { AuditEntry, Tenant, TenantUser } from '@/types/domain';
+import { useExitImpersonation, useImpersonateTenant, useTenants } from '@/hooks/useTenants';
+import { useTenantAudit, useTenantBillingPanel, useTenantDetail, useTenantUsers } from '@/hooks/useTenantAdmin';
+import { useSystemHealth } from '@/hooks/useSystemHealth';
+import { useTenantBillingActions, useTenantBillingDetail, useTenantPayments } from '@/hooks/usePlatformBilling';
+import type { AuditSummary, BillingPayment, PlatformSummary, Tenant, TenantUser } from '@/types/domain';
 import { formatDatetime, toneFromStatus } from '@/utils/format';
 
 const detailTabs = [
@@ -30,73 +32,81 @@ const detailTabs = [
   { value: 'status', label: 'Statusbeheer' },
 ];
 
-const roleOptions = ['tenant_admin', 'tenant_user', 'qc', 'auditor', 'viewer'];
-
-function toTenantStatus(tenant: Tenant) {
-  return String(tenant.status || tenant.subscription_status || 'onbekend');
+function numberOrZero(value: unknown) {
+  return typeof value === 'number' ? value : Number(value || 0);
 }
 
-function toTenantUsersCount(tenant: Tenant) {
-  return Number(tenant.users_count ?? tenant.user_count ?? 0);
-}
-
-function parseAuditMeta(meta: unknown) {
-  if (!meta) return '';
-  if (typeof meta === 'string') {
-    try {
-      return JSON.stringify(JSON.parse(meta), null, 2);
-    } catch {
-      return meta;
-    }
-  }
-  try {
-    return JSON.stringify(meta, null, 2);
-  } catch {
-    return String(meta);
-  }
+function text(value: unknown, fallback = '—') {
+  if (value === undefined || value === null || value === '') return fallback;
+  return String(value);
 }
 
 export function SuperadminPage() {
   const session = useSession();
-  const pushNotification = useUiStore((state) => state.pushNotification);
+  const tenants = useTenants(true, { page: 1, limit: 50 });
+  const health = useSystemHealth();
+  const impersonate = useImpersonateTenant();
+  const exitImpersonation = useExitImpersonation();
   const startImpersonation = useAuthStore((state) => state.startImpersonation);
   const currentUser = useAuthStore((state) => state.user);
+  const pushNotification = useUiStore((state) => state.pushNotification);
   const [message, setMessage] = useState<string | null>(null);
   const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
   const [detailTab, setDetailTab] = useState('samenvatting');
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'alles' | 'actief' | 'overig'>('alles');
   const [tenantPage, setTenantPage] = useState(1);
-  const [pendingDeleteUser, setPendingDeleteUser] = useState<TenantUser | null>(null);
-  const [newUserEmail, setNewUserEmail] = useState('');
-  const [newUserPassword, setNewUserPassword] = useState('');
-  const [newUserRole, setNewUserRole] = useState('viewer');
+  const [paymentsPage, setPaymentsPage] = useState(1);
+  const [selectedPlan, setSelectedPlan] = useState('enterprise');
+  const [pendingBillingAction, setPendingBillingAction] = useState<'change-plan' | 'manual-payment' | 'cancel-subscription' | null>(null);
 
-  const tenants = useTenants(true, { q: search || undefined, status: statusFilter || undefined, limit: 100 });
-  const summary = usePlatformSummary(true);
-  const impersonate = useImpersonateTenant();
-  const exitImpersonation = useExitImpersonation();
-  const statusActions = useTenantStatusActions();
-
+  const tenantRows: Tenant[] = tenants.data?.items || [];
   const tenantDetail = useTenantDetail(selectedTenant?.id, Boolean(selectedTenant));
   const tenantUsers = useTenantUsers(selectedTenant?.id, Boolean(selectedTenant));
   const tenantAudit = useTenantAudit(selectedTenant?.id, Boolean(selectedTenant));
-  const tenantAuditSummary = useTenantAuditSummary(selectedTenant?.id, Boolean(selectedTenant));
   const tenantBilling = useTenantBillingPanel(selectedTenant?.id, Boolean(selectedTenant));
-  const tenantUserActions = useTenantUserActions(selectedTenant?.id);
+  const tenantBillingDetail = useTenantBillingDetail(selectedTenant?.id);
+  const tenantPayments = useTenantPayments(selectedTenant?.id, { page: paymentsPage, limit: 10, sort: 'created_at', direction: 'desc' });
+  const tenantBillingActions = useTenantBillingActions(selectedTenant?.id);
 
-  const tenantRows = useMemo(() => tenants.data?.items || [], [tenants.data]);
-  const pagedTenantRows = useMemo(() => tenantRows.slice((tenantPage - 1) * 10, tenantPage * 10), [tenantRows, tenantPage]);
-  const users = useMemo(() => (tenantUsers.data || []) as TenantUser[], [tenantUsers.data]);
-  const auditRows = useMemo(() => (tenantAudit.data || []) as AuditEntry[], [tenantAudit.data]);
-  const detailTenant = (tenantDetail.data || selectedTenant) as Tenant | null;
+  const filteredRows = useMemo(() => {
+    return tenantRows.filter((tenant) => {
+      const haystack = `${tenant.name || ''} ${tenant.id || ''} ${tenant.subscription_status || ''}`.toLowerCase();
+      const queryMatch = haystack.includes(search.toLowerCase());
+      const active = String(tenant.subscription_status || '').toLowerCase().includes('act');
+      const statusMatch = statusFilter === 'alles' ? true : statusFilter === 'actief' ? active : !active;
+      return queryMatch && statusMatch;
+    });
+  }, [search, statusFilter, tenantRows]);
+
+  const pagedTenantRows = useMemo(() => filteredRows.slice((tenantPage - 1) * 10, tenantPage * 10), [filteredRows, tenantPage]);
+
+  const stats = useMemo(() => {
+    const active = tenantRows.filter((tenant) => String(tenant.subscription_status || '').toLowerCase().includes('act')).length;
+    const users = tenantRows.reduce((total, tenant) => total + numberOrZero(tenant.user_count), 0);
+    const flagged = tenantRows.filter((tenant) => !tenant.subscription_status || numberOrZero(tenant.user_count) === 0).length;
+    return {
+      totalTenants: tenantRows.length,
+      activeTenants: active,
+      totalUsers: users,
+      flaggedTenants: flagged,
+    };
+  }, [tenantRows]);
 
   const columns: ColumnDef<Tenant>[] = [
-    { key: 'name', header: 'Tenant', sortable: true, cell: (row) => <strong>{row.name || row.id}</strong> },
-    { key: 'status', header: 'Status', sortable: true, cell: (row) => <Badge tone={toneFromStatus(toTenantStatus(row))}>{toTenantStatus(row)}</Badge> },
-    { key: 'users_count', header: 'Gebruikers', cell: (row) => toTenantUsersCount(row) || '—' },
-    { key: 'billing_provider', header: 'Billing', cell: (row) => String(row.billing_provider || 'none') },
-    { key: 'created_at', header: 'Aangemaakt', cell: (row) => formatDatetime(String(row.created_at || '')) || '—' },
+    { key: 'name', header: 'Tenant', sortable: true, cell: (row) => <strong>{text(row.name, text(row.id))}</strong> },
+    {
+      key: 'subscription_status',
+      header: 'Status',
+      sortable: true,
+      cell: (row) => (
+        <Badge tone={toneFromStatus(text(row.subscription_status, 'neutral'))}>
+          {text(row.subscription_status, 'Onbekend')}
+        </Badge>
+      ),
+    },
+    { key: 'user_count', header: 'Gebruikers', sortable: true, cell: (row) => text(row.user_count) },
+    { key: 'created_at', header: 'Aangemaakt', cell: (row) => text(row.created_at) },
     {
       key: 'actions',
       header: 'Acties',
@@ -119,196 +129,143 @@ export function SuperadminPage() {
                     name: response.user?.name || currentUser.name,
                   }, currentUser);
                   setMessage(`Tenant-view gestart voor ${row.name || row.id}.`);
+                  pushNotification({ title: 'Tenant-view actief', description: `Je kijkt nu mee in ${row.name || row.id}.`, tone: 'info' });
                 }
               } catch (error) {
-                const detail = error instanceof Error ? error.message : 'Impersonatie mislukt.';
-                setMessage(detail);
+                const description = error instanceof Error ? error.message : 'Onbekende fout';
+                setMessage(description);
+                pushNotification({ title: 'Tenant-view mislukt', description, tone: 'error' });
               }
             }}
           >
-            <LogIn size={16} /> Bekijk tenant
+            <LogIn size={16} /> Meekijken
           </Button>
         </div>
       ),
     },
   ];
 
-  async function handleCreateUser() {
-    if (!selectedTenant?.id || !newUserEmail || !newUserPassword) return;
-    try {
-      await tenantUserActions.create.mutateAsync({
-        email: newUserEmail,
-        password: newUserPassword,
-        role: newUserRole,
-        is_active: true,
-      });
-      setNewUserEmail('');
-      setNewUserPassword('');
-      setNewUserRole('viewer');
-      setMessage('Tenantgebruiker toegevoegd.');
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Gebruiker toevoegen mislukt.');
-    }
-  }
-
-  async function handleExportAudit() {
-    if (!selectedTenant?.id) return;
-    try {
-      const blob = await tenantUserActions.exportCsv.mutateAsync();
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `tenant-audit-${selectedTenant.id}.csv`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Audit-export mislukt.');
-    }
-  }
+  const userRows: TenantUser[] = tenantUsers.data?.items || [];
+  const auditRows: AuditSummary[] = tenantAudit.data?.items || [];
+  const billingPayload: PlatformSummary = {
+    ...(tenantBilling.data || {}),
+    ...((tenantBillingDetail.data || {}) as Record<string, unknown>),
+  };
+  const paymentRows: BillingPayment[] = tenantPayments.data?.items || [];
+  const detailPayload: Tenant = {
+    ...(selectedTenant || { id: '' }),
+    ...(tenantDetail.data || {}),
+  };
 
   return (
     <div className="page-stack">
-      <PageHeader
-        title="Superadmin"
-        description="Tenantbeheer, audit en hardening voor platformbeheer."
-      >
-        {session.isImpersonating ? (
-          <Button
-            variant="danger"
-            onClick={async () => {
+      <PageHeader title="Superadmin" description="Tenantbeheer, tenant-view en platformcontrole op bestaande platform-, audit- en billing-endpoints." />
+      {message ? <InlineMessage tone="success">{message}</InlineMessage> : null}
+      {session.isImpersonating ? (
+        <div className="stack-actions">
+          <InlineMessage tone="danger">{`Je kijkt nu mee in tenant ${session.impersonationTenantName || session.tenant || 'onbekend'}.`}</InlineMessage>
+          <Button variant="secondary" onClick={async () => {
+            try {
               await exitImpersonation.mutateAsync();
-              pushNotification({ title: 'Tenant-view beëindigd', description: 'Je bent terug in superadmin.', tone: 'info' });
-            }}
-          >
+              setMessage('Tenant-view beëindigd.');
+            } catch (error) {
+              setMessage(error instanceof Error ? error.message : 'Tenant-view beëindigen mislukt.');
+            }
+          }}>
             <LogOut size={16} /> Verlaat tenant-view
           </Button>
-        ) : null}
-      </PageHeader>
-
-      {message ? <InlineMessage tone="neutral">{message}</InlineMessage> : null}
+        </div>
+      ) : null}
 
       <div className="kpi-strip">
-        <div className="kpi-card"><span>Tenants</span><strong>{summary.data?.total_tenants ?? tenantRows.length}</strong></div>
-        <div className="kpi-card"><span>Actief</span><strong>{summary.data?.active_tenants ?? 0}</strong></div>
-        <div className="kpi-card"><span>Gebruikers</span><strong>{summary.data?.total_users ?? 0}</strong></div>
-        <div className="kpi-card"><span>Seats</span><strong>{summary.data?.total_seats ?? 0}</strong></div>
+        <div className="kpi-card"><span>Tenants</span><strong>{stats.totalTenants}</strong></div>
+        <div className="kpi-card"><span>Actieve tenants</span><strong>{stats.activeTenants}</strong></div>
+        <div className="kpi-card"><span>Gebruikers</span><strong>{stats.totalUsers}</strong></div>
+        <div className="kpi-card"><span>Opvolgen</span><strong>{stats.flaggedTenants}</strong></div>
       </div>
 
       <div className="content-grid-2">
         <Card>
           <div className="section-title-row">
             <h3><Building2 size={18} /> Tenantlijst</h3>
-            <Badge tone="neutral">Fase 3 audit/hardening</Badge>
+            <div className="inline-end-cluster">
+              <Badge tone={health.isError ? 'warning' : 'success'}>{health.isError ? 'Health-check fout' : 'Platform online'}</Badge>
+              <Badge tone={session.hasPermission('tenants.impersonate') ? 'success' : 'warning'}>{session.hasPermission('tenants.impersonate') ? 'Impersonatie actief' : 'Alleen lezen'}</Badge>
+            </div>
           </div>
           <div className="toolbar-shell">
             <div className="toolbar-inline-group">
-              <Input value={search} onChange={(event) => { setSearch(event.target.value); setTenantPage(1); }} placeholder="Zoek tenant of id" />
-              <Select value={statusFilter} onChange={(event) => { setStatusFilter(event.target.value); setTenantPage(1); }}>
-                <option value="">Alle statussen</option>
-                <option value="trial">Trial</option>
-                <option value="active">Active</option>
-                <option value="suspended">Suspended</option>
-                <option value="inactive">Inactive</option>
-                <option value="cancelled">Cancelled</option>
-              </Select>
+              <div className="search-shell inline-search-shell">
+                <Search size={16} />
+                <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Zoek tenant, id of status" />
+              </div>
+              <div className="segmented-control">
+                <button type="button" className={statusFilter === 'alles' ? 'is-active' : ''} onClick={() => setStatusFilter('alles')}>Alles</button>
+                <button type="button" className={statusFilter === 'actief' ? 'is-active' : ''} onClick={() => setStatusFilter('actief')}>Actief</button>
+                <button type="button" className={statusFilter === 'overig' ? 'is-active' : ''} onClick={() => setStatusFilter('overig')}>Overig</button>
+              </div>
             </div>
           </div>
           {tenants.isLoading ? <LoadingState label="Tenants laden..." /> : null}
-          {tenants.isError ? <ErrorState title="Tenantlijst niet geladen" description="Controleer /platform/tenants." /> : null}
-          {!tenants.isLoading && !tenants.isError && tenantRows.length === 0 ? <EmptyState title="Geen tenants" description="Geen resultaten voor deze filters." /> : null}
-          {!tenants.isLoading && !tenants.isError && tenantRows.length > 0 ? (
-            <DataTable columns={columns} rows={pagedTenantRows} rowKey={(row) => String(row.id)} page={tenantPage} total={tenantRows.length} pageSize={10} onPageChange={setTenantPage} />
-          ) : null}
+          {tenants.isError ? <ErrorState title="Tenantlijst niet geladen" description="Controleer of /platform/tenants bereikbaar is." /> : null}
+          {!tenants.isLoading && !tenants.isError && filteredRows.length === 0 ? <EmptyState title="Geen tenants" description="Pas je zoekterm of statusfilter aan." /> : null}
+          {!tenants.isLoading && !tenants.isError && filteredRows.length > 0 ? <DataTable columns={columns} rows={pagedTenantRows} rowKey={(row) => String(row.id)} page={tenantPage} total={filteredRows.length} pageSize={10} onPageChange={setTenantPage} /> : null}
         </Card>
 
         <Card>
           <div className="section-title-row">
-            <h3><ShieldCheck size={18} /> Hardening-overzicht</h3>
+            <h3><ShieldCheck size={18} /> Platformstatus</h3>
           </div>
-          {summary.isLoading ? <LoadingState label="Overzicht laden..." /> : null}
-          {!summary.isLoading && summary.data ? (
-            <div className="detail-grid">
-              <div><span>Trial tenants</span><strong>{summary.data.trial_tenants ?? 0}</strong></div>
-              <div><span>Suspended</span><strong>{summary.data.suspended_tenants ?? 0}</strong></div>
-              <div><span>Inactive</span><strong>{summary.data.inactive_tenants ?? 0}</strong></div>
-              <div><span>Actieve users</span><strong>{summary.data.active_users ?? 0}</strong></div>
-            </div>
-          ) : null}
-          <div className="list-stack compact-list" style={{ marginTop: 12 }}>
-            <div className="checklist-item"><strong>Laatste tenant_admin beschermd</strong><span>API voorkomt verwijderen/deactiveren van de laatste tenant_admin.</span></div>
-            <div className="checklist-item"><strong>Statusvalidatie actief</strong><span>Alleen geldige tenantstatussen en rollen worden geaccepteerd.</span></div>
-            <div className="checklist-item"><strong>Seat-guard actief</strong><span>Seats kunnen niet onder het aantal actieve gebruikers zakken.</span></div>
-            <div className="checklist-item"><strong>Audit-export beschikbaar</strong><span>CSV-export per tenant voor controle en bewijs.</span></div>
-          </div>
+          {health.isLoading ? <LoadingState label="Health controleren..." /> : null}
+          {health.isError ? <ErrorState title="Health niet bereikbaar" description="De backend-healthcheck reageert niet via de ingestelde URL." /> : null}
+          {health.data ? <pre className="code-block">{JSON.stringify(health.data, null, 2)}</pre> : null}
         </Card>
       </div>
 
-      <Drawer open={Boolean(selectedTenant)} title={detailTenant?.name || 'Tenant details'} onClose={() => setSelectedTenant(null)}>
+      <Drawer open={Boolean(selectedTenant)} title={selectedTenant?.name || 'Tenant details'} onClose={() => setSelectedTenant(null)}>
         <Tabs tabs={detailTabs} value={detailTab} onChange={setDetailTab} />
 
         {detailTab === 'samenvatting' ? (
           <Card>
             <div className="section-title-row"><h3><BadgeCheck size={18} /> Tenant detail</h3></div>
             {tenantDetail.isLoading ? <LoadingState label="Tenant detail laden..." /> : null}
-            {tenantDetail.isError ? <ErrorState title="Tenantdetail niet geladen" description="Controleer /platform/tenants/{id}." /> : null}
-            {!tenantDetail.isLoading && detailTenant ? (
-              <div className="detail-grid">
-                <div><span>Naam</span><strong>{String(detailTenant.name || '—')}</strong></div>
-                <div><span>Status</span><strong>{toTenantStatus(detailTenant)}</strong></div>
-                <div><span>Actief</span><strong>{detailTenant.is_active ? 'Ja' : 'Nee'}</strong></div>
-                <div><span>Gebruikers</span><strong>{toTenantUsersCount(detailTenant)}</strong></div>
-                <div><span>Billing</span><strong>{String(detailTenant.billing_provider || 'none')}</strong></div>
-                <div><span>Seats</span><strong>{String(detailTenant.seats_purchased || 0)}</strong></div>
-                <div><span>Trial tot</span><strong>{formatDatetime(String(detailTenant.trial_until || '')) || '—'}</strong></div>
-                <div><span>Geldig tot</span><strong>{formatDatetime(String(detailTenant.valid_until || '')) || '—'}</strong></div>
-              </div>
+            {tenantDetail.isError ? <ErrorState title="Tenantdetail niet geladen" description="Controleer of /platform/tenants/{id} bereikbaar is." /> : null}
+            {!tenantDetail.isLoading && !tenantDetail.isError ? (
+              <>
+                <div className="kpi-strip">
+                  <div className="kpi-card"><span>Naam</span><strong>{text(detailPayload.name)}</strong></div>
+                  <div className="kpi-card"><span>Status</span><strong>{text(detailPayload.subscription_status)}</strong></div>
+                  <div className="kpi-card"><span>Gebruikers</span><strong>{text(detailPayload.user_count)}</strong></div>
+                  <div className="kpi-card"><span>Tenant key</span><strong>{text(detailPayload.tenant_key || detailPayload.slug)}</strong></div>
+                </div>
+                <div className="detail-grid">
+                  <div><span>Naam</span><strong>{text(detailPayload.name)}</strong></div>
+                  <div><span>ID</span><strong>{text(detailPayload.id)}</strong></div>
+                  <div><span>Status</span><strong>{text(detailPayload.subscription_status)}</strong></div>
+                  <div><span>Aangemaakt</span><strong>{formatDatetime(text(detailPayload.created_at, '')) || '—'}</strong></div>
+                  <div><span>Gebruikers</span><strong>{text(detailPayload.user_count)}</strong></div>
+                  <div><span>Tenant key</span><strong>{text(detailPayload.tenant_key || detailPayload.slug)}</strong></div>
+                </div>
+              </>
             ) : null}
           </Card>
         ) : null}
 
         {detailTab === 'gebruikers' ? (
           <Card>
-            <div className="section-title-row"><h3><Users size={18} /> Tenantgebruikers</h3></div>
-            <div className="detail-grid" style={{ marginBottom: 12 }}>
-              <div>
-                <span>E-mail</span>
-                <Input value={newUserEmail} onChange={(event) => setNewUserEmail(event.target.value)} placeholder="nieuw@tenant.nl" />
-              </div>
-              <div>
-                <span>Wachtwoord</span>
-                <Input type="password" value={newUserPassword} onChange={(event) => setNewUserPassword(event.target.value)} placeholder="Tijdelijk wachtwoord" />
-              </div>
-              <div>
-                <span>Rol</span>
-                <Select value={newUserRole} onChange={(event) => setNewUserRole(event.target.value)}>{roleOptions.map((role) => <option key={role} value={role}>{role}</option>)}</Select>
-              </div>
-              <div style={{ alignSelf: 'end' }}>
-                <Button onClick={() => void handleCreateUser()} disabled={tenantUserActions.create.isPending}>Gebruiker toevoegen</Button>
-              </div>
-            </div>
-            <div className="section-title-row" style={{ marginBottom: 12 }}>
-              <div />
-              <Button variant="secondary" onClick={() => void tenantUserActions.forceLogout.mutateAsync()} disabled={tenantUserActions.forceLogout.isPending}>Force logout tenant</Button>
-            </div>
+            <div className="section-title-row"><h3><Users size={18} /> Tenant users</h3></div>
             {tenantUsers.isLoading ? <LoadingState label="Gebruikers laden..." /> : null}
-            {!tenantUsers.isLoading && users.length === 0 ? <EmptyState title="Geen gebruikers" description="Nog geen gekoppelde tenantgebruikers." /> : null}
-            {!tenantUsers.isLoading && users.length > 0 ? (
+            {tenantUsers.isError ? <ErrorState title="Gebruikers niet geladen" description="Controleer of /platform/tenants/{id}/users bereikbaar is." /> : null}
+            {!tenantUsers.isLoading && !tenantUsers.isError && userRows.length === 0 ? <EmptyState title="Geen gebruikers" description="Geen users terug uit de tenant-users API." /> : null}
+            {!tenantUsers.isLoading && !tenantUsers.isError && userRows.length > 0 ? (
               <div className="list-stack compact-list">
-                {users.map((user) => (
-                  <div className="list-row" key={String(user.user_id)}>
+                {userRows.map((row, index) => (
+                  <div className="list-row" key={String(row.id || index)}>
                     <div>
-                      <strong>{user.email}</strong>
-                      <div className="list-subtle">{user.is_active ? 'Actief' : 'Inactief'}</div>
+                      <strong>{text(row.email || row.name, `Gebruiker ${index + 1}`)}</strong>
+                      <div className="list-subtle">{text(row.name || row.display_name, '')}</div>
                     </div>
-                    <div className="inline-end-cluster">
-                      <Select value={user.role} onChange={(event) => void tenantUserActions.patch.mutateAsync({ userId: user.user_id, payload: { role: event.target.value } })}>
-                        {roleOptions.map((role) => <option key={role} value={role}>{role}</option>)}
-                      </Select>
-                      <Button variant="secondary" onClick={() => void tenantUserActions.patch.mutateAsync({ userId: user.user_id, payload: { is_active: !user.is_active } })}>{user.is_active ? 'Deactiveer' : 'Activeer'}</Button>
-                      <Button variant="danger" onClick={() => setPendingDeleteUser(user)}>Verwijder</Button>
-                    </div>
+                    <Badge tone={toneFromStatus(text(row.role, 'neutral'))}>{text(row.role, 'Onbekend')}</Badge>
                   </div>
                 ))}
               </div>
@@ -318,28 +275,18 @@ export function SuperadminPage() {
 
         {detailTab === 'audit' ? (
           <Card>
-            <div className="section-title-row">
-              <h3><Activity size={18} /> Tenant audit</h3>
-              <Button variant="secondary" onClick={() => void handleExportAudit()} disabled={tenantUserActions.exportCsv.isPending}><Download size={16} /> Export CSV</Button>
-            </div>
-            {tenantAuditSummary.data ? (
-              <div className="kpi-strip">
-                <div className="kpi-card"><span>Events</span><strong>{tenantAuditSummary.data.total_events ?? 0}</strong></div>
-                <div className="kpi-card"><span>Laatste event</span><strong>{formatDatetime(String(tenantAuditSummary.data.last_event_at || '')) || '—'}</strong></div>
-                <div className="kpi-card"><span>Actietypes</span><strong>{Object.keys(tenantAuditSummary.data.actions || {}).length}</strong></div>
-                <div className="kpi-card"><span>Actors</span><strong>{Object.keys(tenantAuditSummary.data.actors || {}).length}</strong></div>
-              </div>
-            ) : null}
-            {tenantAudit.isLoading ? <LoadingState label="Audit laden..." /> : null}
-            {!tenantAudit.isLoading && auditRows.length === 0 ? <EmptyState title="Geen auditregels" description="Nog geen audit-events voor deze tenant." /> : null}
-            {!tenantAudit.isLoading && auditRows.length > 0 ? (
-              <div className="list-stack compact-list">
-                {auditRows.slice(0, 30).map((entry) => (
-                  <div className="list-row" key={String(entry.id)}>
+            <div className="section-title-row"><h3><Activity size={18} /> Tenant audit</h3></div>
+            {tenantAudit.isLoading ? <LoadingState label="Auditregels laden..." /> : null}
+            {tenantAudit.isError ? <ErrorState title="Audit niet geladen" description="Controleer of /platform/tenants/{id}/audit bereikbaar is." /> : null}
+            {!tenantAudit.isLoading && !tenantAudit.isError && auditRows.length === 0 ? <EmptyState title="Geen auditregels" description="De audit-endpoint gaf nog geen regels terug." /> : null}
+            {!tenantAudit.isLoading && !tenantAudit.isError && auditRows.length > 0 ? (
+              <div className="timeline-list">
+                {auditRows.map((row, index) => (
+                  <div className="timeline-item" key={String(row.id || index)}>
+                    <div className="timeline-dot" />
                     <div>
-                      <strong>{String(entry.action || 'event')}</strong>
-                      <div className="list-subtle">{formatDatetime(String(entry.created_at || '')) || '—'} · {String(entry.user_id || 'system')}</div>
-                      <pre className="code-block" style={{ marginTop: 8 }}>{parseAuditMeta(entry.meta)}</pre>
+                      <strong>{text(row.action || row.title, `Auditregel ${index + 1}`)}</strong>
+                      <div className="list-subtle">{text(row.actor || row.user, '')} · {formatDatetime(text(row.created_at || row.timestamp, ''))}</div>
                     </div>
                   </div>
                 ))}
@@ -350,51 +297,107 @@ export function SuperadminPage() {
 
         {detailTab === 'billing' ? (
           <Card>
-            <div className="section-title-row"><h3><ShieldCheck size={18} /> Billing samenvatting</h3></div>
-            {tenantBilling.isLoading ? <LoadingState label="Billing laden..." /> : null}
-            {!tenantBilling.isLoading && tenantBilling.data ? (
-              <div className="detail-grid">
-                <div><span>Status</span><strong>{String(tenantBilling.data.status || '—')}</strong></div>
-                <div><span>Provider</span><strong>{String(tenantBilling.data.billing_provider || '—')}</strong></div>
-                <div><span>Seats</span><strong>{String(tenantBilling.data.seats_purchased || 0)}</strong></div>
-                <div><span>Prijs p/j</span><strong>{String(tenantBilling.data.price_per_seat_year_cents || 0)}</strong></div>
-                <div><span>Payments totaal</span><strong>{String(tenantBilling.data.payments_total || 0)}</strong></div>
-                <div><span>Betaald totaal</span><strong>{String(tenantBilling.data.paid_total_cents || 0)}</strong></div>
-              </div>
+            <div className="section-title-row"><h3><CreditCard size={18} /> Tenant billing</h3><Badge tone="neutral">Payments + acties</Badge></div>
+            {(tenantBilling.isLoading || tenantBillingDetail.isLoading) ? <LoadingState label="Billingpanel laden..." /> : null}
+            {(tenantBilling.isError || tenantBillingDetail.isError) ? <ErrorState title="Billing niet geladen" description="Controleer of /platform/tenants/{id}/billing bereikbaar is." /> : null}
+            {!tenantBilling.isLoading && !tenantBillingDetail.isLoading && !tenantBilling.isError && !tenantBillingDetail.isError ? (
+              <>
+                <div className="detail-grid">
+                  <div><span>Plan</span><strong>{text(billingPayload.plan || billingPayload.subscription_plan)}</strong></div>
+                  <div><span>Status</span><strong>{text(billingPayload.status || billingPayload.subscription_status)}</strong></div>
+                  <div><span>Volgende factuur</span><strong>{formatDatetime(text(billingPayload.next_billing_date || billingPayload.renewal_date, '')) || '—'}</strong></div>
+                  <div><span>Openstaand</span><strong>{text(billingPayload.balance_due || billingPayload.amount_due)}</strong></div>
+                </div>
+                <div className="toolbar-cluster" style={{ marginTop: 16 }}>
+                  <Select value={selectedPlan} onChange={(event) => setSelectedPlan(event.target.value)}>
+                    <option value="starter">Starter</option>
+                    <option value="growth">Growth</option>
+                    <option value="enterprise">Enterprise</option>
+                  </Select>
+                  <Button variant="secondary" onClick={() => setPendingBillingAction('change-plan')}>Plan wijzigen</Button>
+                  <Button variant="secondary" onClick={() => setPendingBillingAction('manual-payment')}>Manual payment</Button>
+                  <Button variant="secondary" onClick={() => setPendingBillingAction('cancel-subscription')}>Abonnement stopzetten</Button>
+                </div>
+                <div style={{ marginTop: 16 }}>
+                  <strong>Billing payload</strong>
+                  <pre className="code-block">{JSON.stringify(billingPayload, null, 2)}</pre>
+                </div>
+                <div className="section-title-row" style={{ marginTop: 16 }}><h3>Payments</h3></div>
+                {tenantPayments.isLoading ? <LoadingState label="Payments laden..." /> : null}
+                {tenantPayments.isError ? <ErrorState title="Payments niet geladen" description="Controleer of /platform/tenants/{id}/payments bereikbaar is." /> : null}
+                {!tenantPayments.isLoading && !tenantPayments.isError && paymentRows.length === 0 ? <EmptyState title="Geen payments" description="Er zijn nog geen payments beschikbaar voor deze tenant." /> : null}
+                {!tenantPayments.isLoading && !tenantPayments.isError && paymentRows.length > 0 ? (
+                  <DataTable
+                    columns={[
+                      { key: 'id', header: 'Payment', cell: (row: BillingPayment) => <strong>{text(row.id || row.reference)}</strong> },
+                      { key: 'amount', header: 'Bedrag', cell: (row: BillingPayment) => text(row.amount || row.total) },
+                      { key: 'currency', header: 'Valuta', cell: (row: BillingPayment) => text(row.currency, 'EUR') },
+                      { key: 'status', header: 'Status', cell: (row: BillingPayment) => <Badge tone={toneFromStatus(text(row.status, 'neutral'))}>{text(row.status, 'Onbekend')}</Badge> },
+                      { key: 'provider', header: 'Provider', cell: (row: BillingPayment) => text(row.provider || row.method) },
+                      { key: 'created_at', header: 'Aangemaakt', cell: (row: BillingPayment) => formatDatetime(text(row.created_at || row.date, '')) || '—' },
+                    ]}
+                    rows={paymentRows}
+                    rowKey={(row) => String(row.id || row.reference || '')}
+                    page={paymentsPage}
+                    total={tenantPayments.data?.total || paymentRows.length}
+                    pageSize={10}
+                    onPageChange={setPaymentsPage}
+                  />
+                ) : null}
+              </>
             ) : null}
           </Card>
         ) : null}
 
         {detailTab === 'status' ? (
           <Card>
-            <div className="section-title-row"><h3><ShieldCheck size={18} /> Statusacties</h3></div>
-            <div className="inline-end-cluster">
-              <Button variant="secondary" onClick={() => selectedTenant?.id && void statusActions.activate.mutateAsync(selectedTenant.id)}>Activate</Button>
-              <Button variant="secondary" onClick={() => selectedTenant?.id && void statusActions.deactivate.mutateAsync(selectedTenant.id)}>Deactivate</Button>
-              <Button variant="danger" onClick={() => selectedTenant?.id && void statusActions.suspend.mutateAsync(selectedTenant.id)}>Suspend</Button>
-              <Button onClick={() => selectedTenant?.id && void statusActions.reactivate.mutateAsync(selectedTenant.id)}>Reactivate</Button>
-            </div>
-            <div className="list-stack compact-list" style={{ marginTop: 12 }}>
-              <div className="checklist-item"><strong>Role guard</strong><span>Laatste tenant_admin kan niet worden verwijderd of gedeactiveerd.</span></div>
-              <div className="checklist-item"><strong>Force logout</strong><span>Alle refresh tokens van de tenant kunnen centraal worden ingetrokken.</span></div>
-              <div className="checklist-item"><strong>Statusguard</strong><span>Alleen geldige statusovergangen worden via platform-endpoints verwerkt.</span></div>
+            <div className="section-title-row"><h3>Statusbeheer</h3><Badge tone="neutral">Frontend guardrails</Badge></div>
+            <div className="checklist-grid">
+              <div className="checklist-item"><strong>Tenantstatus zichtbaar</strong><span>Status wordt uit bestaande payload gelezen.</span></div>
+              <div className="checklist-item"><strong>Tenant-view expliciet</strong><span>Meekijken vereist een zichtbare knop en banner.</span></div>
+              <div className="checklist-item"><strong>RBAC afgedwongen</strong><span>SUPERADMIN, SUPER_ADMIN, ADMIN en PLATFORM_ADMIN kunnen dit scherm openen.</span></div>
+              <div className="checklist-item"><strong>Geen stille impersonatie</strong><span>Exit loopt via banner en expliciete actie.</span></div>
             </div>
           </Card>
         ) : null}
-      </Drawer>
 
-      <ConfirmActionDialog
-        open={Boolean(pendingDeleteUser)}
-        title="Tenantgebruiker verwijderen"
-        description={`Weet je zeker dat je ${pendingDeleteUser?.email || 'deze gebruiker'} wilt verwijderen uit deze tenant?`}
-        confirmLabel="Verwijder gebruiker"
-        onConfirm={async () => {
-          if (!pendingDeleteUser) return;
-          await tenantUserActions.remove.mutateAsync(pendingDeleteUser.user_id);
-          setPendingDeleteUser(null);
-        }}
-        onClose={() => setPendingDeleteUser(null)}
-      />
+        <ConfirmActionDialog
+          open={pendingBillingAction === 'change-plan'}
+          title="Tenantplan wijzigen"
+          description={`Wijzig het tenantplan naar ${selectedPlan} voor ${selectedTenant?.name || selectedTenant?.id || 'de tenant'}.`}
+          confirmLabel="Plan wijzigen"
+          onClose={() => setPendingBillingAction(null)}
+          onConfirm={async () => {
+            await tenantBillingActions.changePlan.mutateAsync({ plan: selectedPlan });
+            setMessage(`Tenantplan gewijzigd naar ${selectedPlan}.`);
+            setPendingBillingAction(null);
+          }}
+        />
+        <ConfirmActionDialog
+          open={pendingBillingAction === 'manual-payment'}
+          title="Manual payment registreren"
+          description="Registreer een handmatige betaling voor de geselecteerde tenant via het platform-endpoint."
+          confirmLabel="Manual payment"
+          onClose={() => setPendingBillingAction(null)}
+          onConfirm={async () => {
+            await tenantBillingActions.manualPayment.mutateAsync({ amount: billingPayload.amount_due || 0, currency: billingPayload.currency || 'EUR' });
+            setMessage('Manual payment verstuurd.');
+            setPendingBillingAction(null);
+          }}
+        />
+        <ConfirmActionDialog
+          open={pendingBillingAction === 'cancel-subscription'}
+          title="Abonnement stopzetten"
+          description="Stop het tenantabonnement via het platform-endpoint."
+          confirmLabel="Stopzetten"
+          onClose={() => setPendingBillingAction(null)}
+          onConfirm={async () => {
+            await tenantBillingActions.cancelSubscription.mutateAsync({ reason: 'Cancelled from superadmin frontend' });
+            setMessage('Tenantabonnement stopgezet.');
+            setPendingBillingAction(null);
+          }}
+        />
+      </Drawer>
     </div>
   );
 }

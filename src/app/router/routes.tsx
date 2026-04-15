@@ -27,15 +27,7 @@ import { LogoutPage } from '@/features/auth/LogoutPage';
 import { ChangePasswordPage } from '@/features/auth/ChangePasswordPage';
 
 const Login = LoginPage;
-
-const SUPERADMIN_ALLOWED_ROLES = [
-  'SUPERADMIN',
-  'SUPER_ADMIN',
-  'ADMIN',
-  'PLATFORM_ADMIN',
-  'PLATFORMADMIN',
-  'platform_admin',
-];
+const SUPERADMIN_ALLOWED_ROLES = ['SUPERADMIN', 'SUPER_ADMIN', 'ADMIN', 'PLATFORM_ADMIN', 'PLATFORMADMIN', 'platform_admin'];
 
 export type AppRouteMeta = {
   path: string;

@@ -170,6 +170,69 @@ export type Tenant = {
   subscription_status?: string;
   user_count?: number;
   created_at?: string;
+  tenant_key?: string;
+  slug?: string;
+  [key: string]: unknown;
+};
+
+export type TenantUser = {
+  id: string | number;
+  email?: string;
+  name?: string;
+  display_name?: string;
+  role?: string;
+  is_active?: boolean;
+  created_at?: string;
+  tenant_id?: string | number;
+  tenant_name?: string;
+  [key: string]: unknown;
+};
+
+export type AuditSummary = {
+  id: string | number;
+  title?: string;
+  action?: string;
+  actor?: string;
+  user?: string;
+  entity?: string;
+  entity_id?: string;
+  user_id?: string;
+  status?: string;
+  created_at?: string;
+  timestamp?: string;
+  meta?: Record<string, unknown>;
+  [key: string]: unknown;
+};
+
+export type PlatformSummary = {
+  total_tenants?: number;
+  total_users?: number;
+  active_users?: number;
+  total_projects?: number;
+  total_welds?: number;
+  balance_due?: number | string;
+  amount_due?: number | string;
+  currency?: string;
+  next_billing_date?: string;
+  renewal_date?: string;
+  status?: string;
+  subscription_status?: string;
+  plan?: string;
+  subscription_plan?: string;
+  [key: string]: unknown;
+};
+
+export type BillingPayment = {
+  id?: string | number;
+  reference?: string | number;
+  amount?: string | number;
+  total?: string | number;
+  currency?: string;
+  status?: string;
+  provider?: string;
+  method?: string;
+  created_at?: string;
+  date?: string;
   [key: string]: unknown;
 };
 
@@ -215,38 +278,6 @@ export type AuditEntry = {
   entity_id?: string;
   user_id?: string;
   status?: string;
-  created_at?: string;
-  meta?: Record<string, unknown>;
-  [key: string]: unknown;
-};
-
-
-export type TenantUser = {
-  id: string | number;
-  email: string;
-  role?: string;
-  tenant_id?: string | number;
-  tenant_name?: string;
-  is_active?: boolean;
-  created_at?: string;
-  [key: string]: unknown;
-};
-
-export type PlatformSummary = {
-  total_tenants?: number;
-  total_users?: number;
-  active_users?: number;
-  total_projects?: number;
-  total_welds?: number;
-  [key: string]: unknown;
-};
-
-export type AuditSummary = {
-  id: string | number;
-  action?: string;
-  entity?: string;
-  entity_id?: string;
-  user_email?: string;
   created_at?: string;
   meta?: Record<string, unknown>;
   [key: string]: unknown;
