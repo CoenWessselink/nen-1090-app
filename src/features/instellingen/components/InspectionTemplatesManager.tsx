@@ -23,23 +23,27 @@ type TemplateDraft = {
 
 const presetItems: Record<string, Array<Record<string, unknown>>> = {
   EXC1: [
-    { code: 'VISUAL_BASE', title: 'Visuele controle basisklasse', group: 'NEN-EN 1090', required: true, default_status: 'conform' },
-    { code: 'DIMENSIONS', title: 'Maatvoering controleren', group: 'ISO 3834', required: true, default_status: 'conform' },
+    { code: 'EXC1_VISUAL', title: 'Visuele controle lasuitvoering', group: 'NEN-EN 1090-2', norm_reference: 'NEN-EN 1090-2', required: true, default_status: 'conform' },
+    { code: 'EXC1_DIMENSIONS', title: 'Maatvoering en passing controleren', group: 'NEN-EN 1090-2', norm_reference: 'NEN-EN 1090-2', required: true, default_status: 'conform' },
+    { code: 'EXC1_TRACEABILITY', title: 'Basistraceerbaarheid materiaal en onderdeel', group: 'ISO 3834', norm_reference: 'ISO 3834', required: true, default_status: 'conform' },
   ],
   EXC2: [
-    { code: 'VISUAL_PLUS', title: 'Visuele controle uitgebreid', group: 'NEN-EN 1090', required: true, default_status: 'conform' },
-    { code: 'WPS_MATCH', title: 'WPS / lasproces controleren', group: 'ISO 3834', required: true, default_status: 'conform' },
-    { code: 'ACCEPTANCE_5817', title: 'Acceptatie volgens ISO 5817', group: 'ISO 5817', required: true, default_status: 'conform' },
+    { code: 'EXC2_VISUAL', title: 'Visuele controle vóór, tijdens en na het lassen', group: 'NEN-EN 1090-2', norm_reference: 'NEN-EN 1090-2', required: true, default_status: 'conform' },
+    { code: 'EXC2_WPS', title: 'WPS en lasproces verifiëren', group: 'ISO 3834', norm_reference: 'ISO 3834', required: true, default_status: 'conform' },
+    { code: 'EXC2_WELDER', title: 'Lasserkwalificatie en geldigheid verifiëren', group: 'ISO 3834', norm_reference: 'ISO 9606 / ISO 3834', required: true, default_status: 'conform' },
+    { code: 'EXC2_ACCEPTANCE', title: 'Acceptatie conform ISO 5817 kwaliteitsniveau', group: 'ISO 5817', norm_reference: 'ISO 5817', required: true, default_status: 'conform' },
   ],
   EXC3: [
-    { code: 'TRACEABILITY', title: 'Traceerbaarheid materialen en lassers', group: 'NEN-EN 1090', required: true, default_status: 'conform' },
-    { code: 'WPS_APPROVAL', title: 'WPS en kwalificaties valideren', group: 'ISO 3834', required: true, default_status: 'conform' },
-    { code: 'QUALITY_5817', title: 'Kwaliteitsniveau volgens ISO 5817', group: 'ISO 5817', required: true, default_status: 'conform' },
+    { code: 'EXC3_TRACEABILITY', title: 'Volledige traceerbaarheid materiaal, WPS en lasser', group: 'NEN-EN 1090-2', norm_reference: 'NEN-EN 1090-2 / ISO 3834', required: true, default_status: 'conform' },
+    { code: 'EXC3_HEAT_INPUT', title: 'Warmteinbreng en procesdiscipline controleren', group: 'ISO 3834', norm_reference: 'ISO 3834', required: true, default_status: 'conform' },
+    { code: 'EXC3_INSPECTION_PLAN', title: 'Inspectie- en testplan uitvoeren', group: 'NEN-EN 1090-2', norm_reference: 'NEN-EN 1090-2', required: true, default_status: 'conform' },
+    { code: 'EXC3_ACCEPTANCE', title: 'Kwaliteitsniveau en afkeurcriteria volgens ISO 5817', group: 'ISO 5817', norm_reference: 'ISO 5817', required: true, default_status: 'conform' },
   ],
   EXC4: [
-    { code: 'CRITICAL_VISUAL', title: 'Verzwaarde visuele eindcontrole', group: 'NEN-EN 1090', required: true, default_status: 'conform' },
-    { code: 'PROCEDURE_AUDIT', title: 'Procedure-audit en documentcontrole', group: 'ISO 3834', required: true, default_status: 'conform' },
-    { code: 'ACCEPTANCE_CRITICAL', title: 'Acceptatie niveau kritisch', group: 'ISO 5817', required: true, default_status: 'conform' },
+    { code: 'EXC4_CRITICAL_VISUAL', title: 'Verzwaarde visuele inspectie en vrijgave', group: 'NEN-EN 1090-2', norm_reference: 'NEN-EN 1090-2', required: true, default_status: 'conform' },
+    { code: 'EXC4_DOC_REVIEW', title: 'Documentreview op WPS, WPQR en kwalificaties', group: 'ISO 3834', norm_reference: 'ISO 3834', required: true, default_status: 'conform' },
+    { code: 'EXC4_NDT', title: 'Aanvullende NDO/NDT-verificatie volgens projecteisen', group: 'NDO / Projectspecifiek', norm_reference: 'Projectspecifiek / ISO 17635', required: true, default_status: 'conform' },
+    { code: 'EXC4_ACCEPTANCE', title: 'Kritisch acceptatieniveau vastleggen', group: 'ISO 5817', norm_reference: 'ISO 5817', required: true, default_status: 'conform' },
   ],
 };
 

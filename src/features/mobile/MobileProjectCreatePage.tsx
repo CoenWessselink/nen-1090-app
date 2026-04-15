@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { createProject, getProject, updateProject } from '@/api/projects';
 import { useClients, useInspectionTemplates } from '@/hooks/useSettings';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
-import { normalizeApiError } from '@/features/mobile/mobile-utils';
+import { dispatchAppRefresh, normalizeApiError } from '@/features/mobile/mobile-utils';
 import type { ProjectFormValues } from '@/types/forms';
 
 const executionClasses = ['EXC1', 'EXC2', 'EXC3', 'EXC4'] as const;
@@ -37,10 +37,14 @@ export function MobileProjectCreatePage() {
   const inspectionTemplates = useInspectionTemplates();
   const [error, setError] = useState<string | null>(null);
 
-  const clientOptions = useMemo(
-    () => ((clients.data?.items || []) as Array<Record<string, unknown>>).map((item) => String(item.name || item.title || item.code || '')).filter(Boolean),
-    [clients.data],
-  );
+  const clientOptions = useMemo(() => {
+    const rows = ((clients.data?.items || []) as Array<Record<string, unknown>>)
+      .map((item) => String(item.name || item.client_name || item.opdrachtgever || item.title || item.code || ''))
+      .map((value) => value.trim())
+      .filter(Boolean);
+    const fallback = ['CWS Staalbouw', 'Demo Opdrachtgever', String(form.client_name || '').trim()].filter(Boolean);
+    return Array.from(new Set([...rows, ...fallback]));
+  }, [clients.data, form.client_name]);
   const templateOptions = useMemo(
     () => ((inspectionTemplates.data?.items || []) as Array<Record<string, unknown>>),
     [inspectionTemplates.data],
@@ -49,6 +53,13 @@ export function MobileProjectCreatePage() {
     const exc = String(form.execution_class || '').toUpperCase();
     return templateOptions.filter((item) => String(item.exc_class || item.execution_class || '').toUpperCase() === exc);
   }, [form.execution_class, templateOptions]);
+
+  function templateLabel(item: Record<string, unknown>) {
+    const name = String(item.name || item.title || item.code || item.id || 'Template');
+    const norm = String(item.norm || '').trim();
+    const version = item.version ? `v${String(item.version)}` : '';
+    return [name, norm, version].filter(Boolean).join(' · ');
+  }
 
   useEffect(() => {
     if (!projectId) return;
@@ -114,6 +125,7 @@ export function MobileProjectCreatePage() {
 
     try {
       const result = isEdit ? await updateProject(projectId, form) : await createProject(form);
+      dispatchAppRefresh({ scope: 'projects', projectId: String(result.id || projectId || ''), reason: isEdit ? 'project-updated' : 'project-created' });
       navigate(`/projecten/${result.id}/overzicht`, { replace: true });
     } catch (err) {
       setError(normalizeApiError(err, isEdit ? 'Project wijzigen mislukt.' : 'Project aanmaken mislukt.'));
@@ -149,7 +161,7 @@ export function MobileProjectCreatePage() {
               <option value="">Automatisch volgens EXC</option>
               {filteredTemplates.map((item) => (
                 <option key={String(item.id)} value={String(item.id)}>
-                  {String(item.name || item.title || item.id)}
+                  {templateLabel(item)}
                 </option>
               ))}
             </select>

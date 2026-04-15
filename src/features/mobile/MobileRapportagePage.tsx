@@ -22,6 +22,10 @@ function reportPdfUrl(row: ReportRow) {
   return String(row.pdf_url || row.download_url || '').trim();
 }
 
+function isProjectSummary(row: ReportRow) {
+  return String(row.type || '').toLowerCase().includes('project') || String(row.id || '').startsWith('project-');
+}
+
 export function MobileRapportagePage() {
   const navigate = useNavigate();
   const reports = useReports({ page: 1, limit: 50 });
@@ -37,6 +41,11 @@ export function MobileRapportagePage() {
   const featured = visibleRows.find((item) => reportPdfUrl(item) || item.project_id) || null;
 
   function openReport(row: ReportRow) {
+    if (row.project_id && isProjectSummary(row)) {
+      navigate(`/projecten/${row.project_id}/pdf-viewer`);
+      return;
+    }
+
     const url = reportPdfUrl(row);
     if (url) {
       window.open(url, '_blank', 'noopener,noreferrer');

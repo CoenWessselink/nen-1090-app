@@ -5,7 +5,7 @@ import { deleteAttachment } from '@/api/documents';
 import { getWeld, getWeldAttachments, updateWeld, uploadWeldAttachment } from '@/api/welds';
 import { useInspectionTemplates, useMaterials, useProcesses, useWelders, useWps } from '@/hooks/useSettings';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
-import { normalizeApiError } from '@/features/mobile/mobile-utils';
+import { dispatchAppRefresh, normalizeApiError } from '@/features/mobile/mobile-utils';
 
 type WeldFormState = {
   assembly_id: string;
@@ -155,6 +155,7 @@ export function MobileWeldEditPage() {
         await uploadWeldAttachment(projectId, weldId, formData);
       }
 
+      dispatchAppRefresh({ scope: 'welds', projectId, weldId, reason: 'weld-updated' });
       navigate(`/projecten/${projectId}/lassen`, { replace: true });
     } catch (err) {
       setError(normalizeApiError(err, 'Las opslaan mislukt.'));
@@ -178,7 +179,7 @@ export function MobileWeldEditPage() {
           <label className="mobile-form-field mobile-select-field"><span>Materiaal</span><select value={form.material} onChange={(event) => setForm((current) => ({ ...current, material: event.target.value }))}><option value="">Selecteer materiaal</option>{((materials.data?.items || []) as Array<Record<string, unknown>>).map((item) => <option key={String(item.id)} value={String(item.code || item.title || item.id)}>{String(item.code || item.title || item.id)}</option>)}</select></label>
           <label className="mobile-form-field mobile-select-field"><span>Lasser</span><select value={form.welders} onChange={(event) => setForm((current) => ({ ...current, welders: event.target.value }))}><option value="">Selecteer lasser</option>{((welders.data?.items || []) as Array<Record<string, unknown>>).map((item) => { const value = String(item.name || item.code || item.id || ''); return <option key={String(item.id || value)} value={value}>{value}</option>; })}</select></label>
           <label className="mobile-form-field"><span>Locatie</span><input value={form.location} onChange={(event) => setForm((current) => ({ ...current, location: event.target.value }))} placeholder="Locatie" /></label>
-          <label className="mobile-form-field mobile-select-field"><span>Inspectietemplate</span><select value={form.template_id} onChange={(event) => setForm((current) => ({ ...current, template_id: event.target.value }))}><option value="">Automatisch via EXC</option>{templateOptions.map((item) => <option key={String(item.id)} value={String(item.id)}>{String(item.name || item.title || item.id)}</option>)}</select></label>
+          <label className="mobile-form-field mobile-select-field"><span>Inspectietemplate</span><select value={form.template_id} onChange={(event) => setForm((current) => ({ ...current, template_id: event.target.value }))}><option value="">Automatisch via EXC</option>{templateOptions.map((item) => <option key={String(item.id)} value={String(item.id)}>{[String(item.name || item.title || item.id), String(item.norm || '').trim(), item.version ? `v${String(item.version)}` : ''].filter(Boolean).join(' · ')}</option>)}</select></label>
           <label className="mobile-form-field mobile-select-field"><span>Status</span><select value={form.status} onChange={(event) => setForm((current) => ({ ...current, status: event.target.value }))}><option value="conform">Conform</option><option value="in_controle">In controle</option><option value="niet_conform">Niet conform</option></select></label>
           <label className="mobile-upload-field"><span><Camera size={16} /> Foto’s toevoegen</span><input type="file" accept="image/*" capture="environment" multiple onChange={(event) => setNewFiles(Array.from(event.target.files || []))} /><small>Voeg extra foto’s toe aan deze las</small></label>
           {newFiles.length ? <div className="mobile-file-list">{newFiles.map((file) => <div key={`${file.name}-${file.size}`} className="mobile-file-pill">{file.name}</div>)}</div> : null}

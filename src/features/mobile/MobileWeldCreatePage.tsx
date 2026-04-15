@@ -23,7 +23,7 @@ function defaultForm(projectId: string): WeldFormValues {
   };
 }
 
-type Option = { id?: string; code?: string; name?: string; label?: string; value?: string; exc_class?: string; execution_class?: string };
+type Option = { id?: string; code?: string; name?: string; label?: string; value?: string; exc_class?: string; execution_class?: string; norm?: string; version?: string | number };
 type MobileWeldForm = WeldFormValues & { material?: string };
 
 export function MobileWeldCreatePage() {
@@ -56,7 +56,7 @@ export function MobileWeldCreatePage() {
   }, []);
 
   useEffect(() => {
-    const matching = templates.find((item) => String(item.exc_class || '').toUpperCase() === String(form.execution_class || '').toUpperCase());
+    const matching = templates.find((item) => String(item.exc_class || item.execution_class || '').toUpperCase() === String(form.execution_class || '').toUpperCase());
     if (matching?.id && !form.template_id) {
       setForm((current) => ({ ...current, template_id: String(matching.id) }));
     }
@@ -122,7 +122,7 @@ export function MobileWeldCreatePage() {
         <label className="mobile-form-field mobile-select-field"><span>Lasmethode</span><select value={form.process || '135'} onChange={(event) => patch('process', event.target.value)}>{processes.length ? processes.map((item, index) => <option key={`${item.id || item.code || item.value || index}`} value={String(item.code || item.value || item.name || '135')}>{String(item.name || item.label || item.code || item.value || '135')}</option>) : <><option value="135">135 (MAG)</option><option value="111">111 (BMBE)</option><option value="141">141 (TIG)</option></>}</select></label>
         <label className="mobile-form-field mobile-select-field"><span>Materiaal</span><select value={form.material || ''} onChange={(event) => patch('material', event.target.value)}><option value="">Selecteer materiaal</option>{materials.map((item, index) => <option key={`${item.id || item.code || item.value || index}`} value={String(item.code || item.value || item.name || '')}>{String(item.name || item.label || item.code || item.value || '')}</option>)}</select></label>
         <label className="mobile-form-field mobile-select-field"><span>Lasser</span><select value={form.welder_name || ''} onChange={(event) => patch('welder_name', event.target.value)}><option value="">Selecteer lasser</option>{welders.map((item, index) => <option key={`${item.id || item.code || item.value || index}`} value={String(item.name || item.label || item.code || item.value || '')}>{String(item.name || item.label || item.code || item.value || '')}</option>)}</select></label>
-        <label className="mobile-form-field mobile-select-field"><span>Inspectietemplate</span><select value={form.template_id || ''} onChange={(event) => patch('template_id', event.target.value)}><option value="">Selecteer template</option>{templates.filter((item) => !form.execution_class || String(item.exc_class || '').toUpperCase() === String(form.execution_class || '').toUpperCase()).map((item, index) => <option key={`${item.id || index}`} value={String(item.id || '')}>{String(item.name || item.label || item.id || '')}</option>)}</select></label>
+        <label className="mobile-form-field mobile-select-field"><span>Inspectietemplate</span><select value={form.template_id || ''} onChange={(event) => patch('template_id', event.target.value)}><option value="">Selecteer template</option>{templates.filter((item) => !form.execution_class || String(item.exc_class || item.execution_class || '').toUpperCase() === String(form.execution_class || '').toUpperCase()).map((item, index) => <option key={`${item.id || index}`} value={String(item.id || '')}>{[String(item.name || item.label || item.id || ''), String(item.norm || '').trim(), item.version ? `v${String(item.version)}` : ''].filter(Boolean).join(' · ')}</option>)}</select></label>
         <label className="mobile-form-field mobile-select-field"><span>Status</span><select value={form.status} onChange={(event) => patch('status', event.target.value as WeldFormValues['status'])}><option value="conform">Conform</option><option value="defect">Niet conform</option><option value="gerepareerd">Gerepareerd</option></select></label>
         <label className="mobile-upload-field">
           <span><ImagePlus size={16} /> Foto’s toevoegen</span>

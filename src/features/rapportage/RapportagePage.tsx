@@ -24,6 +24,10 @@ type ReportRow = {
   pdf_url?: string;
 };
 
+function isProjectSummary(row: ReportRow) {
+  return String(row.type || '').toLowerCase().includes('project') || String(row.id || '').startsWith('project-');
+}
+
 function toneFromType(type?: string) {
   const value = String(type || '').toLowerCase();
   if (value.includes('project')) return 'success' as const;
@@ -52,6 +56,10 @@ export function RapportagePage() {
   }, [rows, search]);
 
   async function openPdf(row: ReportRow) {
+    if (row.project_id && isProjectSummary(row)) {
+      navigate(`/projecten/${row.project_id}/pdf-viewer`);
+      return;
+    }
     if (row.pdf_url) {
       setActivePreviewUrl(String(row.pdf_url));
       await openDownloadUrl(String(row.pdf_url), `rapport-${row.id}.pdf`);

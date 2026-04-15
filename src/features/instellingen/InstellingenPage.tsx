@@ -20,6 +20,7 @@ import { validateObjectPayload } from '@/utils/contracts';
 import { MasterDataManager } from '@/features/instellingen/components/MasterDataManager';
 import { CompanySettingsCard } from '@/features/instellingen/components/CompanySettingsCard';
 import { InspectionTemplatesManager } from '@/features/instellingen/components/InspectionTemplatesManager';
+import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
 
 const tabs = [
   { value: 'organisatie', label: 'Organisatie' },
@@ -68,6 +69,7 @@ export function InstellingenPage() {
   const weldCoordinators = useWeldCoordinators();
   const inspectionTemplates = useInspectionTemplates();
   const [notificationEmail, setNotificationEmail] = useState(loadFrontendSettings(user?.email || '').notificationEmail);
+  const isMobileLayout = typeof window !== 'undefined' ? window.innerWidth < 768 : false;
 
   const sessionSummary = useMemo(() => ({
     authenticated: Boolean(token && user),
@@ -83,7 +85,7 @@ export function InstellingenPage() {
     pushNotification({ title: 'Instellingen opgeslagen', description: 'Frontend-voorkeuren zijn lokaal opgeslagen zonder nieuwe backendcontracten te verzinnen.', tone: 'success' });
   };
 
-  return (
+  const content = (
     <div className="page-stack">
       <PageHeader title="Instellingen" description="Masterdata onder elkaar, inclusief WPS, materialen, lassers en inspectietemplates." />
       {message ? <InlineMessage tone="success">{message}</InlineMessage> : null}
@@ -221,4 +223,15 @@ export function InstellingenPage() {
       </Drawer>
     </div>
   );
+
+  if (isMobileLayout) {
+    return (
+      <MobilePageScaffold title="Instellingen" subtitle="Mobiele instellingen">
+        {content}
+      </MobilePageScaffold>
+    );
+  }
+
+  return content;
 }
+

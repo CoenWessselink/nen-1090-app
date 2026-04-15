@@ -86,8 +86,22 @@ export function deleteWps(wpsId: string | number) {
 
 
 
-export function getClients() {
-  return listRequest<MasterDataListResponse>('/settings/clients');
+
+export async function getClients() {
+  const payload = await optionalRequest<MasterDataListResponse>(['/settings/clients', '/clients', '/customers']);
+  if (payload) return payload;
+
+  const projects = await optionalRequest<MasterDataListResponse>(['/projects']);
+  const items = normalizeItems(projects).map((item) => {
+    const row = item as Record<string, unknown>;
+    return {
+      id: row.client_id || row.client_name || row.opdrachtgever || row.client || row.id,
+      name: row.client_name || row.opdrachtgever || row.client || row.name || row.title || row.code || row.id,
+    } satisfies MasterDataItem;
+  }).filter((item) => String(item.name || '').trim());
+
+  const unique = Array.from(new Map(items.map((item) => [String(item.name), item])).values());
+  return { items: unique, total: unique.length, page: 1, limit: unique.length || 25 };
 }
 
 export function getProcesses() {

@@ -39,10 +39,12 @@ export function MobileDashboardPage() {
     const reload = () => loadSummary();
     window.addEventListener(APP_REFRESH_EVENT, reload as EventListener);
     window.addEventListener('focus', reload);
+    const intervalId = window.setInterval(reload, 15000);
     document.addEventListener('visibilitychange', reload);
     return () => {
       window.removeEventListener(APP_REFRESH_EVENT, reload as EventListener);
       window.removeEventListener('focus', reload);
+      window.clearInterval(intervalId);
       document.removeEventListener('visibilitychange', reload);
     };
   }, [loadSummary]);
