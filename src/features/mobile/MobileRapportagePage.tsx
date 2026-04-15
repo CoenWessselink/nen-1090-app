@@ -3,6 +3,7 @@ import { Download, FileText, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useReports } from '@/hooks/useReports';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
+import { openDownloadUrl } from '@/utils/download';
 import { formatValue } from '@/features/mobile/mobile-utils';
 
 type ReportRow = {
@@ -48,7 +49,7 @@ export function MobileRapportagePage() {
 
     const url = reportPdfUrl(row);
     if (url) {
-      window.open(url, '_blank', 'noopener,noreferrer');
+      void openDownloadUrl(url, `rapport-${row.id}.pdf`);
       return;
     }
     if (row.project_id) navigate(`/projecten/${row.project_id}/pdf-viewer`);
@@ -101,9 +102,9 @@ export function MobileRapportagePage() {
                     Bekijk PDF
                   </button>
                   {pdfUrl ? (
-                    <a className="mobile-secondary-button" href={pdfUrl} target="_blank" rel="noreferrer" style={{ textDecoration: 'none' }}>
+                    <button type="button" className="mobile-secondary-button" onClick={() => void openDownloadUrl(pdfUrl, `rapport-${row.id}.pdf`)}>
                       <Download size={14} /> Download
-                    </a>
+                    </button>
                   ) : null}
                 </div>
               </div>

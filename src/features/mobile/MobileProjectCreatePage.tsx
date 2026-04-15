@@ -142,12 +142,17 @@ export function MobileProjectCreatePage() {
         <div className="mobile-form-card" data-testid="mobile-project-create-form">
           <label className="mobile-form-field"><span>Projectnaam</span><input value={form.name} onChange={(event) => patch('name', event.target.value)} placeholder="Bijv. Magazijn" /></label>
           <label className="mobile-form-field"><span>Projectnummer</span><input value={form.projectnummer} onChange={(event) => patch('projectnummer', event.target.value)} placeholder="Bijv. 500" /></label>
-          <label className="mobile-form-field mobile-select-field">
+          <label className="mobile-form-field">
             <span>Opdrachtgever</span>
-            <select value={form.client_name} onChange={(event) => patch('client_name', event.target.value)}>
-              <option value="">Selecteer opdrachtgever</option>
-              {clientOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-            </select>
+            <input
+              list="mobile-project-client-suggestions"
+              value={form.client_name}
+              onChange={(event) => patch('client_name', event.target.value)}
+              placeholder="Voer opdrachtgever in"
+            />
+            <datalist id="mobile-project-client-suggestions">
+              {clientOptions.map((option) => <option key={option} value={option} />)}
+            </datalist>
           </label>
           <label className="mobile-form-field mobile-select-field">
             <span>Executieklasse</span>
@@ -164,15 +169,6 @@ export function MobileProjectCreatePage() {
                   {templateLabel(item)}
                 </option>
               ))}
-            </select>
-          </label>
-          <label className="mobile-form-field mobile-select-field">
-            <span>Projectstatus</span>
-            <select value={form.status} onChange={(event) => patch('status', event.target.value)}>
-              <option value="conform">Conform</option>
-              <option value="in_controle">In controle</option>
-              <option value="niet_conform">Niet conform</option>
-              <option value="gereed">Gereed</option>
             </select>
           </label>
           <label className="mobile-form-field"><span>Startdatum</span><input type="date" value={form.start_date || ''} onChange={(event) => patch('start_date', event.target.value)} /></label>

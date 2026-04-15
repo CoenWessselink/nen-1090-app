@@ -209,6 +209,7 @@ export function useCreateProject() {
             assembly_id: resolvedAssemblyId,
             wps_id: weld.wps_id,
             welder_name: weld.welder_name,
+            coordinator_id: weld.coordinator_id,
             process: weld.process,
             location: weld.location,
             status: weld.status === 'gerepareerd' ? 'gerepareerd' : weld.status === 'conform' ? 'conform' : 'defect',

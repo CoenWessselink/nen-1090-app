@@ -4,27 +4,9 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { createPdfExport, getCeDossier } from '@/api/ce';
 import { getProjectDocuments } from '@/api/documents';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
-import { Modal } from '@/components/overlays/Modal';
 import { openDownloadUrl } from '@/utils/download';
 import { firstPdfDocument, formatValue, groupChecklist, normalizeApiError, normalizeChecklist, summarizeChecklist } from '@/features/mobile/mobile-utils';
 import type { CeDocument } from '@/types/domain';
-
-type ChecklistRow = { label: string; status: string; group: string };
-
-function inferRoute(projectId: string, item: ChecklistRow) {
-  const label = String(item.label || '').toLowerCase();
-  if (label.includes('project') || label.includes('exc') || label.includes('opdracht')) return `/projecten/${projectId}/bewerken`;
-  if (label.includes('document') || label.includes('foto') || label.includes('certific')) return `/projecten/${projectId}/documenten`;
-  if (label.includes('inspect') || label.includes('ndt') || label.includes('controle')) return `/projecten/${projectId}/lassen`;
-  if (label.includes('las') || label.includes('wps') || label.includes('wpqr') || label.includes('materiaal')) return `/projecten/${projectId}/lassen`;
-  return `/projecten/${projectId}/overzicht`;
-}
-
-function reasonForItem(item: ChecklistRow) {
-  if (item.status === 'Compleet') return 'Dit onderdeel is aanwezig en telt mee in de CE-status.';
-  if (item.status === 'Ontbreekt') return 'Dit onderdeel ontbreekt nog en blokkeert een complete CE-vrijgave.';
-  return 'Dit onderdeel is verplicht voor een volledig en controleerbaar CE-dossier.';
-}
 
 export function MobileCeDossierPage() {
   const navigate = useNavigate();
@@ -34,7 +16,6 @@ export function MobileCeDossierPage() {
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedItem, setSelectedItem] = useState<ChecklistRow | null>(null);
 
   async function loadDossier() {
     const [dossier, docs] = await Promise.all([
@@ -76,24 +57,15 @@ export function MobileCeDossierPage() {
     try {
       setExporting(true);
       setError(null);
-      await createPdfExport(projectId);
+      const result = await createPdfExport(projectId);
+      const downloadUrl = typeof result === 'object' && result ? String((result as Record<string, unknown>).download_url || (result as Record<string, unknown>).url || '') : '';
+      if (downloadUrl) {
+        await openDownloadUrl(downloadUrl, 'CE-Dossier.pdf');
+        return;
+      }
       navigate(`/projecten/${projectId}/pdf-viewer`);
     } catch (err) {
       setError(normalizeApiError(err, 'PDF kon niet worden aangemaakt.'));
-    } finally {
-      setExporting(false);
-    }
-  }
-
-  async function handleDirectDownload() {
-    try {
-      setExporting(true);
-      setError(null);
-      const result = await createPdfExport(projectId);
-      const downloadUrl = typeof result === 'object' && result ? String((result as Record<string, unknown>).download_url || (result as Record<string, unknown>).url || '') : '';
-      await openDownloadUrl(downloadUrl || `/api/v1/projects/${projectId}/exports/ce-dossier/pdf`, `ce-dossier-${projectId}.pdf`);
-    } catch (err) {
-      setError(normalizeApiError(err, 'PDF download mislukt.'));
     } finally {
       setExporting(false);
     }
@@ -134,16 +106,10 @@ export function MobileCeDossierPage() {
             <div key={group.group} className="mobile-checklist-card grouped-checklist-card">
               <div className="mobile-section-kicker">{group.group}</div>
               {group.rows.map((item) => (
-                <button
-                  key={`${group.group}-${item.label}`}
-                  type="button"
-                  className="mobile-checklist-row"
-                  onClick={() => setSelectedItem({ ...item, group: group.group })}
-                  style={{ width: '100%', textAlign: 'left', background: 'transparent', border: 'none' }}
-                >
+                <div key={`${group.group}-${item.label}`} className="mobile-checklist-row">
                   <strong>{item.label}</strong>
                   <span className={`mobile-checklist-status status-${item.status.toLowerCase().replace(/\s+/g, '-')}`}>{item.status}</span>
-                </button>
+                </div>
               ))}
             </div>
           ))}
@@ -155,9 +121,6 @@ export function MobileCeDossierPage() {
             <button type="button" className="mobile-secondary-button" disabled={exporting} onClick={handleCreatePdf}>
               <Download size={16} /> {exporting ? 'PDF maken…' : 'Maak PDF'}
             </button>
-            <button type="button" className="mobile-secondary-button" disabled={exporting} onClick={handleDirectDownload}>
-              <Download size={16} /> Download PDF
-            </button>
           </div>
 
           <button type="button" className="mobile-link-button" onClick={() => { setLoading(true); loadDossier().finally(() => setLoading(false)); }}>
@@ -165,24 +128,6 @@ export function MobileCeDossierPage() {
           </button>
         </div>
       ) : null}
-
-      <Modal open={Boolean(selectedItem)} onClose={() => setSelectedItem(null)} title={selectedItem?.label || 'CE regel'} size="large">
-        <div className="detail-stack">
-          <div className="mobile-state-card">
-            <strong>Status</strong>
-            <div>{selectedItem?.status || '—'}</div>
-          </div>
-          <div className="mobile-state-card">
-            <strong>Waarom vereist</strong>
-            <div>{selectedItem ? reasonForItem(selectedItem) : '—'}</div>
-          </div>
-          <div className="mobile-inline-actions stack-on-mobile">
-            <button type="button" className="mobile-primary-button" onClick={() => selectedItem && navigate(inferRoute(projectId, selectedItem))}>Open gekoppelde module</button>
-            <button type="button" className="mobile-secondary-button" onClick={() => navigate(`/projecten/${projectId}/overzicht`)}>Project 360</button>
-            <button type="button" className="mobile-secondary-button" onClick={() => setSelectedItem(null)}>Sluiten</button>
-          </div>
-        </div>
-      </Modal>
     </MobilePageScaffold>
   );
 }

@@ -11,11 +11,13 @@ export function MobileProject360Page() {
   const { projectId = '' } = useParams();
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadProject = useCallback(() => {
+  const loadProject = useCallback((background = false) => {
     let active = true;
-    setLoading(true);
+    if (background) setRefreshing(true);
+    else setLoading(true);
     getProject(projectId)
       .then((result) => {
         if (!active) return;
@@ -27,30 +29,28 @@ export function MobileProject360Page() {
         setError(err instanceof Error ? err.message : 'Project kon niet worden geladen.');
       })
       .finally(() => {
-        if (active) setLoading(false);
+        if (!active) return;
+        if (background) setRefreshing(false);
+        else setLoading(false);
       });
     return () => {
       active = false;
     };
   }, [projectId]);
 
-  useEffect(() => loadProject(), [loadProject]);
+  useEffect(() => loadProject(false), [loadProject]);
 
   useEffect(() => {
-    const reload = () => loadProject();
+    const reload = () => loadProject(true);
     window.addEventListener(APP_REFRESH_EVENT, reload as EventListener);
-    window.addEventListener('focus', reload);
-    const intervalId = window.setInterval(reload, 15000);
     return () => {
       window.removeEventListener(APP_REFRESH_EVENT, reload as EventListener);
-      window.removeEventListener('focus', reload);
-      window.clearInterval(intervalId);
     };
   }, [loadProject]);
 
   const actions = useMemo(
     () => [
-      { label: 'Assemblies', color: 'primary', icon: PanelsTopLeft, to: `/projecten/${projectId}/assemblies` },
+      { label: 'Nieuwe assembly', color: 'primary', icon: PanelsTopLeft, to: `/projecten/${projectId}/assemblies/nieuw` },
       { label: 'Lassen', color: 'success', icon: Wrench, to: `/projecten/${projectId}/lassen` },
       { label: 'Documenten', color: 'danger', icon: FolderOpen, to: `/projecten/${projectId}/documenten` },
       { label: 'CE-Dossier', color: 'warning', icon: FileText, to: `/projecten/${projectId}/ce-dossier` },
@@ -65,13 +65,19 @@ export function MobileProject360Page() {
       title="Project 360"
       backTo="/projecten"
       rightSlot={
-        <button className="mobile-icon-button" type="button" aria-label="Nieuwe las" onClick={() => navigate(`/projecten/${projectId}/lassen/nieuw`)}>
-          <Plus size={18} />
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="mobile-icon-button" type="button" aria-label="Nieuwe assembly" onClick={() => navigate(`/projecten/${projectId}/assemblies/nieuw`)}>
+            <PanelsTopLeft size={18} />
+          </button>
+          <button className="mobile-icon-button" type="button" aria-label="Nieuwe las" onClick={() => navigate(`/projecten/${projectId}/lassen/nieuw`)}>
+            <Plus size={18} />
+          </button>
+        </div>
       }
     >
       {loading ? <div className="mobile-state-card">Project laden…</div> : null}
       {error ? <div className="mobile-state-card mobile-state-card-error">{error}</div> : null}
+      {refreshing && !loading ? <div className="mobile-list-card-meta" style={{ marginBottom: 8 }}>Gegevens worden bijgewerkt…</div> : null}
       {!loading && !error && project ? (
         <>
           <div className="mobile-detail-card">
@@ -81,6 +87,9 @@ export function MobileProject360Page() {
             <div className="mobile-field-row"><span>Executieklasse</span><strong>{projectExecutionClass(project)}</strong></div>
           </div>
           <div className="mobile-inline-actions" style={{ marginBottom: 12 }}>
+            <button type="button" className="mobile-secondary-button" onClick={() => navigate(`/projecten/${projectId}/assemblies/nieuw`)}>
+              <PanelsTopLeft size={16} /> Nieuwe assembly
+            </button>
             <button type="button" className="mobile-primary-button" onClick={() => navigate(`/projecten/${projectId}/lassen/nieuw`)}>
               <Plus size={16} /> Nieuwe las
             </button>

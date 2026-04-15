@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Camera, Trash2 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { getAssemblies } from '@/api/assemblies';
 import { deleteAttachment } from '@/api/documents';
 import { getWeld, getWeldAttachments, updateWeld, uploadWeldAttachment } from '@/api/welds';
-import { useInspectionTemplates, useMaterials, useProcesses, useWelders, useWps } from '@/hooks/useSettings';
+import { useInspectionTemplates, useMaterials, useProcesses, useWeldCoordinators, useWelders, useWps } from '@/hooks/useSettings';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
 import { dispatchAppRefresh, normalizeApiError } from '@/features/mobile/mobile-utils';
 
@@ -19,6 +20,7 @@ type WeldFormState = {
   template_id: string;
   status: string;
   wps: string;
+  coordinator_id: string;
 };
 
 type AttachmentRow = {
@@ -34,6 +36,7 @@ export function MobileWeldEditPage() {
   const materials = useMaterials();
   const welders = useWelders();
   const wps = useWps();
+  const coordinators = useWeldCoordinators();
   const inspectionTemplates = useInspectionTemplates();
   const [form, setForm] = useState<WeldFormState>({
     assembly_id: '',
@@ -47,8 +50,10 @@ export function MobileWeldEditPage() {
     template_id: '',
     status: 'conform',
     wps: '',
+    coordinator_id: '',
   });
   const [attachments, setAttachments] = useState<AttachmentRow[]>([]);
+  const [assemblyOptions, setAssemblyOptions] = useState<Array<Record<string, unknown>>>([]);
   const [newFiles, setNewFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -64,8 +69,8 @@ export function MobileWeldEditPage() {
   useEffect(() => {
     let active = true;
     setLoading(true);
-    Promise.all([getWeld(projectId, weldId), getWeldAttachments(projectId, weldId).catch(() => [])])
-      .then(([result, attachmentResult]) => {
+    Promise.all([getWeld(projectId, weldId), getWeldAttachments(projectId, weldId).catch(() => []), getAssemblies(projectId).catch(() => ({ items: [] }))])
+      .then(([result, attachmentResult, assembliesResult]) => {
         if (!active) return;
         const record = (result || {}) as Record<string, unknown>;
         setForm({
@@ -80,7 +85,10 @@ export function MobileWeldEditPage() {
           template_id: String(record.template_id || ''),
           status: String(record.status || 'conform'),
           wps: String(record.wps || record.wps_id || ''),
+          coordinator_id: String(record.coordinator_id || ''),
         });
+        const assemblyRows = Array.isArray(assembliesResult) ? assembliesResult : Array.isArray((assembliesResult as Record<string, unknown>)?.items) ? ((assembliesResult as Record<string, unknown>).items as Array<Record<string, unknown>>) : [];
+        setAssemblyOptions(assemblyRows);
         const rows = Array.isArray(attachmentResult)
           ? attachmentResult
           : Array.isArray((attachmentResult as Record<string, unknown>)?.items)
@@ -146,6 +154,7 @@ export function MobileWeldEditPage() {
         template_id: form.template_id || null,
         status: form.status,
         wps: form.wps || null,
+        coordinator_id: form.coordinator_id || null,
       });
 
       for (const file of newFiles) {
@@ -170,7 +179,7 @@ export function MobileWeldEditPage() {
       {error ? <div className="mobile-inline-alert is-error">{error}</div> : null}
       {!loading ? (
         <div className="mobile-form-card" data-testid="mobile-weld-edit-form">
-          <label className="mobile-form-field"><span>Assemblage</span><input value={form.assembly_id} onChange={(event) => setForm((current) => ({ ...current, assembly_id: event.target.value }))} placeholder="Assemblage" /></label>
+          <label className="mobile-form-field mobile-select-field"><span>Assemblage</span><select value={form.assembly_id} onChange={(event) => setForm((current) => ({ ...current, assembly_id: event.target.value }))}><option value="">Selecteer assemblage</option>{assemblyOptions.map((item, index) => <option key={`${item.id || index}`} value={String(item.id || '')}>{String(item.code || item.name || item.id || '')}</option>)}</select></label>
           <label className="mobile-form-field"><span>Lasnummer</span><input value={form.weld_no} onChange={(event) => setForm((current) => ({ ...current, weld_no: event.target.value }))} placeholder="Lasnummer" /></label>
           <label className="mobile-form-field"><span>Lasdatum</span><input type="date" value={form.inspected_at} onChange={(event) => setForm((current) => ({ ...current, inspected_at: event.target.value }))} /></label>
           <label className="mobile-form-field mobile-select-field"><span>Executieklasse</span><select value={form.execution_class} onChange={(event) => setForm((current) => ({ ...current, execution_class: event.target.value }))}>{['EXC1','EXC2','EXC3','EXC4'].map((exc) => <option key={exc} value={exc}>{exc}</option>)}</select></label>
@@ -178,6 +187,7 @@ export function MobileWeldEditPage() {
           <label className="mobile-form-field mobile-select-field"><span>WPS</span><select value={form.wps} onChange={(event) => setForm((current) => ({ ...current, wps: event.target.value }))}><option value="">Selecteer WPS</option>{((wps.data?.items || []) as Array<Record<string, unknown>>).map((item) => <option key={String(item.id)} value={String(item.code || item.id)}>{String(item.code || item.title || item.id)}</option>)}</select></label>
           <label className="mobile-form-field mobile-select-field"><span>Materiaal</span><select value={form.material} onChange={(event) => setForm((current) => ({ ...current, material: event.target.value }))}><option value="">Selecteer materiaal</option>{((materials.data?.items || []) as Array<Record<string, unknown>>).map((item) => <option key={String(item.id)} value={String(item.code || item.title || item.id)}>{String(item.code || item.title || item.id)}</option>)}</select></label>
           <label className="mobile-form-field mobile-select-field"><span>Lasser</span><select value={form.welders} onChange={(event) => setForm((current) => ({ ...current, welders: event.target.value }))}><option value="">Selecteer lasser</option>{((welders.data?.items || []) as Array<Record<string, unknown>>).map((item) => { const value = String(item.name || item.code || item.id || ''); return <option key={String(item.id || value)} value={value}>{value}</option>; })}</select></label>
+          <label className="mobile-form-field mobile-select-field"><span>Lascoördinator</span><select value={form.coordinator_id} onChange={(event) => setForm((current) => ({ ...current, coordinator_id: event.target.value }))}><option value="">Selecteer lascoördinator</option>{((coordinators.data?.items || []) as Array<Record<string, unknown>>).map((item) => <option key={String(item.id || item.code || '')} value={String(item.id || '')}>{String(item.name || item.code || item.id || '')}</option>)}</select></label>
           <label className="mobile-form-field"><span>Locatie</span><input value={form.location} onChange={(event) => setForm((current) => ({ ...current, location: event.target.value }))} placeholder="Locatie" /></label>
           <label className="mobile-form-field mobile-select-field"><span>Inspectietemplate</span><select value={form.template_id} onChange={(event) => setForm((current) => ({ ...current, template_id: event.target.value }))}><option value="">Automatisch via EXC</option>{templateOptions.map((item) => <option key={String(item.id)} value={String(item.id)}>{[String(item.name || item.title || item.id), String(item.norm || '').trim(), item.version ? `v${String(item.version)}` : ''].filter(Boolean).join(' · ')}</option>)}</select></label>
           <label className="mobile-form-field mobile-select-field"><span>Status</span><select value={form.status} onChange={(event) => setForm((current) => ({ ...current, status: event.target.value }))}><option value="conform">Conform</option><option value="in_controle">In controle</option><option value="niet_conform">Niet conform</option></select></label>

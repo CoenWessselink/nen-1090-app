@@ -139,13 +139,45 @@ export function firstPdfDocument(documents: CeDocument[]) {
 }
 
 export function apiProjectPdfUrl(projectId: string | number) {
-  return `/api/v1/projects/${projectId}/exports/ce-dossier/pdf`;
+  return `/api/v1/projects/${projectId}/exports/pdf/download`;
+}
+
+function flattenApiErrorDetails(value: unknown): string {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'string') return value.trim();
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => flattenApiErrorDetails(item))
+      .filter(Boolean)
+      .join(' · ')
+      .trim();
+  }
+  if (typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+    const direct = [record.detail, record.message, record.error, record.msg]
+      .map((item) => flattenApiErrorDetails(item))
+      .filter(Boolean)
+      .join(' · ')
+      .trim();
+    if (direct) return direct;
+
+    if (Array.isArray(record.errors)) {
+      const nested = record.errors.map((item) => flattenApiErrorDetails(item)).filter(Boolean).join(' · ').trim();
+      if (nested) return nested;
+    }
+
+    if (Array.isArray(record.loc) || record.input !== undefined) {
+      const path = Array.isArray(record.loc) ? record.loc.filter((item) => item !== 'body').join('.') : '';
+      const msg = String(record.msg || record.message || record.detail || 'Ongeldige invoer').trim();
+      return path ? `${path}: ${msg}` : msg;
+    }
+  }
+  return '';
 }
 
 export function normalizeApiError(error: unknown, fallback = 'Opslaan mislukt. Probeer het opnieuw.') {
   const source = error && typeof error === 'object' ? (error as Record<string, unknown>) : {};
-  const details = source.details && typeof source.details === 'object' ? (source.details as Record<string, unknown>) : {};
-  const detailText = String(details.detail || details.message || '').trim();
+  const detailText = flattenApiErrorDetails(source.details || source.detail || source.error);
   if (detailText) return detailText;
 
   const message = String(source.message || '').toLowerCase();
@@ -153,7 +185,7 @@ export function normalizeApiError(error: unknown, fallback = 'Opslaan mislukt. P
   if (message.includes('authorization') || message.includes('401') || message.includes('unauthorized')) {
     return 'Je sessie is verlopen of de download mist autorisatie. Log opnieuw in en probeer opnieuw.';
   }
-  if (message.includes('bad request') || message.includes('422') || message.includes('400')) {
+  if (message.includes('bad request') || message.includes('422') || message.includes('400') || message.includes('unprocessable')) {
     return 'Opslaan mislukt. Controleer de ingevulde gegevens.';
   }
   if (message.includes('network') || message.includes('fetch')) {

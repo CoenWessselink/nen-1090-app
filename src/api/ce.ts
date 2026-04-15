@@ -232,14 +232,21 @@ export async function createZipExport(projectId: string | number) {
 }
 
 export async function createPdfExport(projectId: string | number) {
-  const getPaths = [
+  await tryRequestVariants([
     `/projects/${projectId}/exports/pdf`,
     `/projects/${projectId}/export/pdf`,
-    `/projects/${projectId}/exports/ce-dossier/pdf`,
-    `/projects/${projectId}/ce-dossier/pdf`,
-  ];
-  const result = await tryRequestVariants(getPaths, ['POST', 'GET']);
-  return result || directDownloadPayload('pdf', projectId, getPaths[0]);
+  ], ['POST']);
+
+  return {
+    type: 'pdf',
+    export_type: 'pdf',
+    status: 'aangemaakt',
+    message: 'PDF export aangemaakt.',
+    project_id: String(projectId),
+    download_url: `/projects/${projectId}/exports/pdf/download`,
+    viewer_url: `/projects/${projectId}/exports/pdf/download`,
+    direct_download: true,
+  };
 }
 
 export async function createExcelExport(projectId: string | number) {

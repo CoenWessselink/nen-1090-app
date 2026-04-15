@@ -66,6 +66,9 @@ function sanitizeWeldPayload(payload: unknown) {
   const templateId = toOptionalUuid(source.template_id);
   if (templateId !== undefined) normalized.template_id = templateId;
 
+  const coordinatorId = toOptionalUuid(source.coordinator_id);
+  if (coordinatorId !== undefined) normalized.coordinator_id = coordinatorId;
+
   const process = toOptionalText(source.process);
   if (process !== undefined) normalized.process = process;
 

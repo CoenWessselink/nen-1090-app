@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Camera, ImagePlus } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { createWeld, uploadWeldAttachment } from '@/api/welds';
-import { getInspectionTemplates, getMaterials, getProcesses, getWelders } from '@/api/settings';
+import { getAssemblies } from '@/api/assemblies';
+import { getInspectionTemplates, getMaterials, getProcesses, getWeldCoordinators, getWelders } from '@/api/settings';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
 import { dispatchAppRefresh, normalizeApiError } from '@/features/mobile/mobile-utils';
 import type { WeldFormValues } from '@/types/forms';
@@ -26,6 +27,17 @@ function defaultForm(projectId: string): WeldFormValues {
 type Option = { id?: string; code?: string; name?: string; label?: string; value?: string; exc_class?: string; execution_class?: string; norm?: string; version?: string | number };
 type MobileWeldForm = WeldFormValues & { material?: string };
 
+function asOptions(value: unknown): Option[] {
+  if (Array.isArray(value)) return value as Option[];
+  if (value && typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+    if (Array.isArray(record.items)) return record.items as Option[];
+    if (Array.isArray(record.data)) return record.data as Option[];
+    if (Array.isArray(record.results)) return record.results as Option[];
+  }
+  return [];
+}
+
 export function MobileWeldCreatePage() {
   const navigate = useNavigate();
   const { projectId = '' } = useParams();
@@ -37,6 +49,8 @@ export function MobileWeldCreatePage() {
   const [materials, setMaterials] = useState<Option[]>([]);
   const [welders, setWelders] = useState<Option[]>([]);
   const [templates, setTemplates] = useState<Option[]>([]);
+  const [assemblies, setAssemblies] = useState<Option[]>([]);
+  const [coordinators, setCoordinators] = useState<Option[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -44,16 +58,20 @@ export function MobileWeldCreatePage() {
       getProcesses().catch(() => []),
       getMaterials().catch(() => []),
       getWelders().catch(() => []),
+      getWeldCoordinators().catch(() => []),
       getInspectionTemplates().catch(() => []),
-] ).then(([processRows, materialRows, welderRows, templateRows]) => {
+      getAssemblies(projectId).catch(() => ({ items: [] })),
+    ]).then(([processRows, materialRows, welderRows, coordinatorRows, templateRows, assemblyRows]) => {
       if (!active) return;
-      setProcesses(Array.isArray(processRows) ? processRows as Option[] : []);
-      setMaterials(Array.isArray(materialRows) ? materialRows as Option[] : []);
-      setWelders(Array.isArray(welderRows) ? welderRows as Option[] : []);
-      setTemplates(Array.isArray(templateRows) ? templateRows as Option[] : []);
+      setProcesses(asOptions(processRows));
+      setMaterials(asOptions(materialRows));
+      setWelders(asOptions(welderRows));
+      setCoordinators(asOptions(coordinatorRows));
+      setTemplates(asOptions(templateRows));
+      setAssemblies(asOptions(assemblyRows));
     }).catch(() => undefined);
     return () => { active = false; };
-  }, []);
+  }, [projectId]);
 
   useEffect(() => {
     const matching = templates.find((item) => String(item.exc_class || item.execution_class || '').toUpperCase() === String(form.execution_class || '').toUpperCase());
@@ -82,6 +100,7 @@ export function MobileWeldCreatePage() {
         weld_no: form.weld_number,
         weld_number: form.weld_number,
         assembly_id: form.assembly_id || null,
+        coordinator_id: form.coordinator_id || null,
         wps_id: form.wps_id || null,
         process: form.process || null,
         material: form.material || null,
@@ -117,11 +136,13 @@ export function MobileWeldCreatePage() {
       {error ? <div className="mobile-inline-alert is-error">{error}</div> : null}
       <div className="mobile-form-card" data-testid="mobile-weld-create-form">
         <label className="mobile-form-field"><span>Lasnummer</span><input value={form.weld_number} onChange={(event) => patch('weld_number', event.target.value)} placeholder="Bijv. L-101" /></label>
-        <label className="mobile-form-field"><span>Assemblage ID</span><input value={form.assembly_id || ''} onChange={(event) => patch('assembly_id', event.target.value)} placeholder="Optioneel" /></label>
+        <label className="mobile-form-field mobile-select-field"><span>Assemblage</span><select value={form.assembly_id || ''} onChange={(event) => patch('assembly_id', event.target.value)}><option value="">Selecteer assemblage</option>{assemblies.map((item, index) => <option key={`${item.id || item.code || item.value || index}`} value={String(item.id || item.value || '')}>{String(item.code || item.name || item.label || item.value || item.id || '')}</option>)}</select></label>
+        <div className="mobile-inline-actions" style={{ marginTop: -6, marginBottom: 8 }}><button type="button" className="mobile-secondary-button" onClick={() => navigate(`/projecten/${projectId}/assemblies/nieuw`)}>Nieuwe assembly maken</button></div>
         <label className="mobile-form-field mobile-select-field"><span>Executieklasse</span><select value={form.execution_class || 'EXC2'} onChange={(event) => patch('execution_class', event.target.value as WeldFormValues['execution_class'])}><option value="EXC1">EXC1</option><option value="EXC2">EXC2</option><option value="EXC3">EXC3</option><option value="EXC4">EXC4</option></select></label>
         <label className="mobile-form-field mobile-select-field"><span>Lasmethode</span><select value={form.process || '135'} onChange={(event) => patch('process', event.target.value)}>{processes.length ? processes.map((item, index) => <option key={`${item.id || item.code || item.value || index}`} value={String(item.code || item.value || item.name || '135')}>{String(item.name || item.label || item.code || item.value || '135')}</option>) : <><option value="135">135 (MAG)</option><option value="111">111 (BMBE)</option><option value="141">141 (TIG)</option></>}</select></label>
         <label className="mobile-form-field mobile-select-field"><span>Materiaal</span><select value={form.material || ''} onChange={(event) => patch('material', event.target.value)}><option value="">Selecteer materiaal</option>{materials.map((item, index) => <option key={`${item.id || item.code || item.value || index}`} value={String(item.code || item.value || item.name || '')}>{String(item.name || item.label || item.code || item.value || '')}</option>)}</select></label>
         <label className="mobile-form-field mobile-select-field"><span>Lasser</span><select value={form.welder_name || ''} onChange={(event) => patch('welder_name', event.target.value)}><option value="">Selecteer lasser</option>{welders.map((item, index) => <option key={`${item.id || item.code || item.value || index}`} value={String(item.name || item.label || item.code || item.value || '')}>{String(item.name || item.label || item.code || item.value || '')}</option>)}</select></label>
+        <label className="mobile-form-field mobile-select-field"><span>Lascoördinator</span><select value={form.coordinator_id || ''} onChange={(event) => patch('coordinator_id', event.target.value)}><option value="">Selecteer lascoördinator</option>{coordinators.map((item, index) => <option key={`${item.id || item.code || item.value || index}`} value={String(item.id || '')}>{String(item.name || item.label || item.code || item.value || item.id || '')}</option>)}</select></label>
         <label className="mobile-form-field mobile-select-field"><span>Inspectietemplate</span><select value={form.template_id || ''} onChange={(event) => patch('template_id', event.target.value)}><option value="">Selecteer template</option>{templates.filter((item) => !form.execution_class || String(item.exc_class || item.execution_class || '').toUpperCase() === String(form.execution_class || '').toUpperCase()).map((item, index) => <option key={`${item.id || index}`} value={String(item.id || '')}>{[String(item.name || item.label || item.id || ''), String(item.norm || '').trim(), item.version ? `v${String(item.version)}` : ''].filter(Boolean).join(' · ')}</option>)}</select></label>
         <label className="mobile-form-field mobile-select-field"><span>Status</span><select value={form.status} onChange={(event) => patch('status', event.target.value as WeldFormValues['status'])}><option value="conform">Conform</option><option value="defect">Niet conform</option><option value="gerepareerd">Gerepareerd</option></select></label>
         <label className="mobile-upload-field">

@@ -89,7 +89,7 @@ export function MobilePdfViewerPage() {
       setCreating(true);
       const result = await createPdfExport(projectId);
       const downloadUrl = typeof result === 'object' && result ? String((result as Record<string, unknown>).download_url || (result as Record<string, unknown>).url || '') : '';
-      await openDownloadUrl(downloadUrl || apiProjectPdfUrl(projectId), `ce-dossier-${projectId}.pdf`);
+      await openDownloadUrl(downloadUrl || apiProjectPdfUrl(projectId), 'CE-Dossier.pdf');
     } catch (err) {
       setError(normalizeApiError(err, 'PDF download mislukt.'));
     } finally {

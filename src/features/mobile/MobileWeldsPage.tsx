@@ -11,11 +11,13 @@ export function MobileWeldsPage() {
   const { projectId = '' } = useParams();
   const [welds, setWelds] = useState<Weld[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadWelds = useCallback(() => {
+  const loadWelds = useCallback((background = false) => {
     let active = true;
-    setLoading(true);
+    if (background) setRefreshing(true);
+    else setLoading(true);
     getProjectWelds(projectId, { page: 1, limit: 100 })
       .then((response) => {
         if (!active) return;
@@ -28,24 +30,22 @@ export function MobileWeldsPage() {
         setError(normalizeApiError(err, 'Lassen konden niet worden geladen.'));
       })
       .finally(() => {
-        if (active) setLoading(false);
+        if (!active) return;
+        if (background) setRefreshing(false);
+        else setLoading(false);
       });
     return () => {
       active = false;
     };
   }, [projectId]);
 
-  useEffect(() => loadWelds(), [loadWelds]);
+  useEffect(() => loadWelds(false), [loadWelds]);
 
   useEffect(() => {
-    const reload = () => loadWelds();
+    const reload = () => loadWelds(true);
     window.addEventListener(APP_REFRESH_EVENT, reload as EventListener);
-    window.addEventListener('focus', reload);
-    const intervalId = window.setInterval(reload, 15000);
     return () => {
       window.removeEventListener(APP_REFRESH_EVENT, reload as EventListener);
-      window.removeEventListener('focus', reload);
-      window.clearInterval(intervalId);
     };
   }, [loadWelds]);
 
@@ -66,6 +66,7 @@ export function MobileWeldsPage() {
       </div>
       {loading ? <div className="mobile-state-card">Lassen laden…</div> : null}
       {error ? <div className="mobile-state-card mobile-state-card-error">{error}</div> : null}
+      {refreshing && !loading ? <div className="mobile-list-card-meta" style={{ marginBottom: 8 }}>Gegevens worden bijgewerkt…</div> : null}
       {!loading && !error ? (
         <div className="mobile-list-stack">
           {welds.map((weld) => {

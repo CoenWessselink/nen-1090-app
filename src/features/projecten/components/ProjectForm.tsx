@@ -9,7 +9,7 @@ import { FormField } from '@/components/forms/FormField';
 import { Card } from '@/components/ui/Card';
 import type { Project } from '@/types/domain';
 import type { ProjectAssemblyDraft, ProjectFormValues, ProjectWeldDraft } from '@/types/forms';
-import { useClients, useInspectionTemplates, useMaterials, useProcesses, useWelders, useWps } from '@/hooks/useSettings';
+import { useClients, useInspectionTemplates, useMaterials, useProcesses, useWeldCoordinators, useWelders, useWps } from '@/hooks/useSettings';
 
 const schema = z.object({
   projectnummer: z.string().min(1, 'Projectnummer is verplicht'),
@@ -78,6 +78,7 @@ export function ProjectForm({
   const welders = useWelders();
   const processes = useProcesses();
   const inspectionTemplates = useInspectionTemplates();
+  const coordinators = useWeldCoordinators();
 
   const clientOptions = useMemo(() => {
     const rows = (clients.data?.items || []) as Array<Record<string, unknown>>;
@@ -169,10 +170,12 @@ export function ProjectForm({
             <div className="two-column-grid">
               <FormField label="Projectnummer" error={errors.projectnummer?.message}><Input {...register('projectnummer')} /></FormField>
               <FormField label="Opdrachtgever" error={errors.client_name?.message}>
-                <Select {...register('client_name')}>
-                  <option value="">Selecteer opdrachtgever</option>
-                  {clientOptions.map((client) => <option key={client} value={client}>{client}</option>)}
-                </Select>
+                <>
+                  <Input list="project-client-options" {...register('client_name')} placeholder="Voer opdrachtgever in" />
+                  <datalist id="project-client-options">
+                    {clientOptions.map((client) => <option key={client} value={client} />)}
+                  </datalist>
+                </>
               </FormField>
             </div>
             <FormField label="Omschrijving" error={errors.name?.message}><Input {...register('name')} /></FormField>
@@ -276,6 +279,10 @@ export function ProjectForm({
                   <div className="two-column-grid">
                     <FormField label="Proces"><Input value={weld.process || ''} onChange={(event) => updateWeld(weld.temp_id, { process: event.target.value })} /></FormField>
                     <FormField label="Locatie"><Input value={weld.location} onChange={(event) => updateWeld(weld.temp_id, { location: event.target.value })} /></FormField>
+                  </div>
+                  <div className="two-column-grid">
+                    <FormField label="Lasser"><Select value={weld.welder_name || ''} onChange={(event) => updateWeld(weld.temp_id, { welder_name: event.target.value })}><option value="">Selecteer lasser</option>{((welders.data?.items || []) as Array<Record<string, unknown>>).map((item) => { const value = String(item.name || item.code || item.id || ''); return <option key={String(item.id || value)} value={value}>{value}</option>; })}</Select></FormField>
+                    <FormField label="Lascoördinator"><Select value={weld.coordinator_id || ''} onChange={(event) => updateWeld(weld.temp_id, { coordinator_id: event.target.value })}><option value="">Selecteer lascoördinator</option>{((coordinators.data?.items || []) as Array<Record<string, unknown>>).map((item) => <option key={String(item.id || item.code || '')} value={String(item.id || '')}>{String(item.name || item.code || item.id || '')}</option>)}</Select></FormField>
                   </div>
                 </div>
               ))}

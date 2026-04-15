@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pencil, Plus, Search, SlidersHorizontal } from 'lucide-react';
+import { Plus, Search, SlidersHorizontal } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getProjects } from '@/api/projects';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
-import { APP_REFRESH_EVENT, formatValue, normalizeApiError, projectCode, projectExecutionClass, projectTitle, weldStatusLabel, weldStatusTone } from '@/features/mobile/mobile-utils';
+import { APP_REFRESH_EVENT, formatValue, normalizeApiError, projectCode, projectExecutionClass, projectTitle } from '@/features/mobile/mobile-utils';
 import type { Project } from '@/types/domain';
 
 export function MobileProjectsPage() {
@@ -11,11 +11,13 @@ export function MobileProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadProjects = useCallback(() => {
+  const loadProjects = useCallback((background = false) => {
     let active = true;
-    setLoading(true);
+    if (background) setRefreshing(true);
+    else setLoading(true);
     getProjects({ page: 1, limit: 50 })
       .then((response) => {
         if (!active) return;
@@ -27,24 +29,22 @@ export function MobileProjectsPage() {
         setError(normalizeApiError(err, 'Projecten konden niet worden geladen.'));
       })
       .finally(() => {
-        if (active) setLoading(false);
+        if (!active) return;
+        if (background) setRefreshing(false);
+        else setLoading(false);
       });
     return () => {
       active = false;
     };
   }, []);
 
-  useEffect(() => loadProjects(), [loadProjects]);
+  useEffect(() => loadProjects(false), [loadProjects]);
 
   useEffect(() => {
-    const reload = () => loadProjects();
+    const reload = () => loadProjects(true);
     window.addEventListener(APP_REFRESH_EVENT, reload as EventListener);
-    window.addEventListener('focus', reload);
-    const intervalId = window.setInterval(reload, 15000);
     return () => {
       window.removeEventListener(APP_REFRESH_EVENT, reload as EventListener);
-      window.removeEventListener('focus', reload);
-      window.clearInterval(intervalId);
     };
   }, [loadProjects]);
 
@@ -81,25 +81,11 @@ export function MobileProjectsPage() {
                   <strong>{projectTitle(project)}</strong>
                   <span className="mobile-list-card-subtitle">{projectCode(project)}</span>
                 </div>
-                <div className="mobile-inline-actions">
-                  <span className={`mobile-pill mobile-pill-${weldStatusTone(project.status)}`}>{weldStatusLabel(project.status)}</span>
-                  <button
-                    type="button"
-                    className="mobile-icon-button"
-                    aria-label="Project wijzigen"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      navigate(`/projecten/${project.id}/bewerken`);
-                    }}
-                  >
-                    <Pencil size={16} />
-                  </button>
-                </div>
+                <span className="mobile-list-card-link">Filters <SlidersHorizontal size={14} /></span>
               </div>
               <div className="compact-project-meta">{formatValue(project.client_name || project.opdrachtgever, 'Geen opdrachtgever')}</div>
               <div className="compact-project-bottom">
                 <span className="mobile-pill mobile-pill-neutral">{projectExecutionClass(project)}</span>
-                <span className="mobile-list-card-link">Project 360 <SlidersHorizontal size={14} /></span>
               </div>
             </button>
           ))}

@@ -73,7 +73,7 @@ export const routerConfig = [
       { path: 'projecten/:projectId/bewerken', element: <MobileProjectCreatePage /> },
       { path: 'projecten/:projectId', element: <Navigate to="overzicht" replace /> },
       { path: 'projecten/:projectId/overzicht', element: <MobileProject360Page /> },
-      { path: 'projecten/:projectId/assemblies', element: <Navigate to="../overzicht" replace /> },
+      { path: 'projecten/:projectId/assemblies', element: <Navigate to="nieuw" replace /> },
       { path: 'projecten/:projectId/assemblies/nieuw', element: <MobileAssemblyCreatePage /> },
       { path: 'projecten/:projectId/assemblies/:assemblyId', element: <Navigate to="../../overzicht" replace /> },
       { path: 'projecten/:projectId/lassen', element: <MobileWeldsPage /> },
