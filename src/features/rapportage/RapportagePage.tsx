@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { FileText, Search } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Download, FileText, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card } from '@/components/ui/Card';
@@ -9,8 +9,9 @@ import { Button } from '@/components/ui/Button';
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { LoadingState } from '@/components/feedback/LoadingState';
 import { EmptyState } from '@/components/feedback/EmptyState';
+import { InlineMessage } from '@/components/feedback/InlineMessage';
 import { useReports } from '@/hooks/useReports';
-import { openDownloadUrl } from '@/utils/download';
+import { openDownloadUrl, openProtectedPdfPreview } from '@/utils/download';
 
 type ReportRow = {
   id: string | number;
@@ -22,6 +23,7 @@ type ReportRow = {
   projectnummer?: string;
   client_name?: string;
   pdf_url?: string;
+  download_url?: string;
 };
 
 function isProjectSummary(row: ReportRow) {
@@ -35,12 +37,18 @@ function toneFromType(type?: string) {
   return 'neutral' as const;
 }
 
+function resolvePdfUrl(row: ReportRow) {
+  return String(row.pdf_url || row.download_url || '').trim();
+}
+
 export function RapportagePage() {
   const navigate = useNavigate();
   const reports = useReports({ page: 1, limit: 50 });
   const rows = (reports.data?.items || []) as ReportRow[];
   const [search, setSearch] = useState('');
   const [activePreviewUrl, setActivePreviewUrl] = useState('');
+  const [activePreviewTitle, setActivePreviewTitle] = useState('');
+  const [previewMessage, setPreviewMessage] = useState<string | null>(null);
 
   const visibleRows = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -55,24 +63,51 @@ export function RapportagePage() {
     );
   }, [rows, search]);
 
-  async function openPdf(row: ReportRow) {
-    if (row.project_id && isProjectSummary(row)) {
-      navigate(`/projecten/${row.project_id}/pdf-viewer`);
-      return;
+  useEffect(() => () => {
+    if (activePreviewUrl.startsWith('blob:')) URL.revokeObjectURL(activePreviewUrl);
+  }, [activePreviewUrl]);
+
+  async function previewPdf(row: ReportRow) {
+    try {
+      const pdfUrl = resolvePdfUrl(row);
+      if (row.project_id && isProjectSummary(row) && !pdfUrl) {
+        navigate(`/projecten/${row.project_id}/pdf-viewer`);
+        return;
+      }
+      if (!pdfUrl) {
+        if (row.project_id) {
+          navigate(`/projecten/${row.project_id}/pdf-viewer`);
+          return;
+        }
+        setPreviewMessage('Voor dit rapport is nog geen preview-URL beschikbaar.');
+        return;
+      }
+      const protectedUrl = await openProtectedPdfPreview(pdfUrl);
+      setPreviewMessage(null);
+      setActivePreviewTitle(String(row.title || `Rapport ${row.id}`));
+      setActivePreviewUrl((current) => {
+        if (current && current.startsWith('blob:')) URL.revokeObjectURL(current);
+        return protectedUrl;
+      });
+    } catch (error) {
+      setPreviewMessage(error instanceof Error ? error.message : 'PDF preview openen mislukt.');
     }
-    if (row.pdf_url) {
-      setActivePreviewUrl(String(row.pdf_url));
-      await openDownloadUrl(String(row.pdf_url), `rapport-${row.id}.pdf`);
+  }
+
+  async function downloadPdf(row: ReportRow) {
+    const pdfUrl = resolvePdfUrl(row);
+    if (pdfUrl) {
+      await openDownloadUrl(pdfUrl, `rapport-${row.id}.pdf`);
       return;
     }
     if (row.project_id) {
-      navigate(`/projecten/${row.project_id}/overzicht`);
+      navigate(`/projecten/${row.project_id}/pdf-viewer`);
     }
   }
 
   return (
     <div className="page-stack">
-      <PageHeader title="Rapportage" description="Rapportages zijn uitgelijnd, direct filterbaar en vanuit de PDF-tegel direct te openen." />
+      <PageHeader title="Rapportage" description="Rapportages zijn uitgelijnd, direct filterbaar en openen via een beveiligde PDF-preview met autorisatie." />
 
       <div className="content-grid-2" style={{ alignItems: 'start' }}>
         <Card>
@@ -93,13 +128,13 @@ export function RapportagePage() {
         <Card>
           <div className="section-title-row">
             <h3>PDF</h3>
-            <Badge tone="success">Direct openen</Badge>
+            <Badge tone="success">Beveiligde preview</Badge>
           </div>
           <button
             type="button"
             onClick={() => {
-              const firstRow = visibleRows.find((item) => item.pdf_url || item.project_id);
-              if (firstRow) openPdf(firstRow);
+              const firstRow = visibleRows.find((item) => resolvePdfUrl(item) || item.project_id);
+              if (firstRow) void previewPdf(firstRow);
             }}
             style={{
               width: '100%',
@@ -118,14 +153,15 @@ export function RapportagePage() {
                 <FileText size={24} />
               </div>
               <div>
-                <strong>Open PDF</strong>
-                <div className="list-subtle">Klik op het PDF-blok om het rapport direct te openen.</div>
+                <strong>Open PDF preview</strong>
+                <div className="list-subtle">De preview gebruikt een beveiligde blob-URL zodat de browser geen losse API-call zonder autorisatie doet.</div>
               </div>
             </div>
           </button>
         </Card>
       </div>
 
+      {previewMessage ? <InlineMessage tone="neutral">{previewMessage}</InlineMessage> : null}
       {reports.isLoading ? <LoadingState label="Rapportage laden..." /> : null}
       {reports.isError ? <ErrorState title="Rapportage niet geladen" description="Controleer het /reports contract of de projects fallback." /> : null}
       {!reports.isLoading && !reports.isError && visibleRows.length === 0 ? (
@@ -161,8 +197,11 @@ export function RapportagePage() {
                               Open project
                             </button>
                           ) : null}
-                          <button className="icon-button" type="button" onClick={() => openPdf(row)}>
+                          <button className="icon-button" type="button" onClick={() => void previewPdf(row)}>
                             Bekijk PDF
+                          </button>
+                          <button className="icon-button" type="button" onClick={() => void downloadPdf(row)}>
+                            <Download size={14} /> Download
                           </button>
                         </div>
                       </td>
@@ -178,10 +217,11 @@ export function RapportagePage() {
               <h3>PDF voorbeeld</h3>
               <Badge tone={activePreviewUrl ? 'success' : 'neutral'}>{activePreviewUrl ? 'Actief' : 'Nog niets geopend'}</Badge>
             </div>
+            {activePreviewTitle ? <div className="list-subtle" style={{ marginBottom: 12 }}>{activePreviewTitle}</div> : null}
             {activePreviewUrl ? (
               <iframe title="Rapport PDF voorbeeld" src={activePreviewUrl} style={{ width: '100%', minHeight: 720, border: '1px solid #e2e8f0', borderRadius: 14 }} />
             ) : (
-              <EmptyState title="Nog geen PDF gekozen" description="Klik op Open PDF of Bekijk PDF om een rapport direct te openen." />
+              <EmptyState title="Nog geen PDF gekozen" description="Klik op Open PDF preview of Bekijk PDF om een rapport direct te openen." />
             )}
           </Card>
         </div>

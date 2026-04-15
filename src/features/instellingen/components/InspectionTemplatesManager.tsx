@@ -179,7 +179,7 @@ export function InspectionTemplatesManager() {
           norm_reference: item.norm_reference,
           required: item.required,
           default_status: item.default_status,
-          sort_order: index + 1,
+          sort_order: Number(item.sort_order || index + 1),
           description: item.description,
         })),
       };

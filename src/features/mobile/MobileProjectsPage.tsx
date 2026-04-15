@@ -3,7 +3,7 @@ import { Pencil, Plus, Search, SlidersHorizontal } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getProjects } from '@/api/projects';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
-import { APP_REFRESH_EVENT, formatValue, normalizeApiError, projectCode, projectExecutionClass, projectTitle } from '@/features/mobile/mobile-utils';
+import { APP_REFRESH_EVENT, formatValue, normalizeApiError, projectCode, projectExecutionClass, projectTitle, weldStatusLabel, weldStatusTone } from '@/features/mobile/mobile-utils';
 import type { Project } from '@/types/domain';
 
 export function MobileProjectsPage() {
@@ -82,7 +82,7 @@ export function MobileProjectsPage() {
                   <span className="mobile-list-card-subtitle">{projectCode(project)}</span>
                 </div>
                 <div className="mobile-inline-actions">
-                  <span className="mobile-pill mobile-pill-neutral">{String(project.status || 'Onbekend')}</span>
+                  <span className={`mobile-pill mobile-pill-${weldStatusTone(project.status)}`}>{weldStatusLabel(project.status)}</span>
                   <button
                     type="button"
                     className="mobile-icon-button"

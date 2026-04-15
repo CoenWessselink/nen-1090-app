@@ -166,6 +166,15 @@ export function MobileProjectCreatePage() {
               ))}
             </select>
           </label>
+          <label className="mobile-form-field mobile-select-field">
+            <span>Projectstatus</span>
+            <select value={form.status} onChange={(event) => patch('status', event.target.value)}>
+              <option value="conform">Conform</option>
+              <option value="in_controle">In controle</option>
+              <option value="niet_conform">Niet conform</option>
+              <option value="gereed">Gereed</option>
+            </select>
+          </label>
           <label className="mobile-form-field"><span>Startdatum</span><input type="date" value={form.start_date || ''} onChange={(event) => patch('start_date', event.target.value)} /></label>
           <label className="mobile-form-field"><span>Einddatum</span><input type="date" value={form.end_date || ''} onChange={(event) => patch('end_date', event.target.value)} /></label>
           <div className="mobile-inline-actions stack-on-mobile">
