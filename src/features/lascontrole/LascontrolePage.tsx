@@ -6,17 +6,19 @@ import { useProjectWelds } from '@/hooks/useProjects';
 import { useUpsertWeldInspection, useWeldInspection } from '@/hooks/useInspections';
 import { usePatchWeldStatus, useUpdateWeld } from '@/hooks/useWelds';
 import { WeldInspectionModal } from '@/features/lascontrole/components/WeldInspectionModal';
-import type { Inspection, Weld, WeldStatus } from '@/types/domain';
+import type { Inspection, Weld } from '@/types/domain';
 import type { WeldFormValues } from '@/types/forms';
 
-function normalizeStatus(value: unknown): WeldStatus {
+type LegacyWeldStatus = 'conform' | 'defect' | 'gerepareerd';
+
+function normalizeStatus(value: unknown): LegacyWeldStatus {
   const raw = String(value || '').toLowerCase();
   if (raw === 'gerepareerd') return 'gerepareerd';
   if (raw === 'defect') return 'defect';
   return 'conform';
 }
 
-function toStatusLabel(status: WeldStatus) {
+function toStatusLabel(status: LegacyWeldStatus) {
   if (status === 'gerepareerd') return 'Gerepareerd';
   if (status === 'defect') return 'Defect';
   return 'Conform';
@@ -31,7 +33,7 @@ function surfaceStyle(): React.CSSProperties {
   };
 }
 
-function buttonStyle(activeStatus?: WeldStatus, status?: WeldStatus): React.CSSProperties {
+function buttonStyle(activeStatus?: LegacyWeldStatus, status?: LegacyWeldStatus): React.CSSProperties {
   const isActive = activeStatus === status;
   const isDefect = status === 'defect';
   return {
@@ -74,7 +76,7 @@ export function LascontrolePage() {
     return { total, conform, defect, gerepareerd };
   }, [welds]);
 
-  async function applyStatus(weld: Weld, status: WeldStatus) {
+  async function applyStatus(weld: Weld, status: LegacyWeldStatus) {
     setSelectedWeld(weld);
     await patchWeldStatus.mutateAsync({ weldId: weld.id, status });
 

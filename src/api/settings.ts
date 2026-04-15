@@ -84,6 +84,11 @@ export function deleteWps(wpsId: string | number) {
   });
 }
 
+
+export function getProcesses() {
+  return listRequest<MasterDataListResponse>('/settings/processes');
+}
+
 export function getMaterials() {
   return listRequest<MasterDataListResponse>('/settings/materials');
 }

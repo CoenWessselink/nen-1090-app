@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FileText, FolderOpen, History, ListChecks, PanelsTopLeft, Plus, Wrench } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getProject } from '@/api/projects';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
-import { projectClient, projectCode, projectExecutionClass, projectTitle } from '@/features/mobile/mobile-utils';
+import { APP_REFRESH_EVENT, projectClient, projectCode, projectExecutionClass, projectTitle } from '@/features/mobile/mobile-utils';
 import type { Project } from '@/types/domain';
 
 export function MobileProject360Page() {
@@ -13,7 +13,7 @@ export function MobileProject360Page() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const loadProject = useCallback(() => {
     let active = true;
     setLoading(true);
     getProject(projectId)
@@ -33,6 +33,18 @@ export function MobileProject360Page() {
       active = false;
     };
   }, [projectId]);
+
+  useEffect(() => loadProject(), [loadProject]);
+
+  useEffect(() => {
+    const reload = () => loadProject();
+    window.addEventListener(APP_REFRESH_EVENT, reload as EventListener);
+    window.addEventListener('focus', reload);
+    return () => {
+      window.removeEventListener(APP_REFRESH_EVENT, reload as EventListener);
+      window.removeEventListener('focus', reload);
+    };
+  }, [loadProject]);
 
   const actions = useMemo(
     () => [

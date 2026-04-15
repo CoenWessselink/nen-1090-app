@@ -1,4 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { Camera, Download, Trash2, X } from 'lucide-react';
+import { deleteAttachment } from '@/api/documents';
+import { downloadInspectionAttachment, getInspectionAttachments, uploadInspectionAttachment } from '@/api/inspections';
+import { getWeldAttachments, uploadWeldAttachment } from '@/api/welds';
 import type { Inspection, Weld } from '@/types/domain';
 import type { WeldFormValues } from '@/types/forms';
 
@@ -16,6 +20,20 @@ type CheckItem = {
 type SelectOption = {
   value: string;
   label: string;
+};
+
+type AttachmentCard = {
+  id: string;
+  title: string;
+  filename?: string;
+  uploaded_at?: string;
+  size_bytes?: number;
+};
+
+type PendingPhoto = {
+  id: string;
+  file: File;
+  previewUrl: string;
 };
 
 type Props = {
@@ -129,6 +147,24 @@ function inputStyle(): React.CSSProperties {
   };
 }
 
+function mutedTextStyle(): React.CSSProperties {
+  return { color: '#64748b', fontSize: 13 };
+}
+
+function inlineAlertStyle(kind: 'error' | 'success' | 'info'): React.CSSProperties {
+  if (kind === 'error') return { borderRadius: 12, border: '1px solid #fecaca', background: '#fef2f2', color: '#991b1b', padding: '12px 14px' };
+  if (kind === 'success') return { borderRadius: 12, border: '1px solid #bbf7d0', background: '#f0fdf4', color: '#166534', padding: '12px 14px' };
+  return { borderRadius: 12, border: '1px solid #bfdbfe', background: '#eff6ff', color: '#1d4ed8', padding: '12px 14px' };
+}
+
+function attachmentGridStyle(): React.CSSProperties {
+  return { display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' };
+}
+
+function attachmentCardStyle(): React.CSSProperties {
+  return { border: '1px solid #e2e8f0', borderRadius: 14, padding: 12, display: 'grid', gap: 10, background: '#fff' };
+}
+
 function parseTemplateChecks(items: Array<Record<string, unknown>> | undefined): CheckItem[] {
   if (!items?.length) {
     return [
@@ -149,6 +185,25 @@ function parseTemplateChecks(items: Array<Record<string, unknown>> | undefined):
     status: normalizeStatus(item.default_status || 'conform') === 'conform' ? 'conform' : 'niet-conform',
     comment: '',
   }));
+}
+
+function mapAttachmentRows(input: unknown): AttachmentCard[] {
+  const rows = Array.isArray(input)
+    ? input
+    : Array.isArray((input as { items?: unknown[] } | undefined)?.items)
+      ? ((input as { items?: unknown[] }).items || [])
+      : [];
+
+  return rows.map((item) => {
+    const row = item as Record<string, unknown>;
+    return {
+      id: String(row.id || ''),
+      title: String(row.title || row.filename || 'Foto'),
+      filename: String(row.filename || row.title || ''),
+      uploaded_at: String(row.uploaded_at || ''),
+      size_bytes: Number(row.size_bytes || 0),
+    };
+  }).filter((item) => item.id);
 }
 
 export function WeldInspectionModal({
@@ -188,6 +243,13 @@ export function WeldInspectionModal({
   const [inspectionStatus, setInspectionStatus] = useState<WeldStatus>('conform');
   const [remarks, setRemarks] = useState('');
   const [checks, setChecks] = useState<CheckItem[]>(parseTemplateChecks(undefined));
+  const [weldAttachments, setWeldAttachments] = useState<AttachmentCard[]>([]);
+  const [inspectionAttachments, setInspectionAttachments] = useState<AttachmentCard[]>([]);
+  const [pendingWeldPhotos, setPendingWeldPhotos] = useState<PendingPhoto[]>([]);
+  const [pendingInspectionPhotos, setPendingInspectionPhotos] = useState<PendingPhoto[]>([]);
+  const [attachmentError, setAttachmentError] = useState<string | null>(null);
+  const [attachmentNotice, setAttachmentNotice] = useState<string | null>(null);
+  const [attachmentBusy, setAttachmentBusy] = useState(false);
 
   const activeTemplateChecks = useMemo(
     () => parseTemplateChecks(inspectionTemplateMap[String(weldForm.template_id || '')]),
@@ -201,9 +263,16 @@ export function WeldInspectionModal({
     return found?.[0] || '';
   }, [templateMetaMap, weldForm.execution_class]);
 
+  useEffect(() => () => {
+    pendingWeldPhotos.forEach((item) => URL.revokeObjectURL(item.previewUrl));
+    pendingInspectionPhotos.forEach((item) => URL.revokeObjectURL(item.previewUrl));
+  }, [pendingInspectionPhotos, pendingWeldPhotos]);
+
   useEffect(() => {
     if (!weld) return;
     setTab('weld');
+    setAttachmentError(null);
+    setAttachmentNotice(null);
     setWeldForm({
       project_id: String(weld.project_id || ''),
       weld_number: String(weld.weld_number || weld.weld_no || ''),
@@ -219,6 +288,40 @@ export function WeldInspectionModal({
       template_id: String(weld.template_id || ''),
     });
   }, [weld]);
+
+  useEffect(() => {
+    if (!open || !weld?.id || !weld.project_id) return;
+    let active = true;
+    getWeldAttachments(String(weld.project_id), String(weld.id))
+      .then((response) => {
+        if (!active) return;
+        setWeldAttachments(mapAttachmentRows(response));
+      })
+      .catch(() => {
+        if (!active) return;
+        setWeldAttachments([]);
+      });
+    return () => { active = false; };
+  }, [open, weld?.id, weld?.project_id]);
+
+  useEffect(() => {
+    const inspectionId = String((inspection as Record<string, unknown> | null)?.id || '');
+    if (!open || !inspectionId) {
+      setInspectionAttachments([]);
+      return;
+    }
+    let active = true;
+    getInspectionAttachments(inspectionId)
+      .then((response) => {
+        if (!active) return;
+        setInspectionAttachments(mapAttachmentRows(response));
+      })
+      .catch(() => {
+        if (!active) return;
+        setInspectionAttachments([]);
+      });
+    return () => { active = false; };
+  }, [inspection, open]);
 
   useEffect(() => {
     if (!matchingTemplateId) return;
@@ -251,6 +354,89 @@ export function WeldInspectionModal({
     setChecks(activeTemplateChecks);
   }, [activeTemplateChecks, inspection]);
 
+  function appendPendingPhotos(files: FileList | File[], target: 'weld' | 'inspection') {
+    const list = Array.from(files || []).filter((file) => file.type.startsWith('image/'));
+    if (!list.length) return;
+    const mapped = list.map((file) => ({
+      id: `${file.name}-${file.size}-${file.lastModified}-${Math.random().toString(36).slice(2)}`,
+      file,
+      previewUrl: URL.createObjectURL(file),
+    }));
+    if (target === 'weld') {
+      setPendingWeldPhotos((current) => [...current, ...mapped]);
+      return;
+    }
+    setPendingInspectionPhotos((current) => [...current, ...mapped]);
+  }
+
+  function removePendingPhoto(target: 'weld' | 'inspection', photoId: string) {
+    if (target === 'weld') {
+      setPendingWeldPhotos((current) => {
+        const found = current.find((item) => item.id === photoId);
+        if (found) URL.revokeObjectURL(found.previewUrl);
+        return current.filter((item) => item.id !== photoId);
+      });
+      return;
+    }
+    setPendingInspectionPhotos((current) => {
+      const found = current.find((item) => item.id === photoId);
+      if (found) URL.revokeObjectURL(found.previewUrl);
+      return current.filter((item) => item.id !== photoId);
+    });
+  }
+
+  async function handleDeleteAttachment(attachmentId: string, target: 'weld' | 'inspection') {
+    try {
+      setAttachmentError(null);
+      setAttachmentNotice(null);
+      await deleteAttachment(attachmentId);
+      if (target === 'weld') setWeldAttachments((current) => current.filter((item) => item.id !== attachmentId));
+      else setInspectionAttachments((current) => current.filter((item) => item.id !== attachmentId));
+      setAttachmentNotice('Foto verwijderd.');
+    } catch {
+      setAttachmentError('Foto verwijderen mislukt.');
+    }
+  }
+
+  async function handleDownloadInspectionAttachment(attachmentId: string) {
+    const inspectionId = String((inspection as Record<string, unknown> | null)?.id || '');
+    if (!inspectionId) return;
+    try {
+      await downloadInspectionAttachment(inspectionId, attachmentId);
+    } catch {
+      setAttachmentError('Foto openen mislukt.');
+    }
+  }
+
+  async function persistPendingWeldPhotos() {
+    if (!weld?.id || !weld.project_id || !pendingWeldPhotos.length) return;
+    for (const photo of pendingWeldPhotos) {
+      const formData = new FormData();
+      formData.append('file', photo.file);
+      formData.append('files', photo.file);
+      await uploadWeldAttachment(String(weld.project_id), String(weld.id), formData);
+      URL.revokeObjectURL(photo.previewUrl);
+    }
+    setPendingWeldPhotos([]);
+    const refreshed = await getWeldAttachments(String(weld.project_id), String(weld.id));
+    setWeldAttachments(mapAttachmentRows(refreshed));
+  }
+
+  async function persistPendingInspectionPhotos() {
+    const inspectionId = String((inspection as Record<string, unknown> | null)?.id || '');
+    if (!inspectionId || !pendingInspectionPhotos.length) return;
+    for (const photo of pendingInspectionPhotos) {
+      const formData = new FormData();
+      formData.append('file', photo.file);
+      formData.append('files', photo.file);
+      await uploadInspectionAttachment(inspectionId, formData);
+      URL.revokeObjectURL(photo.previewUrl);
+    }
+    setPendingInspectionPhotos([]);
+    const refreshed = await getInspectionAttachments(inspectionId);
+    setInspectionAttachments(mapAttachmentRows(refreshed));
+  }
+
   if (!open || !weld) return null;
 
   return (
@@ -273,6 +459,9 @@ export function WeldInspectionModal({
           </div>
           <button type="button" onClick={onClose} style={secondaryButtonStyle()}>Sluiten</button>
         </div>
+
+        {attachmentError ? <div style={{ ...inlineAlertStyle('error'), marginTop: 16 }}>{attachmentError}</div> : null}
+        {attachmentNotice ? <div style={{ ...inlineAlertStyle('success'), marginTop: 16 }}>{attachmentNotice}</div> : null}
 
         <div role="tablist" aria-label="Las wijzigen tabs" style={{ display: 'flex', gap: 12, marginTop: 16 }}>
           <button role="tab" aria-selected={tab === 'weld'} type="button" onClick={() => setTab('weld')} style={tabStyle(tab === 'weld')}>
@@ -342,15 +531,72 @@ export function WeldInspectionModal({
               <button type="button" style={buttonStyle(weldForm.status === 'defect', 'defect')} onClick={() => setWeldForm((p) => ({ ...p, status: 'defect' }))}>Defect</button>
               <button type="button" style={buttonStyle(weldForm.status === 'gerepareerd', 'gerepareerd')} onClick={() => setWeldForm((p) => ({ ...p, status: 'gerepareerd' }))}>Gerepareerd</button>
             </div>
+
+            <div style={{ display: 'grid', gap: 12 }}>
+              <label style={fieldLabelStyle()}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Camera size={16} /> Foto’s van de las</span>
+                <input type="file" accept="image/*" multiple onChange={(e) => appendPendingPhotos(e.target.files || [], 'weld')} />
+                <span style={mutedTextStyle()}>Voeg meerdere foto’s toe, controleer de previews en sla daarna de las op.</span>
+              </label>
+
+              {pendingWeldPhotos.length ? (
+                <div style={attachmentGridStyle()}>
+                  {pendingWeldPhotos.map((photo) => (
+                    <div key={photo.id} style={attachmentCardStyle()}>
+                      <img src={photo.previewUrl} alt={photo.file.name} style={{ width: '100%', height: 140, objectFit: 'cover', borderRadius: 10 }} />
+                      <div>
+                        <strong>{photo.file.name}</strong>
+                        <div style={mutedTextStyle()}>{Math.round(photo.file.size / 1024)} KB</div>
+                      </div>
+                      <button type="button" style={secondaryButtonStyle()} onClick={() => removePendingPhoto('weld', photo.id)}>
+                        <X size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} /> Verwijderen
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+
+              {weldAttachments.length ? (
+                <div style={attachmentGridStyle()}>
+                  {weldAttachments.map((item) => (
+                    <div key={item.id} style={attachmentCardStyle()}>
+                      <div>
+                        <strong>{item.title}</strong>
+                        {item.filename ? <div style={mutedTextStyle()}>{item.filename}</div> : null}
+                      </div>
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        <button type="button" style={secondaryButtonStyle()} onClick={() => handleDeleteAttachment(item.id, 'weld')}>
+                          <Trash2 size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} /> Verwijderen
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : <div style={mutedTextStyle()}>Nog geen lasfoto’s gekoppeld.</div>}
+            </div>
+
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
               <button type="button" onClick={onClose} style={secondaryButtonStyle()}>Annuleren</button>
               <button
                 type="button"
                 style={primaryButtonStyle()}
-                disabled={savingWeld}
-                onClick={() => void onSaveWeld(weldForm)}
+                disabled={savingWeld || attachmentBusy}
+                onClick={async () => {
+                  try {
+                    setAttachmentBusy(true);
+                    setAttachmentError(null);
+                    setAttachmentNotice(null);
+                    await onSaveWeld(weldForm);
+                    await persistPendingWeldPhotos();
+                    setAttachmentNotice('Las en foto’s opgeslagen.');
+                  } catch {
+                    setAttachmentError('Las opslaan mislukt.');
+                  } finally {
+                    setAttachmentBusy(false);
+                  }
+                }}
               >
-                {savingWeld ? 'Opslaan...' : 'Las opslaan'}
+                {savingWeld || attachmentBusy ? 'Opslaan...' : 'Las opslaan'}
               </button>
             </div>
           </div>
@@ -359,6 +605,11 @@ export function WeldInspectionModal({
             <div style={{ display: 'grid', gap: 8 }}>
               <div style={{ color: '#0f172a', fontWeight: 600 }}>Controle volgens standaard tabel / inspectietemplate</div>
               <div style={{ color: '#64748b' }}>Kies per controlepunt Conform of Niet conform. Nieuwe controlepunten staan standaard op Conform. De checks komen uit de geselecteerde inspectietemplate.</div>
+            </div>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+              <button type="button" style={buttonStyle(inspectionStatus === 'conform', 'conform')} onClick={() => setInspectionStatus('conform')}>Conform</button>
+              <button type="button" style={buttonStyle(inspectionStatus === 'defect', 'defect')} onClick={() => setInspectionStatus('defect')}>Niet conform</button>
+              <button type="button" style={buttonStyle(inspectionStatus === 'gerepareerd', 'gerepareerd')} onClick={() => setInspectionStatus('gerepareerd')}>In controle / herstel</button>
             </div>
             <label style={fieldLabelStyle()}>
               <span>Opmerking</span>
@@ -384,20 +635,84 @@ export function WeldInspectionModal({
                 </div>
               ))}
             </div>
+
+            <div style={{ display: 'grid', gap: 12 }}>
+              <label style={fieldLabelStyle()}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Camera size={16} /> Inspectiefoto’s</span>
+                <input type="file" accept="image/*" multiple onChange={(e) => appendPendingPhotos(e.target.files || [], 'inspection')} />
+                <span style={mutedTextStyle()}>Voeg bewijsfoto’s toe aan deze inspectie en controleer de previews vóór opslaan.</span>
+              </label>
+
+              {pendingInspectionPhotos.length ? (
+                <div style={attachmentGridStyle()}>
+                  {pendingInspectionPhotos.map((photo) => (
+                    <div key={photo.id} style={attachmentCardStyle()}>
+                      <img src={photo.previewUrl} alt={photo.file.name} style={{ width: '100%', height: 140, objectFit: 'cover', borderRadius: 10 }} />
+                      <div>
+                        <strong>{photo.file.name}</strong>
+                        <div style={mutedTextStyle()}>{Math.round(photo.file.size / 1024)} KB</div>
+                      </div>
+                      <button type="button" style={secondaryButtonStyle()} onClick={() => removePendingPhoto('inspection', photo.id)}>
+                        <X size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} /> Verwijderen
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+
+              {inspectionAttachments.length ? (
+                <div style={attachmentGridStyle()}>
+                  {inspectionAttachments.map((item) => (
+                    <div key={item.id} style={attachmentCardStyle()}>
+                      <div>
+                        <strong>{item.title}</strong>
+                        {item.filename ? <div style={mutedTextStyle()}>{item.filename}</div> : null}
+                      </div>
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        <button type="button" style={secondaryButtonStyle()} onClick={() => void handleDownloadInspectionAttachment(item.id)}>
+                          <Download size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} /> Openen
+                        </button>
+                        <button type="button" style={secondaryButtonStyle()} onClick={() => handleDeleteAttachment(item.id, 'inspection')}>
+                          <Trash2 size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} /> Verwijderen
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : <div style={mutedTextStyle()}>Nog geen inspectiefoto’s gekoppeld.</div>}
+            </div>
+
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
               <button type="button" onClick={onClose} style={secondaryButtonStyle()}>Annuleren</button>
               <button
                 type="button"
                 style={primaryButtonStyle()}
-                disabled={savingInspection}
-                onClick={() => void onSaveInspection({
-                  overall_status: checks.some((item) => item.status === 'niet-conform') ? 'defect' : 'conform',
-                  template_id: weldForm.template_id || undefined,
-                  remarks: remarks || undefined,
-                  checks: checks.map((item) => ({ ...item, applicable: true, status: item.status === 'niet-conform' ? 'defect' : 'conform' as const })),
-                })}
+                disabled={savingInspection || attachmentBusy}
+                onClick={async () => {
+                  try {
+                    setAttachmentBusy(true);
+                    setAttachmentError(null);
+                    setAttachmentNotice(null);
+                    await onSaveInspection({
+                      overall_status: inspectionStatus,
+                      template_id: weldForm.template_id || undefined,
+                      remarks: remarks || undefined,
+                      checks: checks.map((item) => ({
+                        ...item,
+                        applicable: true,
+                        status: item.status === 'niet-conform' ? 'defect' : 'conform' as const,
+                      })),
+                    });
+                    await persistPendingInspectionPhotos();
+                    setAttachmentNotice('Lascontrole en foto’s opgeslagen.');
+                  } catch {
+                    setAttachmentError('Lascontrole opslaan mislukt.');
+                  } finally {
+                    setAttachmentBusy(false);
+                  }
+                }}
               >
-                {savingInspection ? 'Opslaan...' : 'Lascontrole opslaan'}
+                {savingInspection || attachmentBusy ? 'Opslaan...' : 'Lascontrole opslaan'}
               </button>
             </div>
           </div>

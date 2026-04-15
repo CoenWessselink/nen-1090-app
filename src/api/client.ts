@@ -61,6 +61,16 @@ function isFormData(value: unknown): value is FormData {
   return typeof FormData !== 'undefined' && value instanceof FormData;
 }
 
+
+function filenameFromResponse(response: Response, fallback = 'download') {
+  const disposition = response.headers.get('content-disposition') || '';
+  const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+  if (utf8Match?.[1]) return decodeURIComponent(utf8Match[1]);
+  const asciiMatch = disposition.match(/filename="?([^";]+)"?/i);
+  if (asciiMatch?.[1]) return asciiMatch[1];
+  return fallback;
+}
+
 function getAuthSnapshot() {
   const state = useAuthStore.getState();
   if (state?.token || state?.refreshToken || state?.user) {
@@ -283,3 +293,72 @@ const client = {
 };
 
 export default client;
+
+
+export async function downloadUrlAsBlob(path: string, init?: RequestInit): Promise<{ blob: Blob; filename: string }> {
+  const response = await fetch(buildBasePath(path), normalizeInit(init));
+  if (!response.ok) {
+    let details: unknown = null;
+    try {
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) details = await response.json();
+      else details = await response.text();
+    } catch {
+      details = null;
+    }
+    throw new ApiError(response.statusText || 'Download failed', response.status, details);
+  }
+  return {
+    blob: await response.blob(),
+    filename: filenameFromResponse(response),
+  };
+}
+
+export async function openProtectedFile(path: string, fallbackName = 'download.pdf', init?: RequestInit): Promise<void> {
+  const { blob, filename } = await downloadUrlAsBlob(path, init);
+  const file = new File([blob], filename || fallbackName, { type: blob.type || 'application/octet-stream' });
+  const url = URL.createObjectURL(file);
+  const win = window.open(url, '_blank', 'noopener,noreferrer');
+  if (!win) {
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = filename || fallbackName;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+  }
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+
+export async function downloadUrlAsObjectUrl(path: string, init?: RequestInit): Promise<{ url: string; filename: string; contentType: string }> {
+  const response = await fetch(buildBasePath(path), normalizeInit(init));
+  if (!response.ok) {
+    let details: unknown = null;
+    try {
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) details = await response.json();
+      else details = await response.text();
+    } catch {
+      details = null;
+    }
+    throw new ApiError(response.statusText || 'Download failed', response.status, details);
+  }
+  const contentType = response.headers.get('content-type') || '';
+  if (!contentType.includes('application/pdf') && !contentType.includes('application/octet-stream')) {
+    let details: unknown = null;
+    try {
+      if (contentType.includes('application/json')) details = await response.json();
+      else details = await response.text();
+    } catch {
+      details = null;
+    }
+    throw new ApiError('Geen PDF ontvangen', response.status, details);
+  }
+  const blob = await response.blob();
+  return {
+    url: URL.createObjectURL(blob),
+    filename: filenameFromResponse(response, 'download.pdf'),
+    contentType,
+  };
+}

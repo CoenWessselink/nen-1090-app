@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { openDownloadUrl } from '@/utils/download';
 import { RefreshCcw } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/Button';
@@ -434,7 +435,7 @@ export function CeDossierPage() {
       if (!source.download_url && !source.status) {
         effectivePayload = runLocalExport(kind);
       } else if (source.download_url) {
-        window.open(String(source.download_url), '_blank', 'noopener,noreferrer');
+        await openDownloadUrl(String(source.download_url), `ce-dossier-${projectId}.pdf`);
       } else if (String(source.status || '').toLowerCase().includes('queued')) {
         setMessage(`${kind.toUpperCase()} export in wachtrij geplaatst.`);
       } else {
@@ -465,7 +466,7 @@ export function CeDossierPage() {
       setDownloadingId(rowId);
 
       if (item.download_url) {
-        window.open(String(item.download_url), '_blank', 'noopener,noreferrer');
+        await openDownloadUrl(String(item.download_url), `export-${item.id}.pdf`);
         setMessage('Download geopend in een nieuw venster.');
         return;
       }
@@ -479,7 +480,7 @@ export function CeDossierPage() {
       const source = asRecord(payload);
 
       if (source.download_url) {
-        window.open(String(source.download_url), '_blank', 'noopener,noreferrer');
+        await openDownloadUrl(String(source.download_url), `ce-dossier-${projectId}.pdf`);
         setMessage('Download geopend in een nieuw venster.');
       } else {
         setMessage('Voor deze export is nog geen directe download beschikbaar.');

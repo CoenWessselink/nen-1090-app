@@ -1,45 +1,31 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ChevronRight, Plus } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getProjectWelds } from '@/api/projects';
-import { getInspectionForWeld } from '@/api/inspections';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
-import { latestInspectionDate, weldNumber, weldStatusLabel, weldStatusTone, weldSubtitle } from '@/features/mobile/mobile-utils';
-import type { Inspection, Weld } from '@/types/domain';
+import { APP_REFRESH_EVENT, latestInspectionDate, normalizeApiError, weldNumber, weldStatusLabel, weldStatusTone, weldSubtitle } from '@/features/mobile/mobile-utils';
+import type { Weld } from '@/types/domain';
 
 export function MobileWeldsPage() {
   const navigate = useNavigate();
   const { projectId = '' } = useParams();
   const [welds, setWelds] = useState<Weld[]>([]);
-  const [inspectionMap, setInspectionMap] = useState<Record<string, Inspection | null>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const loadWelds = useCallback(() => {
     let active = true;
     setLoading(true);
-    getProjectWelds(projectId, { page: 1, limit: 50 })
-      .then(async (response) => {
+    getProjectWelds(projectId, { page: 1, limit: 100 })
+      .then((response) => {
         if (!active) return;
         const rows = Array.isArray(response?.items) ? response.items : [];
         setWelds(rows);
-        const entries = await Promise.all(
-          rows.slice(0, 20).map(async (weld) => {
-            try {
-              const inspection = (await getInspectionForWeld(projectId, weld.id)) as Inspection | null;
-              return [String(weld.id), inspection] as const;
-            } catch {
-              return [String(weld.id), null] as const;
-            }
-          }),
-        );
-        if (!active) return;
-        setInspectionMap(Object.fromEntries(entries));
         setError(null);
       })
       .catch((err) => {
         if (!active) return;
-        setError(err instanceof Error ? err.message : 'Lassen konden niet worden geladen.');
+        setError(normalizeApiError(err, 'Lassen konden niet worden geladen.'));
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -48,6 +34,18 @@ export function MobileWeldsPage() {
       active = false;
     };
   }, [projectId]);
+
+  useEffect(() => loadWelds(), [loadWelds]);
+
+  useEffect(() => {
+    const reload = () => loadWelds();
+    window.addEventListener(APP_REFRESH_EVENT, reload as EventListener);
+    window.addEventListener('focus', reload);
+    return () => {
+      window.removeEventListener(APP_REFRESH_EVENT, reload as EventListener);
+      window.removeEventListener('focus', reload);
+    };
+  }, [loadWelds]);
 
   return (
     <MobilePageScaffold
@@ -69,10 +67,9 @@ export function MobileWeldsPage() {
       {!loading && !error ? (
         <div className="mobile-list-stack">
           {welds.map((weld) => {
-            const inspection = inspectionMap[String(weld.id)] || null;
-            const tone = weldStatusTone(inspection?.status || inspection?.result || weld.status);
+            const tone = weldStatusTone(weld.status);
             return (
-              <div key={String(weld.id)} className="mobile-list-card">
+              <div key={String(weld.id)} className="mobile-list-card" onDoubleClick={() => navigate(`/projecten/${projectId}/lassen/${weld.id}/bewerken`)}>
                 <div className="mobile-list-card-head">
                   <strong>Lasnummer {weldNumber(weld)}</strong>
                   <button className="mobile-link-button" type="button" onClick={() => navigate(`/projecten/${projectId}/lassen/${weld.id}/inspectie`)}>
@@ -81,11 +78,11 @@ export function MobileWeldsPage() {
                 </div>
                 <span className="mobile-list-card-subtitle">{weldSubtitle(weld)}</span>
                 <div className="mobile-inline-meta">
-                  <span>Status: {weldStatusLabel(inspection?.status || inspection?.result || weld.status)}</span>
-                  <span className={`mobile-pill mobile-pill-${tone}`}>{weldStatusLabel(inspection?.status || inspection?.result || weld.status)}</span>
+                  <span>Status: {weldStatusLabel(weld.status)}</span>
+                  <span className={`mobile-pill mobile-pill-${tone}`}>{weldStatusLabel(weld.status)}</span>
                 </div>
-                <span className="mobile-list-card-meta">Laatste inspectie: {latestInspectionDate(weld, inspection)}</span>
-                <div className="mobile-inline-actions">
+                <span className="mobile-list-card-meta">Laatste update: {latestInspectionDate(weld, null)}</span>
+                <div className="mobile-inline-actions stack-on-mobile">
                   <button type="button" className="mobile-secondary-button" onClick={() => navigate(`/projecten/${projectId}/lassen/${weld.id}/bewerken`)}>
                     Bewerken
                   </button>

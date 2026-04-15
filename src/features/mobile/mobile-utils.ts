@@ -1,5 +1,14 @@
 import type { CeDocument, Inspection, Project, Weld } from '@/types/domain';
 
+
+export const APP_REFRESH_EVENT = 'nen1090:refresh';
+
+export function dispatchAppRefresh(detail: Record<string, unknown> = {}) {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent(APP_REFRESH_EVENT, { detail }));
+}
+
+
 export function formatValue(value: unknown, fallback = '—') {
   if (value === undefined || value === null || value === '') return fallback;
   return String(value);
@@ -130,12 +139,20 @@ export function firstPdfDocument(documents: CeDocument[]) {
 }
 
 export function apiProjectPdfUrl(projectId: string | number) {
-  return `/api/v1/projects/${projectId}/ce-dossier/pdf`;
+  return `/api/v1/projects/${projectId}/exports/ce-dossier/pdf`;
 }
 
 export function normalizeApiError(error: unknown, fallback = 'Opslaan mislukt. Probeer het opnieuw.') {
-  const message = String((error as { message?: unknown })?.message || '').toLowerCase();
+  const source = error && typeof error === 'object' ? (error as Record<string, unknown>) : {};
+  const details = source.details && typeof source.details === 'object' ? (source.details as Record<string, unknown>) : {};
+  const detailText = String(details.detail || details.message || '').trim();
+  if (detailText) return detailText;
+
+  const message = String(source.message || '').toLowerCase();
   if (!message) return fallback;
+  if (message.includes('authorization') || message.includes('401') || message.includes('unauthorized')) {
+    return 'Je sessie is verlopen of de download mist autorisatie. Log opnieuw in en probeer opnieuw.';
+  }
   if (message.includes('bad request') || message.includes('422') || message.includes('400')) {
     return 'Opslaan mislukt. Controleer de ingevulde gegevens.';
   }
@@ -151,5 +168,5 @@ export function normalizeApiError(error: unknown, fallback = 'Opslaan mislukt. P
   if (message.includes('500') || message.includes('server')) {
     return 'Serverfout. Probeer het later opnieuw.';
   }
-  return fallback;
+  return String(source.message || fallback);
 }

@@ -47,7 +47,7 @@ type ActivityRow = {
 
 export function DashboardPage() {
   const navigate = useNavigate();
-  const projects = useProjects({ status: 'active', limit: 6 });
+  const projects = useProjects({ limit: 6, sort: 'updated_at', direction: 'desc' });
   const welds = useWelds({ limit: 6 });
   const summary = useDashboardSummary();
   const pendingInspections = usePendingInspectionsSummary();
@@ -88,11 +88,12 @@ export function DashboardPage() {
       <Card className="dashboard-action-bar">
         <div className="dashboard-action-bar-copy">
           <strong>Snelle acties</strong>
-          <div className="list-subtle">Direct onder de KPI&apos;s: start meteen een nieuw project of registreer een nieuwe las.</div>
+          <div className="list-subtle">Direct onder de KPI&apos;s: start een nieuw project of open meteen rapportage en instellingen.</div>
         </div>
         <div className="dashboard-action-bar-actions">
-          <button type="button" className="btn btn-secondary" onClick={() => navigate('/projecten')}>Nieuw project</button>
-          <button type="button" className="btn btn-primary" onClick={() => navigate('/projecten')}>Nieuwe las</button>
+          <button type="button" className="btn btn-primary" onClick={() => navigate('/projecten/nieuw')}>+ Nieuw project</button>
+          <button type="button" className="btn btn-secondary" onClick={() => navigate('/rapportage')}>Rapportage</button>
+          <button type="button" className="btn btn-secondary" onClick={() => navigate('/instellingen')}>Instellingen</button>
         </div>
       </Card>
 

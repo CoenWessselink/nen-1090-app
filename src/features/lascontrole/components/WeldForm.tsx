@@ -9,7 +9,7 @@ import { FormField } from '@/components/forms/FormField';
 import { UploadDropzone } from '@/components/upload/UploadDropzone';
 import { useAssemblies } from '@/hooks/useAssemblies';
 import { useProjects } from '@/hooks/useProjects';
-import { useInspectionTemplates, useWeldCoordinators, useWelders, useWps } from '@/hooks/useSettings';
+import { useInspectionTemplates, useMaterials, useProcesses, useWeldCoordinators, useWelders, useWps } from '@/hooks/useSettings';
 import type { WeldFormValues } from '@/types/forms';
 
 const schema = z.object({
@@ -19,6 +19,7 @@ const schema = z.object({
   wps_id: z.string().optional(),
   welder_name: z.string().optional(),
   process: z.string().optional(),
+  material: z.string().optional(),
   location: z.string().min(1, 'Locatie is verplicht'),
   status: z.enum(['conform', 'defect', 'gerepareerd']),
   execution_class: z.enum(['', 'EXC1', 'EXC2', 'EXC3', 'EXC4']).optional(),
@@ -54,6 +55,8 @@ export function WeldForm({
   const assemblies = useAssemblies(projectId, { limit: 200, sort: 'code' });
   const wps = useWps();
   const welders = useWelders();
+  const materials = useMaterials();
+  const processes = useProcesses();
   const coordinators = useWeldCoordinators();
   const templates = useInspectionTemplates();
 
@@ -61,6 +64,8 @@ export function WeldForm({
   const assemblyRows = useMemo(() => assemblies.data?.items || [], [assemblies.data]);
   const wpsRows = useMemo(() => wps.data?.items || [], [wps.data]);
   const welderRows = useMemo(() => welders.data?.items || [], [welders.data]);
+  const materialRows = useMemo(() => materials.data?.items || [], [materials.data]);
+  const processRows = useMemo(() => processes.data?.items || [], [processes.data]);
   const templateRows = useMemo(() => templates.data?.items || [], [templates.data]);
   const coordinatorRows = useMemo(() => coordinators.data?.items || [], [coordinators.data]);
   const activeProject = useMemo(() => projectRows.find((project) => String(project.id) === String(projectId)), [projectRows, projectId]);
@@ -81,6 +86,7 @@ export function WeldForm({
       wps_id: initial?.wps_id || '',
       welder_name: initial?.welder_name || '',
       process: initial?.process || '135',
+      material: initial?.material || '',
       location: initial?.location || '',
       status: initial?.status || 'conform',
       execution_class: (initial?.execution_class || projectExecutionClass || '') as WeldFormValues['execution_class'],
@@ -96,6 +102,7 @@ export function WeldForm({
       wps_id: initial?.wps_id || '',
       welder_name: initial?.welder_name || '',
       process: initial?.process || '135',
+      material: initial?.material || '',
       location: initial?.location || '',
       status: initial?.status || 'conform',
       execution_class: (initial?.execution_class || projectExecutionClass || '') as WeldFormValues['execution_class'],
@@ -179,13 +186,21 @@ export function WeldForm({
 
         <FormField label="Proces" error={errors.process?.message}>
           <Select {...register('process')}>
-            <option value="135">135 (MAG)</option>
-            <option value="111">111 (BMBE)</option>
-            <option value="141">141 (TIG)</option>
+            {(processRows.length ? processRows : [{ value: '135', label: '135 (MAG)' }, { value: '111', label: '111 (BMBE)' }, { value: '141', label: '141 (TIG)' }]).map((row) => (
+              <option key={String((row as Record<string, unknown>).value || (row as Record<string, unknown>).code || '')} value={String((row as Record<string, unknown>).value || (row as Record<string, unknown>).code || '')}>
+                {String((row as Record<string, unknown>).label || (row as Record<string, unknown>).title || (row as Record<string, unknown>).code || '')}
+              </option>
+            ))}
           </Select>
         </FormField>
       </div>
       <div className="two-column-grid">
+        <FormField label="Materiaal" error={errors.material?.message}>
+          <Select {...register('material')}>
+            <option value="">Selecteer materiaal</option>
+            {materialRows.map((row) => <option key={String(row.id || row.code || '')} value={String(row.code || row.title || row.id || '')}>{String(row.code || row.title || row.id || '')}</option>)}
+          </Select>
+        </FormField>
         <FormField label="Executieklasse" error={errors.execution_class?.message}>
           <Select {...register('execution_class')}>
             <option value="">Overnemen van project</option>

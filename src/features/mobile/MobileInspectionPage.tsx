@@ -2,18 +2,20 @@ import { useEffect, useMemo, useState } from 'react';
 import { AlertCircle, CheckCircle2, LoaderCircle } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getInspectionForWeld, upsertInspectionForWeld } from '@/api/inspections';
+import { getInspectionTemplates } from '@/api/settings';
 import { getWeld } from '@/api/welds';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
-import { normalizeApiError, weldNumber } from '@/features/mobile/mobile-utils';
+import { dispatchAppRefresh, normalizeApiError, weldNumber } from '@/features/mobile/mobile-utils';
 import type { Weld } from '@/types/domain';
 
 type UiStatus = 'Conform' | 'In controle' | 'Niet conform';
+type TemplateRow = Record<string, unknown>;
 type CheckRow = { key: string; label: string; helper: string };
 
-const inspectionFields: CheckRow[] = [
-  { key: 'positie_1', label: 'Positie 1', helper: 'Visuele beoordeling van positie 1' },
-  { key: 'positie_2', label: 'Positie 2', helper: 'Visuele beoordeling van positie 2' },
-  { key: 'visuele_inspectie', label: 'Visuele inspectie', helper: 'Algemene visuele eindcontrole' },
+const fallbackFields: CheckRow[] = [
+  { key: 'tekeningen_lasplan', label: 'Tekeningen / lasplan aanwezig', helper: 'Inspectiecontrole' },
+  { key: 'materiaaltraceerbaarheid', label: 'Materiaaltraceerbaarheid vastgelegd', helper: 'Inspectiecontrole' },
+  { key: 'wps_wpqr', label: 'Juiste WPS / WPQR toegepast', helper: 'Inspectiecontrole' },
 ];
 
 function toBackendStatus(value: UiStatus) {
@@ -35,15 +37,29 @@ function inferOverallStatus(values: UiStatus[]) {
   return 'gerepareerd';
 }
 
+function toCheckRows(template: TemplateRow | undefined): CheckRow[] {
+  const source = template?.items_json ?? template?.items ?? [];
+  const items = Array.isArray(source) ? source : [];
+  const mapped = items.map((item, index) => {
+    const record = item && typeof item === 'object' ? (item as Record<string, unknown>) : {};
+    const label = String(record.title || record.label || record.code || `Controlepunt ${index + 1}`);
+    return {
+      key: String(record.code || record.group_key || record.criterion_key || `check_${index + 1}`).toLowerCase(),
+      label,
+      helper: String(record.group || record.helper || 'Inspectiecontrole'),
+    } satisfies CheckRow;
+  });
+  return mapped.length ? mapped : fallbackFields;
+}
+
 export function MobileInspectionPage() {
   const navigate = useNavigate();
   const { projectId = '', weldId = '' } = useParams();
   const [weldLabel, setWeldLabel] = useState('Lasinspectie');
-  const [statusMap, setStatusMap] = useState<Record<string, UiStatus>>({
-    positie_1: 'In controle',
-    positie_2: 'In controle',
-    visuele_inspectie: 'In controle',
-  });
+  const [weldExecutionClass, setWeldExecutionClass] = useState('EXC2');
+  const [selectedTemplateId, setSelectedTemplateId] = useState('');
+  const [templates, setTemplates] = useState<TemplateRow[]>([]);
+  const [statusMap, setStatusMap] = useState<Record<string, UiStatus>>({});
   const [remarks, setRemarks] = useState('');
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -52,22 +68,31 @@ export function MobileInspectionPage() {
 
   useEffect(() => {
     let active = true;
-    Promise.all([getWeld(projectId, weldId).catch(() => null), getInspectionForWeld(projectId, weldId).catch(() => null)])
-      .then(([weld, inspection]) => {
+    Promise.all([
+      getWeld(projectId, weldId).catch(() => null),
+      getInspectionForWeld(projectId, weldId).catch(() => null),
+      getInspectionTemplates().catch(() => []),
+    ])
+      .then(([weld, inspection, templateRows]) => {
         if (!active) return;
-        if (weld) setWeldLabel(weldNumber(weld as Weld));
+        if (weld) {
+          const weldRecord = weld as Record<string, unknown>;
+          setWeldLabel(weldNumber(weld as Weld));
+          setWeldExecutionClass(String(weldRecord.execution_class || 'EXC2'));
+          setSelectedTemplateId(String(weldRecord.template_id || ''));
+        }
+        setTemplates(Array.isArray(templateRows) ? (templateRows as TemplateRow[]) : []);
         const inspectionRecord = inspection && typeof inspection === 'object' ? (inspection as Record<string, unknown>) : {};
-        const checks = Array.isArray(inspectionRecord.checks) ? (inspectionRecord.checks as Array<Record<string, unknown>>) : [];
-        const nextMap = { ...statusMap };
-        inspectionFields.forEach((field) => {
-          const found = checks.find((item) => {
-            const key = String(item.group_key || item.label || item.criterion_key || '').toLowerCase().replace(/\s+/g, '_');
-            return key === field.key || key === field.label.toLowerCase().replace(/\s+/g, '_');
-          });
-          if (found) nextMap[field.key] = toUiStatus(found.status);
-        });
-        setStatusMap(nextMap);
+        if (inspectionRecord.execution_class) setWeldExecutionClass(String(inspectionRecord.execution_class));
+        if (inspectionRecord.template_id) setSelectedTemplateId(String(inspectionRecord.template_id));
         setRemarks(String(inspectionRecord.remarks || inspectionRecord.notes || ''));
+        const checks = Array.isArray(inspectionRecord.checks) ? (inspectionRecord.checks as Array<Record<string, unknown>>) : [];
+        const map: Record<string, UiStatus> = {};
+        checks.forEach((item) => {
+          const key = String(item.group_key || item.criterion_key || item.code || item.label || '').toLowerCase().replace(/\s+/g, '_');
+          if (key) map[key] = toUiStatus(item.status);
+        });
+        setStatusMap(map);
         setError(null);
       })
       .catch((err) => {
@@ -77,19 +102,36 @@ export function MobileInspectionPage() {
       .finally(() => {
         if (active) setLoading(false);
       });
-
     return () => {
       active = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId, weldId]);
 
-  const checks = useMemo(
-    () => inspectionFields.map((field) => ({ ...field, status: statusMap[field.key] || 'In controle' })),
-    [statusMap],
+  const templateOptions = useMemo(() => {
+    const exc = String(weldExecutionClass || '').toUpperCase();
+    return templates.filter((item) => {
+      const rowExc = String(item.exc_class || item.execution_class || '').toUpperCase();
+      return !exc || !rowExc || rowExc === exc;
+    });
+  }, [templates, weldExecutionClass]);
+
+  useEffect(() => {
+    if (selectedTemplateId) return;
+    const preferred = templateOptions.find((item) => Boolean(item.is_default)) || templateOptions[0];
+    if (preferred?.id) setSelectedTemplateId(String(preferred.id));
+  }, [templateOptions, selectedTemplateId]);
+
+  const selectedTemplate = useMemo(
+    () => templateOptions.find((item) => String(item.id || '') === String(selectedTemplateId || '')),
+    [templateOptions, selectedTemplateId],
   );
 
-  const overallStatus = useMemo(() => inferOverallStatus(Object.values(statusMap)), [statusMap]);
+  const checks = useMemo(() => {
+    const rows = toCheckRows(selectedTemplate);
+    return rows.map((field) => ({ ...field, status: statusMap[field.key] || 'Conform' }));
+  }, [selectedTemplate, statusMap]);
+
+  const overallStatus = useMemo(() => inferOverallStatus(checks.map((item) => item.status)), [checks]);
 
   async function handleSave() {
     setSaving(true);
@@ -99,11 +141,14 @@ export function MobileInspectionPage() {
       await upsertInspectionForWeld(projectId, weldId, {
         inspector: 'Mobiel',
         inspected_at: new Date().toISOString(),
+        execution_class: weldExecutionClass,
+        template_id: selectedTemplateId || null,
         overall_status: overallStatus,
         remarks: remarks.trim() || null,
         checks: checks.map((item) => ({
           group_key: item.key,
           criterion_key: item.key,
+          code: item.key,
           label: item.label,
           applicable: true,
           approved: item.status === 'Conform',
@@ -111,6 +156,7 @@ export function MobileInspectionPage() {
           comment: remarks.trim() || null,
         })),
       });
+      dispatchAppRefresh({ scope: 'inspection', projectId, weldId, reason: 'inspection-saved' });
       setNotice('Inspectie is opgeslagen.');
       window.setTimeout(() => navigate(`/projecten/${projectId}/lassen`), 350);
     } catch (err) {
@@ -136,6 +182,24 @@ export function MobileInspectionPage() {
               Annuleren
             </button>
           </div>
+
+          <label className="mobile-form-field mobile-select-field">
+            <span>Executieklasse</span>
+            <select value={weldExecutionClass} onChange={(event) => { setWeldExecutionClass(event.target.value); setSelectedTemplateId(''); }}>
+              <option value="EXC1">EXC1</option>
+              <option value="EXC2">EXC2</option>
+              <option value="EXC3">EXC3</option>
+              <option value="EXC4">EXC4</option>
+            </select>
+          </label>
+
+          <label className="mobile-form-field mobile-select-field">
+            <span>Inspectietemplate</span>
+            <select value={selectedTemplateId} onChange={(event) => setSelectedTemplateId(event.target.value)}>
+              <option value="">Selecteer template</option>
+              {templateOptions.map((item) => <option key={String(item.id || item.code)} value={String(item.id || '')}>{String(item.name || item.code || item.id || '')}</option>)}
+            </select>
+          </label>
 
           {checks.map((item) => (
             <section key={item.key} className="mobile-status-card">

@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Plus, Search, SlidersHorizontal } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getProjects } from '@/api/projects';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
-import { formatValue, normalizeApiError, projectCode, projectExecutionClass, projectTitle } from '@/features/mobile/mobile-utils';
+import { APP_REFRESH_EVENT, formatValue, normalizeApiError, projectCode, projectExecutionClass, projectTitle } from '@/features/mobile/mobile-utils';
 import type { Project } from '@/types/domain';
 
 export function MobileProjectsPage() {
@@ -13,7 +13,7 @@ export function MobileProjectsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const loadProjects = useCallback(() => {
     let active = true;
     setLoading(true);
     getProjects({ page: 1, limit: 50 })
@@ -33,6 +33,18 @@ export function MobileProjectsPage() {
       active = false;
     };
   }, []);
+
+  useEffect(() => loadProjects(), [loadProjects]);
+
+  useEffect(() => {
+    const reload = () => loadProjects();
+    window.addEventListener(APP_REFRESH_EVENT, reload as EventListener);
+    window.addEventListener('focus', reload);
+    return () => {
+      window.removeEventListener(APP_REFRESH_EVENT, reload as EventListener);
+      window.removeEventListener('focus', reload);
+    };
+  }, [loadProjects]);
 
   const filtered = useMemo(() => {
     const needle = search.trim().toLowerCase();

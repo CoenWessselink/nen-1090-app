@@ -10,6 +10,7 @@ import { MobileProjectCreatePage } from '@/features/mobile/MobileProjectCreatePa
 import { MobileWeldsPage } from '@/features/mobile/MobileWeldsPage';
 import { MobileWeldCreatePage } from '@/features/mobile/MobileWeldCreatePage';
 import { MobileWeldEditPage } from '@/features/mobile/MobileWeldEditPage';
+import { MobileAssemblyCreatePage } from '@/features/mobile/MobileAssemblyCreatePage';
 import { MobileInspectionPage } from '@/features/mobile/MobileInspectionPage';
 import { MobileDocumentsPage } from '@/features/mobile/MobileDocumentsPage';
 import { MobileCeDossierPage } from '@/features/mobile/MobileCeDossierPage';
@@ -69,12 +70,15 @@ export const routerConfig = [
       { path: 'dashboard', element: <MobileDashboardPage /> },
       { path: 'projecten', element: <MobileProjectsPage /> },
       { path: 'projecten/nieuw', element: <MobileProjectCreatePage /> },
+      { path: 'projecten/:projectId/bewerken', element: <MobileProjectCreatePage /> },
       { path: 'projecten/:projectId', element: <Navigate to="overzicht" replace /> },
       { path: 'projecten/:projectId/overzicht', element: <MobileProject360Page /> },
       { path: 'projecten/:projectId/assemblies', element: <Navigate to="../overzicht" replace /> },
+      { path: 'projecten/:projectId/assemblies/nieuw', element: <MobileAssemblyCreatePage /> },
       { path: 'projecten/:projectId/assemblies/:assemblyId', element: <Navigate to="../../overzicht" replace /> },
       { path: 'projecten/:projectId/lassen', element: <MobileWeldsPage /> },
       { path: 'projecten/:projectId/lassen/nieuw', element: <MobileWeldCreatePage /> },
+      { path: 'lassen/nieuw', element: <MobileWeldCreatePage /> },
       { path: 'projecten/:projectId/lassen/:weldId', element: <Navigate to="inspectie" replace /> },
       { path: 'projecten/:projectId/lassen/:weldId/bewerken', element: <MobileWeldEditPage /> },
       { path: 'projecten/:projectId/lassen/:weldId/inspectie', element: <MobileInspectionPage /> },

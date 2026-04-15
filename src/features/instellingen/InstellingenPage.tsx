@@ -19,6 +19,7 @@ import { useInspectionTemplates, useMaterials, useSettings, useWeldCoordinators,
 import { validateObjectPayload } from '@/utils/contracts';
 import { MasterDataManager } from '@/features/instellingen/components/MasterDataManager';
 import { CompanySettingsCard } from '@/features/instellingen/components/CompanySettingsCard';
+import { InspectionTemplatesManager } from '@/features/instellingen/components/InspectionTemplatesManager';
 
 const tabs = [
   { value: 'organisatie', label: 'Organisatie' },
@@ -142,7 +143,14 @@ export function InstellingenPage() {
           <MasterDataManager title="Materialen" type="materials" rows={materials.data?.items || []} isLoading={materials.isLoading} isError={materials.isError} refetch={materials.refetch} />
           <MasterDataManager title="Lassers" type="welders" rows={welders.data?.items || []} isLoading={welders.isLoading} isError={welders.isError} refetch={welders.refetch} />
           <MasterDataManager title="Lascoördinatoren" type="weld-coordinators" rows={weldCoordinators.data?.items || []} isLoading={weldCoordinators.isLoading} isError={weldCoordinators.isError} refetch={weldCoordinators.refetch} />
-          <MasterDataManager title="Inspectietemplates" type="inspection-templates" rows={inspectionTemplates.data?.items || []} isLoading={inspectionTemplates.isLoading} isError={inspectionTemplates.isError} refetch={inspectionTemplates.refetch} />
+          <Card>
+            <div className="section-title-row">
+              <h3>Inspectietemplates per EXC</h3>
+              <Button type="button" variant="secondary" onClick={() => navigate('/instellingen/templates')}>Volledig beheer openen</Button>
+            </div>
+            <div className="list-subtle" style={{ marginTop: 8 }}>Stel standaardtemplates per executieklasse in, wijzig controlepunten en laat deze direct doorwerken naar projecten, lassen en inspecties.</div>
+          </Card>
+          <InspectionTemplatesManager />
         </div>
       ) : null}
 

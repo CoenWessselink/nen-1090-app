@@ -18,6 +18,8 @@ export type ProjectWeldDraft = {
   coordinator_id?: string;
   coordinator_name?: string;
   process?: string;
+  material?: string;
+  thickness?: string;
   location: string;
   status: string;
   photos?: File[];
@@ -51,8 +53,10 @@ export type WeldFormValues = {
   coordinator_id?: string;
   coordinator_name?: string;
   process?: string;
+  material?: string;
+  thickness?: string;
   location: string;
-  status: 'conform' | 'defect' | 'gerepareerd';
+  status: 'conform' | 'in_controle' | 'niet_conform' | 'defect' | 'gerepareerd';
   execution_class?: 'EXC1' | 'EXC2' | 'EXC3' | 'EXC4' | '';
   template_id?: string;
 };

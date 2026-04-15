@@ -10,6 +10,7 @@ import { ErrorState } from '@/components/feedback/ErrorState';
 import { LoadingState } from '@/components/feedback/LoadingState';
 import { EmptyState } from '@/components/feedback/EmptyState';
 import { useReports } from '@/hooks/useReports';
+import { openDownloadUrl } from '@/utils/download';
 
 type ReportRow = {
   id: string | number;
@@ -50,10 +51,10 @@ export function RapportagePage() {
     );
   }, [rows, search]);
 
-  function openPdf(row: ReportRow) {
+  async function openPdf(row: ReportRow) {
     if (row.pdf_url) {
       setActivePreviewUrl(String(row.pdf_url));
-      window.open(String(row.pdf_url), '_blank', 'noopener,noreferrer');
+      await openDownloadUrl(String(row.pdf_url), `rapport-${row.id}.pdf`);
       return;
     }
     if (row.project_id) {

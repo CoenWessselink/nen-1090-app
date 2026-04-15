@@ -9,7 +9,7 @@ import { FormField } from '@/components/forms/FormField';
 import { Card } from '@/components/ui/Card';
 import type { Project } from '@/types/domain';
 import type { ProjectAssemblyDraft, ProjectFormValues, ProjectWeldDraft } from '@/types/forms';
-import { useInspectionTemplates, useMaterials, useWelders, useWps } from '@/hooks/useSettings';
+import { useClients, useInspectionTemplates, useMaterials, useProcesses, useWelders, useWps } from '@/hooks/useSettings';
 
 const schema = z.object({
   projectnummer: z.string().min(1, 'Projectnummer is verplicht'),
@@ -38,15 +38,6 @@ const steps = [
 const projectTypeOptions = ['Nieuwbouw', 'Renovatie', 'Onderhoud', 'Machinebouw', 'Staalconstructie'];
 const locationOptions = ['Werkplaats', 'Montage', 'Externe locatie', 'Magazijn'];
 const plannerOptions = ['Planner A', 'Planner B', 'Werkvoorbereiding', 'Projectleiding'];
-
-function uniqueProjectClients(initial?: Project) {
-  return Array.from(new Set([
-    String(initial?.client_name || initial?.opdrachtgever || '').trim(),
-    'CWS Staalbouw',
-    'Demo Opdrachtgever',
-    'Interne productie',
-  ].filter(Boolean)));
-}
 
 function normalizeExecutionClass(value: unknown) {
   const text = String(value || '').trim().toUpperCase();
@@ -81,12 +72,19 @@ export function ProjectForm({
   const [stepIndex, setStepIndex] = useState(0);
   const [assemblies, setAssemblies] = useState<ProjectAssemblyDraft[]>([makeAssemblyRow()]);
   const [welds, setWelds] = useState<ProjectWeldDraft[]>([makeWeldRow()]);
+  const clients = useClients();
   const wps = useWps();
   const materials = useMaterials();
   const welders = useWelders();
+  const processes = useProcesses();
   const inspectionTemplates = useInspectionTemplates();
 
-  const clientOptions = useMemo(() => uniqueProjectClients(initial), [initial]);
+  const clientOptions = useMemo(() => {
+    const rows = (clients.data?.items || []) as Array<Record<string, unknown>>;
+    const seeded = rows.map((item) => String(item.name || item.title || item.code || '')).filter(Boolean);
+    const fallback = [String(initial?.client_name || initial?.opdrachtgever || '').trim(), 'CWS Staalbouw', 'Demo Opdrachtgever', 'Interne productie'].filter(Boolean);
+    return Array.from(new Set([...seeded, ...fallback]));
+  }, [clients.data, initial]);
 
   const {
     register,
@@ -192,7 +190,15 @@ export function ProjectForm({
             </div>
             <div className="two-column-grid">
               <FormField label="Locatie"><Select {...register('location')}>{locationOptions.map((option) => <option key={option} value={option}>{option}</option>)}</Select></FormField>
-              <div />
+              <FormField label="Standaard proces">
+                <Select onChange={(event) => setWelds((current) => current.map((row) => ({ ...row, process: event.target.value || row.process })))} defaultValue="">
+                  <option value="">Gebruik bestaande lasregels</option>
+                  {((processes.data?.items || []) as Array<Record<string, unknown>>).map((item) => {
+                    const value = String(item.code || item.name || item.title || '');
+                    return <option key={String(item.id || value)} value={value}>{String(item.name || item.title || value)}</option>;
+                  })}
+                </Select>
+              </FormField>
             </div>
             <div className="two-column-grid">
               <FormField label="Startdatum"><Input type="date" {...register('start_date')} /></FormField>

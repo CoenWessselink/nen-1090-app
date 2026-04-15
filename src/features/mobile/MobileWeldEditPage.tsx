@@ -3,6 +3,7 @@ import { Camera, Trash2 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { deleteAttachment } from '@/api/documents';
 import { getWeld, getWeldAttachments, updateWeld, uploadWeldAttachment } from '@/api/welds';
+import { useInspectionTemplates, useMaterials, useProcesses, useWelders, useWps } from '@/hooks/useSettings';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
 import { normalizeApiError } from '@/features/mobile/mobile-utils';
 
@@ -14,6 +15,10 @@ type WeldFormState = {
   material: string;
   welders: string;
   location: string;
+  execution_class: string;
+  template_id: string;
+  status: string;
+  wps: string;
 };
 
 type AttachmentRow = {
@@ -25,20 +30,34 @@ type AttachmentRow = {
 export function MobileWeldEditPage() {
   const navigate = useNavigate();
   const { projectId = '', weldId = '' } = useParams();
+  const processes = useProcesses();
+  const materials = useMaterials();
+  const welders = useWelders();
+  const wps = useWps();
+  const inspectionTemplates = useInspectionTemplates();
   const [form, setForm] = useState<WeldFormState>({
     assembly_id: '',
     weld_no: '',
     inspected_at: '',
-    process: '',
+    process: '135',
     material: '',
     welders: '',
     location: '',
+    execution_class: 'EXC2',
+    template_id: '',
+    status: 'conform',
+    wps: '',
   });
   const [attachments, setAttachments] = useState<AttachmentRow[]>([]);
   const [newFiles, setNewFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const templateOptions = useMemo(
+    () => (((inspectionTemplates.data?.items || []) as Array<Record<string, unknown>>).filter((item) => String(item.exc_class || item.execution_class || '').toUpperCase() === String(form.execution_class || '').toUpperCase())),
+    [inspectionTemplates.data, form.execution_class],
+  );
 
   const canSave = useMemo(() => Boolean(form.weld_no.trim()), [form.weld_no]);
 
@@ -53,10 +72,14 @@ export function MobileWeldEditPage() {
           assembly_id: String(record.assembly_id || record.assemblyId || ''),
           weld_no: String(record.weld_no || record.weld_number || ''),
           inspected_at: String(record.inspected_at || record.inspection_date || '').slice(0, 10),
-          process: String(record.process || record.lasmethode || '135'),
+          process: String(record.process || '135'),
           material: String(record.material || ''),
           welders: String(record.welders || record.welder_name || ''),
           location: String(record.location || ''),
+          execution_class: String(record.execution_class || 'EXC2'),
+          template_id: String(record.template_id || ''),
+          status: String(record.status || 'conform'),
+          wps: String(record.wps || record.wps_id || ''),
         });
         const rows = Array.isArray(attachmentResult)
           ? attachmentResult
@@ -82,6 +105,14 @@ export function MobileWeldEditPage() {
       });
     return () => { active = false; };
   }, [projectId, weldId]);
+
+  useEffect(() => {
+    if (!templateOptions.length) return;
+    const current = templateOptions.find((item) => String(item.id) === String(form.template_id || ''));
+    if (!current) {
+      setForm((state) => ({ ...state, template_id: String(templateOptions[0]?.id || '') }));
+    }
+  }, [templateOptions, form.template_id]);
 
   async function handleDeleteAttachment(attachmentId: string) {
     try {
@@ -111,6 +142,10 @@ export function MobileWeldEditPage() {
         location: form.location,
         welder_name: form.welders,
         welders: form.welders,
+        execution_class: form.execution_class,
+        template_id: form.template_id || null,
+        status: form.status,
+        wps: form.wps || null,
       });
 
       for (const file of newFiles) {
@@ -120,7 +155,7 @@ export function MobileWeldEditPage() {
         await uploadWeldAttachment(projectId, weldId, formData);
       }
 
-      navigate(`/projecten/${projectId}/lassen/${weldId}/inspectie`, { replace: true });
+      navigate(`/projecten/${projectId}/lassen`, { replace: true });
     } catch (err) {
       setError(normalizeApiError(err, 'Las opslaan mislukt.'));
     } finally {
@@ -137,9 +172,14 @@ export function MobileWeldEditPage() {
           <label className="mobile-form-field"><span>Assemblage</span><input value={form.assembly_id} onChange={(event) => setForm((current) => ({ ...current, assembly_id: event.target.value }))} placeholder="Assemblage" /></label>
           <label className="mobile-form-field"><span>Lasnummer</span><input value={form.weld_no} onChange={(event) => setForm((current) => ({ ...current, weld_no: event.target.value }))} placeholder="Lasnummer" /></label>
           <label className="mobile-form-field"><span>Lasdatum</span><input type="date" value={form.inspected_at} onChange={(event) => setForm((current) => ({ ...current, inspected_at: event.target.value }))} /></label>
-          <label className="mobile-form-field mobile-select-field"><span>Lasmethode</span><select value={form.process} onChange={(event) => setForm((current) => ({ ...current, process: event.target.value }))}><option value="135">135 (MAG)</option><option value="111">111 (BMBE)</option><option value="141">141 (TIG)</option></select></label>
-          <label className="mobile-form-field"><span>Materiaal</span><input value={form.material} onChange={(event) => setForm((current) => ({ ...current, material: event.target.value }))} placeholder="Materiaal" /></label>
-          <label className="mobile-form-field"><span>Lasser</span><input value={form.welders} onChange={(event) => setForm((current) => ({ ...current, welders: event.target.value }))} placeholder="Lasser" /></label>
+          <label className="mobile-form-field mobile-select-field"><span>Executieklasse</span><select value={form.execution_class} onChange={(event) => setForm((current) => ({ ...current, execution_class: event.target.value }))}>{['EXC1','EXC2','EXC3','EXC4'].map((exc) => <option key={exc} value={exc}>{exc}</option>)}</select></label>
+          <label className="mobile-form-field mobile-select-field"><span>Lasmethode</span><select value={form.process} onChange={(event) => setForm((current) => ({ ...current, process: event.target.value }))}>{((processes.data?.items || []) as Array<Record<string, unknown>>).map((item) => { const value = String(item.code || item.name || item.title || ''); return <option key={String(item.id || value)} value={value}>{String(item.name || item.title || value)}</option>; })}<option value="135">135 (MAG)</option><option value="111">111 (BMBE)</option><option value="141">141 (TIG)</option></select></label>
+          <label className="mobile-form-field mobile-select-field"><span>WPS</span><select value={form.wps} onChange={(event) => setForm((current) => ({ ...current, wps: event.target.value }))}><option value="">Selecteer WPS</option>{((wps.data?.items || []) as Array<Record<string, unknown>>).map((item) => <option key={String(item.id)} value={String(item.code || item.id)}>{String(item.code || item.title || item.id)}</option>)}</select></label>
+          <label className="mobile-form-field mobile-select-field"><span>Materiaal</span><select value={form.material} onChange={(event) => setForm((current) => ({ ...current, material: event.target.value }))}><option value="">Selecteer materiaal</option>{((materials.data?.items || []) as Array<Record<string, unknown>>).map((item) => <option key={String(item.id)} value={String(item.code || item.title || item.id)}>{String(item.code || item.title || item.id)}</option>)}</select></label>
+          <label className="mobile-form-field mobile-select-field"><span>Lasser</span><select value={form.welders} onChange={(event) => setForm((current) => ({ ...current, welders: event.target.value }))}><option value="">Selecteer lasser</option>{((welders.data?.items || []) as Array<Record<string, unknown>>).map((item) => { const value = String(item.name || item.code || item.id || ''); return <option key={String(item.id || value)} value={value}>{value}</option>; })}</select></label>
+          <label className="mobile-form-field"><span>Locatie</span><input value={form.location} onChange={(event) => setForm((current) => ({ ...current, location: event.target.value }))} placeholder="Locatie" /></label>
+          <label className="mobile-form-field mobile-select-field"><span>Inspectietemplate</span><select value={form.template_id} onChange={(event) => setForm((current) => ({ ...current, template_id: event.target.value }))}><option value="">Automatisch via EXC</option>{templateOptions.map((item) => <option key={String(item.id)} value={String(item.id)}>{String(item.name || item.title || item.id)}</option>)}</select></label>
+          <label className="mobile-form-field mobile-select-field"><span>Status</span><select value={form.status} onChange={(event) => setForm((current) => ({ ...current, status: event.target.value }))}><option value="conform">Conform</option><option value="in_controle">In controle</option><option value="niet_conform">Niet conform</option></select></label>
           <label className="mobile-upload-field"><span><Camera size={16} /> Foto’s toevoegen</span><input type="file" accept="image/*" capture="environment" multiple onChange={(event) => setNewFiles(Array.from(event.target.files || []))} /><small>Voeg extra foto’s toe aan deze las</small></label>
           {newFiles.length ? <div className="mobile-file-list">{newFiles.map((file) => <div key={`${file.name}-${file.size}`} className="mobile-file-pill">{file.name}</div>)}</div> : null}
           {attachments.length ? (

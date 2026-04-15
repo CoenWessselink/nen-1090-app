@@ -62,6 +62,9 @@ export function useProjects(params?: ListParams) {
   return useQuery({
     queryKey: ['projects', params],
     queryFn: async () => normalizeListResponse(await getProjects(params)),
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -70,6 +73,8 @@ export function useProject(projectId?: string | number) {
     queryKey: ['project', projectId],
     queryFn: () => getProject(String(projectId)),
     enabled: Boolean(projectId),
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -86,6 +91,8 @@ export function useProjectWelds(projectId?: string | number, params?: ListParams
     queryKey: ['project-welds', projectId, params],
     queryFn: async () => normalizeListResponse(await getProjectWelds(String(projectId), params)),
     enabled: Boolean(projectId),
+    staleTime: 45_000,
+    refetchOnWindowFocus: false,
   });
 }
 

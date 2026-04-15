@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { createPdfExport, getCeDossier } from '@/api/ce';
 import { getProjectDocuments } from '@/api/documents';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
+import { openDownloadUrl } from '@/utils/download';
 import { firstPdfDocument, formatValue, groupChecklist, normalizeApiError, normalizeChecklist, summarizeChecklist } from '@/features/mobile/mobile-utils';
 import type { CeDocument } from '@/types/domain';
 
@@ -59,7 +60,7 @@ export function MobileCeDossierPage() {
       const result = await createPdfExport(projectId);
       const downloadUrl = typeof result === 'object' && result ? String((result as Record<string, unknown>).download_url || (result as Record<string, unknown>).url || '') : '';
       if (downloadUrl) {
-        window.open(downloadUrl, '_blank', 'noopener,noreferrer');
+        await openDownloadUrl(downloadUrl, `ce-dossier-${projectId}.pdf`);
         return;
       }
       navigate(`/projecten/${projectId}/pdf-viewer`);

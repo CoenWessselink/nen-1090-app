@@ -9,8 +9,10 @@ import {
   deleteWelder,
   deleteWps,
   duplicateInspectionTemplate,
+  getClients,
   getInspectionTemplates,
   getMaterials,
+  getProcesses,
   getSettings,
   getWelders,
   getWps,
@@ -55,6 +57,14 @@ function useMasterDataQuery(queryKey: string, queryFn: () => Promise<MasterDataR
     queryFn: async () => normalizeListResponse(await queryFn()),
     enabled,
   });
+}
+
+export function useClients(enabled = true) {
+  return useMasterDataQuery('settings-clients', getClients, enabled);
+}
+
+export function useProcesses(enabled = true) {
+  return useMasterDataQuery('settings-processes', getProcesses, enabled);
 }
 
 export function useWps(enabled = true) {

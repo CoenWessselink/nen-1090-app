@@ -282,7 +282,7 @@ export async function createProject(payload: ProjectFormValues) {
   });
   const createdId = response?.id || response?.project_id;
   if (!createdId) throw new Error('Project aangemaakt, maar backend gaf geen geldig project-object terug.');
-  return normalizeProjectRecord({ id: createdId, ...mapProjectPayload(payload) });
+  return normalizeProjectRecord(response);
 }
 
 export async function updateProjectRecord(id: string | number, payload: Partial<ProjectFormValues>) {

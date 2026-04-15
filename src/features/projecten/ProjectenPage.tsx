@@ -364,11 +364,21 @@ export function ProjectenPage() {
           onSubmit={async (values) => {
             try {
               const createdProject = await createProject.mutateAsync(values);
-              setMessage('Project aangemaakt.');
+              const warnings = createdProject.create_summary?.warnings || [];
+              setMessage(warnings.length ? `Project aangemaakt met ${warnings.length} aandachtspunt(en).` : 'Project aangemaakt.');
+              pushNotification({
+                title: warnings.length ? 'Project aangemaakt met aandachtspunten' : 'Project aangemaakt',
+                description: warnings.length
+                  ? warnings.slice(0, 2).map((item) => item.message).join(' | ')
+                  : `Project ${values.projectnummer || createdProject.id} is opgeslagen en geopend.`,
+                tone: warnings.length ? 'warning' : 'success',
+              });
               setModalMode(null);
               navigate(`/projecten/${createdProject.id}/overzicht`);
             } catch (error) {
-              setMessage(error instanceof Error ? error.message : 'Project aanmaken mislukt.');
+              const message = error instanceof Error ? error.message : 'Project aanmaken mislukt.';
+              setMessage(message);
+              pushNotification({ title: 'Project aanmaken mislukt', description: message, tone: 'error' });
             }
           }}
         />
@@ -391,7 +401,9 @@ export function ProjectenPage() {
                 });
                 setModalMode(null);
               } catch (error) {
-                setMessage(error instanceof Error ? error.message : 'Project wijzigen mislukt.');
+                const message = error instanceof Error ? error.message : 'Project wijzigen mislukt.';
+                setMessage(message);
+                pushNotification({ title: 'Project wijzigen mislukt', description: message, tone: 'error' });
               }
             }}
           />
@@ -412,7 +424,9 @@ export function ProjectenPage() {
             setSelectedRows((current) => current.filter((id) => id !== String(pendingDelete.id)));
             setMessage('Project verwijderd.');
           } catch (error) {
-            setMessage(error instanceof Error ? error.message : 'Project verwijderen mislukt.');
+            const message = error instanceof Error ? error.message : 'Project verwijderen mislukt.';
+            setMessage(message);
+            pushNotification({ title: 'Project verwijderen mislukt', description: message, tone: 'error' });
           }
         }}
         onClose={() => setPendingDelete(null)}

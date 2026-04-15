@@ -6,6 +6,13 @@ import { withQuery } from '@/utils/api';
 
 type ReportResponse = ReportItem[] | { items?: ReportItem[]; data?: ReportItem[]; results?: ReportItem[]; total?: number; page?: number; limit?: number };
 
+function normalizeReportUrls(items: ReportItem[]) {
+  return items.map((item) => ({
+    ...item,
+    pdf_url: String((item as ReportItem & { pdf_url?: string; download_url?: string }).pdf_url || (item as ReportItem & { download_url?: string }).download_url || '' || '').trim() || undefined,
+  }));
+}
+
 function normalizeItems(payload: ReportResponse | null | undefined) {
   if (Array.isArray(payload)) {
     return {
@@ -25,7 +32,7 @@ function normalizeItems(payload: ReportResponse | null | undefined) {
         : [];
 
   return {
-    items,
+    items: normalizeReportUrls(items),
     total: Number(payload?.total || items.length || 0),
     page: Number(payload?.page || 1),
     limit: Number(payload?.limit || 25),
@@ -41,6 +48,10 @@ function deriveProjectReports(projects: Awaited<ReturnType<typeof getProjects>>)
     owner: String(project.client_name || project.opdrachtgever || 'Projectteam'),
     created_at: String(project.updated_at || project.created_at || project.start_date || new Date().toISOString()),
     project_id: project.id,
+    project_name: String(project.name || project.omschrijving || ''),
+    projectnummer: String(project.projectnummer || project.id || ''),
+    client_name: String(project.client_name || project.opdrachtgever || ''),
+    pdf_url: `/api/v1/projects/${project.id}/ce-dossier/pdf`,
   }));
 
   return {

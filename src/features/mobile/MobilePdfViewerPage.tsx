@@ -4,7 +4,8 @@ import { useParams } from 'react-router-dom';
 import { createPdfExport } from '@/api/ce';
 import { downloadDocument, getDocument } from '@/api/documents';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
-import { apiProjectPdfUrl, documentPreviewUrl, formatValue } from '@/features/mobile/mobile-utils';
+import { openDownloadUrl, openProtectedPdfPreview } from '@/utils/download';
+import { apiProjectPdfUrl, documentPreviewUrl, formatValue, normalizeApiError } from '@/features/mobile/mobile-utils';
 import type { CeDocument } from '@/types/domain';
 
 export function MobilePdfViewerPage() {
@@ -13,6 +14,7 @@ export function MobilePdfViewerPage() {
   const [loading, setLoading] = useState(Boolean(documentId));
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState('');
 
   useEffect(() => {
     if (!documentId) return;
@@ -26,7 +28,7 @@ export function MobilePdfViewerPage() {
       })
       .catch((err) => {
         if (!active) return;
-        setError(err instanceof Error ? err.message : 'PDF kon niet worden geladen.');
+        setError(normalizeApiError(err, 'PDF kon niet worden geladen.'));
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -36,10 +38,38 @@ export function MobilePdfViewerPage() {
     };
   }, [documentId]);
 
-  const src = useMemo(() => {
+  const sourcePath = useMemo(() => {
     if (documentId) return documentPreviewUrl(projectId, pdfDocument);
     return apiProjectPdfUrl(projectId);
   }, [pdfDocument, documentId, projectId]);
+
+  useEffect(() => {
+    let active = true;
+    let objectUrl = '';
+    if (!sourcePath) {
+      setPreviewUrl('');
+      return;
+    }
+    openProtectedPdfPreview(sourcePath)
+      .then((url) => {
+        if (!active) {
+          if (url.startsWith('blob:')) URL.revokeObjectURL(url);
+          return;
+        }
+        objectUrl = url.startsWith('blob:') ? url : '';
+        setPreviewUrl(url);
+        setError(null);
+      })
+      .catch((err) => {
+        if (!active) return;
+        setPreviewUrl('');
+        setError(normalizeApiError(err, 'PDF preview kon niet worden geladen.'));
+      });
+    return () => {
+      active = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [sourcePath]);
 
   async function handleDownload() {
     if (documentId) {
@@ -59,13 +89,9 @@ export function MobilePdfViewerPage() {
       setCreating(true);
       const result = await createPdfExport(projectId);
       const downloadUrl = typeof result === 'object' && result ? String((result as Record<string, unknown>).download_url || (result as Record<string, unknown>).url || '') : '';
-      if (downloadUrl) {
-        window.open(downloadUrl, '_blank', 'noopener,noreferrer');
-        return;
-      }
-      window.open(apiProjectPdfUrl(projectId), '_blank', 'noopener,noreferrer');
+      await openDownloadUrl(downloadUrl || apiProjectPdfUrl(projectId), `ce-dossier-${projectId}.pdf`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'PDF download mislukt.');
+      setError(normalizeApiError(err, 'PDF download mislukt.'));
     } finally {
       setCreating(false);
     }
@@ -75,7 +101,7 @@ export function MobilePdfViewerPage() {
     <MobilePageScaffold title={formatValue(pdfDocument?.filename || pdfDocument?.uploaded_filename || pdfDocument?.title, 'PDF Viewer')} backTo={`/projecten/${projectId}/ce-dossier`}>
       {loading ? <div className="mobile-state-card">PDF laden…</div> : null}
       {error ? <div className="mobile-state-card mobile-state-card-error">{error}</div> : null}
-      {!loading && !error ? (
+      {!loading && (
         <div className="mobile-pdf-viewer-card">
           <div className="mobile-pdf-toolbar">
             <div className="mobile-pdf-toolbar-left"><Video size={16} /><span>PDF</span></div>
@@ -84,14 +110,14 @@ export function MobilePdfViewerPage() {
               <Square size={16} /><Square size={16} />
             </div>
           </div>
-          {src ? <iframe className="mobile-pdf-frame" src={src} title="PDF preview" /> : <div className="mobile-state-card">Geen preview beschikbaar.</div>}
+          {previewUrl ? <iframe className="mobile-pdf-frame" src={previewUrl} title="PDF preview" /> : <div className="mobile-state-card">Geen preview beschikbaar.</div>}
           {!documentId ? (
             <button type="button" className="mobile-primary-button" disabled={creating} onClick={handleDownload}>
               <Download size={16} /> {creating ? 'PDF maken…' : 'PDF downloaden'}
             </button>
           ) : null}
         </div>
-      ) : null}
+      )}
     </MobilePageScaffold>
   );
 }

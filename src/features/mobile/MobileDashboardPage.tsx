@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FolderKanban, FileCheck2, TriangleAlert, Wrench } from 'lucide-react';
+import { FileCheck2, FileText, FolderKanban, FolderPlus, Settings, TriangleAlert, Wrench } from 'lucide-react';
 import { getDashboardSummary } from '@/api/dashboard';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
-import { formatValue } from '@/features/mobile/mobile-utils';
+import { APP_REFRESH_EVENT, formatValue, normalizeApiError } from '@/features/mobile/mobile-utils';
 import type { DashboardSummary } from '@/types/domain';
 
 export function MobileDashboardPage() {
@@ -12,7 +12,7 @@ export function MobileDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const loadSummary = useCallback(() => {
     let active = true;
     setLoading(true);
     getDashboardSummary()
@@ -23,7 +23,7 @@ export function MobileDashboardPage() {
       })
       .catch((err) => {
         if (!active) return;
-        setError(err instanceof Error ? err.message : 'Dashboard kon niet worden geladen.');
+        setError(normalizeApiError(err, 'Dashboard kon niet worden geladen.'));
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -33,12 +33,30 @@ export function MobileDashboardPage() {
     };
   }, []);
 
+  useEffect(() => loadSummary(), [loadSummary]);
+
+  useEffect(() => {
+    const reload = () => loadSummary();
+    window.addEventListener(APP_REFRESH_EVENT, reload as EventListener);
+    window.addEventListener('focus', reload);
+    document.addEventListener('visibilitychange', reload);
+    return () => {
+      window.removeEventListener(APP_REFRESH_EVENT, reload as EventListener);
+      window.removeEventListener('focus', reload);
+      document.removeEventListener('visibilitychange', reload);
+    };
+  }, [loadSummary]);
+
   const cards = useMemo(
     () => [
-      { label: 'Actieve Projecten', value: formatValue(summary?.open_projects || summary?.active_projects || 0, '0'), tone: 'danger', icon: FolderKanban },
-      { label: 'Openstaand Laswerk', value: formatValue(summary?.open_welds || summary?.open_weld_defects || 0, '0'), tone: 'warning', icon: Wrench },
-      { label: 'Afgekeurde Lassen', value: formatValue(summary?.rejected_welds || summary?.open_weld_defects || 0, '0'), tone: 'primary', icon: TriangleAlert },
-      { label: 'Te Valideren Dossiers', value: formatValue(summary?.pending_dossiers || summary?.ce_dossier_ready || 0, '0'), tone: 'success', icon: FileCheck2 },
+      { label: 'Actieve Projecten', value: formatValue(summary?.open_projects || summary?.active_projects || 0, '0'), tone: 'danger', icon: FolderKanban, to: '/projecten' },
+      { label: 'Openstaand Laswerk', value: formatValue(summary?.open_welds || summary?.open_weld_defects || 0, '0'), tone: 'warning', icon: Wrench, to: '/projecten' },
+      { label: 'Afgekeurde Lassen', value: formatValue(summary?.rejected_welds || summary?.open_weld_defects || 0, '0'), tone: 'primary', icon: TriangleAlert, to: '/projecten' },
+      { label: 'Te Valideren Dossiers', value: formatValue(summary?.pending_dossiers || summary?.ce_dossier_ready || 0, '0'), tone: 'success', icon: FileCheck2, to: '/rapportage' },
+      { label: 'Rapportage', value: 'Openen', tone: 'secondary', icon: FileText, to: '/rapportage', compact: true },
+      { label: 'Instellingen', value: 'Openen', tone: 'secondary', icon: Settings, to: '/instellingen', compact: true },
+      { label: 'Nieuw project', value: 'Starten', tone: 'secondary', icon: FolderPlus, to: '/projecten/nieuw', compact: true },
+      { label: 'Nieuwe las', value: 'Starten', tone: 'secondary', icon: Wrench, to: '/projecten', compact: true },
     ],
     [summary],
   );
@@ -55,8 +73,8 @@ export function MobileDashboardPage() {
               <button
                 key={card.label}
                 type="button"
-                className={`mobile-kpi-card mobile-kpi-card-${card.tone}`}
-                onClick={() => navigate('/projecten')}
+                className={`mobile-kpi-card mobile-kpi-card-${card.tone} ${card.compact ? 'mobile-kpi-card-action' : ''}`}
+                onClick={() => navigate(card.to)}
               >
                 <div className="mobile-kpi-top"><Icon size={18} /><span>{card.label}</span></div>
                 <strong>{card.value}</strong>

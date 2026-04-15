@@ -1,7 +1,7 @@
 export type Role = 'ADMIN' | 'PLANNER' | 'USER' | 'VIEWER' | 'SUPERADMIN' | 'TenantAdmin' | 'TenantUser' | 'SuperAdmin';
 
-export type ProjectStatus = 'concept' | 'in-uitvoering' | 'in-controle' | 'gereed' | 'geblokkeerd';
-export type WeldStatus = 'conform' | 'defect' | 'gerepareerd';
+export type ProjectStatus = 'concept' | 'conform' | 'in_controle' | 'in-controle' | 'niet_conform' | 'gereed' | 'geblokkeerd';
+export type WeldStatus = 'conform' | 'in_controle' | 'niet_conform' | 'defect' | 'gerepareerd';
 
 export type Project = {
   id: string | number;

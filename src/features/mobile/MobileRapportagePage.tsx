@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { FileText, Search } from 'lucide-react';
+import { Download, FileText, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useReports } from '@/hooks/useReports';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
@@ -14,7 +14,13 @@ type ReportRow = {
   project_name?: string;
   projectnummer?: string;
   client_name?: string;
+  pdf_url?: string;
+  download_url?: string;
 };
+
+function reportPdfUrl(row: ReportRow) {
+  return String(row.pdf_url || row.download_url || '').trim();
+}
 
 export function MobileRapportagePage() {
   const navigate = useNavigate();
@@ -28,7 +34,16 @@ export function MobileRapportagePage() {
     return rows.filter((row) => JSON.stringify(row).toLowerCase().includes(q));
   }, [rows, search]);
 
-  const firstProjectId = visibleRows.find((item) => item.project_id)?.project_id;
+  const featured = visibleRows.find((item) => reportPdfUrl(item) || item.project_id) || null;
+
+  function openReport(row: ReportRow) {
+    const url = reportPdfUrl(row);
+    if (url) {
+      window.open(url, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    if (row.project_id) navigate(`/projecten/${row.project_id}/pdf-viewer`);
+  }
 
   return (
     <MobilePageScaffold title="Rapportage" subtitle="Mobiel rapportoverzicht">
@@ -39,7 +54,7 @@ export function MobileRapportagePage() {
         </div>
       </div>
 
-      <div className="mobile-list-card mobile-report-highlight" role="button" tabIndex={0} onClick={() => firstProjectId ? navigate(`/projecten/${firstProjectId}/pdf-viewer`) : undefined}>
+      <div className="mobile-list-card mobile-report-highlight" role="button" tabIndex={0} onClick={() => { if (featured) openReport(featured); }}>
         <div className="mobile-list-card-head">
           <strong>PDF</strong>
           <span className="mobile-pill mobile-pill-success">Direct openen</span>
@@ -47,8 +62,8 @@ export function MobileRapportagePage() {
         <div className="mobile-report-cta">
           <div className="mobile-report-icon"><FileText size={26} /></div>
           <div>
-            <strong>Open PDF</strong>
-            <span className="mobile-list-card-meta">Klik op dit blok om het rapport direct te openen.</span>
+            <strong>{featured?.title || 'Open PDF'}</strong>
+            <span className="mobile-list-card-meta">Klik op dit blok om het meest recente rapport direct te openen.</span>
           </div>
         </div>
       </div>
@@ -58,27 +73,33 @@ export function MobileRapportagePage() {
 
       {!reports.isLoading && !reports.isError ? (
         <div className="mobile-list-stack">
-          {visibleRows.map((row) => (
-            <div key={String(row.id)} className="mobile-list-card">
-              <div className="mobile-list-card-head">
-                <strong>{formatValue(row.title, `Rapport ${row.id}`)}</strong>
-                <span className="mobile-list-card-meta">{formatValue(row.created_at, '—')}</span>
-              </div>
-              <span className="mobile-list-card-subtitle">{formatValue(row.project_name || row.projectnummer || row.client_name, 'Project onbekend')}</span>
-              <div className="mobile-inline-actions">
-                {row.project_id ? (
-                  <button type="button" className="mobile-secondary-button" onClick={() => navigate(`/projecten/${row.project_id}/overzicht`)}>
-                    Open project
-                  </button>
-                ) : null}
-                {row.project_id ? (
-                  <button type="button" className="mobile-primary-button" onClick={() => navigate(`/projecten/${row.project_id}/pdf-viewer`)}>
+          {visibleRows.map((row) => {
+            const pdfUrl = reportPdfUrl(row);
+            return (
+              <div key={String(row.id)} className="mobile-list-card">
+                <div className="mobile-list-card-head">
+                  <strong>{formatValue(row.title, `Rapport ${row.id}`)}</strong>
+                  <span className="mobile-list-card-meta">{formatValue(row.created_at, '—')}</span>
+                </div>
+                <span className="mobile-list-card-subtitle">{formatValue(row.project_name || row.projectnummer || row.client_name, 'Project onbekend')}</span>
+                <div className="mobile-inline-actions">
+                  {row.project_id ? (
+                    <button type="button" className="mobile-secondary-button" onClick={() => navigate(`/projecten/${row.project_id}/overzicht`)}>
+                      Open project
+                    </button>
+                  ) : null}
+                  <button type="button" className="mobile-primary-button" onClick={() => openReport(row)}>
                     Bekijk PDF
                   </button>
-                ) : null}
+                  {pdfUrl ? (
+                    <a className="mobile-secondary-button" href={pdfUrl} target="_blank" rel="noreferrer" style={{ textDecoration: 'none' }}>
+                      <Download size={14} /> Download
+                    </a>
+                  ) : null}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
           {!visibleRows.length ? <div className="mobile-state-card">Geen rapportregels gevonden.</div> : null}
         </div>
       ) : null}
