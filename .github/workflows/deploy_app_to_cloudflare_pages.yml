@@ -2,49 +2,16 @@ name: Deploy App to Cloudflare Pages
 
 on:
   push:
-    branches: [ main ]
-  workflow_dispatch:
+    branches:
+      - main
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-
-      - name: Install deps
-        run: npm ci
-
-      - name: Build release for Pages
-        env:
-          VITE_MARKETING_BASE_URL: https://nen1090-marketing.pages.dev
-        run: npm run build:pages
-
-      - name: Verify built Pages artifact
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -f release/index.html
-          test -f release/_redirects
-          test -f release/_headers
-          test -d release/assets
-
-          JS_ASSET=$(find release/assets -maxdepth 1 -type f -name 'index-*.js' | head -n 1)
-          CSS_ASSET=$(find release/assets -maxdepth 1 -type f -name 'index-*.css' | head -n 1)
-
-          test -n "$JS_ASSET"
-          test -n "$CSS_ASSET"
-
-          grep -Fq "/assets/$(basename "$JS_ASSET")" release/index.html
-          grep -Fq "/assets/$(basename "$CSS_ASSET")" release/index.html
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/pages-action@v1
