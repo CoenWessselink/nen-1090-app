@@ -10,6 +10,7 @@ jobs:
   smoke:
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - name: Check app root
@@ -17,7 +18,7 @@ jobs:
 
       - name: Check app shell marker
         run: |
-          curl -fsSL "https://nen-1090-app.pages.dev/" | grep -q "<div id=\"root\"></div>"
+          curl -fsSL "https://nen-1090-app.pages.dev/" | grep -q '<div id="root"></div>'
 
       - name: Check login route
         run: curl -fL "https://nen-1090-app.pages.dev/login" || exit 1
@@ -27,4 +28,23 @@ jobs:
           FINAL_URL=$(curl -Ls -o /dev/null -w "%{url_effective}" "https://nen-1090-app.pages.dev/dashboard")
           echo "Final URL: $FINAL_URL"
           echo "$FINAL_URL" | grep -q "/dashboard$"
-          curl -fsSL "https://nen-1090-app.pages.dev/dashboard" | grep -q "<div id=\"root\"></div>"
+          curl -fsSL "https://nen-1090-app.pages.dev/dashboard" | grep -q '<div id="root"></div>'
+
+      - name: Verify published asset files resolve as static files
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          curl -fsSL "https://nen-1090-app.pages.dev/" -o root.html
+
+          JS_PATH=$(grep -oE '/assets/[^" ]+\.js' root.html | head -n 1)
+          CSS_PATH=$(grep -oE '/assets/[^" ]+\.css' root.html | head -n 1)
+
+          test -n "$JS_PATH"
+          test -n "$CSS_PATH"
+
+          curl -fsSIL "https://nen-1090-app.pages.dev$JS_PATH" | tee js.headers
+          curl -fsSIL "https://nen-1090-app.pages.dev$CSS_PATH" | tee css.headers
+
+          grep -Eiq '^content-type:.*(javascript|ecmascript|text/plain)' js.headers
+          grep -Eiq '^content-type:.*text/css' css.headers
