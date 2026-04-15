@@ -28,6 +28,15 @@ import { ChangePasswordPage } from '@/features/auth/ChangePasswordPage';
 
 const Login = LoginPage;
 
+const SUPERADMIN_ALLOWED_ROLES = [
+  'SUPERADMIN',
+  'SUPER_ADMIN',
+  'ADMIN',
+  'PLATFORM_ADMIN',
+  'PLATFORMADMIN',
+  'platform_admin',
+];
+
 export type AppRouteMeta = {
   path: string;
   label: string;
@@ -42,9 +51,9 @@ export const appRouteMeta: AppRouteMeta[] = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, description: 'Operationeel overzicht en projectnavigatie', showInSidebar: true, keywords: ['kpi', 'overzicht', 'home'] },
   { path: '/projecten', label: 'Projecten', icon: FolderKanban, description: 'Projectlijst en Project 360', showInSidebar: true, keywords: ['project', 'assemblies', 'lassen', 'documenten'] },
   { path: '/rapportage', label: 'Rapportage', icon: FileCheck2, description: 'Rapportages, exports en managementoverzicht', showInSidebar: true, keywords: ['rapporten', 'status', 'audit'] },
-  { path: '/billing', label: 'Billing', icon: CreditCard, description: 'Abonnement, betalingen en planwissels', roles: ['SUPERADMIN', 'ADMIN', 'TenantAdmin'], showInSidebar: true, keywords: ['billing', 'mollie', 'betaling', 'subscription'] },
+  { path: '/billing', label: 'Billing', icon: CreditCard, description: 'Abonnement, betalingen en planwissels', roles: ['SUPERADMIN', 'SUPER_ADMIN', 'ADMIN', 'TenantAdmin', 'PLATFORM_ADMIN', 'platform_admin'], showInSidebar: true, keywords: ['billing', 'mollie', 'betaling', 'subscription'] },
   { path: '/instellingen', label: 'Instellingen', icon: Settings, description: 'Tenant-, security- en integratie-instellingen', showInSidebar: true, keywords: ['tenant', 'security', 'integraties', 'wps', 'materials', 'welders'] },
-  { path: '/superadmin', label: 'Superadmin', icon: Building2, description: 'Tenant-overzicht en platformbeheer', roles: ['SUPERADMIN', 'ADMIN'], showInSidebar: true, keywords: ['tenants', 'beheer', 'billing'] },
+  { path: '/superadmin', label: 'Superadmin', icon: Building2, description: 'Tenant-overzicht en platformbeheer', roles: SUPERADMIN_ALLOWED_ROLES, showInSidebar: true, keywords: ['tenants', 'beheer', 'billing', 'platform', 'tenantbeheer'] },
 ];
 
 export const routerConfig = [
@@ -95,7 +104,14 @@ export const routerConfig = [
       { path: 'billing', element: <BillingPage /> },
       { path: 'instellingen', element: <InstellingenPage /> },
       { path: 'instellingen/templates', element: <InspectionTemplatesPage /> },
-      { path: 'superadmin', element: <RoleGuard allow={['SUPERADMIN', 'ADMIN']}><SuperadminPage /></RoleGuard> },
+      {
+        path: 'superadmin',
+        element: (
+          <RoleGuard allow={SUPERADMIN_ALLOWED_ROLES}>
+            <SuperadminPage />
+          </RoleGuard>
+        ),
+      },
     ],
   },
   { path: '*', element: <Navigate to="/dashboard" replace /> },

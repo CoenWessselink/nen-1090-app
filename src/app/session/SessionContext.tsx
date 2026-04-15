@@ -36,11 +36,52 @@ type SessionContextValue = {
 
 const SessionContext = createContext<SessionContextValue | null>(null);
 
+const superadminPermissions: AccessPermission[] = [
+  'dashboard.read',
+  'projects.read',
+  'projects.write',
+  'welds.read',
+  'welds.write',
+  'documents.read',
+  'documents.write',
+  'settings.read',
+  'settings.write',
+  'billing.read',
+  'billing.manage',
+  'tenants.read',
+  'tenants.impersonate',
+];
+
 const permissionMap: Record<string, AccessPermission[]> = {
-  SUPERADMIN: ['dashboard.read', 'projects.read', 'projects.write', 'welds.read', 'welds.write', 'documents.read', 'documents.write', 'settings.read', 'settings.write', 'billing.read', 'billing.manage', 'tenants.read', 'tenants.impersonate'],
-  SUPER_ADMIN: ['dashboard.read', 'projects.read', 'projects.write', 'welds.read', 'welds.write', 'documents.read', 'documents.write', 'settings.read', 'settings.write', 'billing.read', 'billing.manage', 'tenants.read', 'tenants.impersonate'],
-  ADMIN: ['dashboard.read', 'projects.read', 'projects.write', 'welds.read', 'welds.write', 'documents.read', 'documents.write', 'settings.read', 'settings.write', 'billing.read', 'tenants.read'],
-  TENANTADMIN: ['dashboard.read', 'projects.read', 'projects.write', 'welds.read', 'welds.write', 'documents.read', 'documents.write', 'settings.read', 'settings.write', 'billing.read'],
+  SUPERADMIN: superadminPermissions,
+  SUPER_ADMIN: superadminPermissions,
+  PLATFORMADMIN: superadminPermissions,
+  PLATFORM_ADMIN: superadminPermissions,
+  ADMIN: [
+    'dashboard.read',
+    'projects.read',
+    'projects.write',
+    'welds.read',
+    'welds.write',
+    'documents.read',
+    'documents.write',
+    'settings.read',
+    'settings.write',
+    'billing.read',
+    'tenants.read',
+  ],
+  TENANTADMIN: [
+    'dashboard.read',
+    'projects.read',
+    'projects.write',
+    'welds.read',
+    'welds.write',
+    'documents.read',
+    'documents.write',
+    'settings.read',
+    'settings.write',
+    'billing.read',
+  ],
   TENANTUSER: ['dashboard.read', 'projects.read', 'welds.read', 'documents.read', 'settings.read'],
   PLANNER: ['dashboard.read', 'projects.read', 'projects.write', 'welds.read', 'welds.write', 'documents.read'],
   INSPECTOR: ['dashboard.read', 'projects.read', 'welds.read', 'welds.write', 'documents.read', 'documents.write'],
@@ -57,11 +98,18 @@ function isUnauthorized(error: unknown): boolean {
 }
 
 function normalizeMeUser(input: any): SessionUser {
+  const resolvedRole = String(
+    input?.canonical_role ||
+      input?.role ||
+      input?.user_role ||
+      '',
+  );
+
   return {
     email: String(input?.email || ''),
     tenant: String(input?.tenant || input?.tenant_name || ''),
     tenantId: input?.tenantId ?? input?.tenant_id ?? '',
-    role: String(input?.role || ''),
+    role: resolvedRole,
     name: String(input?.name || ''),
   };
 }
@@ -120,7 +168,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
                 email: refreshed.user.email,
                 tenant: refreshed.user.tenant || '',
                 tenantId: refreshed.user.tenant_id || '',
-                role: refreshed.user.role || '',
+                role: refreshed.user.canonical_role || refreshed.user.role || '',
                 name: refreshed.user.name || '',
               };
               setSession(
@@ -163,11 +211,22 @@ export function SessionProvider({ children }: PropsWithChildren) {
       isImpersonating: Boolean(impersonation?.active),
       isBootstrapping,
       impersonationTenantName: impersonation?.tenantName,
-      hasRole: (roles) => roles.length === 0 || roles.some((role) => normalizeRole(String(role)) === normalizedRole),
+      hasRole: (roles) =>
+        roles.length === 0 ||
+        roles.some((role) => normalizeRole(String(role)) === normalizedRole),
       hasPermission: (permission) => permissions.includes(permission),
       clearSession,
     }),
-    [clearSession, effectiveRefreshToken, effectiveToken, effectiveUser, impersonation, isBootstrapping, normalizedRole, permissions],
+    [
+      clearSession,
+      effectiveRefreshToken,
+      effectiveToken,
+      effectiveUser,
+      impersonation,
+      isBootstrapping,
+      normalizedRole,
+      permissions,
+    ],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

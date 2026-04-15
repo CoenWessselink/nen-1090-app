@@ -25,6 +25,8 @@ export type LoginResponse = {
   user?: {
     email?: string;
     role?: string;
+    canonical_role?: string;
+    is_platform_admin?: boolean;
     tenant?: string;
     tenant_id?: string | number;
     name?: string;
@@ -39,6 +41,8 @@ export type AuthRefreshResponse = {
   user?: {
     email?: string;
     role?: string;
+    canonical_role?: string;
+    is_platform_admin?: boolean;
     tenant?: string;
     tenant_id?: string | number;
     name?: string;
