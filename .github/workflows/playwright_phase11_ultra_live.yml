@@ -1,14 +1,14 @@
 name: Playwright Phase 11 Ultra Live
 
 on:
-  workflow_run:
-    workflows: ["Deploy App to Cloudflare Pages"]
-    types: [completed]
   workflow_dispatch:
+
+concurrency:
+  group: playwright-phase11-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   ultra_live:
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
