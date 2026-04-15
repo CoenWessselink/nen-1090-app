@@ -235,6 +235,7 @@ export async function createPdfExport(projectId: string | number) {
   const getPaths = [
     `/projects/${projectId}/exports/pdf`,
     `/projects/${projectId}/export/pdf`,
+    `/projects/${projectId}/exports/ce-dossier/pdf`,
     `/projects/${projectId}/ce-dossier/pdf`,
   ];
   const result = await tryRequestVariants(getPaths, ['POST', 'GET']);

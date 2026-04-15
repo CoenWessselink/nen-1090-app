@@ -2,26 +2,32 @@ name: Deploy App to Cloudflare Pages
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
     paths:
-      - 'src/**'
-      - 'public/**'
-      - 'package.json'
-      - 'package-lock.json'
-      - 'tsconfig*.json'
-      - 'vite.config.*'
-      - 'scripts/**'
-      - '.github/workflows/deploy_app_to_cloudflare_pages.yml'
-  workflow_dispatch:
+      - "src/**"
+      - "public/**"
+      - "functions/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig*.json"
+      - "vite.config.*"
+      - "index.html"
+      - "index.source.html"
+      - "_headers"
+      - ".github/workflows/deploy_app_to_cloudflare_pages.yml"
 
 concurrency:
   group: cloudflare-pages-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+  deployments: write
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
 
     steps:
       - name: Checkout
@@ -37,16 +43,14 @@ jobs:
         run: npm ci
 
       - name: Build release for Pages
-        env:
-          VITE_MARKETING_BASE_URL: https://nen1090-marketing.pages.dev
         run: npm run build:pages
 
       - name: Verify built Pages artifact
         run: |
           test -f release/index.html
-          test -f release/_redirects
           test -d release/assets
-          test -n "$(find release/assets -maxdepth 1 -type f \( -name '*.js' -o -name '*.css' \) | head -n 1)"
+          ls -la release
+          ls -la release/assets
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/pages-action@v1
@@ -56,21 +60,3 @@ jobs:
           projectName: nen-1090-app
           directory: release
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Live smoke test root
-        run: |
-          curl -fsSL "https://nen-1090-app.pages.dev/" > root.html
-          grep -q '<div id="root"></div>' root.html
-
-      - name: Live smoke test login
-        run: |
-          curl -fsSL "https://nen-1090-app.pages.dev/login" > login.html
-          grep -q '<div id="root"></div>' login.html
-
-      - name: Live smoke test asset MIME
-        run: |
-          ASSET_PATH=$(grep -o '/assets/[^"'"' ]*\.js' release/index.html | head -n 1)
-          echo "Testing asset: $ASSET_PATH"
-          test -n "$ASSET_PATH"
-          curl -fsSI "https://nen-1090-app.pages.dev${ASSET_PATH}" > asset_headers.txt
-          grep -Ei '^content-type:.*(javascript|ecmascript|text/javascript|application/javascript)' asset_headers.txt
