@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Plus, Search, SlidersHorizontal } from 'lucide-react';
+import { Pencil, Plus, Search, SlidersHorizontal } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getProjects } from '@/api/projects';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
@@ -81,11 +81,25 @@ export function MobileProjectsPage() {
                   <strong>{projectTitle(project)}</strong>
                   <span className="mobile-list-card-subtitle">{projectCode(project)}</span>
                 </div>
-                <span className="mobile-list-card-link">Filters <SlidersHorizontal size={14} /></span>
+                <div className="mobile-inline-actions">
+                  <span className="mobile-pill mobile-pill-neutral">{String(project.status || 'Onbekend')}</span>
+                  <button
+                    type="button"
+                    className="mobile-icon-button"
+                    aria-label="Project wijzigen"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      navigate(`/projecten/${project.id}/bewerken`);
+                    }}
+                  >
+                    <Pencil size={16} />
+                  </button>
+                </div>
               </div>
               <div className="compact-project-meta">{formatValue(project.client_name || project.opdrachtgever, 'Geen opdrachtgever')}</div>
               <div className="compact-project-bottom">
                 <span className="mobile-pill mobile-pill-neutral">{projectExecutionClass(project)}</span>
+                <span className="mobile-list-card-link">Project 360 <SlidersHorizontal size={14} /></span>
               </div>
             </button>
           ))}

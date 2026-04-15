@@ -1,4 +1,7 @@
 import { useMemo, useState } from 'react';
+import { Modal } from '@/components/overlays/Modal';
+import { ProjectForm } from '@/features/projecten/components/ProjectForm';
+import { useUpdateProject } from '@/hooks/useProjects';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { openDownloadUrl } from '@/utils/download';
 import { RefreshCcw } from 'lucide-react';
@@ -174,6 +177,8 @@ export function CeDossierPage() {
   const [downloadingId, setDownloadingId] = useState<string | number | null>(null);
   const [retryingId, setRetryingId] = useState<string | number | null>(null);
   const [ceSearch, setCeSearch] = useState('');
+  const [selectedCeItem, setSelectedCeItem] = useState<Record<string, unknown> | null>(null);
+  const [selectedCeSection, setSelectedCeSection] = useState<string>('checklist');
   const currentProjectTab = projectId ? resolveProjectContextTab(location.pathname) : 'ce-dossier';
 
   const overviewQuery = useComplianceOverview(projectId);
@@ -184,6 +189,7 @@ export function CeDossierPage() {
   const previewQuery = useProjectExportPreview(projectId);
 
   const createReport = useCreateCeReport(projectId);
+  const updateProject = useUpdateProject();
   const createPdf = useCreatePdfExport(projectId);
   const createZip = useCreateZipExport(projectId);
   const createExcel = useCreateExcelExport(projectId);
@@ -522,6 +528,35 @@ export function CeDossierPage() {
     return ['approved', 'goedgekeurd', 'conform', 'gereed'].includes(status);
   }).length;
 
+
+  const resolveCeItemSection = (item: Record<string, unknown> | null | undefined) => {
+    const explicit = String(item?.section || item?.key || '').toLowerCase();
+    const label = String(item?.label || item?.name || '').toLowerCase();
+    if (['project', 'projectbasis', 'projectgegevens'].includes(explicit) || label.includes('project')) return 'project';
+    if (explicit.includes('exc') || label.includes('exc') || label.includes('template')) return 'template';
+    if (explicit.includes('wps') || label.includes('wps')) return 'wps';
+    if (explicit.includes('welder') || label.includes('lasser')) return 'welders';
+    if (explicit.includes('document') || explicit.includes('photo') || label.includes('document') || label.includes('foto')) return 'documents';
+    if (explicit.includes('inspection') || explicit.includes('inspect') || label.includes('inspect')) return 'inspections';
+    if (explicit.includes('weld') || explicit.includes('las')) return 'welds';
+    return 'project';
+  };
+
+  const openCeItem = (item: Record<string, unknown>, fallbackSection: string) => {
+    setSelectedCeItem(item);
+    setSelectedCeSection(resolveCeItemSection(item) || fallbackSection);
+  };
+
+  const ceItemTitle = selectedCeItem ? asText(selectedCeItem.label || selectedCeItem.name, 'CE actie') : 'CE actie';
+  const ceItemDetail = selectedCeItem ? asText(selectedCeItem.detail || selectedCeItem.description || selectedCeItem.reason, '') : '';
+
+  const saveProjectFromCe = async (values: Parameters<Parameters<typeof ProjectForm>[0]['onSubmit']>[0]) => {
+    await updateProject.mutateAsync({ id: projectId, payload: values });
+    await Promise.all([overviewQuery.refetch(), missingItemsQuery.refetch(), checklistQuery.refetch(), dossierQuery.refetch()]);
+    setMessage('Projectgegevens bijgewerkt vanuit het CE dossier.');
+    setSelectedCeItem(null);
+  };
+
   const checklistStats = useMemo(
     () => ({
       total: checklist.length,
@@ -623,13 +658,13 @@ export function CeDossierPage() {
               <div id="ce-missing-items-card">
                 <CeMissingItemsCard
                   missingItems={filteredMissingItems}
-                  onSelect={(item) => openSection(String(item.section || item.key || 'documents'))}
+                  onSelect={(item) => openCeItem(item, 'documents')}
                 />
               </div>
               <div id="ce-checklist-card">
                 <CeChecklistCard
                   checklist={filteredChecklist}
-                  onSelect={(item) => openSection(String(item.section || item.key || 'checklist'))}
+                  onSelect={(item) => openCeItem(item, 'checklist')}
                 />
               </div>
             </div>
@@ -714,6 +749,45 @@ export function CeDossierPage() {
                 )
               }
             />
+
+
+            <Modal open={Boolean(selectedCeItem)} onClose={() => setSelectedCeItem(null)} title={ceItemTitle} size="large">
+              <div className="detail-stack">
+                <InlineMessage tone="neutral">{ceItemDetail || 'Open deze CE-regel om direct de gekoppelde bron te herstellen of aan te vullen.'}</InlineMessage>
+                <Card>
+                  <div className="section-title-row">
+                    <h3>Huidige status</h3>
+                    <Button variant="secondary" onClick={() => openSection(selectedCeSection)}>Open volledige pagina</Button>
+                  </div>
+                  <div className="list-stack compact-list">
+                    <div className="list-row"><div><strong>Doel</strong><div className="list-subtle">{ceItemTitle}</div></div></div>
+                    <div className="list-row"><div><strong>Waarom vereist</strong><div className="list-subtle">{ceItemDetail || 'Deze regel beïnvloedt CE-compleetheid, projectstatus en exportvrijgave.'}</div></div></div>
+                    <div className="list-row"><div><strong>Gekoppelde flow</strong><div className="list-subtle">{selectedCeSection}</div></div></div>
+                  </div>
+                </Card>
+
+                {selectedCeSection === 'project' ? (
+                  <ProjectForm
+                    initial={project as never}
+                    onSubmit={saveProjectFromCe}
+                    isSubmitting={updateProject.isPending}
+                    submitLabel="Project bijwerken"
+                  />
+                ) : null}
+
+                {selectedCeSection !== 'project' ? (
+                  <Card>
+                    <div className="section-title-row"><h3>Directe acties</h3></div>
+                    <div className="toolbar-cluster" style={{ justifyContent: 'flex-start', flexWrap: 'wrap' }}>
+                      <Button type="button" onClick={() => { setSelectedCeItem(null); openSection(selectedCeSection); }}>Open gekoppelde module</Button>
+                      <Button type="button" variant="secondary" onClick={() => { setSelectedCeItem(null); navigate(`/projecten/${projectId}/overzicht`); }}>Project 360</Button>
+                      <Button type="button" variant="secondary" onClick={() => { setSelectedCeItem(null); navigate(`/projecten/${projectId}/documenten`); }}>Documenten</Button>
+                      <Button type="button" variant="secondary" onClick={() => { setSelectedCeItem(null); navigate(`/projecten/${projectId}/lassen`); }}>Lassen en inspecties</Button>
+                    </div>
+                  </Card>
+                ) : null}
+              </div>
+            </Modal>
 
             <div className="toolbar-cluster" style={{ justifyContent: 'space-between' }}>
               <Button variant="secondary" onClick={() => navigate(`/projecten/${projectId}/documenten`)}>
