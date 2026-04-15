@@ -219,3 +219,35 @@ export type AuditEntry = {
   meta?: Record<string, unknown>;
   [key: string]: unknown;
 };
+
+
+export type TenantUser = {
+  id: string | number;
+  email: string;
+  role?: string;
+  tenant_id?: string | number;
+  tenant_name?: string;
+  is_active?: boolean;
+  created_at?: string;
+  [key: string]: unknown;
+};
+
+export type PlatformSummary = {
+  total_tenants?: number;
+  total_users?: number;
+  active_users?: number;
+  total_projects?: number;
+  total_welds?: number;
+  [key: string]: unknown;
+};
+
+export type AuditSummary = {
+  id: string | number;
+  action?: string;
+  entity?: string;
+  entity_id?: string;
+  user_email?: string;
+  created_at?: string;
+  meta?: Record<string, unknown>;
+  [key: string]: unknown;
+};
