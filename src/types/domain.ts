@@ -155,9 +155,25 @@ export type ExportJob = {
 export type Tenant = {
   id: string | number;
   name?: string;
+  is_active?: boolean;
+  status?: string;
   subscription_status?: string;
+  billing_provider?: string;
+  seats_purchased?: number;
+  price_per_seat_year_cents?: number;
+  users_count?: number;
   user_count?: number;
+  trial_until?: string;
+  valid_until?: string;
   created_at?: string;
+  [key: string]: unknown;
+};
+
+export type TenantUser = {
+  user_id: string | number;
+  email: string;
+  role: string;
+  is_active: boolean;
   [key: string]: unknown;
 };
 
@@ -197,6 +213,7 @@ export type PagelessResponse<T> = T[] | { items?: T[]; data?: T[]; results?: T[]
 
 export type AuditEntry = {
   id: string | number;
+  tenant_id?: string;
   title?: string;
   action?: string;
   entity?: string;
@@ -204,6 +221,26 @@ export type AuditEntry = {
   user_id?: string;
   status?: string;
   created_at?: string;
-  meta?: Record<string, unknown>;
+  meta?: Record<string, unknown> | string;
+  [key: string]: unknown;
+};
+
+export type PlatformSummary = {
+  total_tenants?: number;
+  active_tenants?: number;
+  inactive_tenants?: number;
+  suspended_tenants?: number;
+  trial_tenants?: number;
+  total_users?: number;
+  active_users?: number;
+  total_seats?: number;
+  [key: string]: unknown;
+};
+
+export type AuditSummary = {
+  total_events?: number;
+  last_event_at?: string;
+  actions?: Record<string, number>;
+  actors?: Record<string, number>;
   [key: string]: unknown;
 };

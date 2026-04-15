@@ -1,0 +1,7 @@
+Playwright API-contract test voor superadmin/platform
+---------------------------------------------------
+set PLATFORM_API_BASE_URL=https://nen1090-api-prod-f5ddagedbrftb4ew.westeurope-01.azurewebsites.net
+set PLATFORM_ADMIN_TENANT=<platform-admin-tenant>
+set PLATFORM_ADMIN_EMAIL=<platform-admin-email>
+set PLATFORM_ADMIN_PASSWORD=<platform-admin-password>
+npx playwright test tests/e2e/superadmin-platform-api.spec.ts
