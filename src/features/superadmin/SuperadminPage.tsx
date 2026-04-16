@@ -31,7 +31,7 @@ import { useUiStore } from '@/app/store/ui-store';
 import { useExitImpersonation, useImpersonateTenant, usePlatformSummary, useTenantActions, useTenants } from '@/hooks/useTenants';
 import { useTenantAudit, useTenantBillingPanel, useTenantDetail, useTenantUserActions, useTenantUsers } from '@/hooks/useTenantAdmin';
 import { useSystemHealth } from '@/hooks/useSystemHealth';
-import { useTenantBillingDetail, useTenantPayments } from '@/hooks/usePlatformBilling';
+import { useTenantBillingActions, useTenantBillingDetail, useTenantInvoices, useTenantPayments } from '@/hooks/usePlatformBilling';
 import type { AuditSummary, BillingPayment, PlatformSummary, Tenant, TenantCreateInput, TenantUser, TenantUserCreateInput } from '@/types/domain';
 import { formatDatetime, toneFromStatus } from '@/utils/format';
 
@@ -161,6 +161,8 @@ export function SuperadminPage() {
   const tenantBilling = useTenantBillingPanel(selectedTenant?.id, Boolean(selectedTenant));
   const tenantBillingDetail = useTenantBillingDetail(selectedTenant?.id);
   const tenantPayments = useTenantPayments(selectedTenant?.id, { page: paymentsPage, limit: 10 });
+  const tenantInvoices = useTenantInvoices(selectedTenant?.id);
+  const tenantBillingActions = useTenantBillingActions(selectedTenant?.id);
   const tenantUserActions = useTenantUserActions(selectedTenant?.id);
 
   const detailTenant = (tenantDetail.data || selectedTenant) as Tenant | null;
@@ -168,6 +170,7 @@ export function SuperadminPage() {
   const auditRows = tenantAudit.data?.items || [];
   const billingPayload = { ...(tenantBilling.data || {}), ...(tenantBillingDetail.data || {}) } as Record<string, unknown>;
   const paymentRows = tenantPayments.data?.items || [];
+  const invoiceRows = tenantInvoices.data?.items || [];
 
   const refreshMessage = (next: string) => {
     setMessage(next);
@@ -215,10 +218,10 @@ export function SuperadminPage() {
     event.preventDefault();
     if (!selectedTenant) return;
     try {
-      await tenantUserActions.createUser.mutateAsync(tenantUserForm);
+      const response = await tenantUserActions.createUser.mutateAsync(tenantUserForm) as Record<string, unknown>;
       setCreateUserOpen(false);
       setTenantUserForm({ email: '', password: '', role: 'viewer', is_active: true });
-      refreshMessage(`Gebruiker toegevoegd aan ${selectedTenant.name || selectedTenant.id}.`);
+      refreshMessage(String(response?.reset_url ? `Gebruiker aangemaakt. Activatielink: ${response.reset_url}` : `Gebruiker toegevoegd aan ${selectedTenant.name || selectedTenant.id}.`));
     } catch (error) {
       refreshMessage(error instanceof Error ? error.message : 'Gebruiker toevoegen mislukt.');
     }
@@ -415,6 +418,7 @@ export function SuperadminPage() {
         {!tenants.isLoading && !tenants.isError && filteredRows.length === 0 ? <EmptyState title="Geen tenants" description="Pas je filters aan of maak een nieuwe tenant aan." /> : null}
         {!tenants.isLoading && !tenants.isError && filteredRows.length > 0 ? (
           <DataTable
+            onRowDoubleClick={(tenant) => { setSelectedTenant(tenant); setDetailTab('samenvatting'); }}
             columns={columns}
             rows={pagedTenantRows}
             rowKey={(row) => String(row.id)}
@@ -551,6 +555,9 @@ export function SuperadminPage() {
                     <div className="toolbar-cluster">
                       <Button variant="ghost" onClick={() => tenantUserActions.patchUser.mutate({ userId: row.user_id, payload: { role: row.role === 'tenant_admin' ? 'viewer' : 'tenant_admin' } })}>Rol wisselen</Button>
                       <Button variant="ghost" onClick={() => tenantUserActions.patchUser.mutate({ userId: row.user_id, payload: { is_active: !row.is_active } })}>{row.is_active ? 'Deactiveer' : 'Activeer'}</Button>
+                      <Button variant="ghost" onClick={async () => { const response = await tenantUserActions.resendInvite.mutateAsync(row.user_id); refreshMessage(String(response?.reset_url || response?.message || 'Uitnodiging verstuurd.')); }}>Uitnodigen</Button>
+                      <Button variant="ghost" onClick={async () => { const response = await tenantUserActions.resetPassword.mutateAsync(row.user_id); refreshMessage(String(response?.reset_url || response?.message || 'Resetlink aangemaakt.')); }}>Reset</Button>
+                      <Button variant="ghost" onClick={async () => { await tenantUserActions.deleteUser.mutateAsync(row.user_id); refreshMessage(`Gebruiker ${row.email} verwijderd.`); }}>Verwijder</Button>
                     </div>
                   </div>
                 ))}
@@ -597,6 +604,29 @@ export function SuperadminPage() {
                   <div><span>Volgende betaling</span><strong>{formatDatetime(text(billingPayload.mollie_next_payment_date, '')) || '—'}</strong></div>
                   <div><span>Klant ID</span><strong>{text(billingPayload.mollie_customer_id)}</strong></div>
                 </div>
+                <div className="toolbar-cluster" style={{ marginTop: 12, marginBottom: 12 }}>
+                  <Button variant="secondary" onClick={async () => { if (!selectedTenant) return; const response = await tenantBillingActions.createInvoice.mutateAsync({ seats: detailTenant?.seats_purchased || 1, unit_amount_cents: detailTenant?.price_per_seat_year_cents || 0 }); refreshMessage(String(response?.number || response?.message || 'Factuur aangemaakt.')); }}>Factuur maken</Button>
+                  <Button variant="secondary" onClick={async () => { if (!selectedTenant) return; const response = await tenantBillingActions.manualPayment.mutateAsync({ amount_cents: Number(billingPayload.price_per_seat_year_cents || detailTenant?.price_per_seat_year_cents || 0), type: 'subscription' }); refreshMessage(String(response?.message || 'Handmatige betaling geregistreerd.')); }}>Handmatige betaling</Button>
+                  <Button variant="secondary" onClick={async () => { if (!selectedTenant) return; const response = await tenantBillingActions.changePlan.mutateAsync({ plan: 'professional', seats: Number(detailTenant?.seats_purchased || 1) }); refreshMessage(String(response?.message || 'Plan bijgewerkt.')); }}>Plan sync</Button>
+                  <Button variant="secondary" onClick={async () => { if (!selectedTenant) return; const response = await tenantBillingActions.overrideAccessMode.mutateAsync({ access_mode: 'read_only', reason: 'superadmin override' }); refreshMessage(String(response?.message || 'Access mode aangepast.')); }}>Read-only</Button>
+                  <Button variant="ghost" onClick={async () => { if (!selectedTenant) return; const response = await tenantBillingActions.cancelSubscription.mutateAsync({}); refreshMessage(String(response?.message || 'Abonnement geannuleerd.')); }}>Annuleer abonnement</Button>
+                </div>
+                <div className="divider" />
+                {tenantInvoices.isLoading ? <LoadingState label="Facturen laden..." /> : null}
+                {tenantInvoices.isError ? <ErrorState title="Facturen niet geladen" description="Controleer of /platform/tenants/{id}/invoices bereikbaar is." /> : null}
+                {!tenantInvoices.isLoading && !tenantInvoices.isError && invoiceRows.length === 0 ? <EmptyState title="Geen facturen" description="Maak de eerste factuur direct vanuit deze tenant." /> : null}
+                {!tenantInvoices.isLoading && !tenantInvoices.isError && invoiceRows.length > 0 ? (
+                  <DataTable
+                    columns={[
+                      { key: 'number', header: 'Factuur', cell: (row: Record<string, unknown>) => text(row.number) },
+                      { key: 'status', header: 'Status', cell: (row: Record<string, unknown>) => <Badge tone={toneFromStatus(text(row.status, 'neutral'))}>{text(row.status)}</Badge> },
+                      { key: 'total', header: 'Totaal', cell: (row: Record<string, unknown>) => formatCents(row.total_cents) },
+                      { key: 'balance', header: 'Openstaand', cell: (row: Record<string, unknown>) => formatCents(row.balance_due_cents) },
+                    ]}
+                    rows={invoiceRows}
+                    rowKey={(row: Record<string, unknown>) => String(row.id)}
+                  />
+                ) : null}
                 <div className="divider" />
                 {tenantPayments.isLoading ? <LoadingState label="Payments laden..." /> : null}
                 {tenantPayments.isError ? <ErrorState title="Payments niet geladen" description="Controleer of /platform/tenants/{id}/payments bereikbaar is." /> : null}
@@ -648,8 +678,8 @@ export function SuperadminPage() {
             <Input type="email" value={tenantUserForm.email} onChange={(event) => setTenantUserForm((current) => ({ ...current, email: event.target.value }))} required />
           </label>
           <label>
-            <span>Wachtwoord</span>
-            <Input type="password" value={tenantUserForm.password} onChange={(event) => setTenantUserForm((current) => ({ ...current, password: event.target.value }))} required />
+            <span>Tijdelijk wachtwoord (optioneel)</span>
+            <Input type="password" value={tenantUserForm.password} onChange={(event) => setTenantUserForm((current) => ({ ...current, password: event.target.value }))} placeholder="Leeg laten voor activatielink" />
           </label>
           <label>
             <span>Rol</span>
@@ -661,7 +691,7 @@ export function SuperadminPage() {
           </label>
           <div className="toolbar-right">
             <Button type="button" variant="ghost" onClick={() => setCreateUserOpen(false)}>Annuleren</Button>
-            <Button type="submit" disabled={tenantUserActions.createUser.isPending}>Gebruiker toevoegen</Button>
+            <Button type="submit" disabled={tenantUserActions.createUser.isPending}>{tenantUserForm.password ? "Gebruiker toevoegen" : "Uitnodigen en activatielink maken"}</Button>
           </div>
         </form>
       </Drawer>

@@ -1,28 +1,62 @@
-import React from 'react';
-
-const pageStyle: React.CSSProperties = {
-  minHeight: '100vh',
-  display: 'grid',
-  placeItems: 'center',
-  padding: 24,
-};
-
-const cardStyle: React.CSSProperties = {
-  width: '100%',
-  maxWidth: 520,
-  background: '#fff',
-  border: '1px solid #e2e8f0',
-  borderRadius: 20,
-  padding: 24,
-};
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { requestPasswordReset } from '@/api/auth';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { Input } from '@/components/ui/Input';
+import { InlineMessage } from '@/components/feedback/InlineMessage';
+import { getFriendlyAuthErrorMessage } from '@/features/auth/auth-utils';
 
 export function ForgotPasswordPage() {
+  const [tenant, setTenant] = useState('demo');
+  const [email, setEmail] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<{ message?: string; reset_url?: string } | null>(null);
+
+  async function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    setSubmitting(true);
+    setError(null);
+    setResult(null);
+    try {
+      const response = await requestPasswordReset({ email, tenant });
+      setResult(response || { message: 'Als dit account bestaat, is een resetlink verstuurd.' });
+    } catch (requestError) {
+      setError(getFriendlyAuthErrorMessage(requestError, 'Reset aanvragen mislukt.'));
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   return (
-    <div style={pageStyle}>
-      <div style={cardStyle}>
-        <h1>Wachtwoord vergeten</h1>
-        <p>Vraag hier een reset aan.</p>
-      </div>
+    <div className="auth-layout">
+      <Card className="auth-card">
+        <div>
+          <div className="eyebrow">CWS NEN-1090</div>
+          <h1>Wachtwoord vergeten</h1>
+          <p>Vraag hier een resetlink aan voor een tenantgebruiker of platformgebruiker.</p>
+        </div>
+
+        {error ? <InlineMessage tone="danger">{error}</InlineMessage> : null}
+        {result?.message ? <InlineMessage tone="success">{`${result.message}${result.reset_url ? ` Testlink: ${result.reset_url}` : ''}`}</InlineMessage> : null}
+
+        <form className="form-grid" onSubmit={handleSubmit}>
+          <label>
+            <span>Tenant</span>
+            <Input value={tenant} onChange={(event) => setTenant(event.target.value)} required />
+          </label>
+          <label>
+            <span>E-mail</span>
+            <Input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" required />
+          </label>
+          <Button type="submit" disabled={submitting}>{submitting ? 'Bezig...' : 'Resetlink versturen'}</Button>
+        </form>
+
+        <div className="stack-actions">
+          <Link to="/login">Terug naar login</Link>
+        </div>
+      </Card>
     </div>
   );
 }

@@ -197,7 +197,7 @@ export type TenantCreateInput = {
   trial_days?: number;
   create_admin?: {
     email: string;
-    password: string;
+    password?: string;
     role?: string;
     is_active?: boolean;
   };
@@ -222,7 +222,7 @@ export type TenantUser = {
 
 export type TenantUserCreateInput = {
   email: string;
-  password: string;
+  password?: string;
   role?: string;
   is_active?: boolean;
 };

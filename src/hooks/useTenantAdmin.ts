@@ -1,12 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   createTenantUser,
+  deleteTenantUser,
   forceLogoutTenant,
   getTenant,
   getTenantAudit,
   getTenantBilling,
   getTenantUsers,
   patchTenantUser,
+  resendTenantUserInvite,
+  resetTenantUserPassword,
 } from '@/api/platform';
 import { normalizeListResponse } from '@/utils/api';
 import type { TenantUserCreateInput, TenantUserPatchInput } from '@/types/domain';
@@ -54,6 +57,7 @@ export function useTenantUserActions(tenantId?: string | number) {
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: ['tenant-users', tenantId] });
     queryClient.invalidateQueries({ queryKey: ['tenant-detail', tenantId] });
+    queryClient.invalidateQueries({ queryKey: ['tenant-audit', tenantId] });
     queryClient.invalidateQueries({ queryKey: ['tenants'] });
     queryClient.invalidateQueries({ queryKey: ['platform-summary'] });
   };
@@ -65,6 +69,18 @@ export function useTenantUserActions(tenantId?: string | number) {
     }),
     patchUser: useMutation({
       mutationFn: ({ userId, payload }: { userId: string; payload: TenantUserPatchInput }) => patchTenantUser(String(tenantId), userId, payload),
+      onSuccess: refresh,
+    }),
+    resendInvite: useMutation({
+      mutationFn: (userId: string) => resendTenantUserInvite(String(tenantId), userId),
+      onSuccess: refresh,
+    }),
+    resetPassword: useMutation({
+      mutationFn: (userId: string) => resetTenantUserPassword(String(tenantId), userId),
+      onSuccess: refresh,
+    }),
+    deleteUser: useMutation({
+      mutationFn: (userId: string) => deleteTenantUser(String(tenantId), userId),
       onSuccess: refresh,
     }),
     forceLogout: useMutation({

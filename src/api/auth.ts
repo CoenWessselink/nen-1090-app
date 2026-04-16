@@ -1,5 +1,5 @@
 import client from '@/api/client';
-import type { AuthRefreshResponse, LoginPayload, LoginResponse } from '@/types/api';
+import type { AuthRefreshResponse, ChangePasswordPayload, LoginPayload, LoginResponse } from '@/types/api';
 
 function normalizeUser(input: any, fallbackTenant = '') {
   return {
@@ -55,4 +55,21 @@ export async function refreshSession(refreshToken: string): Promise<AuthRefreshR
 export async function refreshCentralSession(): Promise<AuthRefreshResponse> {
   const raw = await client.post<any>('/auth/refresh', {});
   return normalizeLoginResponse(raw) as AuthRefreshResponse;
+}
+
+export async function requestPasswordReset(payload: { email: string; tenant: string }) {
+  return client.post<any>('/auth/reset-password/request', payload);
+}
+
+export async function confirmPasswordReset(payload: { token: string; password: string }) {
+  return client.post<any>('/auth/reset-password/confirm', payload);
+}
+
+export async function changePassword(payload: ChangePasswordPayload) {
+  return client.post<any>('/auth/change-password', payload);
+}
+
+
+export async function activateAccount(payload: { token: string; password: string }) {
+  return confirmPasswordReset(payload);
 }

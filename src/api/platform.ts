@@ -6,6 +6,7 @@ import type {
   TenantCreateInput,
   TenantPatchInput,
   TenantUser,
+  TenantUserAction,
   TenantUserCreateInput,
   TenantUserPatchInput,
 } from '@/types/domain';
@@ -77,7 +78,7 @@ export function getTenantUsers(tenantId: string | number) {
 }
 
 export function createTenantUser(tenantId: string | number, payload: TenantUserCreateInput) {
-  return client.post<TenantUser>(`/platform/tenants/${tenantId}/users`, payload);
+  return client.post<TenantUserAction>(`/platform/tenants/${tenantId}/users`, payload);
 }
 
 export function patchTenantUser(tenantId: string | number, userId: string, payload: TenantUserPatchInput) {
@@ -110,4 +111,17 @@ export function impersonateTenant(tenantId: string | number) {
 
 export function exitImpersonation() {
   return optionalRequest<Record<string, unknown>>(['/platform/impersonate/exit'], { method: 'POST' });
+}
+
+
+export function resendTenantUserInvite(tenantId: string | number, userId: string) {
+  return client.post<Record<string, unknown>>(`/platform/tenants/${tenantId}/users/${userId}/resend-invite`, {});
+}
+
+export function resetTenantUserPassword(tenantId: string | number, userId: string) {
+  return client.post<Record<string, unknown>>(`/platform/tenants/${tenantId}/users/${userId}/reset-password`, {});
+}
+
+export function deleteTenantUser(tenantId: string | number, userId: string) {
+  return apiRequest<Record<string, unknown>>(`/platform/tenants/${tenantId}/users/${userId}`, { method: 'DELETE' });
 }

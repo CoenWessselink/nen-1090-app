@@ -25,6 +25,7 @@ import { ForgotPasswordPage } from '@/features/auth/ForgotPasswordPage';
 import { ResetPasswordPage } from '@/features/auth/ResetPasswordPage';
 import { LogoutPage } from '@/features/auth/LogoutPage';
 import { ChangePasswordPage } from '@/features/auth/ChangePasswordPage';
+import { ActivateAccountPage } from '@/features/auth/ActivateAccountPage';
 
 const Login = LoginPage;
 const SUPERADMIN_ALLOWED_ROLES = ['SUPERADMIN', 'SUPER_ADMIN', 'ADMIN', 'PLATFORM_ADMIN', 'PLATFORMADMIN', 'platform_admin'];
@@ -54,11 +55,13 @@ export const routerConfig = [
   { path: '/reset-password', element: <ResetPasswordPage /> },
   { path: '/logout', element: <LogoutPage /> },
   { path: '/change-password', element: <ChangePasswordPage /> },
+  { path: '/activate-account', element: <ActivateAccountPage /> },
   { path: '/app/login', element: <Navigate to="/login" replace /> },
   { path: '/app/forgot-password', element: <Navigate to="/forgot-password" replace /> },
   { path: '/app/reset-password', element: <Navigate to="/reset-password" replace /> },
   { path: '/app/logout', element: <Navigate to="/logout" replace /> },
   { path: '/app/change-password', element: <Navigate to="/change-password" replace /> },
+  { path: '/app/activate-account', element: <Navigate to="/activate-account" replace /> },
   {
     path: '/',
     element: (
