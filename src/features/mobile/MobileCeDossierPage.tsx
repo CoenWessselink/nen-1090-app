@@ -1,36 +1,59 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Download, FileText, FolderOpen, PencilLine, RefreshCcw, Settings, Wrench } from 'lucide-react';
+import { Download, FileText } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { createPdfExport, getCeDossier } from '@/api/ce';
 import { getProjectDocuments } from '@/api/documents';
 import { Modal } from '@/components/overlays/Modal';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
 import { openDownloadUrl } from '@/utils/download';
-import { buildCeDossierFilename, firstPdfDocument, formatValue, groupChecklist, normalizeApiError, normalizeChecklist, summarizeChecklist } from '@/features/mobile/mobile-utils';
+import {
+  buildCeDossierFilename,
+  firstPdfDocument,
+  formatValue,
+  groupChecklist,
+  normalizeApiError,
+  normalizeChecklist,
+  summarizeChecklist,
+} from '@/features/mobile/mobile-utils';
 import type { CeDocument } from '@/types/domain';
 
+type CeSection = 'project' | 'welds' | 'inspections' | 'documents' | 'settings';
+type CeStatus = 'Compleet' | 'Vereist' | 'Ontbreekt';
+
 type CeRowDetail = {
+  key: string;
   label: string;
-  status: string;
-  detail: string;
-  section: 'project' | 'welds' | 'inspections' | 'documents' | 'settings';
+  value?: string;
+  status: CeStatus;
+  group?: string;
+  section: CeSection;
+  note: string;
 };
 
-function resolveRowSection(label: string, group?: string): CeRowDetail['section'] {
+type OverrideMap = Record<string, { status: CeStatus; value?: string; note?: string }>;
+
+function resolveRowSection(label: string, group?: string): CeSection {
   const value = `${group || ''} ${label}`.toLowerCase();
   if (value.includes('project') || value.includes('exc')) return 'project';
   if (value.includes('template') || value.includes('materiaal') || value.includes('lasser') || value.includes('wps')) return 'settings';
   if (value.includes('inspect')) return 'inspections';
-  if (value.includes('document') || value.includes('foto') || value.includes('export')) return 'documents';
+  if (value.includes('document') || value.includes('foto') || value.includes('export') || value.includes('pdf')) return 'documents';
   return 'welds';
 }
 
-function detailFromRow(section: CeRowDetail['section']) {
-  if (section === 'project') return 'Werk projectbasis, opdrachtgever of EXC-klasse direct bij.';
-  if (section === 'settings') return 'Open instellingen om templates, materialen, lassers of WPS direct te wijzigen.';
-  if (section === 'documents') return 'Open documenten of PDF-viewer om ontbrekende stukken direct aan te vullen.';
-  if (section === 'inspections') return 'Open lassen en inspecties om controlepunten direct bij te werken.';
-  return 'Open lassen om lassen, lassers en koppelingen direct bij te werken.';
+function toCeStatus(value: string): CeStatus {
+  const normalized = String(value || '').toLowerCase();
+  if (normalized.includes('compleet') || normalized.includes('complete')) return 'Compleet';
+  if (normalized.includes('ontbre')) return 'Ontbreekt';
+  return 'Vereist';
+}
+
+function defaultNote(section: CeSection, label: string) {
+  if (section === 'project') return `Werk ${label.toLowerCase()} direct hier bij.`;
+  if (section === 'settings') return `Werk ${label.toLowerCase()} direct in deze popup bij.`;
+  if (section === 'documents') return `Leg ${label.toLowerCase()} direct vast of markeer dit onderdeel compleet.`;
+  if (section === 'inspections') return `Werk ${label.toLowerCase()} direct bij in deze CE-regel.`;
+  return `Werk ${label.toLowerCase()} direct bij in deze CE-regel.`;
 }
 
 export function MobileCeDossierPage() {
@@ -42,6 +65,11 @@ export function MobileCeDossierPage() {
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedRow, setSelectedRow] = useState<CeRowDetail | null>(null);
+  const [overrides, setOverrides] = useState<OverrideMap>({});
+  const [draftStatus, setDraftStatus] = useState<CeStatus>('Vereist');
+  const [draftValue, setDraftValue] = useState('');
+  const [draftNote, setDraftNote] = useState('');
+  const [saveNotice, setSaveNotice] = useState<string | null>(null);
 
   async function loadDossier() {
     const [dossier, docs] = await Promise.all([
@@ -85,13 +113,35 @@ export function MobileCeDossierPage() {
     { label: 'Documenten gekoppeld', value: formatValue(payload?.attachments_count || documents.length, '0'), section: 'documents' as const },
   ];
 
-  function openRow(label: string, statusLabel: string, group?: string, detail?: string) {
-    const section = resolveRowSection(label, group);
-    setSelectedRow({
+  function openRow(detail: CeRowDetail) {
+    const override = overrides[detail.key];
+    setSelectedRow(detail);
+    setDraftStatus(override?.status || detail.status);
+    setDraftValue(override?.value ?? detail.value ?? '');
+    setDraftNote(override?.note ?? detail.note);
+    setSaveNotice(null);
+  }
+
+  function openSummaryRow(label: string, value: string, section: CeSection) {
+    openRow({
+      key: `summary:${section}:${label}`,
       label,
-      status: statusLabel,
+      value,
+      status: value === '0' || value === 'Nee' ? 'Vereist' : 'Compleet',
       section,
-      detail: detail || detailFromRow(section),
+      note: defaultNote(section, label),
+    });
+  }
+
+  function openChecklistRow(label: string, statusLabel: string, group: string) {
+    const section = resolveRowSection(label, group);
+    openRow({
+      key: `check:${group}:${label}`,
+      label,
+      status: toCeStatus(statusLabel),
+      group,
+      section,
+      note: defaultNote(section, label),
     });
   }
 
@@ -113,21 +163,21 @@ export function MobileCeDossierPage() {
     }
   }
 
-  function openSection(section: CeRowDetail['section']) {
-    setSelectedRow(null);
-    if (section === 'project') {
-      navigate(`/projecten/${projectId}/overzicht`);
-      return;
-    }
-    if (section === 'settings') {
-      navigate('/instellingen');
-      return;
-    }
-    if (section === 'documents') {
-      navigate(`/projecten/${projectId}/documenten`);
-      return;
-    }
-    navigate(`/projecten/${projectId}/lassen`);
+  function handleSaveRow() {
+    if (!selectedRow) return;
+    setOverrides((current) => ({
+      ...current,
+      [selectedRow.key]: {
+        status: draftStatus,
+        value: draftValue.trim() || undefined,
+        note: draftNote.trim() || undefined,
+      },
+    }));
+    setSaveNotice('Regel bijgewerkt.');
+    window.setTimeout(() => {
+      setSelectedRow(null);
+      setSaveNotice(null);
+    }, 250);
   }
 
   return (
@@ -136,7 +186,7 @@ export function MobileCeDossierPage() {
         {loading ? <div className="mobile-state-card">CE-dossier laden…</div> : null}
         {error ? <div className="mobile-inline-alert is-error">{error}</div> : null}
         {!loading ? (
-          <div className="mobile-list-stack">
+          <div className="mobile-list-stack ce-dossier-stack">
             <div className="mobile-progress-card">
               <div className="mobile-progress-head">
                 <div>
@@ -150,30 +200,50 @@ export function MobileCeDossierPage() {
             </div>
 
             <div className="mobile-summary-grid">
-              <button type="button" className="mobile-summary-card" onClick={() => openRow('Compleet', String(summary.complete), 'project', 'Open project en gekoppelde modules om ontbrekende onderdelen af te werken.') }><span>Compleet</span><strong>{summary.complete}</strong></button>
-              <button type="button" className="mobile-summary-card" onClick={() => openRow('Vereist', String(summary.required), 'project', 'Controleer welke verplichte ketenonderdelen nog openstaan.') }><span>Vereist</span><strong>{summary.required}</strong></button>
-              <button type="button" className="mobile-summary-card" onClick={() => openRow('Ontbreekt', String(summary.missing), 'documents', 'Werk ontbrekende documenten, lassen of inspecties bij vanuit de popup.') }><span>Ontbreekt</span><strong>{summary.missing}</strong></button>
-              <button type="button" className="mobile-summary-card" onClick={() => openRow('PDF', pdf ? 'Ja' : 'Nee', 'documents', pdf ? 'Er is al een PDF beschikbaar. Open de viewer of download direct.' : 'Maak eerst een PDF of koppel een PDF-document.') }><span>PDF</span><strong>{pdf ? 'Ja' : 'Nee'}</strong></button>
+              <button type="button" className="mobile-summary-card" onClick={() => openSummaryRow('Compleet', String(summary.complete), 'project')}><span>Compleet</span><strong>{summary.complete}</strong></button>
+              <button type="button" className="mobile-summary-card" onClick={() => openSummaryRow('Vereist', String(summary.required), 'project')}><span>Vereist</span><strong>{summary.required}</strong></button>
+              <button type="button" className="mobile-summary-card" onClick={() => openSummaryRow('Ontbreekt', String(summary.missing), 'documents')}><span>Ontbreekt</span><strong>{summary.missing}</strong></button>
+              <button type="button" className="mobile-summary-card" onClick={() => openSummaryRow('PDF', pdf ? 'Ja' : 'Nee', 'documents')}><span>PDF</span><strong>{pdf ? 'Ja' : 'Nee'}</strong></button>
             </div>
 
-            <div className="mobile-detail-card">
-              <div className="mobile-list-card-meta" style={{ marginBottom: 8 }}>Klik op elke regel om direct de gekoppelde popup te openen.</div>
-              {summaryRows.map((row) => (
-                <button key={row.label} type="button" className="mobile-field-button" onClick={() => openRow(row.label, row.value, row.section, detailFromRow(row.section))}>
-                  <div className="mobile-field-row"><span>{row.label}</span><strong>{row.value}</strong></div>
-                </button>
-              ))}
+            <div className="mobile-detail-card ce-summary-card">
+              <div className="mobile-list-card-meta ce-summary-card-meta">Klik op elke regel om direct de gekoppelde popup te openen.</div>
+              <div className="ce-inline-stat-grid">
+                {summaryRows.map((row) => {
+                  const override = overrides[`summary:${row.section}:${row.label}`];
+                  return (
+                    <button key={row.label} type="button" className="ce-inline-stat-card" onClick={() => openSummaryRow(row.label, row.value, row.section)}>
+                      <span>{row.label}</span>
+                      <strong>{override?.value || row.value}</strong>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             {checklistGroups.map((group) => (
-              <div key={group.group} className="mobile-checklist-card grouped-checklist-card">
+              <div key={group.group} className="mobile-checklist-card grouped-checklist-card ce-group-card">
                 <div className="mobile-section-kicker">{group.group}</div>
-                {group.rows.map((item) => (
-                  <button key={`${group.group}-${item.label}`} type="button" className="mobile-checklist-row mobile-checklist-row-button" aria-label={`Wijzig ${item.label}`} onClick={() => openRow(item.label, item.status, group.group, detailFromRow(resolveRowSection(item.label, group.group)))}>
-                    <strong>{item.label}</strong>
-                    <span className={`mobile-checklist-status status-${item.status.toLowerCase().replace(/\s+/g, '-')}`}>{item.status}</span>
-                  </button>
-                ))}
+                <div className="ce-group-rows">
+                  {group.rows.map((item) => {
+                    const override = overrides[`check:${group.group}:${item.label}`];
+                    const displayStatus = override?.status || toCeStatus(item.status);
+                    return (
+                      <button
+                        key={`${group.group}-${item.label}`}
+                        type="button"
+                        className="mobile-checklist-row mobile-checklist-row-button ce-checklist-row"
+                        aria-label={`Wijzig ${item.label}`}
+                        onClick={() => openChecklistRow(item.label, item.status, group.group)}
+                      >
+                        <div className="ce-checklist-copy">
+                          <strong>{item.label}</strong>
+                        </div>
+                        <span className={`mobile-checklist-status status-${displayStatus.toLowerCase().replace(/\s+/g, '-')}`}>{displayStatus}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             ))}
 
@@ -187,7 +257,7 @@ export function MobileCeDossierPage() {
             </div>
 
             <button type="button" className="mobile-link-button" onClick={() => { setLoading(true); loadDossier().finally(() => setLoading(false)); }}>
-              <RefreshCcw size={14} /> Vernieuw dossierstatus
+              Dossierstatus vernieuwen
             </button>
           </div>
         ) : null}
@@ -195,31 +265,31 @@ export function MobileCeDossierPage() {
 
       <Modal open={Boolean(selectedRow)} onClose={() => setSelectedRow(null)} title={selectedRow?.label || 'CE-regel wijzigen'} size="large">
         {selectedRow ? (
-          <div className="mobile-form-card" style={{ boxShadow: 'none', border: '0', padding: 0 }}>
-            <div className="mobile-detail-card" style={{ boxShadow: 'none', margin: 0 }}>
+          <div className="ce-edit-modal">
+            {saveNotice ? <div className="mobile-inline-alert is-success">{saveNotice}</div> : null}
+            <div className="ce-edit-panel">
               <div className="mobile-field-row"><span>Regel</span><strong>{selectedRow.label}</strong></div>
-              <div className="mobile-field-row"><span>Status</span><strong>{selectedRow.status}</strong></div>
-              <div className="mobile-field-row"><span>Actiepad</span><strong>{selectedRow.section}</strong></div>
-              <div className="mobile-field-row"><span>Toelichting</span><strong>{selectedRow.detail}</strong></div>
+              <div className="mobile-field-row"><span>Status</span><strong>{draftStatus}</strong></div>
+              {selectedRow.group ? <div className="mobile-field-row"><span>Groep</span><strong>{selectedRow.group}</strong></div> : null}
             </div>
+            <label className="mobile-form-field mobile-select-field">
+              <span>Status</span>
+              <select value={draftStatus} onChange={(event) => setDraftStatus(event.target.value as CeStatus)}>
+                <option value="Compleet">Compleet</option>
+                <option value="Vereist">Vereist</option>
+                <option value="Ontbreekt">Ontbreekt</option>
+              </select>
+            </label>
+            <label className="mobile-form-field">
+              <span>Waarde</span>
+              <input value={draftValue} onChange={(event) => setDraftValue(event.target.value)} placeholder="Bijvoorbeeld ja, 1 of gekoppeld" />
+            </label>
+            <label className="mobile-form-field is-textarea">
+              <span>Toelichting</span>
+              <textarea value={draftNote} onChange={(event) => setDraftNote(event.target.value)} rows={4} placeholder="Korte toelichting" />
+            </label>
             <div className="mobile-inline-actions stack-on-mobile">
-              <button type="button" className="mobile-primary-button" onClick={() => openSection(selectedRow.section)}>
-                <PencilLine size={16} /> Wijzig gekoppelde gegevens
-              </button>
-              <button type="button" className="mobile-secondary-button" onClick={() => navigate(`/projecten/${projectId}/pdf-viewer`)}>
-                <FileText size={16} /> Bekijk PDF
-              </button>
-            </div>
-            <div className="mobile-inline-actions stack-on-mobile">
-              <button type="button" className="mobile-secondary-button" onClick={() => navigate(`/projecten/${projectId}/overzicht`)}>
-                <Wrench size={16} /> Project 360
-              </button>
-              <button type="button" className="mobile-secondary-button" onClick={() => navigate(`/projecten/${projectId}/documenten`)}>
-                <FolderOpen size={16} /> Documenten
-              </button>
-              <button type="button" className="mobile-secondary-button" onClick={() => navigate('/instellingen')}>
-                <Settings size={16} /> Instellingen
-              </button>
+              <button type="button" className="mobile-primary-button" onClick={handleSaveRow}>Opslaan</button>
             </div>
           </div>
         ) : null}
@@ -227,3 +297,5 @@ export function MobileCeDossierPage() {
     </>
   );
 }
+
+export default MobileCeDossierPage;

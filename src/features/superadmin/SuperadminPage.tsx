@@ -12,7 +12,7 @@ import {
   ShieldCheck,
   Users,
 } from 'lucide-react';
-import { PageHeader } from '@/components/layout/PageHeader';
+import ModuleHero from '@/components/layout/ModuleHero';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -334,15 +334,23 @@ export function SuperadminPage() {
 
   return (
     <div className="page-stack superadmin-page">
-      <PageHeader
+      <ModuleHero
         title="Superadmin"
-        description="Tenantbeheer, tenant 360, gebruikersbeheer en platformcontrole in één beheerlaag."
-      >
-        <div className="toolbar-cluster">
-          <Button variant="secondary" onClick={handleExportCsv} disabled={tenantActions.exportCsv.isPending}><Download size={16} /> Export CSV</Button>
-          <Button onClick={() => setCreateTenantOpen(true)}><Plus size={16} /> Nieuwe tenant</Button>
-        </div>
-      </PageHeader>
+        description="Werk tenants, users, billing en platformcontrole af via dezelfde header- en tegellogica als de rest van het programma."
+        kicker="Platformbeheer"
+        actions={
+          <>
+            <Button variant="secondary" onClick={handleExportCsv} disabled={tenantActions.exportCsv.isPending}><Download size={16} /> Export CSV</Button>
+            <Button onClick={() => setCreateTenantOpen(true)}><Plus size={16} /> Nieuwe tenant</Button>
+          </>
+        }
+        tiles={[
+          { label: 'Tenants', value: summary.total_tenants, meta: 'Alle tenants in platform', icon: Building2, tone: 'primary' },
+          { label: 'Gebruikers', value: summary.total_users, meta: 'Actieve tenant-users', icon: Users, tone: 'success' },
+          { label: 'Billing', value: summary.total_seats, meta: 'Totaal seats over alle tenants', icon: CreditCard, tone: 'warning' },
+          { label: 'Platformstatus', value: health.isError ? 'Controle nodig' : 'Online', meta: 'Health, tenant-view en platformcontrole', icon: Activity, tone: 'neutral' },
+        ]}
+      />
 
       {message ? <InlineMessage tone="success">{message}</InlineMessage> : null}
 

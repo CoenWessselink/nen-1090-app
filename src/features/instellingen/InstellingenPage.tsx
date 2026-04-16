@@ -1,8 +1,7 @@
-import { DatabaseZap, LockKeyhole, Palette, Settings2, Shield, Wifi } from 'lucide-react';
+import { DatabaseZap, LockKeyhole, Settings2, Shield, Wifi } from 'lucide-react';
 import ModuleHero from '@/components/layout/ModuleHero';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PageHeader } from '@/components/layout/PageHeader';
 import { Card } from '@/components/ui/Card';
 import { Tabs } from '@/components/ui/Tabs';
 import { Badge } from '@/components/ui/Badge';
@@ -106,16 +105,26 @@ export function InstellingenPage() {
         ]}
       />
       {message ? <InlineMessage tone="success">{message}</InlineMessage> : null}
-      <div className="card-grid cols-2">
-        <button type="button" className="module-hero-tile module-hero-tile-primary" onClick={() => setTab('organisatie')} style={{ textAlign: 'left' }}>
-          <div className="module-hero-tile-top"><Settings2 size={18} /><span>Organisatie</span></div>
-          <strong>Kaarten</strong>
-          <small>Open tenantcontext, sessiestatus en organisatievoorkeuren.</small>
+      <div className="module-section-grid">
+        <button type="button" className="module-section-card" onClick={() => setTab('organisatie')}>
+          <div className="module-section-card-top"><Settings2 size={18} /><span>Organisatie</span></div>
+          <strong>Kaarten en voorkeuren</strong>
+          <small>Open tenantcontext, sessiestatus en organisatievoorkeuren in kaartvorm.</small>
         </button>
-        <button type="button" className="module-hero-tile module-hero-tile-success" onClick={() => setTab('masterdata')} style={{ textAlign: 'left' }}>
-          <div className="module-hero-tile-top"><DatabaseZap size={18} /><span>Masterdata</span></div>
-          <strong>{(wps.data?.items || []).length + (materials.data?.items || []).length + (welders.data?.items || []).length}</strong>
-          <small>WPS, materialen, lassers en inspectietemplates via tegels en kaarten.</small>
+        <button type="button" className="module-section-card" onClick={() => setTab('masterdata')}>
+          <div className="module-section-card-top"><DatabaseZap size={18} /><span>Masterdata</span></div>
+          <strong>{(wps.data?.items || []).length + (materials.data?.items || []).length + (welders.data?.items || []).length} records</strong>
+          <small>WPS, materialen, lassers, coördinatoren en inspectietemplates via dezelfde tegellogica als de rest van de app.</small>
+        </button>
+        <button type="button" className="module-section-card" onClick={() => setTab('security')}>
+          <div className="module-section-card-top"><Shield size={18} /><span>Security</span></div>
+          <strong>{refreshToken ? 'Refresh-flow actief' : 'Controle nodig'}</strong>
+          <small>JWT, rollen, sessieherstel en beveiligingssamenvatting.</small>
+        </button>
+        <button type="button" className="module-section-card" onClick={() => setTab('integraties')}>
+          <div className="module-section-card-top"><Wifi size={18} /><span>Integraties</span></div>
+          <strong>{health.isError ? 'Controle nodig' : 'Online'}</strong>
+          <small>Backend health, settings-contract en validatie op één plek.</small>
         </button>
       </div>
       <Tabs tabs={tabs} value={tab} onChange={setTab} />
@@ -197,7 +206,7 @@ export function InstellingenPage() {
             </div>
           </Card>
           <Card>
-            <div className="section-title-row"><h3><Palette size={18} /> UX guardrails</h3></div>
+            <div className="section-title-row"><h3><Shield size={18} /> UX guardrails</h3></div>
             <div className="checklist-grid">
               <div className="checklist-item"><strong>Geen backend-herbouw</strong><span>Alleen bestaande API-contracten worden aangesproken.</span></div>
               <div className="checklist-item"><strong>Geen placeholders</strong><span>Acties zijn gekoppeld aan API-calls of expliciet verborgen.</span></div>

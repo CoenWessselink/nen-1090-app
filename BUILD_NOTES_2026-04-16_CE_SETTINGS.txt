@@ -1,0 +1,13 @@
+Herstelbuild 2026-04-16
+
+Doorgevoerd:
+- CE-Dossier: nette kaartweergave voor regels en groepen
+- CE-Dossier popup: alleen status/waarde/toelichting + opslaan, geen doorverwijsknoppen meer
+- Instellingen: tegel/hero-styling gelijkgetrokken met rest van app
+- Inspectietemplates: editor-opmaak opgeschoond
+- Superadmin: header/tegels gelijkgetrokken via ModuleHero
+- Inspectie opslaan: check-keys worden nu veilig ingekort om backend validatiefouten te voorkomen
+
+Validatie in container:
+- npm run build: OK
+- npm run build:pages: OK

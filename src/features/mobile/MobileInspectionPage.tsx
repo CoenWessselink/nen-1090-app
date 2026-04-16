@@ -37,6 +37,15 @@ function inferOverallStatus(values: UiStatus[]) {
   return 'gerepareerd';
 }
 
+function toSafeCheckKey(value: string, index: number) {
+  const normalized = String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+  const shortened = normalized.slice(0, 20).replace(/_+$/g, '');
+  return shortened || `check_${index + 1}`;
+}
+
 function toCheckRows(template: TemplateRow | undefined): CheckRow[] {
   const source = template?.items_json ?? template?.items ?? [];
   const items = Array.isArray(source) ? source : [];
@@ -44,7 +53,7 @@ function toCheckRows(template: TemplateRow | undefined): CheckRow[] {
     const record = item && typeof item === 'object' ? (item as Record<string, unknown>) : {};
     const label = String(record.title || record.label || record.code || `Controlepunt ${index + 1}`);
     return {
-      key: String(record.code || record.group_key || record.criterion_key || `check_${index + 1}`).toLowerCase(),
+      key: toSafeCheckKey(String(record.code || record.group_key || record.criterion_key || record.title || record.label || `check_${index + 1}`), index),
       label,
       helper: String(record.group || record.helper || 'Inspectiecontrole'),
     } satisfies CheckRow;
@@ -85,11 +94,11 @@ export function MobileInspectionPage() {
         const inspectionRecord = inspection && typeof inspection === 'object' ? (inspection as Record<string, unknown>) : {};
         if (inspectionRecord.execution_class) setWeldExecutionClass(String(inspectionRecord.execution_class));
         if (inspectionRecord.template_id) setSelectedTemplateId(String(inspectionRecord.template_id));
-        setRemarks(String(inspectionRecord.remarks || inspectionRecord.notes || ''));
+        setRemarks(String(inspectionRecord.remarks || inspectionRecord.notes || '').slice(0, 120));
         const checks = Array.isArray(inspectionRecord.checks) ? (inspectionRecord.checks as Array<Record<string, unknown>>) : [];
         const map: Record<string, UiStatus> = {};
-        checks.forEach((item) => {
-          const key = String(item.group_key || item.criterion_key || item.code || item.label || '').toLowerCase().replace(/\s+/g, '_');
+        checks.forEach((item, index) => {
+          const key = toSafeCheckKey(String(item.group_key || item.criterion_key || item.code || item.label || ''), index);
           if (key) map[key] = toUiStatus(item.status);
         });
         setStatusMap(map);
@@ -144,17 +153,20 @@ export function MobileInspectionPage() {
         execution_class: weldExecutionClass,
         template_id: selectedTemplateId || null,
         overall_status: overallStatus,
-        remarks: remarks.trim() || null,
-        checks: checks.map((item) => ({
-          group_key: item.key,
-          criterion_key: item.key,
-          code: item.key,
-          label: item.label,
-          applicable: true,
-          approved: item.status === 'Conform',
-          status: toBackendStatus(item.status),
-          comment: remarks.trim() || null,
-        })),
+        remarks: remarks.trim().slice(0, 120) || null,
+        checks: checks.map((item, index) => {
+          const safeKey = toSafeCheckKey(item.key || item.label, index);
+          return {
+            group_key: safeKey,
+            criterion_key: safeKey,
+            code: safeKey,
+            label: item.label,
+            applicable: true,
+            approved: item.status === 'Conform',
+            status: toBackendStatus(item.status),
+            comment: null,
+          };
+        }),
       });
       dispatchAppRefresh({ scope: 'inspection', projectId, weldId, reason: 'inspection-saved' });
       setNotice('Inspectie is opgeslagen.');

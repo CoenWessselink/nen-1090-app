@@ -307,18 +307,18 @@ export function InspectionTemplatesManager() {
               <h3>Controlepunten</h3>
               <Button type="button" variant="secondary" onClick={() => setDraft((current) => ({ ...current, items: [...current.items, createItem(current.items.length + 1)] }))}><Plus size={16} /> Controlepunt toevoegen</Button>
             </div>
-            <div className="list-stack compact-list">
+            <div className="template-editor-list">
               {draft.items.map((item, index) => (
-                <div key={item.temp_id} className="detail-stack" style={{ border: '1px solid var(--line)', borderRadius: 14, padding: 12 }}>
-                  <div className="section-title-row">
+                <div key={item.temp_id} className="template-editor-item">
+                  <div className="section-title-row template-editor-item-head">
                     <strong>Controlepunt {index + 1}</strong>
-                    <div className="inline-end-cluster">
+                    <div className="inline-end-cluster template-editor-item-actions">
                       <Button type="button" variant="secondary" onClick={() => moveItem(item.temp_id, -1)}>Omhoog</Button>
                       <Button type="button" variant="secondary" onClick={() => moveItem(item.temp_id, 1)}>Omlaag</Button>
                       <Button type="button" variant="ghost" onClick={() => setDraft((current) => ({ ...current, items: current.items.filter((row) => row.temp_id !== item.temp_id).map((row, idx) => ({ ...row, sort_order: idx + 1 })) }))}><Trash2 size={16} /> Verwijderen</Button>
                     </div>
                   </div>
-                  <div className="two-column-grid">
+                  <div className="two-column-grid template-editor-grid">
                     <label><span>Code</span><input value={item.code} onChange={(event) => updateItem(item.temp_id, { code: event.target.value })} /></label>
                     <label><span>Titel</span><input value={item.title} onChange={(event) => updateItem(item.temp_id, { title: event.target.value })} /></label>
                   </div>
@@ -343,7 +343,7 @@ export function InspectionTemplatesManager() {
                       </select>
                     </label>
                   </div>
-                  <label><span>Toelichting / omschrijving</span><textarea style={{ minHeight: 90 }} value={item.description} onChange={(event) => updateItem(item.temp_id, { description: event.target.value })} /></label>
+                  <label className="template-editor-description"><span>Toelichting / omschrijving</span><textarea style={{ minHeight: 90 }} value={item.description} onChange={(event) => updateItem(item.temp_id, { description: event.target.value })} /></label>
                 </div>
               ))}
             </div>
