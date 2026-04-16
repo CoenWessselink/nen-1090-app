@@ -5,8 +5,10 @@ import {
   Building2,
   CreditCard,
   Download,
+  FileText,
   LogIn,
   LogOut,
+  Mail,
   Plus,
   Search,
   ShieldCheck,
@@ -31,7 +33,7 @@ import { useUiStore } from '@/app/store/ui-store';
 import { useExitImpersonation, useImpersonateTenant, usePlatformSummary, useTenantActions, useTenants } from '@/hooks/useTenants';
 import { useTenantAudit, useTenantBillingPanel, useTenantDetail, useTenantUserActions, useTenantUsers } from '@/hooks/useTenantAdmin';
 import { useSystemHealth } from '@/hooks/useSystemHealth';
-import { useTenantBillingActions, useTenantBillingDetail, useTenantInvoices, useTenantPayments } from '@/hooks/usePlatformBilling';
+import { useTenantBillingActions, useTenantBillingDetail, useTenantInvoiceDetail, useTenantInvoices, useTenantPayments } from '@/hooks/usePlatformBilling';
 import type { AuditSummary, BillingPayment, PlatformSummary, Tenant, TenantCreateInput, TenantUser, TenantUserCreateInput } from '@/types/domain';
 import { formatDatetime, toneFromStatus } from '@/utils/format';
 
@@ -105,6 +107,14 @@ export function SuperadminPage() {
   const [paymentsPage, setPaymentsPage] = useState(1);
   const [createTenantOpen, setCreateTenantOpen] = useState(false);
   const [createUserOpen, setCreateUserOpen] = useState(false);
+  const [createInvoiceOpen, setCreateInvoiceOpen] = useState(false);
+  const [manualPaymentOpen, setManualPaymentOpen] = useState(false);
+  const [changePlanOpen, setChangePlanOpen] = useState(false);
+  const [accessOverrideOpen, setAccessOverrideOpen] = useState(false);
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
+  const [creditInvoiceId, setCreditInvoiceId] = useState<string | null>(null);
+  const [cancelSubscriptionOpen, setCancelSubscriptionOpen] = useState(false);
+  const [lastBillingFeedback, setLastBillingFeedback] = useState<Record<string, unknown> | null>(null);
   const [pendingAction, setPendingAction] = useState<{ type: 'activate' | 'deactivate' | 'suspend' | 'reactivate' | 'trial' | 'force-logout'; tenant: Tenant } | null>(null);
 
   const [tenantForm, setTenantForm] = useState<TenantCreateInput>({
@@ -129,6 +139,31 @@ export function SuperadminPage() {
     role: 'viewer',
     is_active: true,
   });
+
+  const [invoiceForm, setInvoiceForm] = useState({
+    description: 'Jaarabonnement WeldInspect',
+    seats: 1,
+    unit_amount_cents: 0,
+    due_in_days: 14,
+  });
+  const [manualPaymentForm, setManualPaymentForm] = useState({
+    amount_cents: 0,
+    type: 'subscription',
+    invoice_id: '',
+    provider: 'manual',
+    status: 'paid',
+  });
+  const [planForm, setPlanForm] = useState({
+    plan_code: 'professional',
+    seats: 1,
+    status: 'active',
+  });
+  const [accessOverrideForm, setAccessOverrideForm] = useState({
+    access_mode: 'read_only',
+    status: 'active',
+    reason: 'superadmin override',
+  });
+  const [creditReason, setCreditReason] = useState('Creditnota door superadmin');
 
   const tenantRows = tenants.data?.items || [];
   const filteredRows = useMemo(() => {
@@ -163,6 +198,7 @@ export function SuperadminPage() {
   const tenantPayments = useTenantPayments(selectedTenant?.id, { page: paymentsPage, limit: 10 });
   const tenantInvoices = useTenantInvoices(selectedTenant?.id);
   const tenantBillingActions = useTenantBillingActions(selectedTenant?.id);
+  const selectedInvoiceDetail = useTenantInvoiceDetail(selectedTenant?.id, selectedInvoiceId || undefined);
   const tenantUserActions = useTenantUserActions(selectedTenant?.id);
 
   const detailTenant = (tenantDetail.data || selectedTenant) as Tenant | null;
@@ -171,6 +207,11 @@ export function SuperadminPage() {
   const billingPayload = { ...(tenantBilling.data || {}), ...(tenantBillingDetail.data || {}) } as Record<string, unknown>;
   const paymentRows = tenantPayments.data?.items || [];
   const invoiceRows = tenantInvoices.data?.items || [];
+
+  const applyBillingFeedback = (response: Record<string, unknown> | null | undefined, fallback: string) => {
+    setLastBillingFeedback(response ? response as Record<string, unknown> : null);
+    refreshMessage(String(response?.message || response?.number || fallback));
+  };
 
   const refreshMessage = (next: string) => {
     setMessage(next);
@@ -555,8 +596,8 @@ export function SuperadminPage() {
                     <div className="toolbar-cluster">
                       <Button variant="ghost" onClick={() => tenantUserActions.patchUser.mutate({ userId: row.user_id, payload: { role: row.role === 'tenant_admin' ? 'viewer' : 'tenant_admin' } })}>Rol wisselen</Button>
                       <Button variant="ghost" onClick={() => tenantUserActions.patchUser.mutate({ userId: row.user_id, payload: { is_active: !row.is_active } })}>{row.is_active ? 'Deactiveer' : 'Activeer'}</Button>
-                      <Button variant="ghost" onClick={async () => { const response = await tenantUserActions.resendInvite.mutateAsync(row.user_id); refreshMessage(String(response?.reset_url || response?.message || 'Uitnodiging verstuurd.')); }}>Uitnodigen</Button>
-                      <Button variant="ghost" onClick={async () => { const response = await tenantUserActions.resetPassword.mutateAsync(row.user_id); refreshMessage(String(response?.reset_url || response?.message || 'Resetlink aangemaakt.')); }}>Reset</Button>
+                      <Button variant="ghost" onClick={async () => { const response = await tenantUserActions.resendInvite.mutateAsync(row.user_id) as Record<string, unknown>; refreshMessage(String(response?.reset_url || response?.message || 'Uitnodiging verstuurd.')); }}>Uitnodigen</Button>
+                      <Button variant="ghost" onClick={async () => { const response = await tenantUserActions.resetPassword.mutateAsync(row.user_id) as Record<string, unknown>; refreshMessage(String(response?.reset_url || response?.message || 'Resetlink aangemaakt.')); }}>Reset</Button>
                       <Button variant="ghost" onClick={async () => { await tenantUserActions.deleteUser.mutateAsync(row.user_id); refreshMessage(`Gebruiker ${row.email} verwijderd.`); }}>Verwijder</Button>
                     </div>
                   </div>
@@ -605,12 +646,35 @@ export function SuperadminPage() {
                   <div><span>Klant ID</span><strong>{text(billingPayload.mollie_customer_id)}</strong></div>
                 </div>
                 <div className="toolbar-cluster" style={{ marginTop: 12, marginBottom: 12 }}>
-                  <Button variant="secondary" onClick={async () => { if (!selectedTenant) return; const response = await tenantBillingActions.createInvoice.mutateAsync({ seats: detailTenant?.seats_purchased || 1, unit_amount_cents: detailTenant?.price_per_seat_year_cents || 0 }); refreshMessage(String(response?.number || response?.message || 'Factuur aangemaakt.')); }}>Factuur maken</Button>
-                  <Button variant="secondary" onClick={async () => { if (!selectedTenant) return; const response = await tenantBillingActions.manualPayment.mutateAsync({ amount_cents: Number(billingPayload.price_per_seat_year_cents || detailTenant?.price_per_seat_year_cents || 0), type: 'subscription' }); refreshMessage(String(response?.message || 'Handmatige betaling geregistreerd.')); }}>Handmatige betaling</Button>
-                  <Button variant="secondary" onClick={async () => { if (!selectedTenant) return; const response = await tenantBillingActions.changePlan.mutateAsync({ plan: 'professional', seats: Number(detailTenant?.seats_purchased || 1) }); refreshMessage(String(response?.message || 'Plan bijgewerkt.')); }}>Plan sync</Button>
-                  <Button variant="secondary" onClick={async () => { if (!selectedTenant) return; const response = await tenantBillingActions.overrideAccessMode.mutateAsync({ access_mode: 'read_only', reason: 'superadmin override' }); refreshMessage(String(response?.message || 'Access mode aangepast.')); }}>Read-only</Button>
-                  <Button variant="ghost" onClick={async () => { if (!selectedTenant) return; const response = await tenantBillingActions.cancelSubscription.mutateAsync({}); refreshMessage(String(response?.message || 'Abonnement geannuleerd.')); }}>Annuleer abonnement</Button>
+                  <Button variant="secondary" onClick={() => {
+                    setInvoiceForm((current) => ({
+                      ...current,
+                      seats: Number(detailTenant?.seats_purchased || 1),
+                      unit_amount_cents: Number(detailTenant?.price_per_seat_year_cents || 0),
+                    }));
+                    setCreateInvoiceOpen(true);
+                  }}>Factuur maken</Button>
+                  <Button variant="secondary" onClick={() => {
+                    setManualPaymentForm((current) => ({
+                      ...current,
+                      amount_cents: Number(billingPayload.price_per_seat_year_cents || detailTenant?.price_per_seat_year_cents || 0),
+                    }));
+                    setManualPaymentOpen(true);
+                  }}>Handmatige betaling</Button>
+                  <Button variant="secondary" onClick={() => {
+                    setPlanForm({
+                      plan_code: String((billingPayload.plan_code || billingPayload.plan || 'professional')),
+                      seats: Number(detailTenant?.seats_purchased || 1),
+                      status: String(billingPayload.status || 'active'),
+                    });
+                    setChangePlanOpen(true);
+                  }}>Plan wijzigen</Button>
+                  <Button variant="secondary" onClick={() => setAccessOverrideOpen(true)}>Access override</Button>
+                  <Button variant="ghost" onClick={() => setCancelSubscriptionOpen(true)}>Annuleer abonnement</Button>
                 </div>
+                {lastBillingFeedback ? (
+                  <InlineMessage tone="neutral">{`${String(lastBillingFeedback.message || lastBillingFeedback.number || 'Actie verwerkt.')}${lastBillingFeedback.email_preview_subject ? ` · Mail: ${String(lastBillingFeedback.email_preview_subject)}` : ''}${lastBillingFeedback.delivery_mode ? ` · Delivery: ${String(lastBillingFeedback.delivery_mode)}` : ''}${lastBillingFeedback.delivery_outbox_path ? ` · Outbox: ${String(lastBillingFeedback.delivery_outbox_path)}` : ''}${lastBillingFeedback.pdf_url ? ` · PDF: ${String(lastBillingFeedback.pdf_url)}` : ''}`}</InlineMessage>
+                ) : null}
                 <div className="divider" />
                 {tenantInvoices.isLoading ? <LoadingState label="Facturen laden..." /> : null}
                 {tenantInvoices.isError ? <ErrorState title="Facturen niet geladen" description="Controleer of /platform/tenants/{id}/invoices bereikbaar is." /> : null}
@@ -622,6 +686,7 @@ export function SuperadminPage() {
                       { key: 'status', header: 'Status', cell: (row: Record<string, unknown>) => <Badge tone={toneFromStatus(text(row.status, 'neutral'))}>{text(row.status)}</Badge> },
                       { key: 'total', header: 'Totaal', cell: (row: Record<string, unknown>) => formatCents(row.total_cents) },
                       { key: 'balance', header: 'Openstaand', cell: (row: Record<string, unknown>) => formatCents(row.balance_due_cents) },
+                      { key: 'actions', header: 'Acties', cell: (row: Record<string, unknown>) => <Button variant="secondary" onClick={() => setSelectedInvoiceId(String(row.id))}><FileText size={14} /> Detail</Button> },
                     ]}
                     rows={invoiceRows}
                     rowKey={(row: Record<string, unknown>) => String(row.id)}
@@ -671,6 +736,125 @@ export function SuperadminPage() {
         ) : null}
       </Drawer>
 
+      <Drawer open={createInvoiceOpen} title="Factuur aanmaken" onClose={() => setCreateInvoiceOpen(false)}>
+        <form className="page-stack" onSubmit={async (event) => {
+          event.preventDefault();
+          if (!selectedTenant) return;
+          const response = await tenantBillingActions.createInvoice.mutateAsync(invoiceForm as unknown as Record<string, unknown>);
+          applyBillingFeedback(response, 'Factuur aangemaakt.');
+          setCreateInvoiceOpen(false);
+        }}>
+          <label><span>Omschrijving</span><Input value={invoiceForm.description} onChange={(event) => setInvoiceForm((current) => ({ ...current, description: event.target.value }))} required /></label>
+          <label><span>Seats</span><Input type="number" value={invoiceForm.seats} onChange={(event) => setInvoiceForm((current) => ({ ...current, seats: Number(event.target.value || 1) }))} min={1} required /></label>
+          <label><span>Bedrag per seat (cent)</span><Input type="number" value={invoiceForm.unit_amount_cents} onChange={(event) => setInvoiceForm((current) => ({ ...current, unit_amount_cents: Number(event.target.value || 0) }))} min={0} required /></label>
+          <label><span>Vervaldagen</span><Input type="number" value={invoiceForm.due_in_days} onChange={(event) => setInvoiceForm((current) => ({ ...current, due_in_days: Number(event.target.value || 14) }))} min={1} required /></label>
+          <div className="form-actions"><Button type="submit">Aanmaken</Button></div>
+        </form>
+      </Drawer>
+
+      <Drawer open={manualPaymentOpen} title="Handmatige betaling" onClose={() => setManualPaymentOpen(false)}>
+        <form className="page-stack" onSubmit={async (event) => {
+          event.preventDefault();
+          if (!selectedTenant) return;
+          const payload: Record<string, unknown> = {
+            amount_cents: manualPaymentForm.amount_cents,
+            type: manualPaymentForm.type,
+            provider: manualPaymentForm.provider,
+            status: manualPaymentForm.status,
+          };
+          if (manualPaymentForm.invoice_id) payload.invoice_id = manualPaymentForm.invoice_id;
+          const response = await tenantBillingActions.manualPayment.mutateAsync(payload);
+          applyBillingFeedback(response, 'Handmatige betaling geregistreerd.');
+          setManualPaymentOpen(false);
+        }}>
+          <label><span>Bedrag (cent)</span><Input type="number" value={manualPaymentForm.amount_cents} onChange={(event) => setManualPaymentForm((current) => ({ ...current, amount_cents: Number(event.target.value || 0) }))} min={1} required /></label>
+          <label><span>Type</span><Select value={manualPaymentForm.type} onChange={(event) => setManualPaymentForm((current) => ({ ...current, type: event.target.value }))}><option value="subscription">subscription</option><option value="invoice">invoice</option><option value="manual">manual</option></Select></label>
+          <label><span>Provider</span><Select value={manualPaymentForm.provider} onChange={(event) => setManualPaymentForm((current) => ({ ...current, provider: event.target.value }))}><option value="manual">manual</option><option value="mollie">mollie</option></Select></label>
+          <label><span>Status</span><Select value={manualPaymentForm.status} onChange={(event) => setManualPaymentForm((current) => ({ ...current, status: event.target.value }))}><option value="paid">paid</option><option value="pending">pending</option></Select></label>
+          <label><span>Factuur ID (optioneel)</span><Input value={manualPaymentForm.invoice_id} onChange={(event) => setManualPaymentForm((current) => ({ ...current, invoice_id: event.target.value }))} /></label>
+          <div className="form-actions"><Button type="submit">Registreren</Button></div>
+        </form>
+      </Drawer>
+
+      <Drawer open={changePlanOpen} title="Abonnement wijzigen" onClose={() => setChangePlanOpen(false)}>
+        <form className="page-stack" onSubmit={async (event) => {
+          event.preventDefault();
+          if (!selectedTenant) return;
+          const response = await tenantBillingActions.changePlan.mutateAsync(planForm as unknown as Record<string, unknown>);
+          applyBillingFeedback(response, 'Abonnement bijgewerkt.');
+          setChangePlanOpen(false);
+        }}>
+          <label><span>Plan code</span><Input value={planForm.plan_code} onChange={(event) => setPlanForm((current) => ({ ...current, plan_code: event.target.value }))} required /></label>
+          <label><span>Seats</span><Input type="number" value={planForm.seats} onChange={(event) => setPlanForm((current) => ({ ...current, seats: Number(event.target.value || 1) }))} min={1} required /></label>
+          <label><span>Status</span><Select value={planForm.status} onChange={(event) => setPlanForm((current) => ({ ...current, status: event.target.value }))}><option value="active">active</option><option value="trialing">trialing</option><option value="past_due">past_due</option><option value="suspended">suspended</option><option value="cancelled">cancelled</option><option value="expired">expired</option></Select></label>
+          <div className="form-actions"><Button type="submit">Opslaan</Button></div>
+        </form>
+      </Drawer>
+
+      <Drawer open={accessOverrideOpen} title="Access mode override" onClose={() => setAccessOverrideOpen(false)}>
+        <form className="page-stack" onSubmit={async (event) => {
+          event.preventDefault();
+          if (!selectedTenant) return;
+          const response = await tenantBillingActions.overrideAccessMode.mutateAsync(accessOverrideForm as unknown as Record<string, unknown>);
+          applyBillingFeedback(response, 'Access mode bijgewerkt.');
+          setAccessOverrideOpen(false);
+        }}>
+          <label><span>Access mode</span><Select value={accessOverrideForm.access_mode} onChange={(event) => setAccessOverrideForm((current) => ({ ...current, access_mode: event.target.value }))}><option value="full_access">full_access</option><option value="grace_period">grace_period</option><option value="read_only">read_only</option><option value="blocked">blocked</option></Select></label>
+          <label><span>Status</span><Select value={accessOverrideForm.status} onChange={(event) => setAccessOverrideForm((current) => ({ ...current, status: event.target.value }))}><option value="active">active</option><option value="trialing">trialing</option><option value="past_due">past_due</option><option value="suspended">suspended</option><option value="cancelled">cancelled</option><option value="expired">expired</option></Select></label>
+          <label><span>Reden</span><Input value={accessOverrideForm.reason} onChange={(event) => setAccessOverrideForm((current) => ({ ...current, reason: event.target.value }))} required /></label>
+          <div className="form-actions"><Button type="submit">Toepassen</Button></div>
+        </form>
+      </Drawer>
+
+      <Drawer open={Boolean(selectedInvoiceId)} title="Factuurdetail en acties" onClose={() => setSelectedInvoiceId(null)}>
+        {selectedInvoiceDetail.isLoading ? <LoadingState label="Factuurdetail laden..." /> : null}
+        {selectedInvoiceDetail.isError ? <ErrorState title="Factuurdetail niet geladen" description="Controleer /platform/tenants/{id}/invoices/{invoice_id}." /> : null}
+        {selectedInvoiceDetail.data ? (
+          <div className="page-stack">
+            <div className="detail-grid">
+              <div><span>Factuur</span><strong>{text(selectedInvoiceDetail.data.number || selectedInvoiceDetail.data.id)}</strong></div>
+              <div><span>Status</span><strong>{text(selectedInvoiceDetail.data.status)}</strong></div>
+              <div><span>Totaal</span><strong>{formatCents(selectedInvoiceDetail.data.total_cents)}</strong></div>
+              <div><span>Openstaand</span><strong>{formatCents(selectedInvoiceDetail.data.balance_due_cents)}</strong></div>
+            </div>
+            <DataTable
+              columns={[
+                { key: 'description', header: 'Omschrijving', cell: (row: Record<string, unknown>) => text(row.description) },
+                { key: 'quantity', header: 'Aantal', cell: (row: Record<string, unknown>) => text(row.quantity) },
+                { key: 'unit_amount_cents', header: 'Prijs', cell: (row: Record<string, unknown>) => formatCents(row.unit_amount_cents) },
+                { key: 'line_total_cents', header: 'Regel', cell: (row: Record<string, unknown>) => formatCents(row.line_total_cents) },
+              ]}
+              rows={Array.isArray(selectedInvoiceDetail.data.lines) ? selectedInvoiceDetail.data.lines as Record<string, unknown>[] : []}
+              rowKey={(row: Record<string, unknown>) => String(row.id || row.description || '')}
+            />
+            <div className="toolbar-cluster">
+              <Button variant="secondary" onClick={async () => {
+                if (!selectedInvoiceId) return;
+                const response = await tenantBillingActions.sendInvoice.mutateAsync(selectedInvoiceId);
+                applyBillingFeedback(response, 'Factuur verzonden.');
+              }}><Mail size={14} /> Verzenden</Button>
+              <Button variant="secondary" onClick={() => setCreditInvoiceId(selectedInvoiceId)}><CreditCard size={14} /> Crediteren</Button>
+              {selectedInvoiceDetail.data.pdf_url ? <a href={String(selectedInvoiceDetail.data.pdf_url)} target="_blank" rel="noreferrer"><Button><Download size={14} /> PDF</Button></a> : null}
+            </div>
+            {lastBillingFeedback?.email_preview_text ? <InlineMessage tone="neutral">{String(lastBillingFeedback.email_preview_text)}</InlineMessage> : null}
+          </div>
+        ) : null}
+      </Drawer>
+
+      <Drawer open={Boolean(creditInvoiceId)} title="Creditfactuur verwerken" onClose={() => setCreditInvoiceId(null)}>
+        <form className="page-stack" onSubmit={async (event) => {
+          event.preventDefault();
+          if (!creditInvoiceId) return;
+          const response = await tenantBillingActions.creditInvoice.mutateAsync({ invoiceId: creditInvoiceId, payload: { reason: creditReason } });
+          applyBillingFeedback(response, 'Credit verwerkt.');
+          setCreditInvoiceId(null);
+          setSelectedInvoiceId(null);
+        }}>
+          <label><span>Reden</span><Input value={creditReason} onChange={(event) => setCreditReason(event.target.value)} required /></label>
+          <div className="form-actions"><Button type="submit">Crediteren</Button></div>
+        </form>
+      </Drawer>
+
       <Drawer open={createUserOpen} title="Nieuwe tenant-user" onClose={() => setCreateUserOpen(false)}>
         <form className="page-stack" onSubmit={handleCreateUser}>
           <label>
@@ -695,6 +879,19 @@ export function SuperadminPage() {
           </div>
         </form>
       </Drawer>
+
+      <ConfirmActionDialog
+        open={cancelSubscriptionOpen}
+        title="Abonnement annuleren"
+        description="De tenant gaat naar cancelled of expired afhankelijk van de keuze in de backend."
+        confirmLabel="Annuleer abonnement"
+        onConfirm={async () => {
+          const response = await tenantBillingActions.cancelSubscription.mutateAsync({});
+          applyBillingFeedback(response, 'Abonnement geannuleerd.');
+          setCancelSubscriptionOpen(false);
+        }}
+        onClose={() => setCancelSubscriptionOpen(false)}
+      />
 
       <ConfirmActionDialog
         open={Boolean(pendingAction)}

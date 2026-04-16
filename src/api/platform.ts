@@ -6,7 +6,6 @@ import type {
   TenantCreateInput,
   TenantPatchInput,
   TenantUser,
-  TenantUserAction,
   TenantUserCreateInput,
   TenantUserPatchInput,
 } from '@/types/domain';
@@ -78,7 +77,7 @@ export function getTenantUsers(tenantId: string | number) {
 }
 
 export function createTenantUser(tenantId: string | number, payload: TenantUserCreateInput) {
-  return client.post<TenantUserAction>(`/platform/tenants/${tenantId}/users`, payload);
+  return client.post<TenantUser>(`/platform/tenants/${tenantId}/users`, payload);
 }
 
 export function patchTenantUser(tenantId: string | number, userId: string, payload: TenantUserPatchInput) {
