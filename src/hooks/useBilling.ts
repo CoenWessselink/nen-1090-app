@@ -2,11 +2,15 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   changeTenantPlan,
   createPaymentLink,
+  downloadTenantInvoicePdf,
   getTenantBillingPreview,
   getTenantBillingStatus,
-  getTenantInvoiceDetail,
+  getTenantBillingStatusPlus,
+  getTenantInvoice,
   getTenantInvoices,
+  openTenantInvoicePdf,
 } from '@/api/billing';
+import { normalizeListResponse } from '@/utils/api';
 
 export function useBillingStatus(enabled = true) {
   return useQuery({
@@ -16,10 +20,18 @@ export function useBillingStatus(enabled = true) {
   });
 }
 
-export function useBillingPreview(targetSeats: number, enabled = true) {
+export function useBillingStatusPlus(enabled = true) {
+  return useQuery({
+    queryKey: ['billing-status-plus'],
+    queryFn: getTenantBillingStatusPlus,
+    enabled,
+  });
+}
+
+export function useBillingPreview(targetSeats?: number, enabled = true) {
   return useQuery({
     queryKey: ['billing-preview', targetSeats],
-    queryFn: () => getTenantBillingPreview({ target_seats: targetSeats }),
+    queryFn: () => getTenantBillingPreview(targetSeats),
     enabled,
   });
 }
@@ -27,8 +39,16 @@ export function useBillingPreview(targetSeats: number, enabled = true) {
 export function useBillingInvoices(enabled = true) {
   return useQuery({
     queryKey: ['billing-invoices'],
-    queryFn: getTenantInvoices,
+    queryFn: async () => normalizeListResponse(await getTenantInvoices()),
     enabled,
+  });
+}
+
+export function useBillingInvoice(invoiceId?: string | number, enabled = true) {
+  return useQuery({
+    queryKey: ['billing-invoice', invoiceId],
+    queryFn: () => getTenantInvoice(String(invoiceId)),
+    enabled: enabled && Boolean(invoiceId),
   });
 }
 
@@ -38,9 +58,9 @@ export function useChangePlan() {
     mutationFn: (payload: Record<string, unknown>) => changeTenantPlan(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['billing-status'] });
+      queryClient.invalidateQueries({ queryKey: ['billing-status-plus'] });
       queryClient.invalidateQueries({ queryKey: ['billing-preview'] });
       queryClient.invalidateQueries({ queryKey: ['billing-invoices'] });
-      queryClient.invalidateQueries({ queryKey: ['tenant-billing-invoices'] });
     },
   });
 }
@@ -51,30 +71,9 @@ export function useCreatePaymentLink() {
   });
 }
 
-export function useTenantBillingInvoices() {
-  return useQuery({
-    queryKey: ['tenant-billing-invoices'],
-    queryFn: () => getTenantInvoices() as Promise<{ items?: Record<string, unknown>[] }>,
-  });
-}
-
-export function useTenantBillingInvoiceDetail(invoiceId?: string) {
-  return useQuery({
-    queryKey: ['tenant-billing-invoice-detail', invoiceId],
-    queryFn: () => getTenantInvoiceDetail(String(invoiceId)),
-    enabled: Boolean(invoiceId),
-  });
-}
-
-export function useTenantBillingMutations() {
-  const queryClient = useQueryClient();
+export function useInvoicePdfActions() {
   return {
-    changePlan: useMutation({
-      mutationFn: (payload: Record<string, unknown>) => changeTenantPlan(payload),
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['billing-status'] });
-        queryClient.invalidateQueries({ queryKey: ['tenant-billing-invoices'] });
-      },
-    }),
+    downloadInvoicePdf: useMutation({ mutationFn: (invoiceId: string | number) => downloadTenantInvoicePdf(invoiceId) }),
+    openInvoicePdf: useMutation({ mutationFn: (invoiceId: string | number) => openTenantInvoicePdf(invoiceId) }),
   };
 }
