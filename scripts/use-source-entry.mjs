@@ -16,4 +16,14 @@ if (missing.length) {
   process.exit(1);
 }
 
+const sourceIndex = path.join(root, 'index.source.html');
+if (fs.existsSync(sourceIndex)) {
+  const desired = fs.readFileSync(sourceIndex, 'utf8');
+  const current = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+  if (current !== desired) {
+    fs.writeFileSync(path.join(root, 'index.html'), desired, 'utf8');
+    console.log('use-source-entry.mjs: index.html synced from index.source.html');
+  }
+}
+
 console.log('use-source-entry.mjs: source entry check OK');
