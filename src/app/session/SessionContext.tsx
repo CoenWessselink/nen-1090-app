@@ -36,27 +36,11 @@ type SessionContextValue = {
 
 const SessionContext = createContext<SessionContextValue | null>(null);
 
-const superadminPermissions: AccessPermission[] = [
-  'dashboard.read',
-  'projects.read',
-  'projects.write',
-  'welds.read',
-  'welds.write',
-  'documents.read',
-  'documents.write',
-  'settings.read',
-  'settings.write',
-  'billing.read',
-  'billing.manage',
-  'tenants.read',
-  'tenants.impersonate',
-];
-
 const permissionMap: Record<string, AccessPermission[]> = {
-  SUPERADMIN: superadminPermissions,
-  SUPER_ADMIN: superadminPermissions,
-  PLATFORMADMIN: superadminPermissions,
-  PLATFORM_ADMIN: superadminPermissions,
+  SUPERADMIN: ['dashboard.read', 'projects.read', 'projects.write', 'welds.read', 'welds.write', 'documents.read', 'documents.write', 'settings.read', 'settings.write', 'billing.read', 'billing.manage', 'tenants.read', 'tenants.impersonate'],
+  SUPER_ADMIN: ['dashboard.read', 'projects.read', 'projects.write', 'welds.read', 'welds.write', 'documents.read', 'documents.write', 'settings.read', 'settings.write', 'billing.read', 'billing.manage', 'tenants.read', 'tenants.impersonate'],
+  PLATFORMADMIN: ['dashboard.read', 'projects.read', 'projects.write', 'welds.read', 'welds.write', 'documents.read', 'documents.write', 'settings.read', 'settings.write', 'billing.read', 'billing.manage', 'tenants.read', 'tenants.impersonate'],
+  PLATFORM_ADMIN: ['dashboard.read', 'projects.read', 'projects.write', 'welds.read', 'welds.write', 'documents.read', 'documents.write', 'settings.read', 'settings.write', 'billing.read', 'billing.manage', 'tenants.read', 'tenants.impersonate'],
   ADMIN: ['dashboard.read', 'projects.read', 'projects.write', 'welds.read', 'welds.write', 'documents.read', 'documents.write', 'settings.read', 'settings.write', 'billing.read', 'tenants.read'],
   TENANTADMIN: ['dashboard.read', 'projects.read', 'projects.write', 'welds.read', 'welds.write', 'documents.read', 'documents.write', 'settings.read', 'settings.write', 'billing.read'],
   TENANTUSER: ['dashboard.read', 'projects.read', 'welds.read', 'documents.read', 'settings.read'],
@@ -138,7 +122,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
                 email: refreshed.user.email,
                 tenant: refreshed.user.tenant || '',
                 tenantId: refreshed.user.tenant_id || '',
-                role: refreshed.user.role || '',
+                role: refreshed.user.canonical_role || refreshed.user.role || '',
                 name: refreshed.user.name || '',
               };
               setSession(

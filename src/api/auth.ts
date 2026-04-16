@@ -8,8 +8,6 @@ function normalizeUser(input: any, fallbackTenant = '') {
     tenant: String(input?.tenant || input?.tenant_name || fallbackTenant || ''),
     tenant_id: input?.tenant_id ?? input?.tenantId ?? '',
     name: String(input?.name || input?.full_name || input?.display_name || ''),
-    canonical_role: String(input?.canonical_role || input?.role || input?.user_role || ''),
-    is_platform_admin: Boolean(input?.is_platform_admin),
   };
 }
 

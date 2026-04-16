@@ -21,7 +21,7 @@ import { useExitImpersonation, useImpersonateTenant, useTenants } from '@/hooks/
 import { useTenantAudit, useTenantBillingPanel, useTenantDetail, useTenantUsers } from '@/hooks/useTenantAdmin';
 import { useSystemHealth } from '@/hooks/useSystemHealth';
 import { useTenantBillingActions, useTenantBillingDetail, useTenantPayments } from '@/hooks/usePlatformBilling';
-import type { AuditSummary, BillingPayment, PlatformSummary, Tenant, TenantUser } from '@/types/domain';
+import type { Tenant } from '@/types/domain';
 import { formatDatetime, toneFromStatus } from '@/utils/format';
 
 const detailTabs = [
@@ -34,11 +34,6 @@ const detailTabs = [
 
 function numberOrZero(value: unknown) {
   return typeof value === 'number' ? value : Number(value || 0);
-}
-
-function text(value: unknown, fallback = '—') {
-  if (value === undefined || value === null || value === '') return fallback;
-  return String(value);
 }
 
 export function SuperadminPage() {
@@ -60,7 +55,7 @@ export function SuperadminPage() {
   const [selectedPlan, setSelectedPlan] = useState('enterprise');
   const [pendingBillingAction, setPendingBillingAction] = useState<'change-plan' | 'manual-payment' | 'cancel-subscription' | null>(null);
 
-  const tenantRows: Tenant[] = tenants.data?.items || [];
+  const tenantRows = tenants.data?.items || [];
   const tenantDetail = useTenantDetail(selectedTenant?.id, Boolean(selectedTenant));
   const tenantUsers = useTenantUsers(selectedTenant?.id, Boolean(selectedTenant));
   const tenantAudit = useTenantAudit(selectedTenant?.id, Boolean(selectedTenant));
@@ -94,19 +89,10 @@ export function SuperadminPage() {
   }, [tenantRows]);
 
   const columns: ColumnDef<Tenant>[] = [
-    { key: 'name', header: 'Tenant', sortable: true, cell: (row) => <strong>{text(row.name, text(row.id))}</strong> },
-    {
-      key: 'subscription_status',
-      header: 'Status',
-      sortable: true,
-      cell: (row) => (
-        <Badge tone={toneFromStatus(text(row.subscription_status, 'neutral'))}>
-          {text(row.subscription_status, 'Onbekend')}
-        </Badge>
-      ),
-    },
-    { key: 'user_count', header: 'Gebruikers', sortable: true, cell: (row) => text(row.user_count) },
-    { key: 'created_at', header: 'Aangemaakt', cell: (row) => text(row.created_at) },
+    { key: 'name', header: 'Tenant', sortable: true, cell: (row) => <strong>{row.name || row.id}</strong> },
+    { key: 'subscription_status', header: 'Status', sortable: true, cell: (row) => <Badge tone={toneFromStatus(String(row.subscription_status || ''))}>{String(row.subscription_status || 'Onbekend')}</Badge> },
+    { key: 'user_count', header: 'Gebruikers', sortable: true, cell: (row) => row.user_count || '—' },
+    { key: 'created_at', header: 'Aangemaakt', cell: (row) => String(row.created_at || '—') },
     {
       key: 'actions',
       header: 'Acties',
@@ -132,9 +118,8 @@ export function SuperadminPage() {
                   pushNotification({ title: 'Tenant-view actief', description: `Je kijkt nu mee in ${row.name || row.id}.`, tone: 'info' });
                 }
               } catch (error) {
-                const description = error instanceof Error ? error.message : 'Onbekende fout';
-                setMessage(description);
-                pushNotification({ title: 'Tenant-view mislukt', description, tone: 'error' });
+                setMessage(error instanceof Error ? error.message : 'Tenant-view starten mislukt.');
+                pushNotification({ title: 'Tenant-view mislukt', description: error instanceof Error ? error.message : 'Onbekende fout', tone: 'error' });
               }
             }}
           >
@@ -145,17 +130,10 @@ export function SuperadminPage() {
     },
   ];
 
-  const userRows: TenantUser[] = tenantUsers.data?.items || [];
-  const auditRows: AuditSummary[] = tenantAudit.data?.items || [];
-  const billingPayload: PlatformSummary = {
-    ...(tenantBilling.data || {}),
-    ...((tenantBillingDetail.data || {}) as Record<string, unknown>),
-  };
-  const paymentRows: BillingPayment[] = tenantPayments.data?.items || [];
-  const detailPayload: Tenant = {
-    ...(selectedTenant || { id: '' }),
-    ...(tenantDetail.data || {}),
-  };
+  const userRows = tenantUsers.data?.items || [];
+  const auditRows = tenantAudit.data?.items || [];
+  const billingPayload = ({ ...(tenantBilling.data || {}), ...(tenantBillingDetail.data || {}) }) as Record<string, unknown>;
+  const detailPayload = ((tenantDetail.data || selectedTenant || {}) as Record<string, unknown>);
 
   return (
     <div className="page-stack">
@@ -233,18 +211,18 @@ export function SuperadminPage() {
             {!tenantDetail.isLoading && !tenantDetail.isError ? (
               <>
                 <div className="kpi-strip">
-                  <div className="kpi-card"><span>Naam</span><strong>{text(detailPayload.name)}</strong></div>
-                  <div className="kpi-card"><span>Status</span><strong>{text(detailPayload.subscription_status)}</strong></div>
-                  <div className="kpi-card"><span>Gebruikers</span><strong>{text(detailPayload.user_count)}</strong></div>
-                  <div className="kpi-card"><span>Tenant key</span><strong>{text(detailPayload.tenant_key || detailPayload.slug)}</strong></div>
+                  <div className="kpi-card"><span>Naam</span><strong>{String(detailPayload.name || selectedTenant?.name || '—')}</strong></div>
+                  <div className="kpi-card"><span>Status</span><strong>{String(detailPayload.subscription_status || '—')}</strong></div>
+                  <div className="kpi-card"><span>Gebruikers</span><strong>{String(detailPayload.user_count || selectedTenant?.user_count || '—')}</strong></div>
+                  <div className="kpi-card"><span>Tenant key</span><strong>{String(detailPayload.tenant_key || detailPayload.slug || '—')}</strong></div>
                 </div>
                 <div className="detail-grid">
-                  <div><span>Naam</span><strong>{text(detailPayload.name)}</strong></div>
-                  <div><span>ID</span><strong>{text(detailPayload.id)}</strong></div>
-                  <div><span>Status</span><strong>{text(detailPayload.subscription_status)}</strong></div>
-                  <div><span>Aangemaakt</span><strong>{formatDatetime(text(detailPayload.created_at, '')) || '—'}</strong></div>
-                  <div><span>Gebruikers</span><strong>{text(detailPayload.user_count)}</strong></div>
-                  <div><span>Tenant key</span><strong>{text(detailPayload.tenant_key || detailPayload.slug)}</strong></div>
+                  <div><span>Naam</span><strong>{String(detailPayload.name || selectedTenant?.name || '—')}</strong></div>
+                  <div><span>ID</span><strong>{String(detailPayload.id || selectedTenant?.id || '—')}</strong></div>
+                  <div><span>Status</span><strong>{String(detailPayload.subscription_status || '—')}</strong></div>
+                  <div><span>Aangemaakt</span><strong>{formatDatetime(String(detailPayload.created_at || '')) || '—'}</strong></div>
+                  <div><span>Gebruikers</span><strong>{String(detailPayload.user_count || selectedTenant?.user_count || '—')}</strong></div>
+                  <div><span>Tenant key</span><strong>{String(detailPayload.tenant_key || detailPayload.slug || '—')}</strong></div>
                 </div>
               </>
             ) : null}
@@ -259,15 +237,18 @@ export function SuperadminPage() {
             {!tenantUsers.isLoading && !tenantUsers.isError && userRows.length === 0 ? <EmptyState title="Geen gebruikers" description="Geen users terug uit de tenant-users API." /> : null}
             {!tenantUsers.isLoading && !tenantUsers.isError && userRows.length > 0 ? (
               <div className="list-stack compact-list">
-                {userRows.map((row, index) => (
-                  <div className="list-row" key={String(row.id || index)}>
-                    <div>
-                      <strong>{text(row.email || row.name, `Gebruiker ${index + 1}`)}</strong>
-                      <div className="list-subtle">{text(row.name || row.display_name, '')}</div>
+                {userRows.map((row, index) => {
+                  const record = row as Record<string, unknown>;
+                  return (
+                    <div className="list-row" key={String(record.id || index)}>
+                      <div>
+                        <strong>{String(record.email || record.name || `Gebruiker ${index + 1}`)}</strong>
+                        <div className="list-subtle">{String(record.name || record.display_name || '')}</div>
+                      </div>
+                      <Badge tone={toneFromStatus(String(record.role || 'neutral'))}>{String(record.role || 'Onbekend')}</Badge>
                     </div>
-                    <Badge tone={toneFromStatus(text(row.role, 'neutral'))}>{text(row.role, 'Onbekend')}</Badge>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : null}
           </Card>
@@ -281,15 +262,18 @@ export function SuperadminPage() {
             {!tenantAudit.isLoading && !tenantAudit.isError && auditRows.length === 0 ? <EmptyState title="Geen auditregels" description="De audit-endpoint gaf nog geen regels terug." /> : null}
             {!tenantAudit.isLoading && !tenantAudit.isError && auditRows.length > 0 ? (
               <div className="timeline-list">
-                {auditRows.map((row, index) => (
-                  <div className="timeline-item" key={String(row.id || index)}>
-                    <div className="timeline-dot" />
-                    <div>
-                      <strong>{text(row.action || row.title, `Auditregel ${index + 1}`)}</strong>
-                      <div className="list-subtle">{text(row.actor || row.user, '')} · {formatDatetime(text(row.created_at || row.timestamp, ''))}</div>
+                {auditRows.map((row, index) => {
+                  const record = row as Record<string, unknown>;
+                  return (
+                    <div className="timeline-item" key={String(record.id || index)}>
+                      <div className="timeline-dot" />
+                      <div>
+                        <strong>{String(record.action || record.title || `Auditregel ${index + 1}`)}</strong>
+                        <div className="list-subtle">{String(record.actor || record.user || '')} · {formatDatetime(String(record.created_at || record.timestamp || ''))}</div>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : null}
           </Card>
@@ -303,10 +287,10 @@ export function SuperadminPage() {
             {!tenantBilling.isLoading && !tenantBillingDetail.isLoading && !tenantBilling.isError && !tenantBillingDetail.isError ? (
               <>
                 <div className="detail-grid">
-                  <div><span>Plan</span><strong>{text(billingPayload.plan || billingPayload.subscription_plan)}</strong></div>
-                  <div><span>Status</span><strong>{text(billingPayload.status || billingPayload.subscription_status)}</strong></div>
-                  <div><span>Volgende factuur</span><strong>{formatDatetime(text(billingPayload.next_billing_date || billingPayload.renewal_date, '')) || '—'}</strong></div>
-                  <div><span>Openstaand</span><strong>{text(billingPayload.balance_due || billingPayload.amount_due)}</strong></div>
+                  <div><span>Plan</span><strong>{String(billingPayload.plan || billingPayload.subscription_plan || '—')}</strong></div>
+                  <div><span>Status</span><strong>{String(billingPayload.status || billingPayload.subscription_status || '—')}</strong></div>
+                  <div><span>Volgende factuur</span><strong>{formatDatetime(String(billingPayload.next_billing_date || billingPayload.renewal_date || '')) || '—'}</strong></div>
+                  <div><span>Openstaand</span><strong>{String(billingPayload.balance_due || billingPayload.amount_due || '—')}</strong></div>
                 </div>
                 <div className="toolbar-cluster" style={{ marginTop: 16 }}>
                   <Select value={selectedPlan} onChange={(event) => setSelectedPlan(event.target.value)}>
@@ -325,21 +309,21 @@ export function SuperadminPage() {
                 <div className="section-title-row" style={{ marginTop: 16 }}><h3>Payments</h3></div>
                 {tenantPayments.isLoading ? <LoadingState label="Payments laden..." /> : null}
                 {tenantPayments.isError ? <ErrorState title="Payments niet geladen" description="Controleer of /platform/tenants/{id}/payments bereikbaar is." /> : null}
-                {!tenantPayments.isLoading && !tenantPayments.isError && paymentRows.length === 0 ? <EmptyState title="Geen payments" description="Er zijn nog geen payments beschikbaar voor deze tenant." /> : null}
-                {!tenantPayments.isLoading && !tenantPayments.isError && paymentRows.length > 0 ? (
+                {!tenantPayments.isLoading && !tenantPayments.isError && (tenantPayments.data?.items || []).length === 0 ? <EmptyState title="Geen payments" description="Er zijn nog geen payments beschikbaar voor deze tenant." /> : null}
+                {!tenantPayments.isLoading && !tenantPayments.isError && (tenantPayments.data?.items || []).length > 0 ? (
                   <DataTable
                     columns={[
-                      { key: 'id', header: 'Payment', cell: (row: BillingPayment) => <strong>{text(row.id || row.reference)}</strong> },
-                      { key: 'amount', header: 'Bedrag', cell: (row: BillingPayment) => text(row.amount || row.total) },
-                      { key: 'currency', header: 'Valuta', cell: (row: BillingPayment) => text(row.currency, 'EUR') },
-                      { key: 'status', header: 'Status', cell: (row: BillingPayment) => <Badge tone={toneFromStatus(text(row.status, 'neutral'))}>{text(row.status, 'Onbekend')}</Badge> },
-                      { key: 'provider', header: 'Provider', cell: (row: BillingPayment) => text(row.provider || row.method) },
-                      { key: 'created_at', header: 'Aangemaakt', cell: (row: BillingPayment) => formatDatetime(text(row.created_at || row.date, '')) || '—' },
+                      { key: 'id', header: 'Payment', cell: (row: Record<string, unknown>) => <strong>{String(row.id || row.reference || '—')}</strong> },
+                      { key: 'amount', header: 'Bedrag', cell: (row: Record<string, unknown>) => String(row.amount || row.total || '—') },
+                      { key: 'currency', header: 'Valuta', cell: (row: Record<string, unknown>) => String(row.currency || 'EUR') },
+                      { key: 'status', header: 'Status', cell: (row: Record<string, unknown>) => <Badge tone={toneFromStatus(String(row.status || 'neutral'))}>{String(row.status || 'Onbekend')}</Badge> },
+                      { key: 'provider', header: 'Provider', cell: (row: Record<string, unknown>) => String(row.provider || row.method || '—') },
+                      { key: 'created_at', header: 'Aangemaakt', cell: (row: Record<string, unknown>) => formatDatetime(String(row.created_at || row.date || '')) || '—' },
                     ]}
-                    rows={paymentRows}
-                    rowKey={(row) => String(row.id || row.reference || '')}
+                    rows={tenantPayments.data?.items || []}
+                    rowKey={(row) => String(row.id || row.reference || Math.random())}
                     page={paymentsPage}
-                    total={tenantPayments.data?.total || paymentRows.length}
+                    total={tenantPayments.data?.total || (tenantPayments.data?.items || []).length}
                     pageSize={10}
                     onPageChange={setPaymentsPage}
                   />
@@ -355,7 +339,7 @@ export function SuperadminPage() {
             <div className="checklist-grid">
               <div className="checklist-item"><strong>Tenantstatus zichtbaar</strong><span>Status wordt uit bestaande payload gelezen.</span></div>
               <div className="checklist-item"><strong>Tenant-view expliciet</strong><span>Meekijken vereist een zichtbare knop en banner.</span></div>
-              <div className="checklist-item"><strong>RBAC afgedwongen</strong><span>SUPERADMIN, SUPER_ADMIN, ADMIN en PLATFORM_ADMIN kunnen dit scherm openen.</span></div>
+              <div className="checklist-item"><strong>RBAC afgedwongen</strong><span>Alleen SUPERADMIN/ADMIN kunnen dit scherm openen.</span></div>
               <div className="checklist-item"><strong>Geen stille impersonatie</strong><span>Exit loopt via banner en expliciete actie.</span></div>
             </div>
           </Card>

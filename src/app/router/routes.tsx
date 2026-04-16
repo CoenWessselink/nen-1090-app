@@ -96,14 +96,7 @@ export const routerConfig = [
       { path: 'billing', element: <BillingPage /> },
       { path: 'instellingen', element: <InstellingenPage /> },
       { path: 'instellingen/templates', element: <InspectionTemplatesPage /> },
-      {
-        path: 'superadmin',
-        element: (
-          <RoleGuard allow={SUPERADMIN_ALLOWED_ROLES}>
-            <SuperadminPage />
-          </RoleGuard>
-        ),
-      },
+      { path: 'superadmin', element: <RoleGuard allow={SUPERADMIN_ALLOWED_ROLES}><SuperadminPage /></RoleGuard> },
     ],
   },
   { path: '*', element: <Navigate to="/dashboard" replace /> },

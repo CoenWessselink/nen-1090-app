@@ -1,18 +1,8 @@
 import { useAuthStore } from '@/app/store/auth-store';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { LoginResponse, ListParams } from '@/types/api';
-import {
-  activateTenant,
-  deactivateTenant,
-  exitImpersonation,
-  getPlatformSummary,
-  getTenants,
-  impersonateTenant,
-  reactivateTenant,
-  searchTenants,
-  suspendTenant,
-} from '@/api/platform';
 import { normalizeListResponse } from '@/utils/api';
+import type { LoginResponse, ListParams } from '@/types/api';
+import { activateTenant, deactivateTenant, exitImpersonation, getPlatformSummary, getTenants, impersonateTenant, reactivateTenant, searchTenants, suspendTenant } from '@/api/platform';
 
 export function usePlatformSummary(enabled = true) {
   return useQuery({
@@ -30,11 +20,11 @@ export function useTenants(enabled = true, params?: ListParams) {
   });
 }
 
-export function useTenantSearch(enabled = true, params?: ListParams) {
+export function useTenantSearch(query: string, enabled = true, params?: ListParams) {
   return useQuery({
-    queryKey: ['tenant-search', params],
-    queryFn: async () => normalizeListResponse(await searchTenants(params)),
-    enabled,
+    queryKey: ['tenant-search', query, params],
+    queryFn: async () => normalizeListResponse(await searchTenants(query, params)),
+    enabled: enabled && query.trim().length > 0,
   });
 }
 
@@ -57,19 +47,19 @@ export function useExitImpersonation() {
   });
 }
 
-export function useTenantStatusActions() {
+function useTenantStatusMutation(mutationKey: string[], mutationFn: (tenantId: string | number) => Promise<Record<string, unknown>>) {
   const queryClient = useQueryClient();
-  const refresh = () => {
-    queryClient.invalidateQueries({ queryKey: ['tenants'] });
-    queryClient.invalidateQueries({ queryKey: ['tenant-search'] });
-    queryClient.invalidateQueries({ queryKey: ['tenant-detail'] });
-    queryClient.invalidateQueries({ queryKey: ['platform-summary'] });
-  };
-
-  return {
-    activate: useMutation({ mutationFn: (tenantId: string | number) => activateTenant(tenantId), onSuccess: refresh }),
-    deactivate: useMutation({ mutationFn: (tenantId: string | number) => deactivateTenant(tenantId), onSuccess: refresh }),
-    suspend: useMutation({ mutationFn: (tenantId: string | number) => suspendTenant(tenantId), onSuccess: refresh }),
-    reactivate: useMutation({ mutationFn: (tenantId: string | number) => reactivateTenant(tenantId), onSuccess: refresh }),
-  };
+  return useMutation({
+    mutationKey,
+    mutationFn,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tenants'] });
+      queryClient.invalidateQueries({ queryKey: ['platform-summary'] });
+    },
+  });
 }
+
+export function useActivateTenant() { return useTenantStatusMutation(['tenant-activate'], activateTenant); }
+export function useDeactivateTenant() { return useTenantStatusMutation(['tenant-deactivate'], deactivateTenant); }
+export function useSuspendTenant() { return useTenantStatusMutation(['tenant-suspend'], suspendTenant); }
+export function useReactivateTenant() { return useTenantStatusMutation(['tenant-reactivate'], reactivateTenant); }

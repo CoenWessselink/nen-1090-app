@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { getTenant, getTenantAudit, getTenantBilling, getTenantUsers } from '@/api/platform';
 import { normalizeListResponse } from '@/utils/api';
-import type { AuditSummary, PlatformSummary, Tenant, TenantUser } from '@/types/domain';
+import type { AuditSummary, Tenant, TenantUser } from '@/types/domain';
 
 export function useTenantDetail(tenantId?: string | number, enabled = true) {
   return useQuery<Tenant>({
@@ -34,7 +34,7 @@ export function useTenantAudit(tenantId?: string | number, enabled = true) {
 }
 
 export function useTenantBillingPanel(tenantId?: string | number, enabled = true) {
-  return useQuery<PlatformSummary>({
+  return useQuery<Record<string, unknown>>({
     queryKey: ['tenant-billing-panel', tenantId],
     queryFn: () => getTenantBilling(String(tenantId)),
     enabled: enabled && Boolean(tenantId),
