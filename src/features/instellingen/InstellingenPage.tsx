@@ -1,4 +1,5 @@
 import { DatabaseZap, LockKeyhole, Palette, Settings2, Shield, Wifi } from 'lucide-react';
+import ModuleHero from '@/components/layout/ModuleHero';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -87,8 +88,36 @@ export function InstellingenPage() {
 
   const content = (
     <div className="page-stack">
-      <PageHeader title="Instellingen" description="Masterdata onder elkaar, inclusief WPS, materialen, lassers en inspectietemplates." />
+      <ModuleHero
+        title="Instellingen"
+        description="Gebruik dezelfde programmabrede header en open stamdata, security en integraties via duidelijke tegels."
+        kicker="Tenant- en masterdatabeheer"
+        actions={
+          <>
+            <Button variant="secondary" onClick={() => backendSettings.refetch()}>Backend verversen</Button>
+            <Button variant="secondary" onClick={() => setSessionDrawerOpen(true)}>Sessies bekijken</Button>
+          </>
+        }
+        tiles={[
+          { label: 'Organisatie', value: sessionSummary.authenticated ? 'Actief' : 'Controleer', meta: user?.tenant || 'Tenantcontext en voorkeuren', icon: Settings2, onClick: () => setTab('organisatie'), tone: 'primary' },
+          { label: 'Masterdata', value: `${(wps.data?.items || []).length + (materials.data?.items || []).length + (welders.data?.items || []).length}`, meta: 'WPS, materialen, lassers, coördinatoren en templates', icon: DatabaseZap, onClick: () => setTab('masterdata'), tone: 'success' },
+          { label: 'Security', value: refreshToken ? 'Refresh OK' : 'Controle nodig', meta: 'JWT, rollen en sessieherstel', icon: Shield, onClick: () => setTab('security'), tone: 'warning' },
+          { label: 'Integraties', value: health.isError ? 'Niet bevestigd' : 'Online', meta: 'Health, backend-settings en contractvalidatie', icon: Wifi, onClick: () => setTab('integraties'), tone: 'neutral' },
+        ]}
+      />
       {message ? <InlineMessage tone="success">{message}</InlineMessage> : null}
+      <div className="card-grid cols-2">
+        <button type="button" className="module-hero-tile module-hero-tile-primary" onClick={() => setTab('organisatie')} style={{ textAlign: 'left' }}>
+          <div className="module-hero-tile-top"><Settings2 size={18} /><span>Organisatie</span></div>
+          <strong>Kaarten</strong>
+          <small>Open tenantcontext, sessiestatus en organisatievoorkeuren.</small>
+        </button>
+        <button type="button" className="module-hero-tile module-hero-tile-success" onClick={() => setTab('masterdata')} style={{ textAlign: 'left' }}>
+          <div className="module-hero-tile-top"><DatabaseZap size={18} /><span>Masterdata</span></div>
+          <strong>{(wps.data?.items || []).length + (materials.data?.items || []).length + (welders.data?.items || []).length}</strong>
+          <small>WPS, materialen, lassers en inspectietemplates via tegels en kaarten.</small>
+        </button>
+      </div>
       <Tabs tabs={tabs} value={tab} onChange={setTab} />
 
       {tab === 'organisatie' ? (
