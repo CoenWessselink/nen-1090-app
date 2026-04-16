@@ -36,11 +36,27 @@ type SessionContextValue = {
 
 const SessionContext = createContext<SessionContextValue | null>(null);
 
+const superadminPermissions: AccessPermission[] = [
+  'dashboard.read',
+  'projects.read',
+  'projects.write',
+  'welds.read',
+  'welds.write',
+  'documents.read',
+  'documents.write',
+  'settings.read',
+  'settings.write',
+  'billing.read',
+  'billing.manage',
+  'tenants.read',
+  'tenants.impersonate',
+];
+
 const permissionMap: Record<string, AccessPermission[]> = {
-  SUPERADMIN: ['dashboard.read', 'projects.read', 'projects.write', 'welds.read', 'welds.write', 'documents.read', 'documents.write', 'settings.read', 'settings.write', 'billing.read', 'billing.manage', 'tenants.read', 'tenants.impersonate'],
-  SUPER_ADMIN: ['dashboard.read', 'projects.read', 'projects.write', 'welds.read', 'welds.write', 'documents.read', 'documents.write', 'settings.read', 'settings.write', 'billing.read', 'billing.manage', 'tenants.read', 'tenants.impersonate'],
-  PLATFORMADMIN: ['dashboard.read', 'projects.read', 'projects.write', 'welds.read', 'welds.write', 'documents.read', 'documents.write', 'settings.read', 'settings.write', 'billing.read', 'billing.manage', 'tenants.read', 'tenants.impersonate'],
-  PLATFORM_ADMIN: ['dashboard.read', 'projects.read', 'projects.write', 'welds.read', 'welds.write', 'documents.read', 'documents.write', 'settings.read', 'settings.write', 'billing.read', 'billing.manage', 'tenants.read', 'tenants.impersonate'],
+  SUPERADMIN: superadminPermissions,
+  SUPER_ADMIN: superadminPermissions,
+  PLATFORMADMIN: superadminPermissions,
+  PLATFORM_ADMIN: superadminPermissions,
   ADMIN: ['dashboard.read', 'projects.read', 'projects.write', 'welds.read', 'welds.write', 'documents.read', 'documents.write', 'settings.read', 'settings.write', 'billing.read', 'tenants.read'],
   TENANTADMIN: ['dashboard.read', 'projects.read', 'projects.write', 'welds.read', 'welds.write', 'documents.read', 'documents.write', 'settings.read', 'settings.write', 'billing.read'],
   TENANTUSER: ['dashboard.read', 'projects.read', 'welds.read', 'documents.read', 'settings.read'],
@@ -58,11 +74,11 @@ function isUnauthorized(error: unknown): boolean {
   return error instanceof ApiError && (error.status === 401 || error.status === 403);
 }
 
-function normalizeMeUser(input: any): SessionUser {
+function normalizeMeUser(input: Record<string, unknown>): SessionUser {
   return {
     email: String(input?.email || ''),
     tenant: String(input?.tenant || input?.tenant_name || ''),
-    tenantId: input?.tenantId ?? input?.tenant_id ?? '',
+    tenantId: (input?.tenantId as string | number | undefined) ?? (input?.tenant_id as string | number | undefined) ?? '',
     role: String(input?.canonical_role || input?.role || ''),
     name: String(input?.name || ''),
   };
@@ -111,7 +127,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
       try {
         const me = await getMe();
         if (!cancelled) {
-          setSession(effectiveToken, normalizeMeUser(me), effectiveRefreshToken || null);
+          setSession(effectiveToken, normalizeMeUser(me as Record<string, unknown>), effectiveRefreshToken || null);
         }
       } catch (error) {
         if (isUnauthorized(error) && effectiveRefreshToken) {
@@ -122,14 +138,10 @@ export function SessionProvider({ children }: PropsWithChildren) {
                 email: refreshed.user.email,
                 tenant: refreshed.user.tenant || '',
                 tenantId: refreshed.user.tenant_id || '',
-                role: refreshed.user.canonical_role || refreshed.user.role || '',
+                role: refreshed.user.role || '',
                 name: refreshed.user.name || '',
               };
-              setSession(
-                refreshed.access_token,
-                refreshedUser,
-                refreshed.refresh_token || effectiveRefreshToken,
-              );
+              setSession(refreshed.access_token, refreshedUser, refreshed.refresh_token || effectiveRefreshToken);
               updateToken(refreshed.access_token);
             }
           } catch {
