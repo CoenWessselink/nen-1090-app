@@ -101,7 +101,7 @@ export async function snapshotSession(page: Page) {
   }));
 }
 
-import { Request, Response, ConsoleMessage, Locator } from '@playwright/test';
+import type { Request, Response, ConsoleMessage } from '@playwright/test';
 
 export type ErrorCapture = {
   consoleIssues: string[];

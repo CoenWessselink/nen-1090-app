@@ -5,7 +5,7 @@ import { createPdfExport, getCeDossier } from '@/api/ce';
 import { getProjectDocuments } from '@/api/documents';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
 import { openDownloadUrl } from '@/utils/download';
-import { firstPdfDocument, formatValue, groupChecklist, normalizeApiError, normalizeChecklist, summarizeChecklist } from '@/features/mobile/mobile-utils';
+import { buildCeDossierFilename, firstPdfDocument, formatValue, groupChecklist, normalizeApiError, normalizeChecklist, summarizeChecklist } from '@/features/mobile/mobile-utils';
 import type { CeDocument } from '@/types/domain';
 
 export function MobileCeDossierPage() {
@@ -60,7 +60,7 @@ export function MobileCeDossierPage() {
       const result = await createPdfExport(projectId);
       const downloadUrl = typeof result === 'object' && result ? String((result as Record<string, unknown>).download_url || (result as Record<string, unknown>).url || '') : '';
       if (downloadUrl) {
-        await openDownloadUrl(downloadUrl, 'CE-Dossier.pdf');
+        await openDownloadUrl(downloadUrl, buildCeDossierFilename(payload));
         return;
       }
       navigate(`/projecten/${projectId}/pdf-viewer`);

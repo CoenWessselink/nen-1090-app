@@ -186,14 +186,21 @@ export function DashboardPage() {
             <button className="list-row list-row-button" type="button" onClick={() => navigate('/projecten')}>
               <div>
                 <strong>Open Projecten</strong>
-                <div className="list-subtle">Ga direct naar de operationele projectflow en open Project 360.</div>
+                <div className="list-subtle">Projectoverzicht, Project 360 en bewerken vanuit één route.</div>
               </div>
               <ChevronRight size={16} />
             </button>
             <button className="list-row list-row-button" type="button" onClick={() => navigate('/rapportage')}>
               <div>
-                <strong>Open Rapportage</strong>
-                <div className="list-subtle">Bekijk exports, managementrapportages en CE-output.</div>
+                <strong>Rapportage</strong>
+                <div className="list-subtle">Exports, managementrapportages en CE-output.</div>
+              </div>
+              <ChevronRight size={16} />
+            </button>
+            <button className="list-row list-row-button" type="button" onClick={() => navigate('/rapportage')}>
+              <div>
+                <strong>PDF MAKEN</strong>
+                <div className="list-subtle">Open direct de PDF-preview en CE-exportflow.</div>
               </div>
               <ChevronRight size={16} />
             </button>

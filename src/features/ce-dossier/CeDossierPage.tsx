@@ -4,6 +4,7 @@ import { ProjectForm } from '@/features/projecten/components/ProjectForm';
 import { useUpdateProject } from '@/hooks/useProjects';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { openDownloadUrl } from '@/utils/download';
+import { buildCeDossierFilename } from '@/features/mobile/mobile-utils';
 import { RefreshCcw } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/Button';
@@ -441,7 +442,7 @@ export function CeDossierPage() {
       if (!source.download_url && !source.status) {
         effectivePayload = runLocalExport(kind);
       } else if (source.download_url) {
-        await openDownloadUrl(String(source.download_url), `ce-dossier-${projectId}.pdf`);
+        await openDownloadUrl(String(source.download_url), buildCeDossierFilename(project ? { name: project.name, omschrijving: project.omschrijving, projectnummer: project.projectnummer, code: project.code, id: projectId } : { id: projectId }));
       } else if (String(source.status || '').toLowerCase().includes('queued')) {
         setMessage(`${kind.toUpperCase()} export in wachtrij geplaatst.`);
       } else {
@@ -486,7 +487,7 @@ export function CeDossierPage() {
       const source = asRecord(payload);
 
       if (source.download_url) {
-        await openDownloadUrl(String(source.download_url), `ce-dossier-${projectId}.pdf`);
+        await openDownloadUrl(String(source.download_url), buildCeDossierFilename(project ? { name: project.name, omschrijving: project.omschrijving, projectnummer: project.projectnummer, code: project.code, id: projectId } : { id: projectId }));
         setMessage('Download geopend in een nieuw venster.');
       } else {
         setMessage('Voor deze export is nog geen directe download beschikbaar.');

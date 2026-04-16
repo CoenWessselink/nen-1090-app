@@ -97,7 +97,10 @@ export function RapportagePage() {
   async function downloadPdf(row: ReportRow) {
     const pdfUrl = resolvePdfUrl(row);
     if (pdfUrl) {
-      await openDownloadUrl(pdfUrl, `rapport-${row.id}.pdf`);
+      const projectName = String(row.project_name || row.title || 'project').trim().replace(/[^A-Za-z0-9._-]+/g, '-');
+      const projectNumber = String(row.projectnummer || row.id || 'zonder-nummer').trim().replace(/[^A-Za-z0-9._-]+/g, '-');
+      const stamp = new Date().toISOString().slice(0, 10);
+      await openDownloadUrl(pdfUrl, `CE-Dossier-${projectName || 'project'}-${projectNumber || 'zonder-nummer'}-${stamp}.pdf`);
       return;
     }
     if (row.project_id) {
@@ -171,6 +174,7 @@ export function RapportagePage() {
       {!reports.isLoading && !reports.isError && visibleRows.length > 0 ? (
         <div className="content-grid-2" style={{ alignItems: 'start' }}>
           <Card>
+            <div style={{ width: '100%', overflowX: 'auto' }}>
             <table className="table">
               <thead>
                 <tr>
@@ -210,6 +214,7 @@ export function RapportagePage() {
                 })}
               </tbody>
             </table>
+            </div>
           </Card>
 
           <Card>

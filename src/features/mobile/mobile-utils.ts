@@ -202,3 +202,16 @@ export function normalizeApiError(error: unknown, fallback = 'Opslaan mislukt. P
   }
   return String(source.message || fallback);
 }
+
+
+function sanitizeFilenamePart(value: unknown, fallback: string) {
+  const text = String(value || "").trim().replace(/[^A-Za-z0-9._-]+/g, "-").replace(/-{2,}/g, "-").replace(/^[-._]+|[-._]+$/g, "");
+  return text || fallback;
+}
+
+export function buildCeDossierFilename(project: Record<string, unknown> | null | undefined, fallbackDate?: string) {
+  const projectName = sanitizeFilenamePart(project?.name || project?.omschrijving || project?.project_name || project?.title, "project");
+  const projectNumber = sanitizeFilenamePart(project?.projectnummer || project?.code || project?.project_number || project?.id, "zonder-nummer");
+  const stamp = fallbackDate || new Date().toISOString().slice(0, 10);
+  return `CE-Dossier-${projectName}-${projectNumber}-${stamp}.pdf`;
+}

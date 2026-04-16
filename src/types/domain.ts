@@ -1,4 +1,16 @@
-export type Role = 'ADMIN' | 'PLANNER' | 'USER' | 'VIEWER' | 'SUPERADMIN' | 'SUPER_ADMIN' | 'TenantAdmin' | 'TenantUser' | 'SuperAdmin' | 'PLATFORM_ADMIN' | 'platform_admin' | 'PLATFORMADMIN';
+export type Role =
+  | 'ADMIN'
+  | 'PLANNER'
+  | 'USER'
+  | 'VIEWER'
+  | 'SUPERADMIN'
+  | 'SUPER_ADMIN'
+  | 'SuperAdmin'
+  | 'TenantAdmin'
+  | 'TenantUser'
+  | 'PLATFORM_ADMIN'
+  | 'platform_admin'
+  | 'PLATFORMADMIN';
 
 export type ProjectStatus = 'concept' | 'conform' | 'in_controle' | 'in-controle' | 'niet_conform' | 'gereed' | 'geblokkeerd';
 export type WeldStatus = 'conform' | 'in_controle' | 'niet_conform' | 'defect' | 'gerepareerd';
@@ -155,8 +167,104 @@ export type ExportJob = {
 export type Tenant = {
   id: string | number;
   name?: string;
+  status?: string;
   subscription_status?: string;
+  is_active?: boolean;
+  trial_until?: string;
+  valid_until?: string;
+  seats_purchased?: number;
+  price_per_seat_year_cents?: number;
+  billing_provider?: string;
+  mollie_customer_id?: string;
+  mollie_subscription_id?: string;
+  mollie_subscription_status?: string;
+  mollie_next_payment_date?: string;
+  users_count?: number;
   user_count?: number;
+  created_at?: string;
+  tenant_key?: string;
+  slug?: string;
+  [key: string]: unknown;
+};
+
+export type TenantCreateInput = {
+  name: string;
+  status?: string;
+  is_active?: boolean;
+  seats_purchased?: number;
+  price_per_seat_year_cents?: number;
+  billing_provider?: string;
+  trial_days?: number;
+  create_admin?: {
+    email: string;
+    password: string;
+    role?: string;
+    is_active?: boolean;
+  };
+};
+
+export type TenantPatchInput = {
+  name?: string;
+  status?: string;
+  is_active?: boolean;
+  seats_purchased?: number;
+  price_per_seat_year_cents?: number;
+  billing_provider?: string;
+};
+
+export type TenantUser = {
+  user_id: string;
+  email: string;
+  is_active: boolean;
+  role: string;
+  [key: string]: unknown;
+};
+
+export type TenantUserCreateInput = {
+  email: string;
+  password: string;
+  role?: string;
+  is_active?: boolean;
+};
+
+export type TenantUserPatchInput = {
+  role?: string;
+  is_active?: boolean;
+};
+
+export type AuditSummary = {
+  id: string | number;
+  tenant_id?: string;
+  user_id?: string | null;
+  action?: string;
+  entity?: string;
+  entity_id?: string;
+  ip?: string;
+  user_agent?: string;
+  created_at?: string;
+  meta?: string | Record<string, unknown>;
+  [key: string]: unknown;
+};
+
+export type PlatformSummary = {
+  total_tenants: number;
+  active_tenants: number;
+  inactive_tenants: number;
+  suspended_tenants: number;
+  total_users: number;
+  total_seats: number;
+};
+
+export type BillingPayment = {
+  id: string | number;
+  tenant_id?: string;
+  provider?: string;
+  provider_payment_id?: string;
+  type?: string;
+  amount_cents?: number;
+  currency?: string;
+  status?: string;
+  paid_at?: string;
   created_at?: string;
   [key: string]: unknown;
 };
@@ -205,60 +313,5 @@ export type AuditEntry = {
   status?: string;
   created_at?: string;
   meta?: Record<string, unknown>;
-  [key: string]: unknown;
-};
-
-
-export type TenantUser = {
-  id?: string | number;
-  user_id?: string | number;
-  email?: string;
-  name?: string;
-  display_name?: string;
-  role?: string;
-  is_active?: boolean;
-  created_at?: string;
-  tenant_id?: string | number;
-  tenant_name?: string;
-  [key: string]: unknown;
-};
-
-export type PlatformSummary = {
-  total_tenants?: number;
-  active_tenants?: number;
-  total_users?: number;
-  active_users?: number;
-  total_projects?: number;
-  total_welds?: number;
-  [key: string]: unknown;
-};
-
-export type AuditSummary = {
-  id?: string | number;
-  title?: string;
-  action?: string;
-  actor?: string;
-  user?: string;
-  entity?: string;
-  entity_id?: string;
-  user_id?: string;
-  status?: string;
-  created_at?: string;
-  timestamp?: string;
-  meta?: Record<string, unknown>;
-  [key: string]: unknown;
-};
-
-export type BillingPayment = {
-  id?: string | number;
-  reference?: string | number;
-  amount?: string | number;
-  total?: string | number;
-  currency?: string;
-  status?: string;
-  provider?: string;
-  method?: string;
-  created_at?: string;
-  date?: string;
   [key: string]: unknown;
 };

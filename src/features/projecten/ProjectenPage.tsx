@@ -219,7 +219,7 @@ export function ProjectenPage() {
     <div className="page-stack">
       <PageHeader
         title="Projecten"
-        description="Dubbelklik op een project opent de onderliggende projectgegevens. Bewerken gebeurt alleen via de knop of vanuit de projectdetailpagina."
+        description="Dubbelklik op een project opent direct het wijzigvenster. Vanuit dezelfde tabel ga je ook door naar Project 360."
       />
 
       {message ? <InlineMessage tone="success">{message}</InlineMessage> : null}
@@ -302,6 +302,7 @@ export function ProjectenPage() {
         ) : null}
         {!query.isLoading && !query.isError ? (
           <DataTable
+            onRowDoubleClick={(row) => { setEditingProject(row); setModalMode('edit'); }}
             columns={columns}
             rows={rows}
             rowKey={(row) => String(row.id)}
@@ -317,9 +318,6 @@ export function ProjectenPage() {
               }
             }}
             selectable
-            onRowDoubleClick={(row) => {
-              navigate(`/projecten/${row.id}/overzicht`);
-            }}
             selectedRowKeys={selectedRows}
             onToggleRow={(key) => {
               setSelectedRows((current) =>

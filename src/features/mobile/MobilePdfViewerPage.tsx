@@ -5,7 +5,7 @@ import { createPdfExport } from '@/api/ce';
 import { downloadDocument, getDocument } from '@/api/documents';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
 import { openDownloadUrl, openProtectedPdfPreview } from '@/utils/download';
-import { apiProjectPdfUrl, documentPreviewUrl, formatValue, normalizeApiError } from '@/features/mobile/mobile-utils';
+import { apiProjectPdfUrl, buildCeDossierFilename, documentPreviewUrl, formatValue, normalizeApiError } from '@/features/mobile/mobile-utils';
 import type { CeDocument } from '@/types/domain';
 
 export function MobilePdfViewerPage() {
@@ -89,7 +89,7 @@ export function MobilePdfViewerPage() {
       setCreating(true);
       const result = await createPdfExport(projectId);
       const downloadUrl = typeof result === 'object' && result ? String((result as Record<string, unknown>).download_url || (result as Record<string, unknown>).url || '') : '';
-      await openDownloadUrl(downloadUrl || apiProjectPdfUrl(projectId), 'CE-Dossier.pdf');
+      await openDownloadUrl(downloadUrl || apiProjectPdfUrl(projectId), buildCeDossierFilename(pdfDocument ? { title: pdfDocument.title, name: pdfDocument.title, id: projectId } : { id: projectId }));
     } catch (err) {
       setError(normalizeApiError(err, 'PDF download mislukt.'));
     } finally {

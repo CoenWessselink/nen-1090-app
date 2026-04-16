@@ -158,7 +158,6 @@ async function parseResponse<T>(response: Response, raw = false): Promise<T> {
 
 async function tryRefreshSession(): Promise<boolean> {
   const store = getAuthSnapshot();
-  if (!store.refreshToken || store.refreshToken === COOKIE_SESSION_MARKER) return false;
 
   const headers: Record<string, string> = {
     Accept: 'application/json',
@@ -168,14 +167,29 @@ async function tryRefreshSession(): Promise<boolean> {
   if (store.user?.tenant) headers['X-Tenant'] = String(store.user.tenant);
   if (store.user?.tenantId) headers['X-Tenant-Id'] = String(store.user.tenantId);
 
-  const response = await fetch(buildBasePath('/auth/refresh'), {
+  const refreshAttempts: Array<RequestInit> = [];
+  if (store.refreshToken && store.refreshToken !== COOKIE_SESSION_MARKER) {
+    refreshAttempts.push({
+      method: 'POST',
+      credentials: 'include',
+      headers,
+      body: JSON.stringify({ refresh_token: store.refreshToken }),
+    });
+  }
+  refreshAttempts.push({
     method: 'POST',
     credentials: 'include',
     headers,
-    body: JSON.stringify({ refresh_token: store.refreshToken }),
+    body: JSON.stringify({}),
   });
 
-  if (!response.ok) {
+  let response: Response | null = null;
+  for (const attempt of refreshAttempts) {
+    response = await fetch(buildBasePath('/auth/refresh'), attempt);
+    if (response.ok) break;
+  }
+
+  if (!response || !response.ok) {
     return false;
   }
 
@@ -247,12 +261,19 @@ export async function optionalRequest<T = unknown>(paths: string[], init?: Reque
   throw new ApiError('No matching endpoint path succeeded', 500);
 }
 
-export async function downloadRequest(path: string, init?: RequestInit): Promise<Blob> {
+export async function downloadRequest(path: string, init?: RequestInit, retries = 0): Promise<Blob> {
   const response = await fetch(buildBasePath(path), normalizeInit(init));
+  if (response.status === 401 && retries < 1 && !isAuthPath(path)) {
+    const refreshed = await tryRefreshSession().catch(() => false);
+    if (refreshed) {
+      return downloadRequest(path, init, retries + 1);
+    }
+  }
   if (!response.ok) {
     let details: unknown = null;
     try {
-      details = await response.text();
+      const contentType = response.headers.get('content-type') || '';
+      details = contentType.includes('application/json') ? await response.json() : await response.text();
     } catch {
       details = null;
     }
@@ -295,8 +316,12 @@ const client = {
 export default client;
 
 
-export async function downloadUrlAsBlob(path: string, init?: RequestInit): Promise<{ blob: Blob; filename: string }> {
+export async function downloadUrlAsBlob(path: string, init?: RequestInit, retries = 0): Promise<{ blob: Blob; filename: string }> {
   const response = await fetch(buildBasePath(path), normalizeInit(init));
+  if (response.status === 401 && retries < 1 && !isAuthPath(path)) {
+    const refreshed = await tryRefreshSession().catch(() => false);
+    if (refreshed) return downloadUrlAsBlob(path, init, retries + 1);
+  }
   if (!response.ok) {
     let details: unknown = null;
     try {
