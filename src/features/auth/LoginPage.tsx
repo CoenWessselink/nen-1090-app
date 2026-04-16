@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { login } from '@/api/auth';
 import { useAuthStore } from '@/app/store/auth-store';
@@ -12,13 +12,15 @@ export default function LoginPage() {
   const location = useLocation();
   const setSession = useAuthStore((state) => state.setSession);
 
-  const [tenant, setTenant] = useState('demo');
-  const [email, setEmail] = useState('');
+
+  const from = (location.state as { from?: string } | null)?.from;
+  const query = useMemo(() => new URLSearchParams(location.search), [location.search]);
+
+  const [tenant, setTenant] = useState(() => query.get('tenant') || 'demo');
+  const [email, setEmail] = useState(() => query.get('email') || '');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const from = (location.state as { from?: string } | null)?.from;
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
