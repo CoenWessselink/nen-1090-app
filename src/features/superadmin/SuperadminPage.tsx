@@ -12,13 +12,11 @@ import {
   ShieldCheck,
   Users,
 } from 'lucide-react';
-import ModuleHero from '@/components/layout/ModuleHero';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
-import { Tabs } from '@/components/ui/Tabs';
 import { Drawer } from '@/components/drawer/Drawer';
 import { DataTable, type ColumnDef } from '@/components/datatable/DataTable';
 import { EmptyState } from '@/components/feedback/EmptyState';
@@ -334,40 +332,39 @@ export function SuperadminPage() {
 
   return (
     <div className="page-stack superadmin-page">
-      <ModuleHero
-        title="Superadmin"
-        description="Tenantbeheer, tenant 360, gebruikersbeheer, billingcontrole en platformstatus in één beheerlaag met dezelfde header- en tegeltaal als de rest van de app."
-        kicker="Platformcontrole"
-        actions={
-          <>
-            <Button variant="secondary" onClick={handleExportCsv} disabled={tenantActions.exportCsv.isPending}><Download size={16} /> Export CSV</Button>
-            <Button onClick={() => setCreateTenantOpen(true)}><Plus size={16} /> Nieuwe tenant</Button>
-          </>
-        }
-        tiles={[
-          { label: 'Tenants', value: String(summary.total_tenants || 0), meta: 'Alle tenants in platform', icon: Building2, tone: 'primary' },
-          { label: 'Actief', value: String(summary.active_tenants || 0), meta: 'Direct inzetbaar', icon: BadgeCheck, tone: 'success' },
-          { label: 'Gebruikers', value: String(summary.total_users || 0), meta: 'Gekoppelde tenant-users', icon: Users, tone: 'warning' },
-          { label: 'Platform', value: health.isError ? 'Controle' : 'Online', meta: 'Health-check en billingcontracten', icon: Activity, tone: 'neutral' },
-        ]}
-      />
-
-      <div className="card-grid cols-3 superadmin-overview-grid">
-        <button type="button" className="module-hero-tile module-hero-tile-primary" onClick={() => setDetailTab('samenvatting')}>
-          <div className="module-hero-tile-top"><Building2 size={18} /><span>Tenantbeheer</span></div>
-          <strong>{filteredRows.length} zichtbaar</strong>
-          <small>Zoek, filter en open tenants vanuit één overzicht.</small>
-        </button>
-        <button type="button" className="module-hero-tile module-hero-tile-success" onClick={() => selectedTenant && setDetailTab('billing')}>
-          <div className="module-hero-tile-top"><CreditCard size={18} /><span>Billing</span></div>
-          <strong>{selectedTenant ? 'Open paneel' : 'Selecteer tenant'}</strong>
-          <small>Seats, betalingen en abonnement direct vanuit tenant 360.</small>
-        </button>
-        <div className="module-hero-tile module-hero-tile-neutral">
-          <div className="module-hero-tile-top"><ShieldCheck size={18} /><span>Rechten</span></div>
-          <strong>{session.hasPermission('tenants.impersonate') ? 'Impersonatie actief' : 'Alleen lezen'}</strong>
-          <small>Platformrollen en tenant-view in dezelfde UX-stijl.</small>
+      <section className="section-banner">
+        <div className="section-banner-copy">
+          <span className="section-banner-kicker">Platformcontrole</span>
+          <h1>Superadmin</h1>
+          <p>Tenantbeheer, tenant 360, gebruikersbeheer, billingcontrole en platformstatus met dezelfde header- en tegeltaal als Project 360.</p>
         </div>
+        <div className="section-banner-actions">
+          <Button variant="secondary" onClick={handleExportCsv} disabled={tenantActions.exportCsv.isPending}><Download size={16} /> Export CSV</Button>
+          <Button onClick={() => setCreateTenantOpen(true)}><Plus size={16} /> Nieuwe tenant</Button>
+        </div>
+      </section>
+
+      <div className="section-nav-grid">
+        <div className="section-nav-tile is-active"><div className="section-nav-tile-top"><Building2 size={18} /><span>Tenants</span></div><div className="section-nav-tile-value">{String(summary.total_tenants || 0)}</div><strong>Alle tenants in platform</strong><small>Overzicht van alle omgevingen en tenants.</small></div>
+        <div className="section-nav-tile is-active"><div className="section-nav-tile-top"><BadgeCheck size={18} /><span>Actief</span></div><div className="section-nav-tile-value">{String(summary.active_tenants || 0)}</div><strong>Direct inzetbaar</strong><small>Tenants met actieve status.</small></div>
+        <div className="section-nav-tile is-active"><div className="section-nav-tile-top"><Users size={18} /><span>Gebruikers</span></div><div className="section-nav-tile-value">{String(summary.total_users || 0)}</div><strong>Gekoppelde tenant-users</strong><small>Gebruikers verspreid over alle tenants.</small></div>
+        <div className="section-nav-tile is-active"><div className="section-nav-tile-top"><Activity size={18} /><span>Platform</span></div><div className="section-nav-tile-value">{health.isError ? 'Check' : 'Online'}</div><strong>Health en contracten</strong><small>Health-check en billingcontracten.</small></div>
+      </div>
+
+      <div className="section-nav-grid cols-5">
+        {detailTabs.map((tabItem) => {
+          const icon = tabItem.value === 'samenvatting' ? Building2 : tabItem.value === 'gebruikers' ? Users : tabItem.value === 'audit' ? Activity : tabItem.value === 'billing' ? CreditCard : ShieldCheck;
+          const Icon = icon;
+          const active = detailTab === tabItem.value;
+          return (
+            <button key={tabItem.value} type="button" className={`section-nav-tile ${active ? 'is-active' : ''}`} onClick={() => setDetailTab(tabItem.value)}>
+              <div className="section-nav-tile-top"><Icon size={18} /><span>{tabItem.label}</span></div>
+              <div className="section-nav-tile-value">{tabItem.value === 'samenvatting' ? filteredRows.length : tabItem.value === 'gebruikers' ? userRows.length : tabItem.value === 'audit' ? auditRows.length : tabItem.value === 'billing' ? '€' : selectedTenant ? 'Beheer' : 'Kies'}</div>
+              <strong>{tabItem.label}</strong>
+              <small>{tabItem.value === 'samenvatting' ? 'Zoek, filter en open tenants vanuit één overzicht.' : tabItem.value === 'gebruikers' ? 'Gebruikers per tenant beheren.' : tabItem.value === 'audit' ? 'Auditregels en gebeurtenissen bekijken.' : tabItem.value === 'billing' ? 'Seats, betalingen en abonnement per tenant.' : 'Activeren, suspenden en tenantstatus beheren.'}</small>
+            </button>
+          );
+        })}
       </div>
 
       {message ? <InlineMessage tone="success">{message}</InlineMessage> : null}
@@ -504,7 +501,6 @@ export function SuperadminPage() {
       </Drawer>
 
       <Drawer open={Boolean(selectedTenant)} title={selectedTenant?.name || 'Tenantdetails'} onClose={() => setSelectedTenant(null)}>
-        <Tabs tabs={detailTabs} value={detailTab} onChange={setDetailTab} />
 
         {detailTab === 'samenvatting' ? (
           <Card>

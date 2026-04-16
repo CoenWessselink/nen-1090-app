@@ -1,9 +1,7 @@
-import { DatabaseZap, LockKeyhole, Settings2, Shield, Wifi } from "lucide-react";
-import ModuleHero from "@/components/layout/ModuleHero";
+import { DatabaseZap, LockKeyhole, RefreshCcw, Settings2, Shield, Wifi } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/Card";
-import { Tabs } from "@/components/ui/Tabs";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -22,17 +20,10 @@ import { CompanySettingsCard } from "@/features/instellingen/components/CompanyS
 import { InspectionTemplatesManager } from "@/features/instellingen/components/InspectionTemplatesManager";
 import { MobilePageScaffold } from "@/features/mobile/MobilePageScaffold";
 
-const tabs = [
-  { value: "organisatie", label: "Organisatie" },
-  { value: "masterdata", label: "Masterdata" },
-  { value: "security", label: "Security" },
-  { value: "integraties", label: "Integraties" },
-  { value: "contractvalidatie", label: "Contractvalidatie" },
-];
-
 const SETTINGS_STORAGE_KEY = "nen1090.frontend-settings";
 
 type FrontendSettings = { notificationEmail: string };
+type SettingsTab = "organisatie" | "masterdata" | "security" | "integraties" | "contractvalidatie";
 
 function loadFrontendSettings(email: string) {
   if (typeof window === "undefined") return { notificationEmail: email } satisfies FrontendSettings;
@@ -52,7 +43,7 @@ function normalizeSettingRows(payload: Record<string, unknown> | undefined) {
 
 export function InstellingenPage() {
   const navigate = useNavigate();
-  const [tab, setTab] = useState("organisatie");
+  const [tab, setTab] = useState<SettingsTab>("organisatie");
   const [message, setMessage] = useState<string | null>(null);
   const [sessionDrawerOpen, setSessionDrawerOpen] = useState(false);
   const user = useAuthStore((state) => state.user);
@@ -85,51 +76,43 @@ export function InstellingenPage() {
     pushNotification({ title: "Instellingen opgeslagen", description: "Frontend-voorkeuren zijn lokaal opgeslagen zonder nieuwe backendcontracten te verzinnen.", tone: "success" });
   };
 
+  const settingsTiles = [
+    { value: "organisatie" as const, label: "Organisatie", icon: Settings2, stat: sessionSummary.authenticated ? "Actief" : "Controle", title: "Kaarten en voorkeuren", meta: "Tenantcontext, sessiestatus en organisatievoorkeuren." },
+    { value: "masterdata" as const, label: "Masterdata", icon: DatabaseZap, stat: String(masterDataCount), title: "Stamdata", meta: "WPS, materialen, lassers, coördinatoren en inspectietemplates." },
+    { value: "security" as const, label: "Security", icon: Shield, stat: refreshToken ? "OK" : "Check", title: refreshToken ? "Refresh-flow actief" : "Controle nodig", meta: "JWT, rollen, sessieherstel en guardrails." },
+    { value: "integraties" as const, label: "Integraties", icon: Wifi, stat: health.isError ? "Offline" : "Online", title: health.isError ? "Controle nodig" : "Online", meta: "Health, backend-settings en contractvalidatie." },
+    { value: "contractvalidatie" as const, label: "Contractvalidatie", icon: LockKeyhole, stat: contractValidation.ok ? "OK" : "Fout", title: contractValidation.ok ? "Bevestigd" : "Controle nodig", meta: "Valideer bestaande settings-contracten." },
+  ];
+
   const content = (
     <div className="page-stack settings-page">
-      <ModuleHero
-        title="Instellingen"
-        description="Gebruik dezelfde programmabrede header en open stamdata, security en integraties via duidelijke tegels."
-        kicker="Tenant- en masterdatabeheer"
-        actions={
-          <>
-            <Button variant="secondary" onClick={() => backendSettings.refetch()}>Backend verversen</Button>
-            <Button variant="secondary" onClick={() => setSessionDrawerOpen(true)}>Sessies bekijken</Button>
-          </>
-        }
-        tiles={[
-          { label: "Organisatie", value: sessionSummary.authenticated ? "Actief" : "Controleer", meta: user?.tenant || "Tenantcontext en voorkeuren", icon: Settings2, onClick: () => setTab("organisatie"), tone: "primary" },
-          { label: "Masterdata", value: String(masterDataCount), meta: "WPS, materialen, lassers, coördinatoren en templates", icon: DatabaseZap, onClick: () => setTab("masterdata"), tone: "success" },
-          { label: "Security", value: refreshToken ? "Refresh OK" : "Controle nodig", meta: "JWT, rollen en sessieherstel", icon: Shield, onClick: () => setTab("security"), tone: "warning" },
-          { label: "Integraties", value: health.isError ? "Niet bevestigd" : "Online", meta: "Health, backend-settings en contractvalidatie", icon: Wifi, onClick: () => setTab("integraties"), tone: "neutral" },
-        ]}
-      />
+      <section className="section-banner">
+        <div className="section-banner-copy">
+          <span className="section-banner-kicker">Tenant- en masterdatabeheer</span>
+          <h1>Instellingen</h1>
+          <p>Gebruik dezelfde header- en tegeltaal als Project 360 en open elk werkgebied via een eigen tegel.</p>
+        </div>
+        <div className="section-banner-actions">
+          <Button variant="secondary" onClick={() => backendSettings.refetch()}><RefreshCcw size={16} /> Backend verversen</Button>
+          <Button variant="secondary" onClick={() => setSessionDrawerOpen(true)}>Sessies bekijken</Button>
+        </div>
+      </section>
+
       {message ? <InlineMessage tone="success">{message}</InlineMessage> : null}
 
-      <div className="card-grid cols-4 settings-overview-grid">
-        <button type="button" className="module-hero-tile module-hero-tile-primary" onClick={() => setTab("organisatie")}>
-          <div className="module-hero-tile-top"><Settings2 size={18} /><span>Organisatie</span></div>
-          <strong>Kaarten en voorkeuren</strong>
-          <small>Open tenantcontext, sessiestatus en organisatievoorkeuren in kaartvorm.</small>
-        </button>
-        <button type="button" className="module-hero-tile module-hero-tile-success" onClick={() => setTab("masterdata")}>
-          <div className="module-hero-tile-top"><DatabaseZap size={18} /><span>Masterdata</span></div>
-          <strong>{masterDataCount} records</strong>
-          <small>WPS, materialen, lassers, coördinatoren en inspectietemplates via dezelfde tegellogica als de rest van de app.</small>
-        </button>
-        <button type="button" className="module-hero-tile module-hero-tile-warning" onClick={() => setTab("security") }>
-          <div className="module-hero-tile-top"><Shield size={18} /><span>Security</span></div>
-          <strong>{refreshToken ? "Refresh-flow actief" : "Controle nodig"}</strong>
-          <small>JWT, rollen, sessieherstel en beveiligingssamenvatting.</small>
-        </button>
-        <button type="button" className="module-hero-tile module-hero-tile-neutral" onClick={() => setTab("integraties") }>
-          <div className="module-hero-tile-top"><Wifi size={18} /><span>Integraties</span></div>
-          <strong>{health.isError ? "Niet bevestigd" : "Online"}</strong>
-          <small>Backend health, settings-contract en validatie op één plek.</small>
-        </button>
+      <div className="section-nav-grid cols-5">
+        {settingsTiles.map((tile) => {
+          const Icon = tile.icon;
+          return (
+            <button key={tile.value} type="button" className={`section-nav-tile ${tab === tile.value ? "is-active" : ""}`} onClick={() => setTab(tile.value)}>
+              <div className="section-nav-tile-top"><Icon size={18} /><span>{tile.label}</span></div>
+              <div className="section-nav-tile-value">{tile.stat}</div>
+              <strong>{tile.title}</strong>
+              <small>{tile.meta}</small>
+            </button>
+          );
+        })}
       </div>
-
-      <Tabs tabs={tabs} value={tab} onChange={setTab} />
 
       {tab === "organisatie" ? (
         <>
@@ -172,10 +155,25 @@ export function InstellingenPage() {
 
       {tab === "masterdata" ? (
         <div className="page-stack">
-          <div className="card-grid cols-3 settings-masterdata-tiles">
-            <button type="button" className="module-hero-tile module-hero-tile-primary" onClick={() => navigate('/instellingen/templates')}><div className="module-hero-tile-top"><DatabaseZap size={18} /><span>Inspectietemplates</span></div><strong>{(inspectionTemplates.data?.items || []).length}</strong><small>Volledig beheer per EXC-klasse.</small></button>
-            <button type="button" className="module-hero-tile module-hero-tile-success" onClick={() => window.scrollTo({ top: document.body.scrollHeight / 2, behavior: 'smooth' })}><div className="module-hero-tile-top"><DatabaseZap size={18} /><span>Masterdata</span></div><strong>{masterDataCount}</strong><small>WPS, materialen, lassers en coördinatoren onder elkaar.</small></button>
-            <div className="module-hero-tile module-hero-tile-neutral"><div className="module-hero-tile-top"><Shield size={18} /><span>Standaard</span></div><strong>Enterprise layout</strong><small>Tabel- en kaartweergave gelijk aan de rest van de app.</small></div>
+          <div className="section-nav-grid cols-3">
+            <button type="button" className="section-nav-tile is-active" onClick={() => navigate('/instellingen/templates')}>
+              <div className="section-nav-tile-top"><DatabaseZap size={18} /><span>Inspectietemplates</span></div>
+              <div className="section-nav-tile-value">{(inspectionTemplates.data?.items || []).length}</div>
+              <strong>Volledig beheer per EXC-klasse</strong>
+              <small>Open de template-editor met dezelfde tegeltaal als Project 360.</small>
+            </button>
+            <button type="button" className="section-nav-tile" onClick={() => window.scrollTo({ top: document.body.scrollHeight / 2, behavior: 'smooth' })}>
+              <div className="section-nav-tile-top"><DatabaseZap size={18} /><span>Masterdata</span></div>
+              <div className="section-nav-tile-value">{masterDataCount}</div>
+              <strong>Alle records onder elkaar</strong>
+              <small>WPS, materialen, lassers en coördinatoren in nette kaarten en tabellen.</small>
+            </button>
+            <div className="section-nav-tile">
+              <div className="section-nav-tile-top"><Shield size={18} /><span>Standaard</span></div>
+              <div className="section-nav-tile-value">UX</div>
+              <strong>Enterprise layout</strong>
+              <small>Tabel- en kaartweergave gelijk aan de rest van de app.</small>
+            </div>
           </div>
           <MasterDataManager title="WPS" type="wps" rows={wps.data?.items || []} isLoading={wps.isLoading} isError={wps.isError} refetch={wps.refetch} />
           <MasterDataManager title="Materialen" type="materials" rows={materials.data?.items || []} isLoading={materials.isLoading} isError={materials.isError} refetch={materials.refetch} />
