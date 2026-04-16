@@ -70,7 +70,7 @@ function mapProjectPayload(
   };
 }
 
-function mapProjectPatch(payload: Partial<ProjectFormValues>) {
+function mapProjectPatch(payload: Partial<ProjectFormValues> & Record<string, unknown>) {
   const body: Record<string, unknown> = {};
   if (payload.projectnummer !== undefined) body.code = payload.projectnummer;
   if (payload.name !== undefined) body.name = payload.name;
@@ -86,6 +86,8 @@ function mapProjectPatch(payload: Partial<ProjectFormValues>) {
   if (payload.status !== undefined) body.status = payload.status;
   if (payload.start_date !== undefined) body.start_date = payload.start_date || null;
   if (payload.end_date !== undefined) body.end_date = payload.end_date || null;
+  if (payload.coordinator_id !== undefined) body.coordinator_id = payload.coordinator_id || null;
+  if (payload.coordinator_name !== undefined) body.coordinator_name = payload.coordinator_name || null;
   return body;
 }
 

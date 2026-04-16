@@ -336,8 +336,8 @@ export function SuperadminPage() {
     <div className="page-stack superadmin-page">
       <ModuleHero
         title="Superadmin"
-        description="Werk tenants, users, billing en platformcontrole af via dezelfde header- en tegellogica als de rest van het programma."
-        kicker="Platformbeheer"
+        description="Tenantbeheer, tenant 360, gebruikersbeheer, billingcontrole en platformstatus in één beheerlaag met dezelfde header- en tegeltaal als de rest van de app."
+        kicker="Platformcontrole"
         actions={
           <>
             <Button variant="secondary" onClick={handleExportCsv} disabled={tenantActions.exportCsv.isPending}><Download size={16} /> Export CSV</Button>
@@ -345,12 +345,30 @@ export function SuperadminPage() {
           </>
         }
         tiles={[
-          { label: 'Tenants', value: summary.total_tenants, meta: 'Alle tenants in platform', icon: Building2, tone: 'primary' },
-          { label: 'Gebruikers', value: summary.total_users, meta: 'Actieve tenant-users', icon: Users, tone: 'success' },
-          { label: 'Billing', value: summary.total_seats, meta: 'Totaal seats over alle tenants', icon: CreditCard, tone: 'warning' },
-          { label: 'Platformstatus', value: health.isError ? 'Controle nodig' : 'Online', meta: 'Health, tenant-view en platformcontrole', icon: Activity, tone: 'neutral' },
+          { label: 'Tenants', value: String(summary.total_tenants || 0), meta: 'Alle tenants in platform', icon: Building2, tone: 'primary' },
+          { label: 'Actief', value: String(summary.active_tenants || 0), meta: 'Direct inzetbaar', icon: BadgeCheck, tone: 'success' },
+          { label: 'Gebruikers', value: String(summary.total_users || 0), meta: 'Gekoppelde tenant-users', icon: Users, tone: 'warning' },
+          { label: 'Platform', value: health.isError ? 'Controle' : 'Online', meta: 'Health-check en billingcontracten', icon: Activity, tone: 'neutral' },
         ]}
       />
+
+      <div className="card-grid cols-3 superadmin-overview-grid">
+        <button type="button" className="module-hero-tile module-hero-tile-primary" onClick={() => setDetailTab('samenvatting')}>
+          <div className="module-hero-tile-top"><Building2 size={18} /><span>Tenantbeheer</span></div>
+          <strong>{filteredRows.length} zichtbaar</strong>
+          <small>Zoek, filter en open tenants vanuit één overzicht.</small>
+        </button>
+        <button type="button" className="module-hero-tile module-hero-tile-success" onClick={() => selectedTenant && setDetailTab('billing')}>
+          <div className="module-hero-tile-top"><CreditCard size={18} /><span>Billing</span></div>
+          <strong>{selectedTenant ? 'Open paneel' : 'Selecteer tenant'}</strong>
+          <small>Seats, betalingen en abonnement direct vanuit tenant 360.</small>
+        </button>
+        <div className="module-hero-tile module-hero-tile-neutral">
+          <div className="module-hero-tile-top"><ShieldCheck size={18} /><span>Rechten</span></div>
+          <strong>{session.hasPermission('tenants.impersonate') ? 'Impersonatie actief' : 'Alleen lezen'}</strong>
+          <small>Platformrollen en tenant-view in dezelfde UX-stijl.</small>
+        </div>
+      </div>
 
       {message ? <InlineMessage tone="success">{message}</InlineMessage> : null}
 
@@ -369,13 +387,6 @@ export function SuperadminPage() {
           </Button>
         </div>
       ) : null}
-
-      <div className="dashboard-kpi-grid superadmin-kpi-grid">
-        <StatCard title="Tenants" value={summary.total_tenants} meta="Alle tenants in platform" />
-        <StatCard title="Actieve tenants" value={summary.active_tenants} meta="Direct inzetbaar" />
-        <StatCard title="Gebruikers" value={summary.total_users} meta="Gekoppelde tenant-users" />
-        <StatCard title="Seats" value={summary.total_seats} meta="Ingekochte capaciteit" />
-      </div>
 
       <Card className="superadmin-main-card">
         <div className="section-title-row">

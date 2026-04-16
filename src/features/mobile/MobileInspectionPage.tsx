@@ -13,8 +13,8 @@ type TemplateRow = Record<string, unknown>;
 type CheckRow = { key: string; label: string; helper: string };
 
 const fallbackFields: CheckRow[] = [
-  { key: 'tekeningen_lasplan', label: 'Tekeningen / lasplan aanwezig', helper: 'Inspectiecontrole' },
-  { key: 'materiaaltraceerbaarheid', label: 'Materiaaltraceerbaarheid vastgelegd', helper: 'Inspectiecontrole' },
+  { key: 'tekeningen_plan', label: 'Tekeningen / lasplan aanwezig', helper: 'Inspectiecontrole' },
+  { key: 'materiaal_trace', label: 'Materiaaltraceerbaarheid vastgelegd', helper: 'Inspectiecontrole' },
   { key: 'wps_wpqr', label: 'Juiste WPS / WPQR toegepast', helper: 'Inspectiecontrole' },
 ];
 
@@ -37,13 +37,13 @@ function inferOverallStatus(values: UiStatus[]) {
   return 'gerepareerd';
 }
 
-function toSafeCheckKey(value: string, index: number) {
-  const normalized = String(value || '')
+function normalizeCheckKey(input: unknown, index: number) {
+  const raw = String(input || `check_${index + 1}`)
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '_')
     .replace(/^_+|_+$/g, '');
-  const shortened = normalized.slice(0, 20).replace(/_+$/g, '');
-  return shortened || `check_${index + 1}`;
+  const compact = raw || `check_${index + 1}`;
+  return compact.slice(0, 20);
 }
 
 function toCheckRows(template: TemplateRow | undefined): CheckRow[] {
@@ -53,7 +53,7 @@ function toCheckRows(template: TemplateRow | undefined): CheckRow[] {
     const record = item && typeof item === 'object' ? (item as Record<string, unknown>) : {};
     const label = String(record.title || record.label || record.code || `Controlepunt ${index + 1}`);
     return {
-      key: toSafeCheckKey(String(record.code || record.group_key || record.criterion_key || record.title || record.label || `check_${index + 1}`), index),
+      key: normalizeCheckKey(record.code || record.group_key || record.criterion_key || label, index),
       label,
       helper: String(record.group || record.helper || 'Inspectiecontrole'),
     } satisfies CheckRow;
@@ -94,11 +94,11 @@ export function MobileInspectionPage() {
         const inspectionRecord = inspection && typeof inspection === 'object' ? (inspection as Record<string, unknown>) : {};
         if (inspectionRecord.execution_class) setWeldExecutionClass(String(inspectionRecord.execution_class));
         if (inspectionRecord.template_id) setSelectedTemplateId(String(inspectionRecord.template_id));
-        setRemarks(String(inspectionRecord.remarks || inspectionRecord.notes || '').slice(0, 120));
+        setRemarks(String(inspectionRecord.remarks || inspectionRecord.notes || ''));
         const checks = Array.isArray(inspectionRecord.checks) ? (inspectionRecord.checks as Array<Record<string, unknown>>) : [];
         const map: Record<string, UiStatus> = {};
         checks.forEach((item, index) => {
-          const key = toSafeCheckKey(String(item.group_key || item.criterion_key || item.code || item.label || ''), index);
+          const key = normalizeCheckKey(item.group_key || item.criterion_key || item.code || item.label, index);
           if (key) map[key] = toUiStatus(item.status);
         });
         setStatusMap(map);
@@ -137,7 +137,7 @@ export function MobileInspectionPage() {
 
   const checks = useMemo(() => {
     const rows = toCheckRows(selectedTemplate);
-    return rows.map((field) => ({ ...field, status: statusMap[field.key] || 'Conform' }));
+    return rows.map((field) => ({ ...field, status: statusMap[field.key] || 'Conform' as UiStatus }));
   }, [selectedTemplate, statusMap]);
 
   const overallStatus = useMemo(() => inferOverallStatus(checks.map((item) => item.status)), [checks]);
@@ -153,20 +153,17 @@ export function MobileInspectionPage() {
         execution_class: weldExecutionClass,
         template_id: selectedTemplateId || null,
         overall_status: overallStatus,
-        remarks: remarks.trim().slice(0, 120) || null,
-        checks: checks.map((item, index) => {
-          const safeKey = toSafeCheckKey(item.key || item.label, index);
-          return {
-            group_key: safeKey,
-            criterion_key: safeKey,
-            code: safeKey,
-            label: item.label,
-            applicable: true,
-            approved: item.status === 'Conform',
-            status: toBackendStatus(item.status),
-            comment: null,
-          };
-        }),
+        remarks: remarks.trim() || null,
+        checks: checks.map((item) => ({
+          group_key: item.key,
+          criterion_key: item.key,
+          code: item.key,
+          label: item.label,
+          applicable: true,
+          approved: item.status === 'Conform',
+          status: toBackendStatus(item.status),
+          comment: remarks.trim() || null,
+        })),
       });
       dispatchAppRefresh({ scope: 'inspection', projectId, weldId, reason: 'inspection-saved' });
       setNotice('Inspectie is opgeslagen.');
@@ -197,7 +194,7 @@ export function MobileInspectionPage() {
 
           <label className="mobile-form-field mobile-select-field">
             <span>Executieklasse</span>
-            <select value={weldExecutionClass} onChange={(event) => { setWeldExecutionClass(event.target.value); setSelectedTemplateId(''); }}>
+            <select value={weldExecutionClass} onChange={(event) => { setWeldExecutionClass(event.target.value); setSelectedTemplateId(''); setStatusMap({}); }}>
               <option value="EXC1">EXC1</option>
               <option value="EXC2">EXC2</option>
               <option value="EXC3">EXC3</option>
@@ -207,7 +204,7 @@ export function MobileInspectionPage() {
 
           <label className="mobile-form-field mobile-select-field">
             <span>Inspectietemplate</span>
-            <select value={selectedTemplateId} onChange={(event) => setSelectedTemplateId(event.target.value)}>
+            <select value={selectedTemplateId} onChange={(event) => { setSelectedTemplateId(event.target.value); setStatusMap({}); }}>
               <option value="">Selecteer template</option>
               {templateOptions.map((item) => <option key={String(item.id || item.code)} value={String(item.id || '')}>{String(item.name || item.code || item.id || '')}</option>)}
             </select>
