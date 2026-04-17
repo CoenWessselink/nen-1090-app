@@ -1,1 +1,25 @@
 @import url('../../assets/main.css');
+
+
+/* Live hardening + visual restore */
+.superadmin-page, .ce-dossier-page { gap: 20px; }
+.section-banner { display:flex; justify-content:space-between; gap:20px; align-items:flex-start; background:linear-gradient(180deg,#f8fbff 0%, #eef4ff 100%); border:1px solid #dbe7ff; border-radius:20px; padding:24px; box-shadow:0 10px 30px rgba(37,99,235,.08); }
+.section-banner-copy h1 { margin:6px 0 8px; font-size:2rem; line-height:1.05; }
+.section-banner-kicker { display:inline-flex; padding:6px 10px; border-radius:999px; background:#e0ecff; color:#2457d6; font-size:.8rem; font-weight:700; }
+.section-banner-actions { display:flex; gap:12px; flex-wrap:wrap; }
+.section-nav-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:16px; }
+.section-nav-grid.cols-5 { grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); }
+.section-nav-tile { text-align:left; border:1px solid #dde5f2; background:#fff; border-radius:18px; padding:18px; box-shadow:0 8px 24px rgba(15,23,42,.06); }
+.section-nav-tile.is-active { border-color:#bfd3ff; background:linear-gradient(180deg,#ffffff 0%,#f5f8ff 100%); }
+.section-nav-tile-top { display:flex; align-items:center; gap:10px; color:#4b5563; font-weight:600; }
+.section-nav-tile-value { margin:12px 0 6px; font-size:1.75rem; font-weight:800; color:#0f172a; }
+.superadmin-main-card { border-radius:22px; box-shadow:0 16px 38px rgba(15,23,42,.08); }
+.superadmin-row-actions { display:flex; flex-wrap:wrap; gap:8px; }
+.superadmin-cell-stack strong { display:block; font-size:1rem; color:#0f172a; }
+.superadmin-cell-stack span { color:#64748b; font-size:.85rem; }
+.project-tab-shell { border-radius:22px; background:linear-gradient(180deg,#ffffff 0%,#f8fbff 100%); box-shadow:0 16px 38px rgba(15,23,42,.08); }
+.project-tab-kpi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:16px; }
+.ce-dossier-page .content-grid-2, .ce-dossier-page .detail-stack { gap:16px; }
+.ce-dossier-page .card, .ce-dossier-page [data-ui="card"] { border-radius:20px; box-shadow:0 12px 28px rgba(15,23,42,.06); }
+.ce-dossier-page .list-row { padding:10px 12px; border-radius:14px; background:#f8fafc; border:1px solid #e5edf7; }
+@media (max-width: 900px){ .section-banner { flex-direction:column; } }
