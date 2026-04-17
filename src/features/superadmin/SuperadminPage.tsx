@@ -1,4 +1,4 @@
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import {
   Activity,
   BadgeCheck,
@@ -34,7 +34,7 @@ import { useExitImpersonation, useImpersonateTenant, usePlatformSummary, useTena
 import { useTenantAudit, useTenantBillingPanel, useTenantDetail, useTenantUserActions, useTenantUsers } from '@/hooks/useTenantAdmin';
 import { useSystemHealth } from '@/hooks/useSystemHealth';
 import { useTenantBillingActions, useTenantBillingDetail, useTenantInvoiceDetail, useTenantInvoices, useTenantPayments } from '@/hooks/usePlatformBilling';
-import type { AuditSummary, BillingPayment, PlatformSummary, Tenant, TenantCreateInput, TenantUser, TenantUserCreateInput } from '@/types/domain';
+import type { AuditSummary, BillingPayment, PlatformSummary, Tenant, TenantCreateInput, TenantPatchInput, TenantUser, TenantUserCreateInput, TenantUserPatchInput } from '@/types/domain';
 import { formatDatetime, toneFromStatus } from '@/utils/format';
 
 const detailTabs = [
@@ -107,6 +107,8 @@ export function SuperadminPage() {
   const [paymentsPage, setPaymentsPage] = useState(1);
   const [createTenantOpen, setCreateTenantOpen] = useState(false);
   const [createUserOpen, setCreateUserOpen] = useState(false);
+  const [editTenantOpen, setEditTenantOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<TenantUser | null>(null);
   const [createInvoiceOpen, setCreateInvoiceOpen] = useState(false);
   const [manualPaymentOpen, setManualPaymentOpen] = useState(false);
   const [changePlanOpen, setChangePlanOpen] = useState(false);
@@ -136,6 +138,19 @@ export function SuperadminPage() {
   const [tenantUserForm, setTenantUserForm] = useState<TenantUserCreateInput>({
     email: '',
     password: '',
+    role: 'viewer',
+    is_active: true,
+  });
+  const [tenantEditForm, setTenantEditForm] = useState<TenantPatchInput>({
+    name: '',
+    status: 'trial',
+    is_active: true,
+    seats_purchased: 1,
+    price_per_seat_year_cents: 0,
+    billing_provider: 'none',
+  });
+  const [tenantUserEditForm, setTenantUserEditForm] = useState<TenantUserPatchInput & { email?: string }>({
+    email: '',
     role: 'viewer',
     is_active: true,
   });
@@ -202,6 +217,18 @@ export function SuperadminPage() {
   const tenantUserActions = useTenantUserActions(selectedTenant?.id);
 
   const detailTenant = (tenantDetail.data || selectedTenant) as Tenant | null;
+  useEffect(() => {
+    if (!detailTenant) return;
+    setTenantEditForm({
+      name: String(detailTenant.name || ''),
+      status: parseStatus(detailTenant),
+      is_active: detailTenant.is_active !== false,
+      seats_purchased: Number(detailTenant.seats_purchased || 1),
+      price_per_seat_year_cents: Number(detailTenant.price_per_seat_year_cents || 0),
+      billing_provider: String(detailTenant.billing_provider || 'none'),
+    });
+  }, [detailTenant]);
+
   const userRows = tenantUsers.data?.items || [];
   const auditRows = tenantAudit.data?.items || [];
   const billingPayload = { ...(tenantBilling.data || {}), ...(tenantBillingDetail.data || {}) } as Record<string, unknown>;
@@ -237,7 +264,7 @@ export function SuperadminPage() {
   const handleCreateTenant = async (event: FormEvent) => {
     event.preventDefault();
     try {
-      await tenantActions.createTenant.mutateAsync(tenantForm);
+      const response = await tenantActions.createTenant.mutateAsync(tenantForm) as Record<string, unknown>;
       setCreateTenantOpen(false);
       setTenantForm({
         name: '',
@@ -249,7 +276,7 @@ export function SuperadminPage() {
         trial_days: 14,
         create_admin: { email: '', password: '', role: 'tenant_admin', is_active: true },
       });
-      refreshMessage('Tenant aangemaakt.');
+      refreshMessage(String(response?.reset_url ? `Tenant aangemaakt. Activatielink: ${response.reset_url}` : response?.delivery_outbox_path ? `Tenant aangemaakt. Previewmail: ${response.delivery_outbox_path}` : 'Tenant aangemaakt.'));
     } catch (error) {
       refreshMessage(error instanceof Error ? error.message : 'Tenant aanmaken mislukt.');
     }
@@ -262,7 +289,7 @@ export function SuperadminPage() {
       const response = await tenantUserActions.createUser.mutateAsync(tenantUserForm) as Record<string, unknown>;
       setCreateUserOpen(false);
       setTenantUserForm({ email: '', password: '', role: 'viewer', is_active: true });
-      refreshMessage(String(response?.reset_url ? `Gebruiker aangemaakt. Activatielink: ${response.reset_url}` : `Gebruiker toegevoegd aan ${selectedTenant.name || selectedTenant.id}.`));
+      refreshMessage(String(response?.reset_url ? `Gebruiker aangemaakt. Activatielink: ${response.reset_url}` : response?.delivery_outbox_path ? `Gebruiker aangemaakt. Previewmail: ${response.delivery_outbox_path}` : `Gebruiker toegevoegd aan ${selectedTenant.name || selectedTenant.id}.`));
     } catch (error) {
       refreshMessage(error instanceof Error ? error.message : 'Gebruiker toevoegen mislukt.');
     }
@@ -308,6 +335,20 @@ export function SuperadminPage() {
       refreshMessage(error instanceof Error ? error.message : 'Tenant-view starten mislukt.');
       pushNotification({ title: 'Tenant-view mislukt', description: error instanceof Error ? error.message : 'Onbekende fout', tone: 'error' });
     }
+  };
+
+  const openUserEditor = (row: TenantUser) => {
+    setEditingUser(row);
+    setTenantUserEditForm({
+      email: row.email,
+      role: row.role,
+      is_active: row.is_active,
+    });
+  };
+
+  const openTenantDetail = (tenant: Tenant, tab: string = 'samenvatting') => {
+    setSelectedTenant(tenant);
+    setDetailTab(tab);
   };
 
   const columns: ColumnDef<Tenant>[] = [
@@ -360,7 +401,7 @@ export function SuperadminPage() {
         const status = parseStatus(tenant);
         return (
           <div className="superadmin-row-actions">
-            <Button variant="secondary" onClick={() => { setSelectedTenant(tenant); setDetailTab('samenvatting'); }}>Open</Button>
+            <Button variant="secondary" onClick={() => openTenantDetail(tenant, 'samenvatting')}>Open</Button>
             <Button variant="secondary" disabled={!session.hasPermission('tenants.impersonate') || impersonate.isPending} onClick={() => handleImpersonate(tenant)}>
               <LogIn size={14} /> Meekijken
             </Button>
@@ -588,16 +629,17 @@ export function SuperadminPage() {
             {!tenantUsers.isLoading && !tenantUsers.isError && userRows.length > 0 ? (
               <div className="list-stack compact-list">
                 {userRows.map((row: TenantUser) => (
-                  <div key={row.user_id} className="list-row superadmin-user-row">
+                  <div key={row.user_id} className="list-row superadmin-user-row" onDoubleClick={() => openUserEditor(row)}>
                     <div>
                       <strong>{row.email}</strong>
                       <div className="list-subtle">{row.role} · {row.is_active ? 'Actief' : 'Inactief'}</div>
                     </div>
                     <div className="toolbar-cluster">
+                      <Button variant="ghost" onClick={() => openUserEditor(row)}>Bewerk</Button>
                       <Button variant="ghost" onClick={() => tenantUserActions.patchUser.mutate({ userId: row.user_id, payload: { role: row.role === 'tenant_admin' ? 'viewer' : 'tenant_admin' } })}>Rol wisselen</Button>
                       <Button variant="ghost" onClick={() => tenantUserActions.patchUser.mutate({ userId: row.user_id, payload: { is_active: !row.is_active } })}>{row.is_active ? 'Deactiveer' : 'Activeer'}</Button>
-                      <Button variant="ghost" onClick={async () => { const response = await tenantUserActions.resendInvite.mutateAsync(row.user_id) as Record<string, unknown>; refreshMessage(String(response?.reset_url || response?.message || 'Uitnodiging verstuurd.')); }}>Uitnodigen</Button>
-                      <Button variant="ghost" onClick={async () => { const response = await tenantUserActions.resetPassword.mutateAsync(row.user_id) as Record<string, unknown>; refreshMessage(String(response?.reset_url || response?.message || 'Resetlink aangemaakt.')); }}>Reset</Button>
+                      <Button variant="ghost" onClick={async () => { const response = await tenantUserActions.resendInvite.mutateAsync(row.user_id) as Record<string, unknown>; refreshMessage(String(response?.reset_url || response?.delivery_outbox_path || response?.message || 'Uitnodiging verstuurd.')); }}>Uitnodigen</Button>
+                      <Button variant="ghost" onClick={async () => { const response = await tenantUserActions.resetPassword.mutateAsync(row.user_id) as Record<string, unknown>; refreshMessage(String(response?.reset_url || response?.delivery_outbox_path || response?.message || 'Resetlink aangemaakt.')); }}>Reset</Button>
                       <Button variant="ghost" onClick={async () => { await tenantUserActions.deleteUser.mutateAsync(row.user_id); refreshMessage(`Gebruiker ${row.email} verwijderd.`); }}>Verwijder</Button>
                     </div>
                   </div>
@@ -719,12 +761,13 @@ export function SuperadminPage() {
 
         {detailTab === 'status' ? (
           <Card>
-            <div className="section-title-row"><h3>Statusbeheer</h3></div>
+            <div className="section-title-row"><h3>Statusbeheer en tenant bewerken</h3></div>
             <div className="toolbar-cluster superadmin-status-actions">
               <Button variant="secondary" onClick={() => selectedTenant && setPendingAction({ type: 'activate', tenant: selectedTenant })}>Activeer</Button>
               <Button variant="secondary" onClick={() => selectedTenant && setPendingAction({ type: 'deactivate', tenant: selectedTenant })}>Deactiveer</Button>
               <Button variant="secondary" onClick={() => selectedTenant && setPendingAction({ type: 'suspend', tenant: selectedTenant })}>Suspend</Button>
               <Button variant="secondary" onClick={() => selectedTenant && setPendingAction({ type: 'trial', tenant: selectedTenant })}>Start trial</Button>
+              <Button variant="ghost" onClick={() => setEditTenantOpen(true)}>Tenant bewerken</Button>
             </div>
             <div className="checklist-grid" style={{ marginTop: 16 }}>
               <div className="checklist-item"><strong>Statusmapping</strong><span>Trial, actief, inactief en gesuspendeerd worden expliciet getoond.</span></div>
@@ -732,8 +775,47 @@ export function SuperadminPage() {
               <div className="checklist-item"><strong>Tenant-view</strong><span>Meekijken wordt zichtbaar geactiveerd en ook expliciet beëindigd.</span></div>
               <div className="checklist-item"><strong>RBAC</strong><span>Alleen platform_admin / superadmin ziet deze module en acties.</span></div>
             </div>
+            {detailTenant ? (
+              <form className="page-stack" style={{ marginTop: 16 }} onSubmit={async (event) => {
+                event.preventDefault();
+                if (!selectedTenant) return;
+                await tenantActions.patchTenant.mutateAsync({ tenantId: selectedTenant.id, payload: tenantEditForm });
+                refreshMessage(`Tenant ${tenantEditForm.name || selectedTenant.id} bijgewerkt.`);
+                setEditTenantOpen(false);
+              }}>
+                <div className="content-grid-2">
+                  <label><span>Tenantnaam</span><Input value={String(tenantEditForm.name || '')} onChange={(event) => setTenantEditForm((current) => ({ ...current, name: event.target.value }))} required /></label>
+                  <label><span>Status</span><Select value={String(tenantEditForm.status || 'trial')} onChange={(event) => setTenantEditForm((current) => ({ ...current, status: event.target.value }))}><option value="trial">Trial</option><option value="active">Active</option><option value="inactive">Inactive</option><option value="suspended">Suspended</option><option value="cancelled">Cancelled</option><option value="expired">Expired</option></Select></label>
+                  <label><span>Seats</span><Input type="number" min={1} value={Number(tenantEditForm.seats_purchased || 1)} onChange={(event) => setTenantEditForm((current) => ({ ...current, seats_purchased: Number(event.target.value || 1) }))} /></label>
+                  <label><span>Prijs per seat / jaar (cent)</span><Input type="number" min={0} value={Number(tenantEditForm.price_per_seat_year_cents || 0)} onChange={(event) => setTenantEditForm((current) => ({ ...current, price_per_seat_year_cents: Number(event.target.value || 0) }))} /></label>
+                  <label><span>Billing provider</span><Select value={String(tenantEditForm.billing_provider || 'none')} onChange={(event) => setTenantEditForm((current) => ({ ...current, billing_provider: event.target.value }))}><option value="none">none</option><option value="manual">manual</option><option value="mollie">mollie</option></Select></label>
+                  <label><span>Actief</span><Select value={tenantEditForm.is_active === false ? 'false' : 'true'} onChange={(event) => setTenantEditForm((current) => ({ ...current, is_active: event.target.value === 'true' }))}><option value="true">Ja</option><option value="false">Nee</option></Select></label>
+                </div>
+                {editTenantOpen ? <div className="form-actions"><Button type="button" variant="ghost" onClick={() => setEditTenantOpen(false)}>Annuleren</Button><Button type="submit" disabled={tenantActions.patchTenant.isPending}>Tenant opslaan</Button></div> : null}
+              </form>
+            ) : null}
           </Card>
         ) : null}
+      </Drawer>
+
+      <Drawer open={Boolean(editingUser)} title={editingUser ? `Gebruiker bewerken · ${editingUser.email}` : 'Gebruiker bewerken'} onClose={() => setEditingUser(null)}>
+        <form className="page-stack" onSubmit={async (event) => {
+          event.preventDefault();
+          if (!editingUser) return;
+          await tenantUserActions.patchUser.mutateAsync({ userId: editingUser.user_id, payload: tenantUserEditForm });
+          refreshMessage(`Gebruiker ${tenantUserEditForm.email || editingUser.email} bijgewerkt.`);
+          setEditingUser(null);
+        }}>
+          <label><span>E-mail</span><Input type="email" value={String(tenantUserEditForm.email || '')} onChange={(event) => setTenantUserEditForm((current) => ({ ...current, email: event.target.value }))} required /></label>
+          <label><span>Rol</span><Select value={String(tenantUserEditForm.role || 'viewer')} onChange={(event) => setTenantUserEditForm((current) => ({ ...current, role: event.target.value }))}><option value="viewer">viewer</option><option value="tenant_user">tenant_user</option><option value="tenant_admin">tenant_admin</option></Select></label>
+          <label><span>Actief</span><Select value={tenantUserEditForm.is_active === false ? 'false' : 'true'} onChange={(event) => setTenantUserEditForm((current) => ({ ...current, is_active: event.target.value === 'true' }))}><option value="true">Ja</option><option value="false">Nee</option></Select></label>
+          <div className="toolbar-cluster">
+            <Button type="button" variant="secondary" onClick={async () => { if (!editingUser) return; const response = await tenantUserActions.resendInvite.mutateAsync(editingUser.user_id) as Record<string, unknown>; refreshMessage(String(response?.reset_url || response?.delivery_outbox_path || response?.message || 'Uitnodiging verstuurd.')); }}>Uitnodiging opnieuw sturen</Button>
+            <Button type="button" variant="secondary" onClick={async () => { if (!editingUser) return; const response = await tenantUserActions.resetPassword.mutateAsync(editingUser.user_id) as Record<string, unknown>; refreshMessage(String(response?.reset_url || response?.delivery_outbox_path || response?.message || 'Resetlink aangemaakt.')); }}>Reset wachtwoord</Button>
+            <Button type="button" variant="ghost" onClick={async () => { if (!editingUser) return; await tenantUserActions.deleteUser.mutateAsync(editingUser.user_id); refreshMessage(`Gebruiker ${editingUser.email} verwijderd.`); setEditingUser(null); }}>Verwijder</Button>
+          </div>
+          <div className="form-actions"><Button type="button" variant="ghost" onClick={() => setEditingUser(null)}>Annuleren</Button><Button type="submit" disabled={tenantUserActions.patchUser.isPending}>Gebruiker opslaan</Button></div>
+        </form>
       </Drawer>
 
       <Drawer open={createInvoiceOpen} title="Factuur aanmaken" onClose={() => setCreateInvoiceOpen(false)}>

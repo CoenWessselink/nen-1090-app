@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useMemo, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { requestPasswordReset } from '@/api/auth';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -8,8 +8,10 @@ import { InlineMessage } from '@/components/feedback/InlineMessage';
 import { getFriendlyAuthErrorMessage } from '@/features/auth/auth-utils';
 
 export function ForgotPasswordPage() {
-  const [tenant, setTenant] = useState('demo');
-  const [email, setEmail] = useState('');
+  const location = useLocation();
+  const query = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const [tenant, setTenant] = useState(query.get('tenant') || 'demo');
+  const [email, setEmail] = useState(query.get('email') || '');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{ message?: string; reset_url?: string } | null>(null);
@@ -32,16 +34,16 @@ export function ForgotPasswordPage() {
   return (
     <div className="auth-layout">
       <Card className="auth-card">
-        <div>
-          <div className="eyebrow">CWS NEN-1090</div>
+        <div className="auth-hero-copy">
+          <div className="eyebrow">WeldInspect · account recovery</div>
           <h1>Wachtwoord vergeten</h1>
-          <p>Vraag hier een resetlink aan voor een tenantgebruiker of platformgebruiker.</p>
+          <p>Vraag hier een resetlink aan voor een tenantgebruiker of platformgebruiker. In testomgevingen wordt de link ook direct getoond.</p>
         </div>
 
         {error ? <InlineMessage tone="danger">{error}</InlineMessage> : null}
         {result?.message ? <InlineMessage tone="success">{`${result.message}${result.reset_url ? ` Testlink: ${result.reset_url}` : ''}`}</InlineMessage> : null}
 
-        <form className="form-grid" onSubmit={handleSubmit}>
+        <form className="form-grid auth-form-grid" onSubmit={handleSubmit}>
           <label>
             <span>Tenant</span>
             <Input value={tenant} onChange={(event) => setTenant(event.target.value)} required />
@@ -53,8 +55,8 @@ export function ForgotPasswordPage() {
           <Button type="submit" disabled={submitting}>{submitting ? 'Bezig...' : 'Resetlink versturen'}</Button>
         </form>
 
-        <div className="stack-actions">
-          <Link to="/login">Terug naar login</Link>
+        <div className="auth-link-row">
+          <Link to={`/login?tenant=${encodeURIComponent(tenant)}&email=${encodeURIComponent(email)}`}>Terug naar login</Link>
         </div>
       </Card>
     </div>

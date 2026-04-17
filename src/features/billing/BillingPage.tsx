@@ -28,12 +28,8 @@ export function BillingPage() {
   const invoiceRows = Array.isArray(invoices.data?.items) ? invoices.data?.items : [];
   const subscription = (statusPlus as any)?.subscription || {};
   const accessSnapshot = (statusPlus as any)?.access_snapshot || {};
-  const foundationReady = Boolean((statusPlus as any)?.foundation_ready ?? (invoices.data as any)?.foundation_ready ?? true);
-  const missingTables = Array.isArray((statusPlus as any)?.missing_tables)
-    ? (statusPlus as any)?.missing_tables
-    : Array.isArray((invoices.data as any)?.missing_tables)
-      ? (invoices.data as any)?.missing_tables
-      : [];
+  const foundationReady = (statusPlus as any)?.foundation_ready !== false;
+  const missingTables = Array.isArray((statusPlus as any)?.missing_tables) ? (statusPlus as any).missing_tables : [];
   const marketingSubscriptionUrl = buildMarketingUrl('subscription', {
     next: buildAppReturnTo('/billing'),
     query: {
@@ -41,9 +37,6 @@ export function BillingPage() {
       returnTo: buildAppReturnTo('/billing'),
     },
   });
-  const foundationMessage = !foundationReady
-    ? `Billingfundering is in deze omgeving nog niet volledig gemigreerd. De pagina blijft bruikbaar zonder 500-fouten, maar facturen en access snapshots blijven beperkt totdat de ontbrekende tabellen live zijn: ${missingTables.join(', ') || 'onbekend'}.`
-    : '';
 
   const summaryRows = [
     { label: 'Status', value: String(status.status || subscription.status || 'Onbekend') },
@@ -75,7 +68,7 @@ export function BillingPage() {
       />
 
       {!canManageBilling ? <InlineMessage tone="neutral">Je kunt hier billingstatus en facturen bekijken. Checkout, betaalprovider en planwissels lopen via de centrale abonnementsshell.</InlineMessage> : null}
-      {!foundationReady ? <InlineMessage tone="danger">{foundationMessage}</InlineMessage> : null}
+      {!foundationReady ? <InlineMessage tone="danger">{`Billing fundering is nog niet volledig live. De pagina toont daarom een veilige fallback zonder harde fout. Ontbrekend: ${missingTables.join(', ') || 'status-plus'}.`}</InlineMessage> : null}
 
       <div className="kpi-strip">
         {summaryRows.map((row) => (
@@ -108,7 +101,7 @@ export function BillingPage() {
             <Badge tone="neutral">{String(invoiceRows.length)} documenten</Badge>
           </div>
           {invoices.isLoading ? <LoadingState label="Facturen laden..." /> : null}
-          {invoices.isError && foundationReady ? <ErrorState title="Facturen niet geladen" description="Controleer of /tenant/billing/invoices bereikbaar is." /> : null}
+          {invoices.isError ? <ErrorState title="Facturen niet geladen" description="Controleer of /tenant/billing/invoices bereikbaar is." /> : null}
           {!invoices.isLoading && !invoiceRows.length ? <InlineMessage tone="neutral">Er zijn nog geen facturen beschikbaar voor deze tenant.</InlineMessage> : null}
           <div className="list-stack compact-list">
             {invoiceRows.map((row: any) => (
@@ -128,7 +121,7 @@ export function BillingPage() {
       </div>
 
       {billingStatus.isLoading || billingStatusPlus.isLoading ? <LoadingState label="Billingstatus laden..." /> : null}
-      {billingStatus.isError && foundationReady ? <ErrorState title="Billingstatus niet geladen" description="Controleer of /tenant/billing/status bereikbaar is." /> : null}
+      {billingStatus.isError ? <ErrorState title="Billingstatus niet geladen" description="Controleer of /tenant/billing/status bereikbaar is." /> : null}
     </div>
   );
 }

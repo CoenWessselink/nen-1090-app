@@ -10,7 +10,10 @@ import { getFriendlyAuthErrorMessage } from '@/features/auth/auth-utils';
 export function ResetPasswordPage() {
   const location = useLocation();
   const navigate = useNavigate();
-  const token = useMemo(() => new URLSearchParams(location.search).get('token') || '', [location.search]);
+  const query = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const token = query.get('token') || '';
+  const tenant = query.get('tenant') || '';
+  const email = query.get('email') || '';
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -21,24 +24,15 @@ export function ResetPasswordPage() {
     event.preventDefault();
     setError(null);
     setSuccess(null);
-    if (!token) {
-      setError('Geen token gevonden in de resetlink.');
-      return;
-    }
-    if (password.length < 8) {
-      setError('Wachtwoord moet minimaal 8 tekens bevatten.');
-      return;
-    }
-    if (password !== confirmPassword) {
-      setError('Wachtwoorden komen niet overeen.');
-      return;
-    }
+    if (!token) return setError('Geen token gevonden in de resetlink.');
+    if (password.length < 8) return setError('Wachtwoord moet minimaal 8 tekens bevatten.');
+    if (password !== confirmPassword) return setError('Wachtwoorden komen niet overeen.');
 
     setSubmitting(true);
     try {
       const response = await confirmPasswordReset({ token, password });
       setSuccess(response?.message || 'Je wachtwoord is ingesteld.');
-      window.setTimeout(() => navigate('/login'), 1200);
+      window.setTimeout(() => navigate(`/login?tenant=${encodeURIComponent(tenant)}&email=${encodeURIComponent(email)}&message=${encodeURIComponent('Wachtwoord ingesteld. Je kunt nu inloggen.')}`), 1200);
     } catch (requestError) {
       setError(getFriendlyAuthErrorMessage(requestError, 'Resetten mislukt.'));
     } finally {
@@ -49,17 +43,17 @@ export function ResetPasswordPage() {
   return (
     <div className="auth-layout">
       <Card className="auth-card">
-        <div>
-          <div className="eyebrow">CWS NEN-1090</div>
+        <div className="auth-hero-copy">
+          <div className="eyebrow">WeldInspect · reset password</div>
           <h1>Nieuw wachtwoord instellen</h1>
-          <p>Gebruik deze pagina voor activatie, uitnodiging en reguliere password resets.</p>
+          <p>Gebruik deze pagina voor uitnodigingen, activaties en reguliere password resets.</p>
         </div>
 
         {!token ? <InlineMessage tone="danger">De resetlink bevat geen geldig token.</InlineMessage> : null}
         {error ? <InlineMessage tone="danger">{error}</InlineMessage> : null}
         {success ? <InlineMessage tone="success">{success}</InlineMessage> : null}
 
-        <form className="form-grid" onSubmit={handleSubmit}>
+        <form className="form-grid auth-form-grid" onSubmit={handleSubmit}>
           <label>
             <span>Nieuw wachtwoord</span>
             <Input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" required />
@@ -71,8 +65,8 @@ export function ResetPasswordPage() {
           <Button type="submit" disabled={submitting || !token}>{submitting ? 'Bezig...' : 'Wachtwoord opslaan'}</Button>
         </form>
 
-        <div className="stack-actions">
-          <Link to="/login">Terug naar login</Link>
+        <div className="auth-link-row">
+          <Link to={`/login?tenant=${encodeURIComponent(tenant)}&email=${encodeURIComponent(email)}`}>Terug naar login</Link>
         </div>
       </Card>
     </div>

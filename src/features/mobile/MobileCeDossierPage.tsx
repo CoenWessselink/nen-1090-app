@@ -68,8 +68,8 @@ function resolveRowSection(label: string, group?: string): CeRowSection {
 
 function normalizeStatusTone(status: string) {
   const value = String(status || '').toLowerCase();
-  if (value.includes('compleet') || value.includes('conform')) return 'success';
-  if (value.includes('ontbreekt') || value.includes('niet conform')) return 'danger';
+  if (value.includes('compleet') || value.includes('conform') || value.includes('aanwezig') || value === 'ja') return 'success';
+  if (value.includes('ontbreekt') || value.includes('niet conform') || value === 'nee') return 'danger';
   return 'warning';
 }
 
@@ -246,6 +246,7 @@ export function MobileCeDossierPage() {
         inspection_template_id: editState.inspection_template_id,
         coordinator_id: editState.coordinator_id || null,
         coordinator_name: coordinatorName ? toOptionLabel(coordinatorName) : null,
+        notes: editState.notes || null,
       } as Record<string, unknown>);
       await syncLinks(linkedMaterialIds, editState.material_ids, addProjectMaterialLink, removeProjectMaterialLink);
       await syncLinks(linkedWpsIds, editState.wps_ids, addProjectWpsLink, removeProjectWpsLink);
@@ -383,7 +384,7 @@ export function MobileCeDossierPage() {
             </div>
 
             <div className="mobile-detail-card ce-summary-links-card">
-              <div className="mobile-list-card-meta" style={{ marginBottom: 8 }}>Klik op elke regel om direct de gekoppelde popup te openen.</div>
+              <div className="mobile-list-card-meta ce-click-hint" style={{ marginBottom: 8 }}>Klik op een kaart of regel om direct de gekoppelde popup te openen.</div>
               <div className="ce-quick-grid">
                 {summaryRows.map((row) => (
                   <button key={row.label} type="button" className="ce-quick-stat" onClick={() => openRow(row.label, row.value, row.section)}>

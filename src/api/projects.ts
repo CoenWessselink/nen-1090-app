@@ -331,7 +331,7 @@ export async function addProjectMaterialLink(projectId: string | number, materia
   return (
     (await optionalRequest<Record<string, unknown>>([`/projects/${projectId}/selected/materials`], {
       method: 'POST',
-      body: JSON.stringify({ material_id: materialId }),
+      body: JSON.stringify({ ref_id: materialId }),
     })) || { ok: true, projectId, materialId }
   );
 }
@@ -348,7 +348,7 @@ export async function addProjectWpsLink(projectId: string | number, wpsId: strin
   return (
     (await optionalRequest<Record<string, unknown>>([`/projects/${projectId}/selected/wps`], {
       method: 'POST',
-      body: JSON.stringify({ wps_id: wpsId }),
+      body: JSON.stringify({ ref_id: wpsId }),
     })) || { ok: true, projectId, wpsId }
   );
 }
@@ -365,7 +365,7 @@ export async function addProjectWelderLink(projectId: string | number, welderId:
   return (
     (await optionalRequest<Record<string, unknown>>([`/projects/${projectId}/selected/welders`], {
       method: 'POST',
-      body: JSON.stringify({ welder_id: welderId }),
+      body: JSON.stringify({ ref_id: welderId }),
     })) || { ok: true, projectId, welderId }
   );
 }
