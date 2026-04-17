@@ -1,4 +1,5 @@
 import { CreditCard, Download, ExternalLink, FileText, RefreshCcw, ShieldCheck } from 'lucide-react';
+import ModuleHero from '@/components/layout/ModuleHero';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -27,6 +28,12 @@ export function BillingPage() {
   const invoiceRows = Array.isArray(invoices.data?.items) ? invoices.data?.items : [];
   const subscription = (statusPlus as any)?.subscription || {};
   const accessSnapshot = (statusPlus as any)?.access_snapshot || {};
+  const foundationReady = Boolean((statusPlus as any)?.foundation_ready ?? (invoices.data as any)?.foundation_ready ?? true);
+  const missingTables = Array.isArray((statusPlus as any)?.missing_tables)
+    ? (statusPlus as any)?.missing_tables
+    : Array.isArray((invoices.data as any)?.missing_tables)
+      ? (invoices.data as any)?.missing_tables
+      : [];
   const marketingSubscriptionUrl = buildMarketingUrl('subscription', {
     next: buildAppReturnTo('/billing'),
     query: {
@@ -34,6 +41,9 @@ export function BillingPage() {
       returnTo: buildAppReturnTo('/billing'),
     },
   });
+  const foundationMessage = !foundationReady
+    ? `Billingfundering is in deze omgeving nog niet volledig gemigreerd. De pagina blijft bruikbaar zonder 500-fouten, maar facturen en access snapshots blijven beperkt totdat de ontbrekende tabellen live zijn: ${missingTables.join(', ') || 'onbekend'}.`
+    : '';
 
   const summaryRows = [
     { label: 'Status', value: String(status.status || subscription.status || 'Onbekend') },
@@ -45,27 +55,27 @@ export function BillingPage() {
   ];
 
   return (
-    <div className="page-stack billing-page">
-      <section className="section-banner">
-        <div className="section-banner-copy">
-          <span className="section-banner-kicker">Facturatiebasis fase 3</span>
-          <h1>Billing</h1>
-          <p>Facturatie, tenantstatus en factuurdocumenten zijn zichtbaar in dezelfde enterprise-stijl als de overige beheerpagina’s.</p>
-        </div>
-        <div className="section-banner-actions">
-          <a href={marketingSubscriptionUrl} target="_self" rel="noreferrer"><Button>Open centraal abonnement</Button></a>
-          <Button variant="secondary" onClick={() => { billingStatus.refetch(); billingStatusPlus.refetch(); invoices.refetch(); }}><RefreshCcw size={16} /> Verversen</Button>
-        </div>
-      </section>
-
-      <div className="section-nav-grid">
-        <div className="section-nav-tile is-active"><div className="section-nav-tile-top"><CreditCard size={18} /><span>Status</span></div><div className="section-nav-tile-value">{String(status.status || subscription.status || 'Onbekend')}</div><strong>Huidige tenantstatus</strong><small>Direct zichtbaar vanuit billing en access rules.</small></div>
-        <div className="section-nav-tile is-active"><div className="section-nav-tile-top"><ShieldCheck size={18} /><span>Access</span></div><div className="section-nav-tile-value">{String(subscription.access_mode || accessSnapshot.access_mode || '—')}</div><strong>Toegang</strong><small>Doorwerking vanuit subscription en access snapshots.</small></div>
-        <div className="section-nav-tile is-active"><div className="section-nav-tile-top"><FileText size={18} /><span>Open facturen</span></div><div className="section-nav-tile-value">{String(invoiceRows.filter((row: any) => Number(row.balance_due_cents || 0) > 0).length)}</div><strong>Documenten</strong><small>Openstaande of nog niet afgeboekte facturen.</small></div>
-        <button type="button" className="section-nav-tile is-active" onClick={() => { window.location.href = marketingSubscriptionUrl; }}><div className="section-nav-tile-top"><ExternalLink size={18} /><span>Self-service</span></div><div className="section-nav-tile-value">{canManageBilling ? 'Beheer' : 'Lezen'}</div><strong>Centraal abonnement</strong><small>Checkout en planwijzigingen blijven centraal beheerd.</small></button>
-      </div>
+    <div className="page-stack">
+      <ModuleHero
+        title="Billing"
+        description="Facturatie, tenantstatus en factuurdocumenten zijn nu ook in de app zichtbaar, terwijl checkout en plan-self-service centraal blijven lopen."
+        kicker="Facturatiebasis fase 3"
+        actions={
+          <>
+            <a href={marketingSubscriptionUrl} target="_self" rel="noreferrer"><Button>Open centraal abonnement</Button></a>
+            <Button variant="secondary" onClick={() => { billingStatus.refetch(); billingStatusPlus.refetch(); invoices.refetch(); }}><RefreshCcw size={16} /> Verversen</Button>
+          </>
+        }
+        tiles={[
+          { label: 'Status', value: String(status.status || subscription.status || 'Onbekend'), meta: 'Huidige tenantstatus', icon: CreditCard, tone: 'primary' },
+          { label: 'Access', value: String(subscription.access_mode || accessSnapshot.access_mode || '—'), meta: 'Doorwerking vanuit billing/access rules', icon: ShieldCheck, tone: 'success' },
+          { label: 'Open facturen', value: String(invoiceRows.filter((row: any) => Number(row.balance_due_cents || 0) > 0).length), meta: 'Direct zichtbaar in tenantomgeving', icon: FileText, tone: 'warning' },
+          { label: 'Self-service', value: canManageBilling ? 'Beheer actief' : 'Alleen lezen', meta: 'Planwijziging en checkout blijven centraal', icon: ExternalLink, onClick: () => { window.location.href = marketingSubscriptionUrl; }, tone: 'neutral' },
+        ]}
+      />
 
       {!canManageBilling ? <InlineMessage tone="neutral">Je kunt hier billingstatus en facturen bekijken. Checkout, betaalprovider en planwissels lopen via de centrale abonnementsshell.</InlineMessage> : null}
+      {!foundationReady ? <InlineMessage tone="danger">{foundationMessage}</InlineMessage> : null}
 
       <div className="kpi-strip">
         {summaryRows.map((row) => (
@@ -98,7 +108,7 @@ export function BillingPage() {
             <Badge tone="neutral">{String(invoiceRows.length)} documenten</Badge>
           </div>
           {invoices.isLoading ? <LoadingState label="Facturen laden..." /> : null}
-          {invoices.isError ? <ErrorState title="Facturen niet geladen" description="Controleer of /tenant/billing/invoices bereikbaar is." /> : null}
+          {invoices.isError && foundationReady ? <ErrorState title="Facturen niet geladen" description="Controleer of /tenant/billing/invoices bereikbaar is." /> : null}
           {!invoices.isLoading && !invoiceRows.length ? <InlineMessage tone="neutral">Er zijn nog geen facturen beschikbaar voor deze tenant.</InlineMessage> : null}
           <div className="list-stack compact-list">
             {invoiceRows.map((row: any) => (
@@ -118,7 +128,7 @@ export function BillingPage() {
       </div>
 
       {billingStatus.isLoading || billingStatusPlus.isLoading ? <LoadingState label="Billingstatus laden..." /> : null}
-      {billingStatus.isError ? <ErrorState title="Billingstatus niet geladen" description="Controleer of /tenant/billing/status bereikbaar is." /> : null}
+      {billingStatus.isError && foundationReady ? <ErrorState title="Billingstatus niet geladen" description="Controleer of /tenant/billing/status bereikbaar is." /> : null}
     </div>
   );
 }
