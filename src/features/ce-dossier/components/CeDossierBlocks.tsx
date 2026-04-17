@@ -237,28 +237,19 @@ export function CeDossierStructureCard({
         <h3><FileStack size={18} /> Dossierstructuur</h3>
         <Badge tone="neutral">{sections.reduce((sum, item) => sum + item.count, 0)} records</Badge>
       </div>
-      <div className="list-stack compact-list">
+      <div className="section-nav-grid ce-dossier-structure-grid">
         {sections.map((item) => (
-          <div
+          <button
             key={item.key}
-            className="list-row"
-            style={clickableRow(onSelectSection ? () => onSelectSection(item.key) : undefined)}
+            type="button"
+            className={`section-nav-tile ${item.count > 0 ? 'is-active' : ''}`}
             onClick={onSelectSection ? () => onSelectSection(item.key) : undefined}
-            role={onSelectSection ? 'button' : undefined}
-            tabIndex={onSelectSection ? 0 : undefined}
-            onKeyDown={onSelectSection ? (event) => {
-              if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault();
-                onSelectSection(item.key);
-              }
-            } : undefined}
           >
-            <div>
-              <strong>{item.label}</strong>
-              <div className="list-subtle">{item.count > 0 ? `${item.count} gekoppeld` : 'Nog leeg'}</div>
-            </div>
-            <Badge tone={item.count > 0 ? 'success' : 'warning'}>{item.count}</Badge>
-          </div>
+            <div className="section-nav-tile-top"><FileStack size={16} /><span>{item.label}</span></div>
+            <div className="section-nav-tile-value">{item.count}</div>
+            <strong>{item.count > 0 ? 'Gekoppeld' : 'Nog leeg'}</strong>
+            <small>{item.count > 0 ? `Open ${item.label.toLowerCase()} in popup of module.` : `Voeg ${item.label.toLowerCase()} toe om het dossier te completeren.`}</small>
+          </button>
         ))}
       </div>
     </Card>

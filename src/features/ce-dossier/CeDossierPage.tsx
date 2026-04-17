@@ -571,7 +571,7 @@ export function CeDossierPage() {
   );
 
   return (
-    <div className="page-stack">
+    <div className="page-stack ce-dossier-page">
       <ProjectTabShell
         projectId={projectId}
         currentTab={currentProjectTab}

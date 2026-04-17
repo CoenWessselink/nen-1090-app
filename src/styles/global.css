@@ -23,3 +23,14 @@
 .ce-dossier-page .card, .ce-dossier-page [data-ui="card"] { border-radius:20px; box-shadow:0 12px 28px rgba(15,23,42,.06); }
 .ce-dossier-page .list-row { padding:10px 12px; border-radius:14px; background:#f8fafc; border:1px solid #e5edf7; }
 @media (max-width: 900px){ .section-banner { flex-direction:column; } }
+.billing-page .section-nav-tile button,
+.ce-dossier-structure-grid .section-nav-tile,
+.billing-page .section-nav-tile {
+  width: 100%;
+}
+.ce-dossier-structure-grid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+.ce-dossier-page .section-nav-tile {
+  min-height: 148px;
+}
