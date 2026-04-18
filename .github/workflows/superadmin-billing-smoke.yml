@@ -1,0 +1,43 @@
+name: Superadmin Billing Smoke
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - 'nen-1090-app/src/features/superadmin/**'
+      - 'nen-1090-app/src/features/billing/**'
+      - 'nen-1090-app/tests/e2e/superadmin-billing-lifecycle.spec.ts'
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: nen-1090-app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: nen-1090-app/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Install Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Build
+        run: npm run build
+
+      - name: Preview
+        run: npm run preview -- --host 127.0.0.1 --port 4173 &
+
+      - name: Wait for preview
+        run: npx wait-on http://127.0.0.1:4173
+
+      - name: Run superadmin billing smoke
+        run: npx playwright test tests/e2e/superadmin-billing-lifecycle.spec.ts --project=desktop-chromium
