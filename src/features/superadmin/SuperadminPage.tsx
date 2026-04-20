@@ -1,528 +1,578 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
-  Activity,
-  BadgeCheck,
-  Building2,
-  CreditCard,
-  Download,
-  FileText,
-  LogIn,
-  LogOut,
-  Mail,
-  Plus,
-  Search,
-  ShieldCheck,
-  Users,
+  Building2, Users, CreditCard, Activity, ShieldAlert,
+  Plus, RefreshCw, Download, ToggleLeft, ToggleRight, Mail,
+  Key, Trash2, Edit2,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Select } from '@/components/ui/Select';
-import { Drawer } from '@/components/drawer/Drawer';
 import { DataTable, type ColumnDef } from '@/components/datatable/DataTable';
+import { Drawer } from '@/components/drawer/Drawer';
 import { EmptyState } from '@/components/feedback/EmptyState';
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { LoadingState } from '@/components/feedback/LoadingState';
 import { InlineMessage } from '@/components/feedback/InlineMessage';
-import { ConfirmActionDialog } from '@/components/dialogs/ConfirmActionDialog';
 import { StatCard } from '@/components/ui/StatCard';
 import { useSession } from '@/app/session/SessionContext';
-import { useAuthStore } from '@/app/store/auth-store';
-import { useUiStore } from '@/app/store/ui-store';
-import { useExitImpersonation, useImpersonateTenant, usePlatformSummary, useTenantActions, useTenants } from '@/hooks/useTenants';
-import { useTenantAudit, useTenantBillingPanel, useTenantDetail, useTenantUserActions, useTenantUsers } from '@/hooks/useTenantAdmin';
-import { useSystemHealth } from '@/hooks/useSystemHealth';
-import { useTenantBillingActions, useTenantBillingDetail, useTenantInvoiceDetail, useTenantInvoices, useTenantPayments } from '@/hooks/usePlatformBilling';
-import type { AuditSummary, BillingPayment, PlatformSummary, Tenant, TenantCreateInput, TenantPatchInput, TenantUser, TenantUserCreateInput, TenantUserPatchInput } from '@/types/domain';
-import { formatDatetime, toneFromStatus } from '@/utils/format';
+import {
+  usePlatformSummary,
+  useTenantActions,
+  useTenants,
+  useTenantDetail,
+  useTenantUsers,
+  useTenantUserActions,
+} from '@/hooks/usePlatform';
+import { formatDatetime } from '@/utils/format';
 
-const detailTabs = [
-  { value: 'samenvatting', label: 'Samenvatting' },
-  { value: 'gebruikers', label: 'Gebruikers' },
-  { value: 'audit', label: 'Audit' },
-  { value: 'billing', label: 'Billing' },
-  { value: 'status', label: 'Statusbeheer' },
-];
+type TenantTab = 'algemeen' | 'gebruikers' | 'billing' | 'audit' | 'access';
 
-function parseStatus(tenant: Tenant): 'active' | 'inactive' | 'suspended' | 'trial' {
-  const source = String(tenant.status || tenant.subscription_status || '').toLowerCase();
-  if (source.includes('suspend')) return 'suspended';
-  if (source.includes('trial')) return 'trial';
-  if (source.includes('inactive') || source.includes('disabled') || tenant.is_active === false) return 'inactive';
-  if (source.includes('active') || tenant.is_active === true) return 'active';
-  return tenant.is_active === false ? 'inactive' : 'trial';
-}
-
-function statusLabel(status: ReturnType<typeof parseStatus>): string {
-  if (status === 'active') return 'Actief';
-  if (status === 'inactive') return 'Inactief';
-  if (status === 'suspended') return 'Gesuspendeerd';
-  return 'Trial';
-}
-
-function displayUsers(tenant: Tenant): number {
-  return Number(tenant.users_count ?? tenant.user_count ?? 0);
-}
-
-function formatCents(value: unknown): string {
-  const amount = Number(value || 0);
-  if (!Number.isFinite(amount) || amount <= 0) return '—';
-  return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(amount / 100);
-}
-
-function text(value: unknown, fallback = '—'): string {
-  if (value === undefined || value === null || value === '') return fallback;
-  return String(value);
-}
-
-function metaToString(meta: unknown): string {
-  if (!meta) return '—';
-  if (typeof meta === 'string') return meta;
-  try {
-    return JSON.stringify(meta);
-  } catch {
-    return '—';
-  }
+function TenantStatusBadge({ status }: { status: string }) {
+  const map: Record<string, string> = {
+    active: 'success', trialing: 'info', past_due: 'warning',
+    suspended: 'danger', cancelled: 'secondary',
+  };
+  const labels: Record<string, string> = {
+    active: 'Actief', trialing: 'Proefperiode', past_due: 'Achterstallig',
+    suspended: 'Geblokkeerd', cancelled: 'Opgezegd',
+  };
+  return (
+    <Badge tone={(map[status] ?? 'secondary') as any}>
+      {labels[status] ?? status}
+    </Badge>
+  );
 }
 
 export function SuperadminPage() {
-  const session = useSession();
-  const health = useSystemHealth();
-  const tenants = useTenants(true, { page: 1, limit: 200 });
-  const platformSummary = usePlatformSummary(true);
-  const tenantActions = useTenantActions();
-  const impersonate = useImpersonateTenant();
-  const exitImpersonation = useExitImpersonation();
-  const startImpersonation = useAuthStore((state) => state.startImpersonation);
-  const currentUser = useAuthStore((state) => state.user);
-  const pushNotification = useUiStore((state) => state.pushNotification);
-
-  const [message, setMessage] = useState<string | null>(null);
+  const { user } = useSession();
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive' | 'suspended' | 'trial'>('all');
-  const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
-  const [detailTab, setDetailTab] = useState('samenvatting');
-  const [tenantPage, setTenantPage] = useState(1);
-  const [paymentsPage, setPaymentsPage] = useState(1);
-  const [createTenantOpen, setCreateTenantOpen] = useState(false);
-  const [createUserOpen, setCreateUserOpen] = useState(false);
-  const [editTenantOpen, setEditTenantOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState<TenantUser | null>(null);
-  const [createInvoiceOpen, setCreateInvoiceOpen] = useState(false);
-  const [manualPaymentOpen, setManualPaymentOpen] = useState(false);
-  const [changePlanOpen, setChangePlanOpen] = useState(false);
-  const [accessOverrideOpen, setAccessOverrideOpen] = useState(false);
-  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
-  const [creditInvoiceId, setCreditInvoiceId] = useState<string | null>(null);
-  const [cancelSubscriptionOpen, setCancelSubscriptionOpen] = useState(false);
-  const [lastBillingFeedback, setLastBillingFeedback] = useState<Record<string, unknown> | null>(null);
-  const [pendingAction, setPendingAction] = useState<{ type: 'activate' | 'deactivate' | 'suspend' | 'reactivate' | 'trial' | 'force-logout'; tenant: Tenant } | null>(null);
+  const [selectedTenantId, setSelectedTenantId] = useState<string | null>(null);
+  const [tenantTab, setTenantTab] = useState<TenantTab>('algemeen');
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [userEditOpen, setUserEditOpen] = useState(false);
 
-  const [tenantForm, setTenantForm] = useState<TenantCreateInput>({
-    name: '',
-    status: 'trial',
-    is_active: true,
-    seats_purchased: 5,
-    price_per_seat_year_cents: 0,
-    billing_provider: 'none',
-    trial_days: 14,
-    create_admin: {
-      email: '',
-      password: '',
-      role: 'tenant_admin',
-      is_active: true,
-    },
-  });
+  const summary = usePlatformSummary();
+  const tenants = useTenants();
+  const tenantDetail = useTenantDetail(selectedTenantId ?? '');
+  const tenantUsers = useTenantUsers(selectedTenantId ?? '');
+  const tenantActions = useTenantActions();
+  const userActions = useTenantUserActions(selectedTenantId ?? '');
 
-  const [tenantUserForm, setTenantUserForm] = useState<TenantUserCreateInput>({
-    email: '',
-    password: '',
-    role: 'viewer',
-    is_active: true,
-  });
-  const [tenantEditForm, setTenantEditForm] = useState<TenantPatchInput>({
-    name: '',
-    status: 'trial',
-    is_active: true,
-    seats_purchased: 1,
-    price_per_seat_year_cents: 0,
-    billing_provider: 'none',
-  });
-  const [tenantUserEditForm, setTenantUserEditForm] = useState<TenantUserPatchInput & { email?: string }>({
-    email: '',
-    role: 'viewer',
-    is_active: true,
-  });
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase();
+    return (tenants.data ?? []).filter(
+      (t: any) =>
+        !q ||
+        t.name?.toLowerCase().includes(q) ||
+        t.display_name?.toLowerCase().includes(q)
+    );
+  }, [tenants.data, search]);
 
-  const [invoiceForm, setInvoiceForm] = useState({
-    description: 'Jaarabonnement WeldInspect',
-    seats: 1,
-    unit_amount_cents: 0,
-    due_in_days: 14,
-  });
-  const [manualPaymentForm, setManualPaymentForm] = useState({
-    amount_cents: 0,
-    type: 'subscription',
-    invoice_id: '',
-    provider: 'manual',
-    status: 'paid',
-  });
-  const [planForm, setPlanForm] = useState({
-    plan_code: 'professional',
-    seats: 1,
-    status: 'active',
-  });
-  const [accessOverrideForm, setAccessOverrideForm] = useState({
-    access_mode: 'read_only',
-    status: 'active',
-    reason: 'superadmin override',
-  });
-  const [creditReason, setCreditReason] = useState('Creditnota door superadmin');
-
-  const tenantRows = tenants.data?.items || [];
-  const filteredRows = useMemo(() => {
-    return tenantRows.filter((tenant) => {
-      const status = parseStatus(tenant);
-      const haystack = `${tenant.name || ''} ${tenant.id || ''} ${tenant.status || ''} ${tenant.subscription_status || ''}`.toLowerCase();
-      const queryMatch = haystack.includes(search.trim().toLowerCase());
-      const filterMatch = statusFilter === 'all' ? true : status === statusFilter;
-      return queryMatch && filterMatch;
-    });
-  }, [search, statusFilter, tenantRows]);
-
-  const pagedTenantRows = useMemo(
-    () => filteredRows.slice((tenantPage - 1) * 10, tenantPage * 10),
-    [filteredRows, tenantPage],
-  );
-
-  const summary = platformSummary.data || {
-    total_tenants: tenantRows.length,
-    active_tenants: tenantRows.filter((tenant) => parseStatus(tenant) === 'active').length,
-    inactive_tenants: tenantRows.filter((tenant) => parseStatus(tenant) === 'inactive').length,
-    suspended_tenants: tenantRows.filter((tenant) => parseStatus(tenant) === 'suspended').length,
-    total_users: tenantRows.reduce((sum, tenant) => sum + displayUsers(tenant), 0),
-    total_seats: tenantRows.reduce((sum, tenant) => sum + Number(tenant.seats_purchased || 0), 0),
-  } as PlatformSummary;
-
-  const tenantDetail = useTenantDetail(selectedTenant?.id, Boolean(selectedTenant));
-  const tenantUsers = useTenantUsers(selectedTenant?.id, Boolean(selectedTenant));
-  const tenantAudit = useTenantAudit(selectedTenant?.id, Boolean(selectedTenant));
-  const tenantBilling = useTenantBillingPanel(selectedTenant?.id, Boolean(selectedTenant));
-  const tenantBillingDetail = useTenantBillingDetail(selectedTenant?.id);
-  const tenantPayments = useTenantPayments(selectedTenant?.id, { page: paymentsPage, limit: 10 });
-  const tenantInvoices = useTenantInvoices(selectedTenant?.id);
-  const tenantBillingActions = useTenantBillingActions(selectedTenant?.id);
-  const selectedInvoiceDetail = useTenantInvoiceDetail(selectedTenant?.id, selectedInvoiceId || undefined);
-  const tenantUserActions = useTenantUserActions(selectedTenant?.id);
-
-  const detailTenant = (tenantDetail.data || selectedTenant) as Tenant | null;
-  useEffect(() => {
-    if (!detailTenant) return;
-    setTenantEditForm({
-      name: String(detailTenant.name || ''),
-      status: parseStatus(detailTenant),
-      is_active: detailTenant.is_active !== false,
-      seats_purchased: Number(detailTenant.seats_purchased || 1),
-      price_per_seat_year_cents: Number(detailTenant.price_per_seat_year_cents || 0),
-      billing_provider: String(detailTenant.billing_provider || 'none'),
-    });
-  }, [detailTenant]);
-
-  const userRows = tenantUsers.data?.items || [];
-  const auditRows = tenantAudit.data?.items || [];
-  const billingPayload = { ...(tenantBilling.data || {}), ...(tenantBillingDetail.data || {}) } as Record<string, unknown>;
-  const paymentRows = tenantPayments.data?.items || [];
-  const invoiceRows = tenantInvoices.data?.items || [];
-
-  const applyBillingFeedback = (response: Record<string, unknown> | null | undefined, fallback: string) => {
-    setLastBillingFeedback(response ? response as Record<string, unknown> : null);
-    refreshMessage(String(response?.message || response?.number || fallback));
-  };
-
-  const refreshMessage = (next: string) => {
-    setMessage(next);
-    window.setTimeout(() => setMessage(null), 4000);
-  };
-
-  const handleExportCsv = async () => {
-    try {
-      const result = await tenantActions.exportCsv.mutateAsync();
-      const anchor = document.createElement('a');
-      anchor.href = result.url;
-      anchor.download = result.filename || 'tenants.csv';
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-      window.setTimeout(() => URL.revokeObjectURL(result.url), 30_000);
-      refreshMessage('Tenant-export gestart.');
-    } catch (error) {
-      refreshMessage(error instanceof Error ? error.message : 'CSV export mislukt.');
-    }
-  };
-
-  const handleCreateTenant = async (event: FormEvent) => {
-    event.preventDefault();
-    try {
-      const response = await tenantActions.createTenant.mutateAsync(tenantForm) as Record<string, unknown>;
-      setCreateTenantOpen(false);
-      setTenantForm({
-        name: '',
-        status: 'trial',
-        is_active: true,
-        seats_purchased: 5,
-        price_per_seat_year_cents: 0,
-        billing_provider: 'none',
-        trial_days: 14,
-        create_admin: { email: '', password: '', role: 'tenant_admin', is_active: true },
-      });
-      refreshMessage(String(response?.reset_url ? `Tenant aangemaakt. Activatielink: ${response.reset_url}` : response?.delivery_outbox_path ? `Tenant aangemaakt. Previewmail: ${response.delivery_outbox_path}` : 'Tenant aangemaakt.'));
-    } catch (error) {
-      refreshMessage(error instanceof Error ? error.message : 'Tenant aanmaken mislukt.');
-    }
-  };
-
-  const handleCreateUser = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!selectedTenant) return;
-    try {
-      const response = await tenantUserActions.createUser.mutateAsync(tenantUserForm) as Record<string, unknown>;
-      setCreateUserOpen(false);
-      setTenantUserForm({ email: '', password: '', role: 'viewer', is_active: true });
-      refreshMessage(String(response?.reset_url ? `Gebruiker aangemaakt. Activatielink: ${response.reset_url}` : response?.delivery_outbox_path ? `Gebruiker aangemaakt. Previewmail: ${response.delivery_outbox_path}` : `Gebruiker toegevoegd aan ${selectedTenant.name || selectedTenant.id}.`));
-    } catch (error) {
-      refreshMessage(error instanceof Error ? error.message : 'Gebruiker toevoegen mislukt.');
-    }
-  };
-
-  const handleTenantAction = async () => {
-    if (!pendingAction) return;
-    try {
-      if (pendingAction.type === 'activate') await tenantActions.activateTenant.mutateAsync(pendingAction.tenant.id);
-      if (pendingAction.type === 'deactivate') await tenantActions.deactivateTenant.mutateAsync(pendingAction.tenant.id);
-      if (pendingAction.type === 'suspend') await tenantActions.suspendTenant.mutateAsync(pendingAction.tenant.id);
-      if (pendingAction.type === 'reactivate') await tenantActions.reactivateTenant.mutateAsync(pendingAction.tenant.id);
-      if (pendingAction.type === 'trial') await tenantActions.startTrial.mutateAsync(pendingAction.tenant.id);
-      if (pendingAction.type === 'force-logout') await tenantUserActions.forceLogout.mutateAsync();
-      refreshMessage(`Actie ${pendingAction.type} uitgevoerd voor ${pendingAction.tenant.name || pendingAction.tenant.id}.`);
-      setPendingAction(null);
-    } catch (error) {
-      refreshMessage(error instanceof Error ? error.message : 'Tenantactie mislukt.');
-      setPendingAction(null);
-    }
-  };
-
-  const handleImpersonate = async (tenant: Tenant) => {
-    try {
-      const response = await impersonate.mutateAsync(tenant.id);
-      const token = response.access_token || response.token;
-      if (token && currentUser) {
-        startImpersonation(
-          token,
-          {
-            email: response.user?.email || currentUser.email,
-            role: response.user?.role || 'TenantAdmin',
-            tenant: response.user?.tenant || tenant.name || String(tenant.id),
-            tenantId: response.user?.tenant_id || tenant.id,
-            name: response.user?.name || currentUser.name,
-          },
-          currentUser,
-        );
-        refreshMessage(`Tenant-view gestart voor ${tenant.name || tenant.id}.`);
-        pushNotification({ title: 'Tenant-view actief', description: `Je kijkt nu mee in ${tenant.name || tenant.id}.`, tone: 'info' });
-      }
-    } catch (error) {
-      refreshMessage(error instanceof Error ? error.message : 'Tenant-view starten mislukt.');
-      pushNotification({ title: 'Tenant-view mislukt', description: error instanceof Error ? error.message : 'Onbekende fout', tone: 'error' });
-    }
-  };
-
-  const openUserEditor = (row: TenantUser) => {
-    setEditingUser(row);
-    setTenantUserEditForm({
-      email: row.email,
-      role: row.role,
-      is_active: row.is_active,
-    });
-  };
-
-  const openTenantDetail = (tenant: Tenant, tab: string = 'samenvatting') => {
-    setSelectedTenant(tenant);
-    setDetailTab(tab);
-  };
-
-  const columns: ColumnDef<Tenant>[] = [
+  const tenantColumns: ColumnDef<any>[] = [
     {
-      key: 'tenant',
-      header: 'Tenant',
-      sortable: true,
-      cell: (tenant) => (
-        <div className="superadmin-cell-stack">
-          <strong>{text(tenant.name, text(tenant.id))}</strong>
-          <span>{text(tenant.id)}</span>
+      key: 'name',
+      header: 'Naam',
+      cell: (row) => (
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 500 }}>{row.display_name ?? row.name}</div>
+          <div style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>{row.name}</div>
         </div>
       ),
     },
+    { key: 'plan', header: 'Plan', cell: (row) => row.plan ?? '—' },
+    { key: 'seats', header: 'Seats', cell: (row) => row.seats ?? '—' },
     {
       key: 'status',
       header: 'Status',
-      sortable: true,
-      cell: (tenant) => {
-        const status = parseStatus(tenant);
-        return <Badge tone={toneFromStatus(status)}>{statusLabel(status)}</Badge>;
-      },
+      cell: (row) => <TenantStatusBadge status={row.mollie_subscription_status ?? 'active'} />,
     },
     {
-      key: 'users_count',
-      header: 'Gebruikers',
-      sortable: true,
-      cell: (tenant) => displayUsers(tenant),
-    },
-    {
-      key: 'seats',
-      header: 'Seats',
-      cell: (tenant) => text(tenant.seats_purchased, '—'),
-    },
-    {
-      key: 'billing_provider',
-      header: 'Billing',
-      cell: (tenant) => text(tenant.billing_provider, 'none'),
+      key: 'is_demo',
+      header: 'Demo',
+      cell: (row) =>
+        row.is_demo ? <Badge tone="warning">Demo</Badge> : null,
     },
     {
       key: 'created_at',
       header: 'Aangemaakt',
-      cell: (tenant) => formatDatetime(text(tenant.created_at, '')) || '—',
-    },
-    {
-      key: 'actions',
-      header: 'Acties',
-      className: 'superadmin-actions-column',
-      cell: (tenant) => {
-        const status = parseStatus(tenant);
-        return (
-          <div className="superadmin-row-actions">
-            <Button variant="secondary" onClick={() => openTenantDetail(tenant, 'samenvatting')}>Open</Button>
-            <Button variant="secondary" disabled={!session.hasPermission('tenants.impersonate') || impersonate.isPending} onClick={() => handleImpersonate(tenant)}>
-              <LogIn size={14} /> Meekijken
-            </Button>
-            {status === 'active' ? <Button variant="ghost" onClick={() => setPendingAction({ type: 'suspend', tenant })}>Suspend</Button> : null}
-            {status === 'inactive' ? <Button variant="ghost" onClick={() => setPendingAction({ type: 'activate', tenant })}>Activeer</Button> : null}
-            {status === 'suspended' ? <Button variant="ghost" onClick={() => setPendingAction({ type: 'reactivate', tenant })}>Heractiveer</Button> : null}
-            {status === 'trial' ? <Button variant="ghost" onClick={() => setPendingAction({ type: 'activate', tenant })}>Activeer</Button> : null}
-          </div>
-        );
-      },
+      cell: (row) => (
+        <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
+          {formatDatetime(row.created_at)}
+        </span>
+      ),
     },
   ];
 
-  return (
-    <div className="page-stack superadmin-page">
-      <section className="section-banner">
-        <div className="section-banner-copy">
-          <span className="section-banner-kicker">Platformcontrole</span>
-          <h1>Superadmin</h1>
-          <p>Tenantbeheer, tenant 360, gebruikersbeheer, billingcontrole en platformstatus met dezelfde header- en tegeltaal als Project 360.</p>
-        </div>
-        <div className="section-banner-actions">
-          <Button variant="secondary" onClick={handleExportCsv} disabled={tenantActions.exportCsv.isPending}><Download size={16} /> Export CSV</Button>
-          <Button onClick={() => setCreateTenantOpen(true)}><Plus size={16} /> Nieuwe tenant</Button>
-        </div>
-      </section>
+  const openTenant = (id: string) => {
+    setSelectedTenantId(id);
+    setTenantTab('algemeen');
+  };
 
-      <div className="section-nav-grid">
-        <div className="section-nav-tile is-active"><div className="section-nav-tile-top"><Building2 size={18} /><span>Tenants</span></div><div className="section-nav-tile-value">{String(summary.total_tenants || 0)}</div><strong>Alle tenants in platform</strong><small>Overzicht van alle omgevingen en tenants.</small></div>
-        <div className="section-nav-tile is-active"><div className="section-nav-tile-top"><BadgeCheck size={18} /><span>Actief</span></div><div className="section-nav-tile-value">{String(summary.active_tenants || 0)}</div><strong>Direct inzetbaar</strong><small>Tenants met actieve status.</small></div>
-        <div className="section-nav-tile is-active"><div className="section-nav-tile-top"><Users size={18} /><span>Gebruikers</span></div><div className="section-nav-tile-value">{String(summary.total_users || 0)}</div><strong>Gekoppelde tenant-users</strong><small>Gebruikers verspreid over alle tenants.</small></div>
-        <div className="section-nav-tile is-active"><div className="section-nav-tile-top"><Activity size={18} /><span>Platform</span></div><div className="section-nav-tile-value">{health.isError ? 'Check' : 'Online'}</div><strong>Health en contracten</strong><small>Health-check en billingcontracten.</small></div>
+  if (!user?.is_platform_admin) {
+    return <ErrorState message="Geen toegang. Platform admin rechten vereist." />;
+  }
+
+  return (
+    <div className="page-container">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+        <div>
+          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 500 }}>Platform beheer</h1>
+          <p style={{ margin: '4px 0 0', fontSize: 14, color: 'var(--color-text-secondary)' }}>
+            Tenants, gebruikers, billing en platform-instellingen
+          </p>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Button variant="secondary" onClick={() => tenants.refetch()}>
+            <RefreshCw size={13} style={{ marginRight: 4 }} /> Vernieuwen
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => window.open('/api/v1/platform/tenants.csv', '_blank')}
+          >
+            <Download size={13} style={{ marginRight: 4 }} /> CSV exporteren
+          </Button>
+        </div>
       </div>
 
-      {message ? <InlineMessage tone="success">{message}</InlineMessage> : null}
-
-      <Card className="superadmin-main-card">
-        <div className="section-title-row">
-          <h3><Building2 size={18} /> Tenantbeheer</h3>
-          <div className="inline-end-cluster">
-            <Badge tone={health.isError ? 'warning' : 'success'}>{health.isError ? 'Health-check fout' : 'Platform online'}</Badge>
-            <Badge tone={session.hasPermission('tenants.impersonate') ? 'success' : 'warning'}>{session.hasPermission('tenants.impersonate') ? 'Impersonatie actief' : 'Alleen lezen'}</Badge>
-          </div>
+      {/* Stats */}
+      {summary.data && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
+          <StatCard label="Tenants" value={summary.data.tenant_count ?? 0} />
+          <StatCard label="Actief" value={summary.data.active_count ?? 0} />
+          <StatCard label="Proefperiode" value={summary.data.trial_count ?? 0} />
+          <StatCard label="Exports (actief)" value={summary.data.exports_running ?? 0} />
         </div>
+      )}
 
-        <div className="toolbar-shell superadmin-toolbar-shell">
-          <div className="toolbar-inline-group superadmin-toolbar-inline-group">
-            <div className="search-shell inline-search-shell">
-              <Search size={16} />
-              <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Zoek tenant, id, billing of status" />
+      {/* Zoeken */}
+      <div style={{ marginBottom: 12 }}>
+        <Input
+          placeholder="Zoek op tenantnaam…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{ maxWidth: 340 }}
+        />
+      </div>
+
+      {/* Tenantlijst — dubbelklik opent detail */}
+      {tenants.isLoading ? (
+        <LoadingState />
+      ) : tenants.isError ? (
+        <ErrorState message="Tenants laden mislukt." />
+      ) : (
+        <DataTable
+          columns={tenantColumns}
+          data={filtered}
+          onRowDoubleClick={(row) => openTenant(row.id)}
+          onRowClick={(row) => openTenant(row.id)}
+          emptyState={<EmptyState title="Geen tenants gevonden." />}
+        />
+      )}
+
+      {/* Tenant detail drawer */}
+      <Drawer
+        open={!!selectedTenantId}
+        onClose={() => setSelectedTenantId(null)}
+        title={tenantDetail.data?.display_name ?? tenantDetail.data?.name ?? 'Tenant'}
+        size="large"
+      >
+        {tenantDetail.isLoading ? (
+          <LoadingState />
+        ) : tenantDetail.isError ? (
+          <ErrorState message="Tenant-details laden mislukt." />
+        ) : tenantDetail.data ? (
+          <div>
+            {/* Tabs */}
+            <div
+              style={{
+                display: 'flex',
+                gap: 4,
+                borderBottom: '0.5px solid var(--color-border-tertiary)',
+                marginBottom: 16,
+                paddingBottom: 0,
+              }}
+            >
+              {([
+                ['algemeen', 'Algemeen'],
+                ['gebruikers', 'Gebruikers'],
+                ['billing', 'Billing'],
+                ['audit', 'Audit'],
+                ['access', 'Toegang'],
+              ] as [TenantTab, string][]).map(([tab, label]) => (
+                <button
+                  key={tab}
+                  onClick={() => setTenantTab(tab)}
+                  style={{
+                    padding: '8px 14px',
+                    fontSize: 13,
+                    border: 'none',
+                    background: 'none',
+                    cursor: 'pointer',
+                    borderBottom: tenantTab === tab
+                      ? '2px solid var(--color-text-primary)'
+                      : '2px solid transparent',
+                    fontWeight: tenantTab === tab ? 500 : 400,
+                    color: tenantTab === tab
+                      ? 'var(--color-text-primary)'
+                      : 'var(--color-text-secondary)',
+                    marginBottom: -1,
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
-            <Select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)} className="superadmin-filter-select">
-              <option value="all">Alle statussen</option>
-              <option value="active">Actief</option>
-              <option value="inactive">Inactief</option>
-              <option value="suspended">Gesuspendeerd</option>
-              <option value="trial">Trial</option>
-            </Select>
-          </div>
-        </div>
 
-        {tenants.isLoading ? <LoadingState label="Tenants laden..." /> : null}
-        {tenants.isError ? <ErrorState title="Tenantlijst niet geladen" description="Controleer of /platform/tenants bereikbaar is." /> : null}
-        {!tenants.isLoading && !tenants.isError && filteredRows.length === 0 ? <EmptyState title="Geen tenants" description="Pas je filters aan of maak een nieuwe tenant aan." /> : null}
-        {!tenants.isLoading && !tenants.isError && filteredRows.length > 0 ? (
-          <DataTable
-            onRowDoubleClick={(tenant) => { setSelectedTenant(tenant); setDetailTab('samenvatting'); }}
-            columns={columns}
-            rows={pagedTenantRows}
-            rowKey={(row) => String(row.id)}
-            page={tenantPage}
-            total={filteredRows.length}
-            pageSize={10}
-            onPageChange={setTenantPage}
-          />
+            {/* Tab: Algemeen */}
+            {tenantTab === 'algemeen' && (
+              <TenantAlgemeenTab
+                tenant={tenantDetail.data}
+                onToggleDemo={async () => {
+                  await tenantActions.patch(tenantDetail.data.id, {
+                    is_demo: !tenantDetail.data.is_demo,
+                  });
+                  tenantDetail.refetch();
+                }}
+              />
+            )}
+
+            {/* Tab: Gebruikers */}
+            {tenantTab === 'gebruikers' && (
+              <TenantUsersTab
+                tenantId={selectedTenantId!}
+                users={tenantUsers.data ?? []}
+                loading={tenantUsers.isLoading}
+                onResendInvite={async (userId) => {
+                  await userActions.resendInvite(userId);
+                }}
+                onResetPassword={async (userId) => {
+                  await userActions.resetPassword(userId);
+                }}
+                onDoubleClick={(user) => {
+                  setSelectedUserId(user.id);
+                  setUserEditOpen(true);
+                }}
+              />
+            )}
+
+            {/* Tab: Billing */}
+            {tenantTab === 'billing' && (
+              <TenantBillingTab tenantId={selectedTenantId!} tenant={tenantDetail.data} />
+            )}
+
+            {/* Tab: Audit */}
+            {tenantTab === 'audit' && (
+              <TenantAuditTab tenantId={selectedTenantId!} />
+            )}
+
+            {/* Tab: Toegang */}
+            {tenantTab === 'access' && (
+              <TenantAccessTab
+                tenant={tenantDetail.data}
+                onOverride={async (mode: string, reason: string) => {
+                  await tenantActions.patch(tenantDetail.data.id, {
+                    access_mode: mode,
+                    access_override_reason: reason,
+                  });
+                  tenantDetail.refetch();
+                }}
+              />
+            )}
+          </div>
         ) : null}
-      </Card>
-
-      <Drawer open={createTenantOpen} title="Nieuwe tenant" onClose={() => setCreateTenantOpen(false)}>
-        <form className="page-stack" onSubmit={handleCreateTenant}>
-          <div className="content-grid-2">
-            <label>
-              <span>Tenantnaam</span>
-              <Input value={tenantForm.name} onChange={(event) => setTenantForm((current) => ({ ...current, name: event.target.value }))} required />
-            </label>
-            <label>
-              <span>Status</span>
-              <Select value={tenantForm.status} onChange={(event) => setTenantForm((current) => ({ ...current, status: event.target.value }))}>
-                <option value="trial">Trial</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </Select>
-            </label>
-            <label>
-              <span>Seats</span>
-              <Input type="number" min={1} value={tenantForm.seats_purchased} onChange={(event) => setTenantForm((current) => ({ ...current, seats_purchased: Number(event.target.value) || 1 }))} />
-            </label>
-            <label>
-              <span>Billing provider</span>
-              <Select value={tenantForm.billing_provider} onChange={(event) => setTenantForm((current) => ({ ...current, billing_provider: event.target.value }))}>
-                <option value="none">none</option>
-                <option value="mollie">mollie</option>
-                <option value="manual">manual</option>
-              </Select>
-            </label>
-          </div>
-          <div className="toolbar-right">
-            <Button type="button" variant="ghost" onClick={() => setCreateTenantOpen(false)}>Annuleren</Button>
-            <Button type="submit" disabled={tenantActions.createTenant.isPending}>Tenant aanmaken</Button>
-          </div>
-        </form>
       </Drawer>
-
-      <ConfirmActionDialog
-        open={Boolean(pendingAction)}
-        title={pendingAction ? `Bevestig ${pendingAction.type}` : 'Bevestig actie'}
-        description={pendingAction ? `Voer ${pendingAction.type} uit voor ${pendingAction.tenant.name || pendingAction.tenant.id}.` : 'Voer tenantactie uit.'}
-        confirmLabel="Uitvoeren"
-        onClose={() => setPendingAction(null)}
-        onConfirm={handleTenantAction}
-      />
     </div>
   );
 }
+
+
+function TenantAlgemeenTab({ tenant, onToggleDemo }: { tenant: any; onToggleDemo: () => void }) {
+  const fields = [
+    ['Naam', tenant.name],
+    ['Weergavenaam', tenant.display_name],
+    ['Plan', tenant.plan ?? '—'],
+    ['Seats', tenant.seats ?? '—'],
+    ['Status', tenant.mollie_subscription_status ?? 'active'],
+    ['ISO-5817', tenant.iso5817_level ?? 'C'],
+    ['Aangemaakt', formatDatetime(tenant.created_at)],
+  ];
+  return (
+    <div>
+      <table style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse', marginBottom: 16 }}>
+        <tbody>
+          {fields.map(([label, value]) => (
+            <tr key={label} style={{ borderBottom: '0.5px solid var(--color-border-tertiary)' }}>
+              <td style={{ padding: '8px 0', color: 'var(--color-text-secondary)', width: '35%' }}>
+                {label}
+              </td>
+              <td style={{ padding: '8px 0', fontWeight: 500 }}>{value}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      {/* Demo-mode toggle */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '12px',
+          background: 'var(--color-background-secondary)',
+          borderRadius: 'var(--border-radius-md)',
+          marginTop: 8,
+        }}
+      >
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 500 }}>Demo-modus</div>
+          <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
+            Demo-tenants krijgen een badge en kunnen worden voorzien van seed-data.
+          </div>
+        </div>
+        <button
+          onClick={onToggleDemo}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
+        >
+          {tenant.is_demo ? (
+            <ToggleRight size={28} style={{ color: 'var(--color-text-warning)' }} />
+          ) : (
+            <ToggleLeft size={28} style={{ color: 'var(--color-text-secondary)' }} />
+          )}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+
+function TenantUsersTab({
+  tenantId, users, loading, onResendInvite, onResetPassword, onDoubleClick,
+}: {
+  tenantId: string;
+  users: any[];
+  loading: boolean;
+  onResendInvite: (id: string) => void;
+  onResetPassword: (id: string) => void;
+  onDoubleClick: (user: any) => void;
+}) {
+  const roleBadge: Record<string, string> = {
+    platform_admin: 'danger', tenant_admin: 'warning',
+    planner: 'info', qc: 'info', inspector: 'secondary', tenant_user: 'secondary',
+  };
+
+  if (loading) return <LoadingState />;
+
+  return (
+    <div>
+      {users.length === 0 ? (
+        <EmptyState title="Geen gebruikers." />
+      ) : (
+        <table style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse' }}>
+          <thead>
+            <tr style={{ borderBottom: '0.5px solid var(--color-border-tertiary)' }}>
+              {['Naam / E-mail', 'Rol', 'Acties'].map((h) => (
+                <th key={h} style={{ padding: '6px 8px', textAlign: 'left',
+                                     fontWeight: 500, color: 'var(--color-text-secondary)' }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {users.map((u: any) => (
+              <tr
+                key={u.id}
+                style={{ borderBottom: '0.5px solid var(--color-border-tertiary)', cursor: 'pointer' }}
+                onDoubleClick={() => onDoubleClick(u)}
+                title="Dubbelklik om te bewerken"
+              >
+                <td style={{ padding: '8px' }}>
+                  <div style={{ fontWeight: 500 }}>{u.name ?? u.email}</div>
+                  {u.name && <div style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>{u.email}</div>}
+                </td>
+                <td style={{ padding: '8px' }}>
+                  <Badge tone={(roleBadge[u.role] ?? 'secondary') as any}>{u.role ?? '—'}</Badge>
+                </td>
+                <td style={{ padding: '8px' }}>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button
+                      title="Uitnodiging opnieuw sturen"
+                      onClick={() => onResendInvite(u.id)}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 3,
+                               color: 'var(--color-text-secondary)' }}
+                    >
+                      <Mail size={13} />
+                    </button>
+                    <button
+                      title="Wachtwoord resetten"
+                      onClick={() => onResetPassword(u.id)}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 3,
+                               color: 'var(--color-text-secondary)' }}
+                    >
+                      <Key size={13} />
+                    </button>
+                    <button
+                      title="Bewerken (dubbelklik)"
+                      onClick={() => onDoubleClick(u)}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 3,
+                               color: 'var(--color-text-secondary)' }}
+                    >
+                      <Edit2 size={13} />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
+
+function TenantBillingTab({ tenantId, tenant }: { tenantId: string; tenant: any }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <StatCard label="Plan" value={tenant.plan ?? '—'} />
+        <StatCard label="Seats" value={tenant.seats ?? 0} />
+      </div>
+      <Card>
+        <div style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>
+          Mollie klant-ID: <strong>{tenant.mollie_customer_id ?? 'Niet gekoppeld'}</strong>
+        </div>
+        <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 4 }}>
+          Abonnement-ID: <strong>{tenant.mollie_subscription_id ?? '—'}</strong>
+        </div>
+        <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 4 }}>
+          Status: <TenantStatusBadge status={tenant.mollie_subscription_status ?? 'active'} />
+        </div>
+      </Card>
+      <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
+        Gedetailleerd betalingsbeheer is beschikbaar via het Mollie-dashboard.
+      </div>
+    </div>
+  );
+}
+
+
+function TenantAuditTab({ tenantId }: { tenantId: string }) {
+  const [audit, setAudit] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/v1/platform/tenants/${tenantId}/audit?limit=50`);
+      const data = await res.json();
+      setAudit(Array.isArray(data) ? data : data.items ?? []);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useState(() => { load(); });
+
+  return loading ? <LoadingState /> : (
+    <div>
+      <Button variant="secondary" size="sm" onClick={load} style={{ marginBottom: 10 }}>
+        <RefreshCw size={12} style={{ marginRight: 4 }} /> Vernieuwen
+      </Button>
+      {audit.length === 0 ? (
+        <EmptyState title="Geen audit-logs beschikbaar." />
+      ) : (
+        <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
+          <thead>
+            <tr style={{ borderBottom: '0.5px solid var(--color-border-tertiary)' }}>
+              {['Tijdstip', 'Actie', 'Gebruiker', 'IP'].map((h) => (
+                <th key={h} style={{ padding: '5px 8px', textAlign: 'left',
+                                     color: 'var(--color-text-secondary)', fontWeight: 500 }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {audit.slice(0, 50).map((log: any) => (
+              <tr key={log.id} style={{ borderBottom: '0.5px solid var(--color-border-tertiary)' }}>
+                <td style={{ padding: '6px 8px', color: 'var(--color-text-secondary)' }}>
+                  {formatDatetime(log.created_at)}
+                </td>
+                <td style={{ padding: '6px 8px', fontWeight: 500 }}>{log.action}</td>
+                <td style={{ padding: '6px 8px', color: 'var(--color-text-secondary)' }}>
+                  {log.user_id?.substring(0, 8) ?? '—'}
+                </td>
+                <td style={{ padding: '6px 8px', color: 'var(--color-text-secondary)' }}>
+                  {log.ip ?? '—'}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
+
+function TenantAccessTab({ tenant, onOverride }: {
+  tenant: any;
+  onOverride: (mode: string, reason: string) => void;
+}) {
+  const [mode, setMode] = useState(tenant.access_mode ?? 'full_access');
+  const [reason, setReason] = useState('');
+
+  const modes = [
+    { value: 'full_access', label: 'Volledige toegang' },
+    { value: 'read_only', label: 'Alleen lezen' },
+    { value: 'blocked', label: 'Geblokkeerd' },
+  ];
+
+  return (
+    <div>
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 6 }}>Huidige toegangsmodus</div>
+        <Badge tone={mode === 'full_access' ? 'success' : mode === 'blocked' ? 'danger' : 'warning'}>
+          {modes.find((m) => m.value === mode)?.label ?? mode}
+        </Badge>
+      </div>
+
+      <Card>
+        <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 10 }}>
+          Toegangsmodus overschrijven
+        </div>
+        <label style={{ display: 'block', marginBottom: 8 }}>
+          <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>Nieuwe modus</span>
+          <select value={mode} onChange={(e) => setMode(e.target.value)}>
+            {modes.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+          </select>
+        </label>
+        <label style={{ display: 'block', marginBottom: 12 }}>
+          <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>Reden (intern)</span>
+          <input
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="bijv. Betaling achterstallig, handmatig geblokkeerd"
+          />
+        </label>
+        <Button
+          variant="primary"
+          onClick={() => onOverride(mode, reason)}
+          disabled={!reason.trim()}
+        >
+          <ShieldAlert size={13} style={{ marginRight: 4 }} />
+          Toegang instellen
+        </Button>
+      </Card>
+    </div>
+  );
+}
+
+// Helper voor TenantStatusBadge in de tab
+function TenantStatusBadge({ status }: { status: string }) {
+  const map: Record<string, string> = {
+    active: 'success', trialing: 'info', past_due: 'warning',
+    suspended: 'danger', cancelled: 'secondary',
+  };
+  return <Badge tone={(map[status] ?? 'secondary') as any}>{status}</Badge>;
+}
+
+export default SuperadminPage;

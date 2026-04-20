@@ -1,89 +1,171 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { FileCheck2, FileText, FolderKanban, FolderPlus, Settings, TriangleAlert, Wrench } from 'lucide-react';
-import { getDashboardSummary } from '@/api/dashboard';
-import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
-import { APP_REFRESH_EVENT, formatValue, normalizeApiError } from '@/features/mobile/mobile-utils';
-import type { DashboardSummary } from '@/types/domain';
+import { useNavigate, useParams } from 'react-router-dom';
+import {
+  FileText, ClipboardList, BarChart2, Settings, Layers,
+  AlertTriangle, CheckCircle, Clock,
+} from 'lucide-react';
+import { MobilePageScaffold } from './MobilePageScaffold';
+import { useAuthStore } from '@/app/store/auth-store';
+
+interface Tile {
+  icon: React.ElementType;
+  label: string;
+  sublabel?: string;
+  href: string;
+  variant?: 'default' | 'primary' | 'warning' | 'success';
+}
 
 export function MobileDashboardPage() {
   const navigate = useNavigate();
-  const [summary, setSummary] = useState<DashboardSummary | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { user } = useAuthStore();
 
-  const loadSummary = useCallback((background = false) => {
-    let active = true;
-    if (background) setRefreshing(true);
-    else setLoading(true);
-    getDashboardSummary()
-      .then((result) => {
-        if (!active) return;
-        setSummary(result || {});
-        setError(null);
-      })
-      .catch((err) => {
-        if (!active) return;
-        setError(normalizeApiError(err, 'Dashboard kon niet worden geladen.'));
-      })
-      .finally(() => {
-        if (!active) return;
-        if (background) setRefreshing(false);
-        else setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
+  // Tiles — inclusief PDF Maken (was missing)
+  const tiles: Tile[] = [
+    {
+      icon: Layers,
+      label: 'Projecten',
+      sublabel: 'Bekijk en beheer projecten',
+      href: '/projecten',
+    },
+    {
+      icon: ClipboardList,
+      label: 'Lascontrole',
+      sublabel: 'Inspecties en lassen',
+      href: '/lascontrole',
+    },
+    {
+      icon: CheckCircle,
+      label: 'CE-dossier',
+      sublabel: 'Compliance overzicht',
+      href: '/ce-dossier',
+      variant: 'success',
+    },
+    {
+      icon: FileText,
+      label: 'PDF maken',
+      sublabel: 'CE-rapport exporteren',
+      href: '/rapportage',
+      variant: 'primary',
+    },
+    {
+      icon: BarChart2,
+      label: 'Rapportage',
+      sublabel: 'Overzichten en exports',
+      href: '/rapportage',
+    },
+    {
+      icon: Clock,
+      label: 'Planning',
+      sublabel: 'Inspectieplanning',
+      href: '/planning',
+    },
+    {
+      icon: Settings,
+      label: 'Instellingen',
+      sublabel: 'Masterdata en templates',
+      href: '/instellingen',
+    },
+  ];
 
-  useEffect(() => loadSummary(false), [loadSummary]);
+  const variantStyle: Record<string, React.CSSProperties> = {
+    default: {},
+    primary: {
+      background: 'var(--color-background-info)',
+      borderColor: 'var(--color-border-info)',
+    },
+    warning: {
+      background: 'var(--color-background-warning)',
+      borderColor: 'var(--color-border-warning)',
+    },
+    success: {
+      background: 'var(--color-background-success)',
+      borderColor: 'var(--color-border-success)',
+    },
+  };
 
-  useEffect(() => {
-    const reload = () => loadSummary(true);
-    window.addEventListener(APP_REFRESH_EVENT, reload as EventListener);
-    return () => {
-      window.removeEventListener(APP_REFRESH_EVENT, reload as EventListener);
-    };
-  }, [loadSummary]);
-
-  const cards = useMemo(
-    () => [
-      { label: 'Actieve Projecten', value: formatValue(summary?.open_projects || summary?.active_projects || 0, '0'), tone: 'danger', icon: FolderKanban, to: '/projecten' },
-      { label: 'Openstaand Laswerk', value: formatValue(summary?.open_welds || summary?.open_weld_defects || 0, '0'), tone: 'warning', icon: Wrench, to: '/projecten' },
-      { label: 'Afgekeurde Lassen', value: formatValue(summary?.rejected_welds || summary?.open_weld_defects || 0, '0'), tone: 'primary', icon: TriangleAlert, to: '/projecten' },
-      { label: 'Te Valideren Dossiers', value: formatValue(summary?.pending_dossiers || summary?.ce_dossier_ready || 0, '0'), tone: 'success', icon: FileCheck2, to: '/rapportage' },
-      { label: 'Rapportage', value: formatValue(summary?.pending_dossiers || summary?.ce_dossier_ready || 0, '0'), subtitle: 'Open rapportages', tone: 'secondary', icon: FileText, to: '/rapportage', compact: true },
-      { label: 'Instellingen', value: formatValue(summary?.open_projects || summary?.active_projects || 0, '0'), subtitle: 'Beheer stamdata', tone: 'secondary', icon: Settings, to: '/instellingen', compact: true },
-      { label: 'Nieuw project', value: formatValue(summary?.active_projects || 0, '0'), subtitle: 'Project direct aanmaken', tone: 'secondary', icon: FolderPlus, to: '/projecten/nieuw', compact: true },
-      { label: 'Nieuwe las', value: formatValue(summary?.open_welds || summary?.open_weld_defects || 0, '0'), subtitle: 'Kies eerst een project', tone: 'secondary', icon: Wrench, to: '/projecten', compact: true },
-    ],
-    [summary],
-  );
+  const iconColor: Record<string, string> = {
+    default: 'var(--color-text-secondary)',
+    primary: 'var(--color-text-info)',
+    warning: 'var(--color-text-warning)',
+    success: 'var(--color-text-success)',
+  };
 
   return (
-    <MobilePageScaffold title="Dashboard" subtitle="Mobiel overzicht">
-      {loading ? <div className="mobile-state-card">Dashboard laden…</div> : null}
-      {error ? <div className="mobile-state-card mobile-state-card-error">{error}</div> : null}
-      {refreshing && !loading ? <div className="mobile-list-card-meta" style={{ marginBottom: 8 }}>Dashboard wordt bijgewerkt…</div> : null}
-      {!loading && !error ? (
-        <div className="mobile-kpi-grid">
-          {cards.map((card) => {
-            const Icon = card.icon;
+    <MobilePageScaffold
+      header={
+        <div
+          style={{
+            padding: '14px 16px',
+            borderBottom: '0.5px solid var(--color-border-tertiary)',
+            background: 'var(--color-background-primary)',
+          }}
+        >
+          <div style={{ fontSize: 18, fontWeight: 500 }}>NEN-1090</div>
+          {user?.email && (
+            <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 2 }}>
+              {user.email}
+            </div>
+          )}
+        </div>
+      }
+    >
+      <div style={{ padding: '16px' }}>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(2, 1fr)',
+            gap: '10px',
+          }}
+        >
+          {tiles.map((tile) => {
+            const Icon = tile.icon;
+            const variant = tile.variant ?? 'default';
             return (
               <button
-                key={card.label}
-                type="button"
-                className={`mobile-kpi-card mobile-kpi-card-${card.tone} ${card.compact ? 'mobile-kpi-card-action' : ''}`}
-                onClick={() => navigate(card.to)}
+                key={tile.label}
+                onClick={() => navigate(tile.href)}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'flex-start',
+                  gap: '8px',
+                  padding: '16px',
+                  background: 'var(--color-background-primary)',
+                  border: '0.5px solid var(--color-border-tertiary)',
+                  borderRadius: 'var(--border-radius-lg)',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  transition: 'background 0.1s',
+                  ...variantStyle[variant],
+                }}
               >
-                <div className="mobile-kpi-top"><Icon size={18} /><span>{card.label}</span></div>
-                <strong>{card.value}</strong>{card.compact ? <small style={{ color: 'rgba(255,255,255,0.82)' }}>{card.subtitle}</small> : null}
+                <Icon
+                  size={22}
+                  style={{ color: iconColor[variant] }}
+                />
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 500 }}>
+                    {tile.label}
+                  </div>
+                  {tile.sublabel && (
+                    <div
+                      style={{
+                        fontSize: 12,
+                        color: 'var(--color-text-secondary)',
+                        marginTop: 2,
+                        lineHeight: 1.4,
+                      }}
+                    >
+                      {tile.sublabel}
+                    </div>
+                  )}
+                </div>
               </button>
             );
           })}
         </div>
-      ) : null}
+      </div>
     </MobilePageScaffold>
   );
 }
+
+export default MobileDashboardPage;

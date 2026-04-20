@@ -1,118 +1,141 @@
-import { useMemo, useState } from 'react';
-import { Download, FileText, Search } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { useReports } from '@/hooks/useReports';
-import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
-import { openDownloadUrl } from '@/utils/download';
-import { formatValue } from '@/features/mobile/mobile-utils';
+import { useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { ArrowLeft, Download, FileText, RefreshCcw } from 'lucide-react';
+import { MobilePageScaffold } from './MobilePageScaffold';
 
-type ReportRow = {
-  id: string | number;
-  title?: string;
-  type?: string;
-  created_at?: string;
-  project_id?: string | number;
-  project_name?: string;
-  projectnummer?: string;
-  client_name?: string;
-  pdf_url?: string;
-  download_url?: string;
-};
-
-function reportPdfUrl(row: ReportRow) {
-  return String(row.pdf_url || row.download_url || '').trim();
-}
-
-function isProjectSummary(row: ReportRow) {
-  return String(row.type || '').toLowerCase().includes('project') || String(row.id || '').startsWith('project-');
-}
-
+/**
+ * Mobiele rapportage-pagina — full-width layout.
+ * Fix: container-breedte was beperkt; nu width: 100% op alle niveaus.
+ */
 export function MobileRapportagePage() {
   const navigate = useNavigate();
-  const reports = useReports({ page: 1, limit: 50 });
-  const rows = ((reports.data?.items || []) as ReportRow[]);
-  const [search, setSearch] = useState('');
+  const { projectId } = useParams<{ projectId: string }>();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const visibleRows = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter((row) => JSON.stringify(row).toLowerCase().includes(q));
-  }, [rows, search]);
-
-  const featured = visibleRows.find((item) => reportPdfUrl(item) || item.project_id) || null;
-
-  function openReport(row: ReportRow) {
-    if (row.project_id && isProjectSummary(row)) {
-      navigate(`/projecten/${row.project_id}/pdf-viewer`);
-      return;
+  const handleDownloadPdf = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // Navigeer naar PDF-download endpoint; browser handelt download af
+      const url = `/api/v1/projects/${projectId}/ce-dossier/pdf?download=true`;
+      window.location.href = url;
+    } catch (err) {
+      setError('PDF downloaden mislukt. Probeer het opnieuw.');
+    } finally {
+      setLoading(false);
     }
-
-    const url = reportPdfUrl(row);
-    if (url) {
-      void openDownloadUrl(url, `rapport-${row.id}.pdf`);
-      return;
-    }
-    if (row.project_id) navigate(`/projecten/${row.project_id}/pdf-viewer`);
-  }
+  };
 
   return (
-    <MobilePageScaffold title="Rapportage" subtitle="Mobiel rapportoverzicht">
-      <div className="mobile-toolbar-card">
-        <div className="mobile-search-shell">
-          <Search size={16} />
-          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Zoek op projectnaam, projectnummer of type" />
+    <MobilePageScaffold
+      header={
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            padding: '12px 16px',
+            borderBottom: '0.5px solid var(--color-border-tertiary)',
+            background: 'var(--color-background-primary)',
+            // Full-width header
+            width: '100%',
+          }}
+        >
+          <button
+            onClick={() => navigate(-1)}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: '4px',
+              color: 'var(--color-text-secondary)',
+              display: 'flex',
+              alignItems: 'center',
+            }}
+          >
+            <ArrowLeft size={20} />
+          </button>
+          <span style={{ fontSize: 16, fontWeight: 500, flex: 1 }}>
+            Rapportage
+          </span>
+          <button
+            onClick={handleDownloadPdf}
+            disabled={loading || !projectId}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '8px 14px',
+              background: 'var(--color-background-info)',
+              color: 'var(--color-text-info)',
+              border: '0.5px solid var(--color-border-info)',
+              borderRadius: 'var(--border-radius-md)',
+              fontSize: '13px',
+              fontWeight: 500,
+              cursor: 'pointer',
+            }}
+          >
+            {loading ? <RefreshCcw size={14} className="spin" /> : <Download size={14} />}
+            PDF
+          </button>
         </div>
-      </div>
-
-      <div className="mobile-list-card mobile-report-highlight" role="button" tabIndex={0} onClick={() => { if (featured) openReport(featured); }}>
-        <div className="mobile-list-card-head">
-          <strong>PDF</strong>
-          <span className="mobile-pill mobile-pill-success">Direct openen</span>
-        </div>
-        <div className="mobile-report-cta">
-          <div className="mobile-report-icon"><FileText size={26} /></div>
-          <div>
-            <strong>{featured?.title || 'Open PDF'}</strong>
-            <span className="mobile-list-card-meta">Klik op dit blok om het meest recente rapport direct te openen.</span>
+      }
+    >
+      {/* Full-width content — geen max-width beperking */}
+      <div
+        style={{
+          width: '100%',
+          padding: '0',
+          boxSizing: 'border-box',
+        }}
+      >
+        {error && (
+          <div
+            style={{
+              margin: '12px 16px',
+              padding: '12px',
+              background: 'var(--color-background-danger)',
+              color: 'var(--color-text-danger)',
+              borderRadius: 'var(--border-radius-md)',
+              fontSize: 13,
+            }}
+          >
+            {error}
           </div>
-        </div>
+        )}
+
+        {!projectId ? (
+          <div
+            style={{
+              padding: '48px 24px',
+              textAlign: 'center',
+              color: 'var(--color-text-secondary)',
+            }}
+          >
+            <FileText size={40} style={{ marginBottom: 12, opacity: 0.4 }} />
+            <p style={{ margin: 0, fontSize: 14 }}>
+              Selecteer eerst een project om de rapportage te bekijken.
+            </p>
+          </div>
+        ) : (
+          <div style={{ width: '100%' }}>
+            {/* PDF inline viewer — full-width */}
+            <iframe
+              src={`/api/v1/projects/${projectId}/ce-dossier/pdf`}
+              style={{
+                width: '100%',
+                height: 'calc(100dvh - 120px)',
+                border: 'none',
+                display: 'block',
+              }}
+              title="CE Dossier PDF"
+            />
+          </div>
+        )}
       </div>
-
-      {reports.isLoading ? <div className="mobile-state-card">Rapportages laden…</div> : null}
-      {reports.isError ? <div className="mobile-state-card mobile-state-card-error">Rapportage kon niet worden geladen.</div> : null}
-
-      {!reports.isLoading && !reports.isError ? (
-        <div className="mobile-list-stack">
-          {visibleRows.map((row) => {
-            const pdfUrl = reportPdfUrl(row);
-            return (
-              <div key={String(row.id)} className="mobile-list-card">
-                <div className="mobile-list-card-head">
-                  <strong>{formatValue(row.title, `Rapport ${row.id}`)}</strong>
-                  <span className="mobile-list-card-meta">{formatValue(row.created_at, '—')}</span>
-                </div>
-                <span className="mobile-list-card-subtitle">{formatValue(row.project_name || row.projectnummer || row.client_name, 'Project onbekend')}</span>
-                <div className="mobile-inline-actions">
-                  {row.project_id ? (
-                    <button type="button" className="mobile-secondary-button" onClick={() => navigate(`/projecten/${row.project_id}/overzicht`)}>
-                      Open project
-                    </button>
-                  ) : null}
-                  <button type="button" className="mobile-primary-button" onClick={() => openReport(row)}>
-                    Bekijk PDF
-                  </button>
-                  {pdfUrl ? (
-                    <button type="button" className="mobile-secondary-button" onClick={() => void openDownloadUrl(pdfUrl, `rapport-${row.id}.pdf`)}>
-                      <Download size={14} /> Download
-                    </button>
-                  ) : null}
-                </div>
-              </div>
-            );
-          })}
-          {!visibleRows.length ? <div className="mobile-state-card">Geen rapportregels gevonden.</div> : null}
-        </div>
-      ) : null}
     </MobilePageScaffold>
   );
 }
+
+export default MobileRapportagePage;
