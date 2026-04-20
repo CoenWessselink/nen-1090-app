@@ -1,74 +1,57 @@
-import React from 'react';
+import type { ReactNode } from 'react';
+import { Bell, ChevronLeft, Menu } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useUiStore } from '@/app/store/ui-store';
 
-interface MobilePageScaffoldProps {
-  header?: React.ReactNode;
-  footer?: React.ReactNode;
-  children: React.ReactNode;
-  className?: string;
-  /** Schakel padding-bottom voor bottom-nav uit (bijv. op modals) */
-  noBottomPad?: boolean;
-}
+type Props = {
+  title: string;
+  subtitle?: string;
+  children: ReactNode;
+  backTo?: string | null;
+  rightSlot?: ReactNode;
+};
 
 /**
- * Basis scaffold voor alle mobiele pagina's.
- *
- * Fixes:
- * - env(safe-area-inset-top): voorkomt dat content achter de iPhone-statusbalk valt
- * - env(safe-area-inset-bottom): voorkomt dat content achter de iPhone home-indicator valt
- * - viewport-fit=cover moet in index.html staan (zie index.html fix)
+ * MobilePageScaffold — originele interface behouden.
+ * Fix toegevoegd: env(safe-area-inset-top/bottom) voor iPhones met notch/Dynamic Island.
+ * Vereist viewport-fit=cover in index.html (reeds geleverd).
  */
-export function MobilePageScaffold({
-  header,
-  footer,
-  children,
-  className = '',
-  noBottomPad = false,
-}: MobilePageScaffoldProps) {
+export function MobilePageScaffold({ title, subtitle, children, backTo = null, rightSlot }: Props) {
+  const navigate = useNavigate();
+  const toggleSidebar = useUiStore((state) => state.toggleSidebar);
+  const toggleNotificationCenter = useUiStore((state) => state.toggleNotificationCenter);
+
   return (
     <div
-      className={`mobile-scaffold ${className}`}
+      className="mobile-page"
       style={{
-        display: 'flex',
-        flexDirection: 'column',
-        minHeight: '100dvh',
-        // Safe area: voorkomt content achter iPhone notch / statusbalk
         paddingTop: 'env(safe-area-inset-top)',
-        // Safe area: voorkomt content achter iPhone home-indicator
-        paddingBottom: noBottomPad ? 'env(safe-area-inset-bottom)' : undefined,
+        paddingBottom: 'env(safe-area-inset-bottom)',
       }}
     >
-      {header && (
-        <div className="mobile-scaffold-header">
-          {header}
+      <header className="mobile-page-header">
+        <div className="mobile-page-header-row">
+          {backTo ? (
+            <button className="mobile-icon-button" type="button" onClick={() => navigate(backTo)} aria-label="Terug">
+              <ChevronLeft size={18} />
+            </button>
+          ) : (
+            <button className="mobile-icon-button" type="button" onClick={toggleSidebar} aria-label="Menu openen">
+              <Menu size={18} />
+            </button>
+          )}
+          <div className="mobile-page-header-copy">
+            <strong>{title}</strong>
+            {subtitle ? <span>{subtitle}</span> : null}
+          </div>
+          {rightSlot || (
+            <button className="mobile-icon-button" type="button" onClick={toggleNotificationCenter} aria-label="Meldingen">
+              <Bell size={18} />
+            </button>
+          )}
         </div>
-      )}
-
-      <main
-        className="mobile-scaffold-content"
-        style={{
-          flex: 1,
-          overflowY: 'auto',
-          WebkitOverflowScrolling: 'touch',
-          paddingBottom: noBottomPad
-            ? undefined
-            : 'calc(env(safe-area-inset-bottom) + 72px)', // 72px = bottom nav hoogte
-        }}
-      >
-        {children}
-      </main>
-
-      {footer && (
-        <div
-          className="mobile-scaffold-footer"
-          style={{
-            paddingBottom: 'env(safe-area-inset-bottom)',
-          }}
-        >
-          {footer}
-        </div>
-      )}
+      </header>
+      <div className="mobile-page-body">{children}</div>
     </div>
   );
 }
-
-export default MobilePageScaffold;

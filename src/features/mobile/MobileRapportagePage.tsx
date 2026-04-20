@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Download, FileText, RefreshCcw } from 'lucide-react';
-import { MobilePageScaffold } from './MobilePageScaffold';
+import { Download, FileText, RefreshCcw } from 'lucide-react';
+import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
 
 /**
- * Mobiele rapportage-pagina — full-width layout.
- * Fix: container-breedte was beperkt; nu width: 100% op alle niveaus.
+ * G-10 fix: rapportage mobiel full-width.
+ * Fix: MobilePageScaffold gebruikt title/subtitle/backTo/rightSlot interface.
  */
 export function MobileRapportagePage() {
   const navigate = useNavigate();
@@ -13,14 +13,13 @@ export function MobileRapportagePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleDownloadPdf = async () => {
+  const handleDownloadPdf = () => {
+    if (!projectId) return;
     setLoading(true);
     setError(null);
     try {
-      // Navigeer naar PDF-download endpoint; browser handelt download af
-      const url = `/api/v1/projects/${projectId}/ce-dossier/pdf?download=true`;
-      window.location.href = url;
-    } catch (err) {
+      window.location.href = `/api/v1/projects/${projectId}/exports/ce-report`;
+    } catch {
       setError('PDF downloaden mislukt. Probeer het opnieuw.');
     } finally {
       setLoading(false);
@@ -29,109 +28,59 @@ export function MobileRapportagePage() {
 
   return (
     <MobilePageScaffold
-      header={
-        <div
+      title="Rapportage"
+      subtitle="CE-dossier exporteren"
+      backTo={projectId ? `/projecten/${projectId}/overzicht` : '/dashboard'}
+      rightSlot={
+        <button
+          onClick={handleDownloadPdf}
+          disabled={loading || !projectId}
+          aria-label="PDF downloaden"
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            padding: '12px 16px',
-            borderBottom: '0.5px solid var(--color-border-tertiary)',
-            background: 'var(--color-background-primary)',
-            // Full-width header
-            width: '100%',
+            display: 'flex', alignItems: 'center', gap: 5,
+            padding: '6px 12px',
+            background: 'var(--color-background-info)',
+            color: 'var(--color-text-info)',
+            border: '0.5px solid var(--color-border-info)',
+            borderRadius: 'var(--border-radius-md)',
+            fontSize: 13, fontWeight: 500, cursor: 'pointer',
           }}
         >
-          <button
-            onClick={() => navigate(-1)}
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              padding: '4px',
-              color: 'var(--color-text-secondary)',
-              display: 'flex',
-              alignItems: 'center',
-            }}
-          >
-            <ArrowLeft size={20} />
-          </button>
-          <span style={{ fontSize: 16, fontWeight: 500, flex: 1 }}>
-            Rapportage
-          </span>
-          <button
-            onClick={handleDownloadPdf}
-            disabled={loading || !projectId}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '8px 14px',
-              background: 'var(--color-background-info)',
-              color: 'var(--color-text-info)',
-              border: '0.5px solid var(--color-border-info)',
-              borderRadius: 'var(--border-radius-md)',
-              fontSize: '13px',
-              fontWeight: 500,
-              cursor: 'pointer',
-            }}
-          >
-            {loading ? <RefreshCcw size={14} className="spin" /> : <Download size={14} />}
-            PDF
-          </button>
-        </div>
+          {loading ? <RefreshCcw size={14} /> : <Download size={14} />}
+          PDF
+        </button>
       }
     >
-      {/* Full-width content — geen max-width beperking */}
-      <div
-        style={{
-          width: '100%',
-          padding: '0',
-          boxSizing: 'border-box',
-        }}
-      >
+      {/* G-10: full-width — geen max-width of padding die breedte beperkt */}
+      <div style={{ width: '100%', padding: 0, boxSizing: 'border-box' }}>
         {error && (
-          <div
-            style={{
-              margin: '12px 16px',
-              padding: '12px',
-              background: 'var(--color-background-danger)',
-              color: 'var(--color-text-danger)',
-              borderRadius: 'var(--border-radius-md)',
-              fontSize: 13,
-            }}
-          >
+          <div style={{
+            margin: '12px 16px', padding: 12,
+            background: 'var(--color-background-danger)',
+            color: 'var(--color-text-danger)',
+            borderRadius: 'var(--border-radius-md)', fontSize: 13,
+          }}>
             {error}
           </div>
         )}
 
         {!projectId ? (
-          <div
-            style={{
-              padding: '48px 24px',
-              textAlign: 'center',
-              color: 'var(--color-text-secondary)',
-            }}
-          >
+          <div style={{ padding: '48px 24px', textAlign: 'center', color: 'var(--color-text-secondary)' }}>
             <FileText size={40} style={{ marginBottom: 12, opacity: 0.4 }} />
-            <p style={{ margin: 0, fontSize: 14 }}>
-              Selecteer eerst een project om de rapportage te bekijken.
-            </p>
+            <p style={{ margin: 0, fontSize: 14 }}>Selecteer eerst een project om de rapportage te bekijken.</p>
           </div>
         ) : (
-          <div style={{ width: '100%' }}>
-            {/* PDF inline viewer — full-width */}
-            <iframe
-              src={`/api/v1/projects/${projectId}/ce-dossier/pdf`}
-              style={{
-                width: '100%',
-                height: 'calc(100dvh - 120px)',
-                border: 'none',
-                display: 'block',
-              }}
-              title="CE Dossier PDF"
-            />
-          </div>
+          /* PDF inline viewer — volledig schermbreed */
+          <iframe
+            src={`/api/v1/projects/${projectId}/exports/ce-dossier/pdf`}
+            style={{
+              width: '100%',
+              height: 'calc(100dvh - 104px)',
+              border: 'none',
+              display: 'block',
+            }}
+            title="CE Dossier PDF"
+          />
         )}
       </div>
     </MobilePageScaffold>
