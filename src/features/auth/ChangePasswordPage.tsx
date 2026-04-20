@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { changePassword } from '@/api/auth';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -20,8 +20,14 @@ export function ChangePasswordPage() {
     event.preventDefault();
     setError(null);
     setSuccess(null);
-    if (newPassword.length < 8) return setError('Nieuw wachtwoord moet minimaal 8 tekens bevatten.');
-    if (newPassword !== confirmPassword) return setError('Nieuwe wachtwoorden komen niet overeen.');
+    if (newPassword.length < 8) {
+      setError('Nieuw wachtwoord moet minimaal 8 tekens bevatten.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setError('Nieuwe wachtwoorden komen niet overeen.');
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -38,8 +44,8 @@ export function ChangePasswordPage() {
   return (
     <div className="auth-layout">
       <Card className="auth-card">
-        <div className="auth-hero-copy">
-          <div className="eyebrow">WeldInspect · security</div>
+        <div>
+          <div className="eyebrow">CWS NEN-1090</div>
           <h1>Wachtwoord wijzigen</h1>
           <p>Wijzig je wachtwoord zonder de bestaande loginflow te doorbreken.</p>
         </div>
@@ -47,7 +53,7 @@ export function ChangePasswordPage() {
         {error ? <InlineMessage tone="danger">{error}</InlineMessage> : null}
         {success ? <InlineMessage tone="success">{success}</InlineMessage> : null}
 
-        <form className="form-grid auth-form-grid" onSubmit={handleSubmit}>
+        <form className="form-grid" onSubmit={handleSubmit}>
           <label>
             <span>Huidig wachtwoord</span>
             <Input type="password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} autoComplete="current-password" required />
@@ -62,10 +68,6 @@ export function ChangePasswordPage() {
           </label>
           <Button type="submit" disabled={submitting}>{submitting ? 'Bezig...' : 'Wachtwoord wijzigen'}</Button>
         </form>
-
-        <div className="auth-link-row">
-          <Link to="/login">Terug naar login</Link>
-        </div>
       </Card>
     </div>
   );

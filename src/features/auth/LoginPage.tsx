@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { login } from '@/api/auth';
 import { useAuthStore } from '@/app/store/auth-store';
 import { Button } from '@/components/ui/Button';
@@ -11,6 +11,8 @@ import { getFriendlyAuthErrorMessage, normalizeAuthRedirectTarget } from '@/feat
 export default function LoginPage() {
   const location = useLocation();
   const setSession = useAuthStore((state) => state.setSession);
+
+
   const from = (location.state as { from?: string } | null)?.from;
   const query = useMemo(() => new URLSearchParams(location.search), [location.search]);
 
@@ -19,7 +21,6 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const onboardingMessage = query.get('message') || '';
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -28,6 +29,7 @@ export default function LoginPage() {
 
     try {
       const response = await login({ email, password, tenant });
+
       if (!response.access_token || !response.user?.email) {
         throw new Error('Ongeldige loginresponse van de API.');
       }
@@ -55,16 +57,15 @@ export default function LoginPage() {
   return (
     <div className="auth-layout">
       <Card className="auth-card">
-        <div className="auth-hero-copy">
-          <div className="eyebrow">WeldInspect · app login</div>
+        <div>
+          <div className="eyebrow">CWS NEN-1090</div>
           <h1>Inloggen</h1>
-          <p>Log in met tenant, e-mail en wachtwoord. Superadmin gebruikt tenant <strong>platform</strong>; tenantgebruikers loggen in op hun eigen tenant.</p>
+          <p>Log in op het platform. Alleen de app verwerkt authenticatie; marketing doet dit niet.</p>
         </div>
 
-        {onboardingMessage ? <InlineMessage tone="success">{onboardingMessage}</InlineMessage> : null}
         {error ? <InlineMessage tone="danger">{error}</InlineMessage> : null}
 
-        <form className="form-grid auth-form-grid" onSubmit={handleSubmit}>
+        <form className="form-grid" onSubmit={handleSubmit}>
           <label>
             <span>Tenant</span>
             <Input name="tenant" value={tenant} onChange={(event) => setTenant(event.target.value)} autoComplete="organization" required />
@@ -84,22 +85,6 @@ export default function LoginPage() {
             {submitting ? 'Bezig...' : 'Inloggen'}
           </Button>
         </form>
-
-        <div className="auth-link-row">
-          <Link to={`/forgot-password?tenant=${encodeURIComponent(tenant)}&email=${encodeURIComponent(email)}`}>Wachtwoord vergeten</Link>
-          <Link to="/change-password">Wachtwoord wijzigen</Link>
-        </div>
-
-        <div className="auth-hints-grid">
-          <div className="auth-hint-card">
-            <strong>Nieuwe tenant</strong>
-            <span>Gebruik de activatielink uit onboarding om eerst je wachtwoord in te stellen.</span>
-          </div>
-          <div className="auth-hint-card">
-            <strong>Geen mail ontvangen?</strong>
-            <span>Superadmin kan de uitnodiging opnieuw versturen of een resetlink genereren.</span>
-          </div>
-        </div>
       </Card>
     </div>
   );

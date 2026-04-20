@@ -27,27 +27,8 @@ export function getTenantInvoice(invoiceId: string | number) {
   return apiRequest<Record<string, unknown>>(`/tenant/billing/invoices/${invoiceId}`);
 }
 
-export async function getTenantBillingStatusPlus() {
-  try {
-    return await apiRequest<Record<string, unknown>>('/tenant/billing/status-plus');
-  } catch {
-    const status = await getTenantBillingStatus();
-    return {
-      tenant_status: (status as any)?.status || 'active',
-      is_active: true,
-      seats_purchased: (status as any)?.seats_purchased || 1,
-      price_per_seat_year_cents: (status as any)?.price_per_seat_year_cents || 0,
-      subscription: {
-        status: (status as any)?.status || 'active',
-        access_mode: 'full_access',
-        seats: (status as any)?.seats_purchased || 1,
-        current_period_end: (status as any)?.valid_until || null,
-      },
-      access_snapshot: null,
-      foundation_ready: false,
-      missing_tables: ['status-plus'],
-    };
-  }
+export function getTenantBillingStatusPlus() {
+  return apiRequest<Record<string, unknown>>('/tenant/billing/status-plus');
 }
 
 export function downloadTenantInvoicePdf(invoiceId: string | number) {

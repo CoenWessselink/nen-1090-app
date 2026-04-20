@@ -52,7 +52,6 @@ export function MobileWeldsPage() {
   return (
     <MobilePageScaffold
       title="Lassen"
-      subtitle="Lascontrole als primaire werktafel"
       backTo={`/projecten/${projectId}/overzicht`}
       rightSlot={
         <button className="mobile-icon-button" type="button" aria-label="Nieuwe las" onClick={() => navigate(`/projecten/${projectId}/lassen/nieuw`)}>
@@ -65,11 +64,9 @@ export function MobileWeldsPage() {
           <Plus size={16} /> Nieuwe las
         </button>
       </div>
-
       {loading ? <div className="mobile-state-card">Lassen laden…</div> : null}
       {error ? <div className="mobile-state-card mobile-state-card-error">{error}</div> : null}
       {refreshing && !loading ? <div className="mobile-list-card-meta" style={{ marginBottom: 8 }}>Gegevens worden bijgewerkt…</div> : null}
-
       {!loading && !error ? (
         <div className="mobile-list-stack">
           {welds.map((weld) => {

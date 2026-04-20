@@ -11,24 +11,13 @@ type Props = {
   rightSlot?: ReactNode;
 };
 
-/**
- * MobilePageScaffold — originele interface behouden.
- * Fix toegevoegd: env(safe-area-inset-top/bottom) voor iPhones met notch/Dynamic Island.
- * Vereist viewport-fit=cover in index.html (reeds geleverd).
- */
 export function MobilePageScaffold({ title, subtitle, children, backTo = null, rightSlot }: Props) {
   const navigate = useNavigate();
   const toggleSidebar = useUiStore((state) => state.toggleSidebar);
   const toggleNotificationCenter = useUiStore((state) => state.toggleNotificationCenter);
 
   return (
-    <div
-      className="mobile-page"
-      style={{
-        paddingTop: 'env(safe-area-inset-top)',
-        paddingBottom: 'env(safe-area-inset-bottom)',
-      }}
-    >
+    <div className="mobile-page">
       <header className="mobile-page-header">
         <div className="mobile-page-header-row">
           {backTo ? (

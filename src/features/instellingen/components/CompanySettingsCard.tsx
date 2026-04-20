@@ -1,3 +1,4 @@
+
 import { Building2, Upload } from 'lucide-react';
 import { useState } from 'react';
 import { Card } from '@/components/ui/Card';
@@ -5,8 +6,6 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { InlineMessage } from '@/components/feedback/InlineMessage';
 import { useCompanySettings, useUpdateCompanySettings, useUploadCompanyLogo } from '@/hooks/useSettings';
-
-const ISO_LEVELS = ['B', 'C', 'D'] as const;
 
 export function CompanySettingsCard() {
   const company = useCompanySettings();
@@ -17,7 +16,6 @@ export function CompanySettingsCard() {
   const [draft, setDraft] = useState<Record<string, unknown>>({});
 
   const value = (key: string) => String((draft[key] ?? data[key] ?? '') || '');
-  const patch = (key: string, val: string) => setDraft((prev) => ({ ...prev, [key]: val }));
 
   async function save() {
     await updateMutation.mutateAsync({
@@ -32,7 +30,6 @@ export function CompanySettingsCard() {
       website: value('website'),
       kvk_number: value('kvk_number'),
       vat_number: value('vat_number'),
-      iso5817_level: value('iso5817_level') || 'C',
     });
     setMessage('Bedrijfsgegevens opgeslagen.');
   }
@@ -47,37 +44,27 @@ export function CompanySettingsCard() {
       <div className="section-title-row"><h3><Building2 size={18} /> Bedrijf</h3></div>
       {message ? <InlineMessage tone="success">{message}</InlineMessage> : null}
       <div className="form-grid">
-        <label><span>Bedrijfsnaam</span><Input value={value('company_name')} onChange={(e) => patch('company_name', e.target.value)} /></label>
-        <label><span>Adresregel 1</span><Input value={value('address_line_1')} onChange={(e) => patch('address_line_1', e.target.value)} /></label>
-        <label><span>Adresregel 2</span><Input value={value('address_line_2')} onChange={(e) => patch('address_line_2', e.target.value)} /></label>
-        <label><span>Postcode</span><Input value={value('postal_code')} onChange={(e) => patch('postal_code', e.target.value)} /></label>
-        <label><span>Plaats</span><Input value={value('city')} onChange={(e) => patch('city', e.target.value)} /></label>
-        <label><span>Land</span><Input value={value('country')} onChange={(e) => patch('country', e.target.value)} /></label>
-        <label><span>Telefoon</span><Input value={value('phone')} onChange={(e) => patch('phone', e.target.value)} /></label>
-        <label><span>E-mail</span><Input value={value('email')} onChange={(e) => patch('email', e.target.value)} /></label>
-        <label><span>Website</span><Input value={value('website')} onChange={(e) => patch('website', e.target.value)} /></label>
-        <label><span>KvK-nummer</span><Input value={value('kvk_number')} onChange={(e) => patch('kvk_number', e.target.value)} placeholder="12345678" /></label>
-        <label><span>BTW-nummer</span><Input value={value('vat_number')} onChange={(e) => patch('vat_number', e.target.value)} placeholder="NL123456789B01" /></label>
-        <label>
-          <span>ISO-5817 kwaliteitsniveau</span>
-          <select value={value('iso5817_level') || 'C'} onChange={(e) => patch('iso5817_level', e.target.value)}>
-            <option value="B">B — Zwaar</option>
-            <option value="C">C — Normaal (standaard)</option>
-            <option value="D">D — Licht</option>
-          </select>
-        </label>
+        <label><span>Bedrijfsnaam</span><Input value={value('company_name')} onChange={(event) => setDraft((prev) => ({ ...prev, company_name: event.target.value }))} /></label>
+        <label><span>Adresregel 1</span><Input value={value('address_line_1')} onChange={(event) => setDraft((prev) => ({ ...prev, address_line_1: event.target.value }))} /></label>
+        <label><span>Adresregel 2</span><Input value={value('address_line_2')} onChange={(event) => setDraft((prev) => ({ ...prev, address_line_2: event.target.value }))} /></label>
+        <label><span>Postcode</span><Input value={value('postal_code')} onChange={(event) => setDraft((prev) => ({ ...prev, postal_code: event.target.value }))} /></label>
+        <label><span>Plaats</span><Input value={value('city')} onChange={(event) => setDraft((prev) => ({ ...prev, city: event.target.value }))} /></label>
+        <label><span>Land</span><Input value={value('country')} onChange={(event) => setDraft((prev) => ({ ...prev, country: event.target.value }))} /></label>
+        <label><span>Telefoon</span><Input value={value('phone')} onChange={(event) => setDraft((prev) => ({ ...prev, phone: event.target.value }))} /></label>
+        <label><span>E-mail</span><Input value={value('email')} onChange={(event) => setDraft((prev) => ({ ...prev, email: event.target.value }))} /></label>
+        <label><span>Website</span><Input value={value('website')} onChange={(event) => setDraft((prev) => ({ ...prev, website: event.target.value }))} /></label>
+        <label><span>KvK</span><Input value={value('kvk_number')} onChange={(event) => setDraft((prev) => ({ ...prev, kvk_number: event.target.value }))} /></label>
+        <label><span>BTW</span><Input value={value('vat_number')} onChange={(event) => setDraft((prev) => ({ ...prev, vat_number: event.target.value }))} /></label>
       </div>
       <div className="stack-actions" style={{ marginTop: 16 }}>
         <label className="buttonlike-file">
-          <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => {
-            const file = e.target.files?.[0];
+          <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(event) => {
+            const file = event.target.files?.[0];
             if (file) void handleLogo(file);
           }} />
           <span><Upload size={16} /> Logo uploaden</span>
         </label>
-        <Button onClick={() => void save()} disabled={updateMutation.isPending}>
-          {updateMutation.isPending ? 'Opslaan...' : 'Opslaan'}
-        </Button>
+        <Button onClick={() => void save()} disabled={updateMutation.isPending}>{updateMutation.isPending ? 'Opslaan...' : 'Opslaan'}</Button>
       </div>
       {data.logo_download_url ? (
         <div style={{ marginTop: 12 }}>

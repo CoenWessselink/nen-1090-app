@@ -14,38 +14,4 @@ export function useCreateDefect() { const queryClient = useQueryClient(); return
 export function useUpdateDefect() { const queryClient = useQueryClient(); return useMutation({ mutationFn: async ({ defectId, payload }: { defectId: string | number; payload: Record<string, unknown> }) => await updateDefect(defectId, payload), onSuccess: async () => { await queryClient.invalidateQueries({ queryKey: ['defects'] }); } }); }
 export function useResolveDefect() { const queryClient = useQueryClient(); return useMutation({ mutationFn: async (defectId: string | number) => await resolveDefect(defectId), onSuccess: async () => { await queryClient.invalidateQueries({ queryKey: ['defects'] }); } }); }
 export function useReopenDefect() { const queryClient = useQueryClient(); return useMutation({ mutationFn: async (defectId: string | number) => await reopenDefect(defectId), onSuccess: async () => { await queryClient.invalidateQueries({ queryKey: ['defects'] }); } }); }
-export function useDeleteDefect() { const queryClient = useQueryClient(); return useMutation({ mutation
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Fn: async (defectId: string | number) => await deleteDefect(defectId), onSuccess: async () => { await queryClient.invalidateQueries({ queryKey: ['defects'] }); } }); }
+export function useDeleteDefect() { const queryClient = useQueryClient(); return useMutation({ mutationFn: async (defectId: string | number) => await deleteDefect(defectId), onSuccess: async () => { await queryClient.invalidateQueries({ queryKey: ['defects'] }); } }); }

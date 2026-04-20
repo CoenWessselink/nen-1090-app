@@ -38,7 +38,10 @@ function inferOverallStatus(values: UiStatus[]) {
 }
 
 function normalizeCheckKey(input: unknown, index: number) {
-  const raw = String(input || `check_${index + 1}`).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  const raw = String(input || `check_${index + 1}`)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
   const compact = raw || `check_${index + 1}`;
   return compact.slice(0, 20);
 }
