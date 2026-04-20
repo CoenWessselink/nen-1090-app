@@ -1,15 +1,21 @@
+import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/app/store/auth-store';
-import { useUiStore } from '@/app/store/ui-store';
-import { useSession } from '@/app/session/SessionContext';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { user, logout } = useAuthStore();
+  // Fix: auth-store heeft clearSession, niet logout
+  const clearSession = useAuthStore((s) => s.clearSession);
+  const user = useAuthStore((s) => s.user);
   const location = useLocation();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
-    await logout();
+    try {
+      await fetch('/api/v1/auth/logout', { method: 'POST', credentials: 'include' });
+    } catch {
+      // best-effort
+    }
+    clearSession();
     navigate('/login');
   };
 
@@ -41,7 +47,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       >
         <Link
           to="/dashboard"
-          className="app-header-logo"
           style={{
             fontWeight: 500,
             fontSize: '15px',
@@ -53,13 +58,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           NEN-1090
         </Link>
 
-        <nav
-          className="app-header-nav"
-          style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}
-        >
-          <NavLink to="/projecten" label="Projecten" current={location.pathname} />
-          <NavLink to="/planning" label="Planning" current={location.pathname} />
-          <NavLink to="/rapportage" label="Rapportage" current={location.pathname} />
+        <nav style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+          <NavLink to="/projecten"    label="Projecten"    current={location.pathname} />
+          <NavLink to="/planning"     label="Planning"     current={location.pathname} />
+          <NavLink to="/rapportage"   label="Rapportage"   current={location.pathname} />
           <NavLink to="/instellingen" label="Instellingen" current={location.pathname} />
           {user?.is_platform_admin && (
             <NavLink to="/superadmin" label="Platform" current={location.pathname} />
@@ -67,9 +69,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </nav>
 
         <div style={{ marginLeft: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>
-            {user?.email}
-          </span>
+          {user?.email && (
+            <span style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>
+              {user.email}
+            </span>
+          )}
           <button
             onClick={handleLogout}
             style={{
@@ -94,15 +98,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   );
 }
 
-function NavLink({
-  to,
-  label,
-  current,
-}: {
-  to: string;
-  label: string;
-  current: string;
-}) {
+function NavLink({ to, label, current }: { to: string; label: string; current: string }) {
   const isActive = current.startsWith(to);
   return (
     <Link
@@ -115,7 +111,6 @@ function NavLink({
         fontWeight: isActive ? 500 : 400,
         background: isActive ? 'var(--color-background-secondary)' : 'transparent',
         textDecoration: 'none',
-        transition: 'background 0.1s',
       }}
     >
       {label}

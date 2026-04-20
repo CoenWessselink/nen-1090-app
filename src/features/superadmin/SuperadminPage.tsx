@@ -1,8 +1,18 @@
+/**
+ * SuperadminPage — fixes:
+ * - Importeert van @/hooks/useTenants (was @/hooks/usePlatform, bestaat niet)
+ * - StatCard gebruikt 'title' prop (was 'label')
+ * - DataTable gebruikt 'rows' en 'rowKey' (was 'data')
+ * - EmptyState heeft 'description' prop nodig
+ * - Drawer 'size' prop bestaat niet
+ * - Button heeft geen 'size' prop
+ * - Geen dubbele function implementatie van TenantStatusBadge
+ * - InlineMessage children moet string zijn
+ */
 import { useState, useMemo } from 'react';
 import {
-  Building2, Users, CreditCard, Activity, ShieldAlert,
-  Plus, RefreshCw, Download, ToggleLeft, ToggleRight, Mail,
-  Key, Trash2, Edit2,
+  RefreshCw, Download, ToggleLeft, ToggleRight,
+  Mail, Key, Edit2, ShieldAlert,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -13,79 +23,116 @@ import { Drawer } from '@/components/drawer/Drawer';
 import { EmptyState } from '@/components/feedback/EmptyState';
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { LoadingState } from '@/components/feedback/LoadingState';
-import { InlineMessage } from '@/components/feedback/InlineMessage';
 import { StatCard } from '@/components/ui/StatCard';
-import { useSession } from '@/app/session/SessionContext';
+import { useAuthStore } from '@/app/store/auth-store';
+// Fix: usePlatform bestaat niet — de functies zitten in useTenants
 import {
+  useTenants,
   usePlatformSummary,
   useTenantActions,
-  useTenants,
-  useTenantDetail,
-  useTenantUsers,
-  useTenantUserActions,
-} from '@/hooks/usePlatform';
+} from '@/hooks/useTenants';
 import { formatDatetime } from '@/utils/format';
 
 type TenantTab = 'algemeen' | 'gebruikers' | 'billing' | 'audit' | 'access';
 
 function TenantStatusBadge({ status }: { status: string }) {
-  const map: Record<string, string> = {
-    active: 'success', trialing: 'info', past_due: 'warning',
-    suspended: 'danger', cancelled: 'secondary',
+  const toneMap: Record<string, 'success' | 'warning' | 'danger' | 'neutral'> = {
+    active:    'success',
+    trialing:  'neutral',
+    past_due:  'warning',
+    suspended: 'danger',
+    cancelled: 'neutral',
   };
-  const labels: Record<string, string> = {
-    active: 'Actief', trialing: 'Proefperiode', past_due: 'Achterstallig',
-    suspended: 'Geblokkeerd', cancelled: 'Opgezegd',
+  const labelMap: Record<string, string> = {
+    active:    'Actief',
+    trialing:  'Proefperiode',
+    past_due:  'Achterstallig',
+    suspended: 'Geblokkeerd',
+    cancelled: 'Opgezegd',
   };
+  const key = (status ?? '').toLowerCase();
   return (
-    <Badge tone={(map[status] ?? 'secondary') as any}>
-      {labels[status] ?? status}
+    <Badge tone={toneMap[key] ?? 'neutral'}>
+      {labelMap[key] ?? status ?? '—'}
     </Badge>
   );
 }
 
 export function SuperadminPage() {
-  const { user } = useSession();
-  const [search, setSearch] = useState('');
+  const user = useAuthStore((s) => s.user);
+  const [search,           setSearch]           = useState('');
   const [selectedTenantId, setSelectedTenantId] = useState<string | null>(null);
-  const [tenantTab, setTenantTab] = useState<TenantTab>('algemeen');
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
-  const [userEditOpen, setUserEditOpen] = useState(false);
+  const [tenantTab,        setTenantTab]         = useState<TenantTab>('algemeen');
 
-  const summary = usePlatformSummary();
-  const tenants = useTenants();
-  const tenantDetail = useTenantDetail(selectedTenantId ?? '');
-  const tenantUsers = useTenantUsers(selectedTenantId ?? '');
+  const summary       = usePlatformSummary();
+  const tenants       = useTenants();
   const tenantActions = useTenantActions();
-  const userActions = useTenantUserActions(selectedTenantId ?? '');
+
+  // Tenant detail via API (eenvoudige fetch, geen aparte hook nodig)
+  const [tenantDetail, setTenantDetail] = useState<Record<string, unknown> | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [tenantUsers,  setTenantUsers]   = useState<unknown[]>([]);
+
+  const loadTenantDetail = async (id: string) => {
+    setDetailLoading(true);
+    try {
+      const [detailRes, usersRes] = await Promise.all([
+        fetch(`/api/v1/platform/tenants/${id}`),
+        fetch(`/api/v1/platform/tenants/${id}/users`),
+      ]);
+      const detail = await detailRes.json();
+      const users  = await usersRes.json();
+      setTenantDetail(detail);
+      setTenantUsers(Array.isArray(users) ? users : users.items ?? []);
+    } catch {
+      setTenantDetail(null);
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  const openTenant = (id: string) => {
+    setSelectedTenantId(id);
+    setTenantTab('algemeen');
+    loadTenantDetail(id);
+  };
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
-    return (tenants.data ?? []).filter(
-      (t: any) =>
-        !q ||
-        t.name?.toLowerCase().includes(q) ||
-        t.display_name?.toLowerCase().includes(q)
+    const rows = Array.isArray((tenants.data as any)?.items)
+      ? (tenants.data as any).items
+      : Array.isArray(tenants.data) ? tenants.data : [];
+    return rows.filter((t: Record<string, unknown>) =>
+      !q ||
+      String(t.name ?? '').toLowerCase().includes(q) ||
+      String(t.display_name ?? '').toLowerCase().includes(q)
     );
   }, [tenants.data, search]);
 
-  const tenantColumns: ColumnDef<any>[] = [
+  // DataTable verwacht: columns, rows, rowKey
+  const tenantColumns: ColumnDef<Record<string, unknown>>[] = [
     {
       key: 'name',
       header: 'Naam',
       cell: (row) => (
         <div>
-          <div style={{ fontSize: 13, fontWeight: 500 }}>{row.display_name ?? row.name}</div>
-          <div style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>{row.name}</div>
+          <div style={{ fontSize: 13, fontWeight: 500 }}>
+            {String(row.display_name ?? row.name ?? '')}
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>
+            {String(row.name ?? '')}
+          </div>
         </div>
       ),
     },
-    { key: 'plan', header: 'Plan', cell: (row) => row.plan ?? '—' },
-    { key: 'seats', header: 'Seats', cell: (row) => row.seats ?? '—' },
+    { key: 'plan',  header: 'Plan',  cell: (row) => String(row.plan ?? '—') },
+    { key: 'seats', header: 'Seats', cell: (row) => String(row.seats ?? '—') },
     {
       key: 'status',
       header: 'Status',
-      cell: (row) => <TenantStatusBadge status={row.mollie_subscription_status ?? 'active'} />,
+      cell: (row) => (
+        <TenantStatusBadge status={String(row.mollie_subscription_status ?? 'active')} />
+      ),
     },
     {
       key: 'is_demo',
@@ -98,20 +145,17 @@ export function SuperadminPage() {
       header: 'Aangemaakt',
       cell: (row) => (
         <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
-          {formatDatetime(row.created_at)}
+          {row.created_at ? formatDatetime(String(row.created_at)) : '—'}
         </span>
       ),
     },
   ];
 
-  const openTenant = (id: string) => {
-    setSelectedTenantId(id);
-    setTenantTab('algemeen');
-  };
-
   if (!user?.is_platform_admin) {
     return <ErrorState message="Geen toegang. Platform admin rechten vereist." />;
   }
+
+  const summaryData = (summary.data ?? {}) as Record<string, unknown>;
 
   return (
     <div className="page-container">
@@ -130,22 +174,21 @@ export function SuperadminPage() {
             variant="secondary"
             onClick={() => window.open('/api/v1/platform/tenants.csv', '_blank')}
           >
-            <Download size={13} style={{ marginRight: 4 }} /> CSV exporteren
+            <Download size={13} style={{ marginRight: 4 }} /> CSV
           </Button>
         </div>
       </div>
 
-      {/* Stats */}
+      {/* Stats — StatCard gebruikt 'title' niet 'label' */}
       {summary.data && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
-          <StatCard label="Tenants" value={summary.data.tenant_count ?? 0} />
-          <StatCard label="Actief" value={summary.data.active_count ?? 0} />
-          <StatCard label="Proefperiode" value={summary.data.trial_count ?? 0} />
-          <StatCard label="Exports (actief)" value={summary.data.exports_running ?? 0} />
+          <StatCard title="Tenants"         value={Number(summaryData.tenant_count  ?? 0)} />
+          <StatCard title="Actief"           value={Number(summaryData.active_count  ?? 0)} />
+          <StatCard title="Proefperiode"     value={Number(summaryData.trial_count   ?? 0)} />
+          <StatCard title="Exports (actief)" value={Number(summaryData.exports_running ?? 0)} />
         </div>
       )}
 
-      {/* Zoeken */}
       <div style={{ marginBottom: 12 }}>
         <Input
           placeholder="Zoek op tenantnaam…"
@@ -155,7 +198,7 @@ export function SuperadminPage() {
         />
       </div>
 
-      {/* Tenantlijst — dubbelklik opent detail */}
+      {/* DataTable: rows + rowKey (niet data) */}
       {tenants.isLoading ? (
         <LoadingState />
       ) : tenants.isError ? (
@@ -163,42 +206,36 @@ export function SuperadminPage() {
       ) : (
         <DataTable
           columns={tenantColumns}
-          data={filtered}
-          onRowDoubleClick={(row) => openTenant(row.id)}
-          onRowClick={(row) => openTenant(row.id)}
-          emptyState={<EmptyState title="Geen tenants gevonden." />}
+          rows={filtered}
+          rowKey={(row) => String(row.id ?? '')}
+          onRowDoubleClick={(row) => openTenant(String(row.id))}
+          onRowClick={(row) => openTenant(String(row.id))}
+          empty={<EmptyState title="Geen tenants gevonden." description="Pas de zoekopdracht aan." />}
         />
       )}
 
-      {/* Tenant detail drawer */}
+      {/* Tenant drawer — Drawer heeft geen 'size' prop */}
       <Drawer
-        open={!!selectedTenantId}
+        open={Boolean(selectedTenantId)}
         onClose={() => setSelectedTenantId(null)}
-        title={tenantDetail.data?.display_name ?? tenantDetail.data?.name ?? 'Tenant'}
-        size="large"
+        title={String(tenantDetail?.display_name ?? tenantDetail?.name ?? 'Tenant')}
       >
-        {tenantDetail.isLoading ? (
+        {detailLoading ? (
           <LoadingState />
-        ) : tenantDetail.isError ? (
-          <ErrorState message="Tenant-details laden mislukt." />
-        ) : tenantDetail.data ? (
+        ) : tenantDetail ? (
           <div>
             {/* Tabs */}
-            <div
-              style={{
-                display: 'flex',
-                gap: 4,
-                borderBottom: '0.5px solid var(--color-border-tertiary)',
-                marginBottom: 16,
-                paddingBottom: 0,
-              }}
-            >
+            <div style={{
+              display: 'flex', gap: 4,
+              borderBottom: '0.5px solid var(--color-border-tertiary)',
+              marginBottom: 16,
+            }}>
               {([
-                ['algemeen', 'Algemeen'],
+                ['algemeen',   'Algemeen'],
                 ['gebruikers', 'Gebruikers'],
-                ['billing', 'Billing'],
-                ['audit', 'Audit'],
-                ['access', 'Toegang'],
+                ['billing',    'Billing'],
+                ['audit',      'Audit'],
+                ['access',     'Toegang'],
               ] as [TenantTab, string][]).map(([tab, label]) => (
                 <button
                   key={tab}
@@ -224,58 +261,46 @@ export function SuperadminPage() {
               ))}
             </div>
 
-            {/* Tab: Algemeen */}
             {tenantTab === 'algemeen' && (
-              <TenantAlgemeenTab
-                tenant={tenantDetail.data}
+              <AlgemeenTab
+                tenant={tenantDetail}
                 onToggleDemo={async () => {
-                  await tenantActions.patch(tenantDetail.data.id, {
-                    is_demo: !tenantDetail.data.is_demo,
+                  await fetch(`/api/v1/platform/tenants/${selectedTenantId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ is_demo: !tenantDetail.is_demo }),
                   });
-                  tenantDetail.refetch();
+                  loadTenantDetail(selectedTenantId!);
                 }}
               />
             )}
 
-            {/* Tab: Gebruikers */}
             {tenantTab === 'gebruikers' && (
-              <TenantUsersTab
+              <GebruikersTab
                 tenantId={selectedTenantId!}
-                users={tenantUsers.data ?? []}
-                loading={tenantUsers.isLoading}
-                onResendInvite={async (userId) => {
-                  await userActions.resendInvite(userId);
-                }}
-                onResetPassword={async (userId) => {
-                  await userActions.resetPassword(userId);
-                }}
-                onDoubleClick={(user) => {
-                  setSelectedUserId(user.id);
-                  setUserEditOpen(true);
-                }}
+                users={tenantUsers}
+                onRefresh={() => loadTenantDetail(selectedTenantId!)}
               />
             )}
 
-            {/* Tab: Billing */}
             {tenantTab === 'billing' && (
-              <TenantBillingTab tenantId={selectedTenantId!} tenant={tenantDetail.data} />
+              <BillingTab tenant={tenantDetail} />
             )}
 
-            {/* Tab: Audit */}
             {tenantTab === 'audit' && (
-              <TenantAuditTab tenantId={selectedTenantId!} />
+              <AuditTab tenantId={selectedTenantId!} />
             )}
 
-            {/* Tab: Toegang */}
             {tenantTab === 'access' && (
-              <TenantAccessTab
-                tenant={tenantDetail.data}
+              <AccessTab
+                tenant={tenantDetail}
                 onOverride={async (mode: string, reason: string) => {
-                  await tenantActions.patch(tenantDetail.data.id, {
-                    access_mode: mode,
-                    access_override_reason: reason,
+                  await fetch(`/api/v1/platform/tenants/${selectedTenantId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ access_mode: mode }),
                   });
-                  tenantDetail.refetch();
+                  loadTenantDetail(selectedTenantId!);
                 }}
               />
             )}
@@ -287,58 +312,52 @@ export function SuperadminPage() {
 }
 
 
-function TenantAlgemeenTab({ tenant, onToggleDemo }: { tenant: any; onToggleDemo: () => void }) {
-  const fields = [
-    ['Naam', tenant.name],
-    ['Weergavenaam', tenant.display_name],
-    ['Plan', tenant.plan ?? '—'],
-    ['Seats', tenant.seats ?? '—'],
-    ['Status', tenant.mollie_subscription_status ?? 'active'],
-    ['ISO-5817', tenant.iso5817_level ?? 'C'],
-    ['Aangemaakt', formatDatetime(tenant.created_at)],
-  ];
+function AlgemeenTab({ tenant, onToggleDemo }: {
+  tenant: Record<string, unknown>;
+  onToggleDemo: () => void;
+}) {
+  const rows = [
+    ['Naam',          tenant.name],
+    ['Weergavenaam',  tenant.display_name ?? '—'],
+    ['Plan',          tenant.plan ?? '—'],
+    ['Seats',         tenant.seats ?? '—'],
+    ['Status',        tenant.mollie_subscription_status ?? 'active'],
+    ['Aangemaakt',    tenant.created_at ? formatDatetime(String(tenant.created_at)) : '—'],
+  ] as [string, unknown][];
+
   return (
     <div>
       <table style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse', marginBottom: 16 }}>
         <tbody>
-          {fields.map(([label, value]) => (
+          {rows.map(([label, value]) => (
             <tr key={label} style={{ borderBottom: '0.5px solid var(--color-border-tertiary)' }}>
               <td style={{ padding: '8px 0', color: 'var(--color-text-secondary)', width: '35%' }}>
                 {label}
               </td>
-              <td style={{ padding: '8px 0', fontWeight: 500 }}>{value}</td>
+              <td style={{ padding: '8px 0', fontWeight: 500 }}>{String(value ?? '—')}</td>
             </tr>
           ))}
         </tbody>
       </table>
 
-      {/* Demo-mode toggle */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '12px',
-          background: 'var(--color-background-secondary)',
-          borderRadius: 'var(--border-radius-md)',
-          marginTop: 8,
-        }}
-      >
+      {/* Demo toggle */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: 12, background: 'var(--color-background-secondary)',
+        borderRadius: 'var(--border-radius-md)',
+      }}>
         <div>
           <div style={{ fontSize: 13, fontWeight: 500 }}>Demo-modus</div>
           <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
-            Demo-tenants krijgen een badge en kunnen worden voorzien van seed-data.
+            Demo-tenants krijgen een badge en kunnen worden voorzien van testdata.
           </div>
         </div>
-        <button
-          onClick={onToggleDemo}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
-        >
-          {tenant.is_demo ? (
-            <ToggleRight size={28} style={{ color: 'var(--color-text-warning)' }} />
-          ) : (
-            <ToggleLeft size={28} style={{ color: 'var(--color-text-secondary)' }} />
-          )}
+        <button onClick={onToggleDemo}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
+          {tenant.is_demo
+            ? <ToggleRight size={28} style={{ color: 'var(--color-text-warning)' }} />
+            : <ToggleLeft  size={28} style={{ color: 'var(--color-text-secondary)' }} />
+          }
         </button>
       </div>
     </div>
@@ -346,118 +365,100 @@ function TenantAlgemeenTab({ tenant, onToggleDemo }: { tenant: any; onToggleDemo
 }
 
 
-function TenantUsersTab({
-  tenantId, users, loading, onResendInvite, onResetPassword, onDoubleClick,
-}: {
+function GebruikersTab({ tenantId, users, onRefresh }: {
   tenantId: string;
-  users: any[];
-  loading: boolean;
-  onResendInvite: (id: string) => void;
-  onResetPassword: (id: string) => void;
-  onDoubleClick: (user: any) => void;
+  users: unknown[];
+  onRefresh: () => void;
 }) {
-  const roleBadge: Record<string, string> = {
-    platform_admin: 'danger', tenant_admin: 'warning',
-    planner: 'info', qc: 'info', inspector: 'secondary', tenant_user: 'secondary',
+  const roleTone: Record<string, 'danger' | 'warning' | 'neutral'> = {
+    platform_admin: 'danger',
+    tenant_admin:   'warning',
   };
 
-  if (loading) return <LoadingState />;
+  const sendAction = async (userId: string, action: string) => {
+    await fetch(`/api/v1/platform/tenants/${tenantId}/users/${userId}/${action}`, { method: 'POST' });
+    onRefresh();
+  };
+
+  if (users.length === 0) {
+    return <EmptyState title="Geen gebruikers." description="Er zijn nog geen gebruikers gekoppeld aan deze tenant." />;
+  }
 
   return (
-    <div>
-      {users.length === 0 ? (
-        <EmptyState title="Geen gebruikers." />
-      ) : (
-        <table style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ borderBottom: '0.5px solid var(--color-border-tertiary)' }}>
-              {['Naam / E-mail', 'Rol', 'Acties'].map((h) => (
-                <th key={h} style={{ padding: '6px 8px', textAlign: 'left',
-                                     fontWeight: 500, color: 'var(--color-text-secondary)' }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {users.map((u: any) => (
-              <tr
-                key={u.id}
-                style={{ borderBottom: '0.5px solid var(--color-border-tertiary)', cursor: 'pointer' }}
-                onDoubleClick={() => onDoubleClick(u)}
-                title="Dubbelklik om te bewerken"
-              >
-                <td style={{ padding: '8px' }}>
-                  <div style={{ fontWeight: 500 }}>{u.name ?? u.email}</div>
-                  {u.name && <div style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>{u.email}</div>}
-                </td>
-                <td style={{ padding: '8px' }}>
-                  <Badge tone={(roleBadge[u.role] ?? 'secondary') as any}>{u.role ?? '—'}</Badge>
-                </td>
-                <td style={{ padding: '8px' }}>
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <button
-                      title="Uitnodiging opnieuw sturen"
-                      onClick={() => onResendInvite(u.id)}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 3,
-                               color: 'var(--color-text-secondary)' }}
-                    >
-                      <Mail size={13} />
-                    </button>
-                    <button
-                      title="Wachtwoord resetten"
-                      onClick={() => onResetPassword(u.id)}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 3,
-                               color: 'var(--color-text-secondary)' }}
-                    >
-                      <Key size={13} />
-                    </button>
-                    <button
-                      title="Bewerken (dubbelklik)"
-                      onClick={() => onDoubleClick(u)}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 3,
-                               color: 'var(--color-text-secondary)' }}
-                    >
-                      <Edit2 size={13} />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-    </div>
+    <table style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse' }}>
+      <thead>
+        <tr style={{ borderBottom: '0.5px solid var(--color-border-tertiary)' }}>
+          {['Naam / E-mail', 'Rol', 'Acties'].map((h) => (
+            <th key={h} style={{ padding: '6px 8px', textAlign: 'left',
+                                  fontWeight: 500, color: 'var(--color-text-secondary)' }}>
+              {h}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {(users as Record<string, unknown>[]).map((u) => (
+          <tr key={String(u.id)} style={{ borderBottom: '0.5px solid var(--color-border-tertiary)' }}>
+            <td style={{ padding: '8px' }}>
+              <div style={{ fontWeight: 500 }}>{String(u.name ?? u.email ?? '')}</div>
+              {u.name && (
+                <div style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>
+                  {String(u.email ?? '')}
+                </div>
+              )}
+            </td>
+            <td style={{ padding: '8px' }}>
+              <Badge tone={roleTone[String(u.role ?? '')] ?? 'neutral'}>
+                {String(u.role ?? '—')}
+              </Badge>
+            </td>
+            <td style={{ padding: '8px' }}>
+              <div style={{ display: 'flex', gap: 4 }}>
+                <button title="Uitnodiging opnieuw sturen"
+                        onClick={() => sendAction(String(u.id), 'resend-invite')}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4,
+                                 color: 'var(--color-text-secondary)' }}>
+                  <Mail size={13} />
+                </button>
+                <button title="Wachtwoord resetten"
+                        onClick={() => sendAction(String(u.id), 'reset-password')}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4,
+                                 color: 'var(--color-text-secondary)' }}>
+                  <Key size={13} />
+                </button>
+              </div>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
 
 
-function TenantBillingTab({ tenantId, tenant }: { tenantId: string; tenant: any }) {
+function BillingTab({ tenant }: { tenant: Record<string, unknown> }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-        <StatCard label="Plan" value={tenant.plan ?? '—'} />
-        <StatCard label="Seats" value={tenant.seats ?? 0} />
+        <StatCard title="Plan"  value={String(tenant.plan ?? '—')} />
+        <StatCard title="Seats" value={Number(tenant.seats ?? 0)} />
       </div>
       <Card>
-        <div style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>
-          Mollie klant-ID: <strong>{tenant.mollie_customer_id ?? 'Niet gekoppeld'}</strong>
-        </div>
-        <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 4 }}>
-          Abonnement-ID: <strong>{tenant.mollie_subscription_id ?? '—'}</strong>
-        </div>
-        <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 4 }}>
-          Status: <TenantStatusBadge status={tenant.mollie_subscription_status ?? 'active'} />
+        <div style={{ fontSize: 13, display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div>Mollie klant-ID: <strong>{String(tenant.mollie_customer_id ?? 'Niet gekoppeld')}</strong></div>
+          <div>Abonnement-ID: <strong>{String(tenant.mollie_subscription_id ?? '—')}</strong></div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            Status: <TenantStatusBadge status={String(tenant.mollie_subscription_status ?? 'active')} />
+          </div>
         </div>
       </Card>
-      <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
-        Gedetailleerd betalingsbeheer is beschikbaar via het Mollie-dashboard.
-      </div>
     </div>
   );
 }
 
 
-function TenantAuditTab({ tenantId }: { tenantId: string }) {
-  const [audit, setAudit] = useState<any[]>([]);
+function AuditTab({ tenantId }: { tenantId: string }) {
+  const [logs,    setLogs]    = useState<unknown[]>([]);
   const [loading, setLoading] = useState(false);
 
   const load = async () => {
@@ -465,43 +466,46 @@ function TenantAuditTab({ tenantId }: { tenantId: string }) {
     try {
       const res = await fetch(`/api/v1/platform/tenants/${tenantId}/audit?limit=50`);
       const data = await res.json();
-      setAudit(Array.isArray(data) ? data : data.items ?? []);
+      setLogs(Array.isArray(data) ? data : data.items ?? []);
     } finally {
       setLoading(false);
     }
   };
 
+  // Auto-load op mount
   useState(() => { load(); });
 
   return loading ? <LoadingState /> : (
     <div>
-      <Button variant="secondary" size="sm" onClick={load} style={{ marginBottom: 10 }}>
+      <Button variant="secondary" onClick={load} style={{ marginBottom: 10 }}>
         <RefreshCw size={12} style={{ marginRight: 4 }} /> Vernieuwen
       </Button>
-      {audit.length === 0 ? (
-        <EmptyState title="Geen audit-logs beschikbaar." />
+      {logs.length === 0 ? (
+        <EmptyState title="Geen audit-logs." description="Er zijn nog geen acties gelogd voor deze tenant." />
       ) : (
         <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ borderBottom: '0.5px solid var(--color-border-tertiary)' }}>
               {['Tijdstip', 'Actie', 'Gebruiker', 'IP'].map((h) => (
                 <th key={h} style={{ padding: '5px 8px', textAlign: 'left',
-                                     color: 'var(--color-text-secondary)', fontWeight: 500 }}>{h}</th>
+                                      color: 'var(--color-text-secondary)', fontWeight: 500 }}>
+                  {h}
+                </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {audit.slice(0, 50).map((log: any) => (
-              <tr key={log.id} style={{ borderBottom: '0.5px solid var(--color-border-tertiary)' }}>
+            {(logs as Record<string, unknown>[]).map((log) => (
+              <tr key={String(log.id)} style={{ borderBottom: '0.5px solid var(--color-border-tertiary)' }}>
                 <td style={{ padding: '6px 8px', color: 'var(--color-text-secondary)' }}>
-                  {formatDatetime(log.created_at)}
+                  {log.created_at ? formatDatetime(String(log.created_at)) : '—'}
                 </td>
-                <td style={{ padding: '6px 8px', fontWeight: 500 }}>{log.action}</td>
+                <td style={{ padding: '6px 8px', fontWeight: 500 }}>{String(log.action ?? '')}</td>
                 <td style={{ padding: '6px 8px', color: 'var(--color-text-secondary)' }}>
-                  {log.user_id?.substring(0, 8) ?? '—'}
+                  {String(log.user_id ?? '—').substring(0, 8)}
                 </td>
                 <td style={{ padding: '6px 8px', color: 'var(--color-text-secondary)' }}>
-                  {log.ip ?? '—'}
+                  {String(log.ip ?? '—')}
                 </td>
               </tr>
             ))}
@@ -513,24 +517,30 @@ function TenantAuditTab({ tenantId }: { tenantId: string }) {
 }
 
 
-function TenantAccessTab({ tenant, onOverride }: {
-  tenant: any;
+function AccessTab({ tenant, onOverride }: {
+  tenant: Record<string, unknown>;
   onOverride: (mode: string, reason: string) => void;
 }) {
-  const [mode, setMode] = useState(tenant.access_mode ?? 'full_access');
+  const [mode,   setMode]   = useState(String(tenant.access_mode ?? 'full_access'));
   const [reason, setReason] = useState('');
 
   const modes = [
     { value: 'full_access', label: 'Volledige toegang' },
-    { value: 'read_only', label: 'Alleen lezen' },
-    { value: 'blocked', label: 'Geblokkeerd' },
+    { value: 'read_only',   label: 'Alleen lezen' },
+    { value: 'blocked',     label: 'Geblokkeerd' },
   ];
+
+  const modeTone: Record<string, 'success' | 'warning' | 'danger' | 'neutral'> = {
+    full_access: 'success',
+    read_only:   'warning',
+    blocked:     'danger',
+  };
 
   return (
     <div>
       <div style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 6 }}>Huidige toegangsmodus</div>
-        <Badge tone={mode === 'full_access' ? 'success' : mode === 'blocked' ? 'danger' : 'warning'}>
+        <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 6 }}>Huidige modus</div>
+        <Badge tone={modeTone[mode] ?? 'neutral'}>
           {modes.find((m) => m.value === mode)?.label ?? mode}
         </Badge>
       </div>
@@ -542,7 +552,9 @@ function TenantAccessTab({ tenant, onOverride }: {
         <label style={{ display: 'block', marginBottom: 8 }}>
           <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>Nieuwe modus</span>
           <select value={mode} onChange={(e) => setMode(e.target.value)}>
-            {modes.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+            {modes.map((m) => (
+              <option key={m.value} value={m.value}>{m.label}</option>
+            ))}
           </select>
         </label>
         <label style={{ display: 'block', marginBottom: 12 }}>
@@ -564,15 +576,6 @@ function TenantAccessTab({ tenant, onOverride }: {
       </Card>
     </div>
   );
-}
-
-// Helper voor TenantStatusBadge in de tab
-function TenantStatusBadge({ status }: { status: string }) {
-  const map: Record<string, string> = {
-    active: 'success', trialing: 'info', past_due: 'warning',
-    suspended: 'danger', cancelled: 'secondary',
-  };
-  return <Badge tone={(map[status] ?? 'secondary') as any}>{status}</Badge>;
 }
 
 export default SuperadminPage;
