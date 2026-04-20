@@ -8,17 +8,34 @@ export type ProjectEditValues = {
   name: string;
   client_name: string;
   execution_class: string;
+  acceptance_class: string;
   status: string;
+  start_date: string;
+  end_date: string;
+  inspection_template_id: string;
+  description: string;
 };
+
+const EXC_CLASSES = ['EXC1', 'EXC2', 'EXC3', 'EXC4'];
+const ACC_CLASSES = ['A', 'B', 'C', 'D'];
+const STATUSES = [
+  { value: 'concept',       label: 'Concept' },
+  { value: 'in_controle',   label: 'In controle' },
+  { value: 'in_uitvoering', label: 'In uitvoering' },
+  { value: 'gereed',        label: 'Gereed' },
+  { value: 'gearchiveerd',  label: 'Gearchiveerd' },
+];
 
 export function ProjectEditDialog({
   open,
   initialValues,
+  templates = [],
   onClose,
   onSubmit,
 }: {
   open: boolean;
   initialValues: ProjectEditValues | null;
+  templates?: Array<{ id: string; name: string; exc_class: string }>;
   onClose: () => void;
   onSubmit: (values: ProjectEditValues) => Promise<void>;
 }) {
@@ -33,57 +50,131 @@ export function ProjectEditDialog({
 
   if (!open || !values) return null;
 
+  const set = (key: keyof ProjectEditValues, val: string) =>
+    setValues((v) => v ? { ...v, [key]: val } : v);
+
+  const filteredTemplates = templates.filter(
+    (t) => !values.execution_class || t.exc_class === values.execution_class
+  );
+
   return (
     <Modal open={open} onClose={onClose} title="Project wijzigen" size="medium">
       <form
         className="form-grid"
-        onSubmit={async (event) => {
-          event.preventDefault();
+        onSubmit={async (e) => {
+          e.preventDefault();
           setSaving(true);
           setError(null);
           try {
             await onSubmit(values);
             onClose();
-          } catch (submitError) {
-            setError(submitError instanceof Error ? submitError.message : 'Project opslaan mislukt.');
+          } catch (err) {
+            setError(err instanceof Error ? err.message : 'Opslaan mislukt.');
           } finally {
             setSaving(false);
           }
         }}
       >
-        <label>
-          <span>Projectnummer</span>
-          <input value={values.projectnummer} onChange={(event) => setValues({ ...values, projectnummer: event.target.value })} />
-        </label>
-        <label>
-          <span>Projectnaam</span>
-          <input value={values.name} onChange={(event) => setValues({ ...values, name: event.target.value })} />
-        </label>
+        {/* Rij 1: Projectnummer + Naam */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 12 }}>
+          <label>
+            <span>Projectnummer</span>
+            <input value={values.projectnummer}
+              onChange={(e) => set('projectnummer', e.target.value)} placeholder="bijv. 2026-001" />
+          </label>
+          <label>
+            <span>Projectnaam</span>
+            <input value={values.name} onChange={(e) => set('name', e.target.value)} required />
+          </label>
+        </div>
+
+        {/* Opdrachtgever */}
         <label>
           <span>Opdrachtgever</span>
-          <input value={values.client_name} onChange={(event) => setValues({ ...values, client_name: event.target.value })} />
+          <input value={values.client_name} onChange={(e) => set('client_name', e.target.value)} />
         </label>
+
+        {/* Rij 2: EXC + Acceptatieklasse + Status */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+          <label>
+            <span>Executieklasse</span>
+            <select value={values.execution_class} onChange={(e) => {
+              set('execution_class', e.target.value);
+              set('inspection_template_id', '');
+            }}>
+              <option value="">— kies —</option>
+              {EXC_CLASSES.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </label>
+          <label>
+            <span>Acceptatieklasse</span>
+            <select value={values.acceptance_class} onChange={(e) => set('acceptance_class', e.target.value)}>
+              <option value="">— kies —</option>
+              {ACC_CLASSES.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </label>
+          <label>
+            <span>Status</span>
+            <select value={values.status} onChange={(e) => set('status', e.target.value)}>
+              {STATUSES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+            </select>
+          </label>
+        </div>
+
+        {/* Rij 3: Startdatum + Einddatum (D-03 fix) */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <label>
+            <span>Startdatum</span>
+            <input type="date"
+              value={values.start_date ? values.start_date.substring(0, 10) : ''}
+              onChange={(e) => set('start_date', e.target.value)} />
+          </label>
+          <label>
+            <span>Einddatum</span>
+            <input type="date"
+              value={values.end_date ? values.end_date.substring(0, 10) : ''}
+              onChange={(e) => set('end_date', e.target.value)} />
+          </label>
+        </div>
+
+        {/* Inspectietemplate gekoppeld aan EXC (D-03 fix) */}
+        {filteredTemplates.length > 0 && (
+          <label>
+            <span>
+              Inspectietemplate
+              {values.execution_class && (
+                <span style={{ color: 'var(--color-text-secondary)', fontWeight: 400, marginLeft: 6, fontSize: 12 }}>
+                  (gefilterd op {values.execution_class})
+                </span>
+              )}
+            </span>
+            <select value={values.inspection_template_id}
+              onChange={(e) => set('inspection_template_id', e.target.value)}>
+              <option value="">— standaard template —</option>
+              {filteredTemplates.map((t) => (
+                <option key={t.id} value={t.id}>{t.name} ({t.exc_class})</option>
+              ))}
+            </select>
+          </label>
+        )}
+
+        {/* Omschrijving */}
         <label>
-          <span>Executieklasse</span>
-          <select value={values.execution_class} onChange={(event) => setValues({ ...values, execution_class: event.target.value })}>
-            <option value="EXC1">EXC1</option>
-            <option value="EXC2">EXC2</option>
-            <option value="EXC3">EXC3</option>
-            <option value="EXC4">EXC4</option>
-          </select>
+          <span>Omschrijving <span style={{ color: 'var(--color-text-secondary)', fontWeight: 400 }}>(optioneel)</span></span>
+          <textarea value={values.description} onChange={(e) => set('description', e.target.value)}
+            rows={2} style={{ resize: 'vertical' }} />
         </label>
-        <label>
-          <span>Status</span>
-          <select value={values.status} onChange={(event) => setValues({ ...values, status: event.target.value })}>
-            <option value="concept">Concept</option>
-            <option value="in_controle">In controle</option>
-            <option value="in_uitvoering">In uitvoering</option>
-            <option value="gereed">Gereed</option>
-          </select>
-        </label>
-        {error ? <div className="inline-error">{error}</div> : null}
-        <div className="dialog-actions">
-          <Button type="button" variant="secondary" onClick={onClose}>Annuleren</Button>
+
+        {error && (
+          <div style={{ color: 'var(--color-text-danger)', fontSize: 13,
+                         background: 'var(--color-background-danger)',
+                         padding: '8px 10px', borderRadius: 'var(--border-radius-md)' }}>
+            {error}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', paddingTop: 8 }}>
+          <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>Annuleren</Button>
           <Button type="submit" disabled={saving}>{saving ? 'Opslaan…' : 'Opslaan'}</Button>
         </div>
       </form>

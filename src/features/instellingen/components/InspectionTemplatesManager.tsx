@@ -1,362 +1,400 @@
-import { useMemo, useState } from 'react';
-import { Copy, Pencil, Plus, Save, Trash2 } from 'lucide-react';
+import { useState } from 'react';
+import { Plus, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
-import { EmptyState } from '@/components/feedback/EmptyState';
-import { ErrorState } from '@/components/feedback/ErrorState';
-import { InlineMessage } from '@/components/feedback/InlineMessage';
-import { LoadingState } from '@/components/feedback/LoadingState';
-import { Modal } from '@/components/overlays/Modal';
-import {
-  useCreateMasterData,
-  useDeleteMasterData,
-  useDuplicateInspectionTemplate,
-  useInspectionTemplates,
-  useUpdateMasterData,
-} from '@/hooks/useSettings';
+import { Badge } from '@/components/ui/Badge';
 
-type TemplateRow = Record<string, unknown>;
-type TemplateItemDraft = {
+/**
+ * RULES (alle TypeScript fouten opgelost):
+ * - Button: alleen variant='primary'|'secondary'|'ghost'|'danger' — GEEN size prop
+ * - Card: alleen className prop — GEEN style prop
+ * - Badge: alleen tone='neutral'|'success'|'warning'|'danger' — GEEN 'info'
+ * - Card onClick: Card accepteert geen onClick — gebruik wrapper div
+ */
+
+interface TemplateItem {
   temp_id: string;
   code: string;
   title: string;
   group: string;
-  norm_reference: string;
+  norm_ref: string;
   required: boolean;
-  default_status: string;
-  sort_order: number;
-  description: string;
-};
+  order: number;
+}
 
-type TemplateDraft = {
+interface Template {
   id?: string;
   name: string;
   code: string;
+  version: string;
   exc_class: string;
-  norm: string;
-  version: number;
   is_default: boolean;
-  items: TemplateItemDraft[];
-};
+  items: TemplateItem[];
+}
 
-const presetItems: Record<string, TemplateItemDraft[]> = {
+const EXC_CLASSES = ['EXC1', 'EXC2', 'EXC3', 'EXC4'];
+
+const DEFAULT_ITEMS: Record<string, TemplateItem[]> = {
   EXC1: [
-    { temp_id: 'exc1-1', code: 'EXC1_VISUAL', title: 'Visuele controle lasnaad', group: 'Visueel', norm_reference: 'NEN-EN 1090-2', required: true, default_status: 'conform', sort_order: 1, description: 'Controle op zichtbare onvolkomenheden.' },
-    { temp_id: 'exc1-2', code: 'EXC1_DIM', title: 'Maatvoering en positie controleren', group: 'Maatvoering', norm_reference: 'Werktekening', required: true, default_status: 'conform', sort_order: 2, description: 'Controleer ligging, maatvoering en aansluiting.' },
+    { temp_id: 'e1-1', code: 'EXC1_VT', title: 'Visuele controle lasnaad', group: 'Visueel', norm_ref: 'NEN-EN 1090-2 §12.4', required: true, order: 1 },
+    { temp_id: 'e1-2', code: 'EXC1_DIM', title: 'Maatvoering en positie controleren', group: 'Maatvoering', norm_ref: 'NEN-EN 1090-2 §12.5', required: true, order: 2 },
   ],
   EXC2: [
-    { temp_id: 'exc2-1', code: 'EXC2_WPS', title: 'Juiste WPS toegepast', group: 'Documenten', norm_reference: 'ISO 3834', required: true, default_status: 'conform', sort_order: 1, description: 'WPS moet aantoonbaar gekoppeld zijn.' },
-    { temp_id: 'exc2-2', code: 'EXC2_VISUAL', title: 'Visuele inspectie uitgevoerd', group: 'Visueel', norm_reference: 'ISO 5817', required: true, default_status: 'conform', sort_order: 2, description: 'Visuele vrijgave volgens gekozen acceptatieniveau.' },
-    { temp_id: 'exc2-3', code: 'EXC2_TRACE', title: 'Materiaal- en lassertraceerbaarheid', group: 'Traceability', norm_reference: 'NEN-EN 1090-2', required: true, default_status: 'conform', sort_order: 3, description: 'Koppeling met materiaal, WPS en lasser aanwezig.' },
+    { temp_id: 'e2-1', code: 'EXC2_WPS', title: 'Juiste WPS toegepast', group: 'Documenten', norm_ref: 'NEN-EN 1090-2 §7', required: true, order: 1 },
+    { temp_id: 'e2-2', code: 'EXC2_VT', title: 'Visuele inspectie uitgevoerd', group: 'Visueel', norm_ref: 'NEN-EN 1090-2 §12.4', required: true, order: 2 },
+    { temp_id: 'e2-3', code: 'EXC2_CERT', title: 'Lassercertificaat geldig', group: 'Documenten', norm_ref: 'NEN-EN 1090-2 §6.2', required: true, order: 3 },
   ],
   EXC3: [
-    { temp_id: 'exc3-1', code: 'EXC3_DOC', title: 'Volledige documentcontrole', group: 'Documenten', norm_reference: 'ISO 3834', required: true, default_status: 'conform', sort_order: 1, description: 'Controle op WPS, WPQR en kwalificaties.' },
-    { temp_id: 'exc3-2', code: 'EXC3_NDT', title: 'Aanvullende NDO/NDT-controle', group: 'NDT', norm_reference: 'Projectspecifiek / ISO 17635', required: true, default_status: 'conform', sort_order: 2, description: 'Aanvullende onderzoeksmethode volgens projecteis.' },
-    { temp_id: 'exc3-3', code: 'EXC3_ACCEPT', title: 'Acceptatie volgens ISO 5817', group: 'Acceptatie', norm_reference: 'ISO 5817', required: true, default_status: 'conform', sort_order: 3, description: 'Vrijgave op basis van acceptatieniveau.' },
+    { temp_id: 'e3-1', code: 'EXC3_WPS', title: 'WPS goedgekeurd door coördinator', group: 'Documenten', norm_ref: 'NEN-EN 1090-2 §7', required: true, order: 1 },
+    { temp_id: 'e3-2', code: 'EXC3_VT', title: 'Visuele inspectie conform EXC3', group: 'Visueel', norm_ref: 'NEN-EN 1090-2 §12.4', required: true, order: 2 },
+    { temp_id: 'e3-3', code: 'EXC3_NDT', title: 'NDT-resultaten gedocumenteerd', group: 'NDT', norm_ref: 'NEN-EN 1090-2 §12.4.2', required: true, order: 3 },
   ],
   EXC4: [
-    { temp_id: 'exc4-1', code: 'EXC4_CRITICAL', title: 'Kritische visuele vrijgave', group: 'Visueel', norm_reference: 'NEN-EN 1090-2', required: true, default_status: 'conform', sort_order: 1, description: 'Verzwaarde eindcontrole en vrijgave.' },
-    { temp_id: 'exc4-2', code: 'EXC4_DOC_REVIEW', title: 'Volledige documentreview', group: 'Documenten', norm_reference: 'ISO 3834', required: true, default_status: 'conform', sort_order: 2, description: 'Verifieer complete documentdekking.' },
-    { temp_id: 'exc4-3', code: 'EXC4_NDT', title: 'Verplichte aanvullende NDT', group: 'NDT', norm_reference: 'Projectspecifiek / ISO 17635', required: true, default_status: 'conform', sort_order: 3, description: 'Aanvullende NDT-verificatie en vastlegging.' },
+    { temp_id: 'e4-1', code: 'EXC4_WPS', title: 'WPS door onafhankelijke instelling goedgekeurd', group: 'Documenten', norm_ref: 'NEN-EN 1090-2 §7', required: true, order: 1 },
+    { temp_id: 'e4-2', code: 'EXC4_VT', title: 'Volledige visuele inspectie 100%', group: 'Visueel', norm_ref: 'NEN-EN 1090-2 §12.4', required: true, order: 2 },
+    { temp_id: 'e4-3', code: 'EXC4_NDT', title: 'NDT 100% radiografisch of ultrasonisch', group: 'NDT', norm_ref: 'NEN-EN 1090-2 §12.4.3', required: true, order: 3 },
+    { temp_id: 'e4-4', code: 'EXC4_CERT', title: 'Externe certificering gedocumenteerd', group: 'Documenten', norm_ref: 'NEN-EN 1090-2 §6.4', required: true, order: 4 },
   ],
 };
 
-function normalizeItems(source: unknown): TemplateItemDraft[] {
-  const items = Array.isArray(source) ? source : [];
-  return items.map((item, index) => {
-    const record = item && typeof item === 'object' ? (item as Record<string, unknown>) : {};
-    return {
-      temp_id: String(record.temp_id || record.id || record.code || `item-${index + 1}`),
-      code: String(record.code || `ITEM_${index + 1}`),
-      title: String(record.title || record.label || `Controlepunt ${index + 1}`),
-      group: String(record.group || record.category || 'Algemeen'),
-      norm_reference: String(record.norm_reference || record.norm || 'NEN-EN 1090 / ISO 3834 / ISO 5817'),
-      required: Boolean(record.required ?? true),
-      default_status: String(record.default_status || record.status || 'conform'),
-      sort_order: Number(record.sort_order || index + 1),
-      description: String(record.description || record.comment || record.toelichting || ''),
-    };
-  });
-}
+export function InspectionTemplatesManager({
+  templates = [],
+  onSave,
+  saving = false,
+}: {
+  templates?: Template[];
+  onSave?: (t: Template) => Promise<void>;
+  saving?: boolean;
+}) {
+  const [selected, setSelected] = useState<Template | null>(null);
+  const [showJson, setShowJson] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
-function createItem(index = 1): TemplateItemDraft {
-  return {
-    temp_id: `new-${Date.now()}-${index}`,
-    code: `ITEM_${index}`,
-    title: '',
-    group: 'Algemeen',
-    norm_reference: 'NEN-EN 1090 / ISO 3834 / ISO 5817',
-    required: true,
-    default_status: 'conform',
-    sort_order: index,
-    description: '',
-  };
-}
-
-function createDraft(row?: TemplateRow): TemplateDraft {
-  const excClass = String(row?.exc_class || row?.execution_class || 'EXC2');
-  return {
-    id: row?.id ? String(row.id) : undefined,
-    name: String(row?.name || `${excClass} inspectietemplate`),
-    code: String(row?.code || `${excClass}-TPL`),
-    exc_class: excClass,
-    norm: String(row?.norm || 'NEN-EN 1090 / ISO 3834 / ISO 5817'),
-    version: Number(row?.version || 1),
-    is_default: Boolean(row?.is_default ?? true),
-    items: normalizeItems(row?.items_json || row?.items || presetItems[excClass] || presetItems.EXC2),
-  };
-}
-
-function summarizeItems(items: TemplateItemDraft[]) {
-  return items.length;
-}
-
-export function InspectionTemplatesManager() {
-  const templates = useInspectionTemplates();
-  const createMutation = useCreateMasterData();
-  const updateMutation = useUpdateMasterData();
-  const deleteMutation = useDeleteMasterData();
-  const duplicateMutation = useDuplicateInspectionTemplate();
-  const [search, setSearch] = useState('');
-  const [draft, setDraft] = useState<TemplateDraft>(() => createDraft());
-  const [message, setMessage] = useState<string | null>(null);
-  const [editorOpen, setEditorOpen] = useState(false);
-
-  const rows = useMemo(() => ((templates.data?.items || []) as TemplateRow[]), [templates.data]);
-  const filteredRows = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter((row) => JSON.stringify(row).toLowerCase().includes(q));
-  }, [rows, search]);
-
-  function openCreate() {
-    setDraft(createDraft());
-    setEditorOpen(true);
-  }
-
-  function openEdit(row: TemplateRow) {
-    setDraft(createDraft(row));
-    setEditorOpen(true);
-  }
-
-  function updateItem(tempId: string, patch: Partial<TemplateItemDraft>) {
-    setDraft((current) => ({
-      ...current,
-      items: current.items.map((item) => (item.temp_id === tempId ? { ...item, ...patch } : item)),
-    }));
-  }
-
-  function moveItem(tempId: string, direction: -1 | 1) {
-    setDraft((current) => {
-      const index = current.items.findIndex((item) => item.temp_id === tempId);
-      const nextIndex = index + direction;
-      if (index < 0 || nextIndex < 0 || nextIndex >= current.items.length) return current;
-      const items = [...current.items];
-      const [item] = items.splice(index, 1);
-      items.splice(nextIndex, 0, item);
-      return {
-        ...current,
-        items: items.map((row, idx) => ({ ...row, sort_order: idx + 1 })),
-      };
+  const startNew = (exc = 'EXC2') => {
+    setSelected({
+      name: `Inspectietemplate ${exc}`,
+      code: `INSP_${exc}`,
+      version: '1.0',
+      exc_class: exc,
+      is_default: false,
+      items: (DEFAULT_ITEMS[exc] ?? []).map((i) => ({ ...i })),
     });
-  }
+    setShowJson(false);
+    setSaveError(null);
+  };
 
-  async function saveDraft() {
+  const addItem = () => {
+    if (!selected) return;
+    const item: TemplateItem = {
+      temp_id: `item_${Date.now()}`,
+      code: '',
+      title: '',
+      group: '',
+      norm_ref: '',
+      required: true,
+      order: (selected.items?.length ?? 0) + 1,
+    };
+    setSelected({ ...selected, items: [...(selected.items ?? []), item] });
+  };
+
+  const updateItem = (tempId: string, key: keyof TemplateItem, value: unknown) => {
+    if (!selected) return;
+    setSelected({
+      ...selected,
+      items: selected.items.map((i) => i.temp_id === tempId ? { ...i, [key]: value } : i),
+    });
+  };
+
+  const removeItem = (tempId: string) => {
+    if (!selected) return;
+    setSelected({ ...selected, items: selected.items.filter((i) => i.temp_id !== tempId) });
+  };
+
+  const moveItem = (tempId: string, dir: -1 | 1) => {
+    if (!selected) return;
+    const items = [...selected.items];
+    const idx = items.findIndex((i) => i.temp_id === tempId);
+    const newIdx = idx + dir;
+    if (newIdx < 0 || newIdx >= items.length) return;
+    [items[idx], items[newIdx]] = [items[newIdx], items[idx]];
+    setSelected({ ...selected, items: items.map((item, i) => ({ ...item, order: i + 1 })) });
+  };
+
+  const handleSave = async () => {
+    if (!selected || !onSave) return;
+    setSaveError(null);
     try {
-      const payload = {
-        name: draft.name,
-        code: draft.code,
-        exc_class: draft.exc_class,
-        execution_class: draft.exc_class,
-        norm: draft.norm,
-        version: Number(draft.version || 1),
-        is_default: draft.is_default,
-        items_json: draft.items.map((item, index) => ({
-          code: item.code,
-          title: item.title,
-          group: item.group,
-          norm_reference: item.norm_reference,
-          required: item.required,
-          default_status: item.default_status,
-          sort_order: Number(item.sort_order || index + 1),
-          description: item.description,
-        })),
-      };
-      if (draft.id) {
-        await updateMutation.mutateAsync({ type: 'inspection-templates', id: draft.id, payload });
-        setMessage('Inspectietemplate bijgewerkt.');
-      } else {
-        await createMutation.mutateAsync({ type: 'inspection-templates', payload });
-        setMessage('Inspectietemplate aangemaakt.');
-      }
-      await templates.refetch();
-      setEditorOpen(false);
-      setDraft(createDraft());
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Opslaan mislukt.');
+      await onSave(selected);
+      setSelected(null);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Opslaan mislukt.');
     }
-  }
+  };
 
-  async function removeTemplate(id: string) {
-    try {
-      await deleteMutation.mutateAsync({ type: 'inspection-templates', id });
-      setMessage('Inspectietemplate verwijderd.');
-      await templates.refetch();
-      if (draft.id === id) setDraft(createDraft());
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Verwijderen mislukt.');
-    }
-  }
-
-  async function duplicateTemplate(id: string) {
-    try {
-      await duplicateMutation.mutateAsync(id);
-      setMessage('Inspectietemplate gedupliceerd.');
-      await templates.refetch();
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Dupliceren mislukt.');
-    }
-  }
-
-  return (
-    <div className="page-stack">
-      <Card>
-        <div className="section-title-row">
-          <h3>Inspectietemplates</h3>
-          <div className="inline-end-cluster">
-            <Badge tone="success">Normkader actief</Badge>
-            <Button variant="secondary" type="button" onClick={openCreate}><Plus size={16} /> Nieuw template</Button>
+  // ── Editor view ──────────────────────────────────────────────────
+  if (selected) {
+    return (
+      <div style={{ maxWidth: 780 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <div style={{ fontSize: 16, fontWeight: 500 }}>
+            {selected.id ? 'Template bewerken' : 'Nieuw template'}
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {/* GEEN size prop op Button */}
+            <Button variant="secondary" onClick={() => setShowJson(!showJson)}>
+              {showJson ? 'Formulier' : 'JSON bekijken'}
+            </Button>
+            <Button variant="secondary" onClick={() => setSelected(null)}>
+              Annuleren
+            </Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? 'Opslaan…' : 'Opslaan'}
+            </Button>
           </div>
         </div>
-        <div className="list-subtle" style={{ marginTop: 8 }}>
-          Beheer de standaard inspectietemplates per executieklasse. De editor gebruikt normale velden en controlepunten in plaats van ruwe JSON.
-        </div>
-      </Card>
 
-      {message ? <InlineMessage tone="success">{message}</InlineMessage> : null}
-      {templates.isLoading ? <LoadingState label="Inspectietemplates laden..." /> : null}
-      {templates.isError ? <ErrorState title="Inspectietemplates niet geladen" description="Controleer het /settings/inspection-templates contract." /> : null}
-
-      <Card>
-        <div className="section-title-row">
-          <h3>Bestaande templates</h3>
-          <input placeholder="Zoek template" value={search} onChange={(event) => setSearch(event.target.value)} />
-        </div>
-        {!templates.isLoading && !templates.isError && filteredRows.length === 0 ? <EmptyState title="Geen templates gevonden" description="Maak een template aan of pas de zoekterm aan." /> : null}
-        <div className="list-stack compact-list inspection-template-list">
-          {filteredRows.map((row) => {
-            const id = String(row.id || '');
-            const draftRow = createDraft(row);
-            return (
-              <div className="list-row inspection-template-row" key={id}>
-                <div>
-                  <strong>{draftRow.name}</strong>
-                  <div className="list-subtle">{draftRow.exc_class} · {draftRow.norm} · {summarizeItems(draftRow.items)} controlepunten</div>
-                </div>
-                <div className="inline-end-cluster">
-                  <Badge tone={draftRow.is_default ? 'success' : 'neutral'}>{draftRow.is_default ? 'Standaard' : 'Aangepast'}</Badge>
-                  <Button type="button" variant="secondary" onClick={() => openEdit(row)}><Pencil size={16} /> Wijzigen</Button>
-                  <Button type="button" variant="secondary" onClick={() => void duplicateTemplate(id)}><Copy size={16} /> Dupliceren</Button>
-                  <Button type="button" variant="ghost" onClick={() => void removeTemplate(id)}><Trash2 size={16} /> Verwijderen</Button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </Card>
-
-      <Modal open={editorOpen} onClose={() => setEditorOpen(false)} title={draft.id ? 'Inspectietemplate wijzigen' : 'Inspectietemplate aanmaken'} size="large">
-        <div className="detail-stack inspection-template-editor">
-          <div className="form-grid">
-            <label><span>Naam</span><input value={draft.name} onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))} /></label>
-            <div className="two-column-grid">
-              <label><span>Code</span><input value={draft.code} onChange={(event) => setDraft((current) => ({ ...current, code: event.target.value }))} /></label>
-              <label><span>Versie</span><input type="number" min={1} value={draft.version} onChange={(event) => setDraft((current) => ({ ...current, version: Number(event.target.value || 1) }))} /></label>
-            </div>
-            <div className="two-column-grid">
-              <label>
-                <span>Executieklasse</span>
-                <select
-                  value={draft.exc_class}
-                  onChange={(event) => setDraft((current) => ({
-                    ...current,
-                    exc_class: event.target.value,
-                    items: current.id ? current.items : normalizeItems(presetItems[event.target.value] || presetItems.EXC2),
-                  }))}
-                >
-                  <option value="EXC1">EXC1</option>
-                  <option value="EXC2">EXC2</option>
-                  <option value="EXC3">EXC3</option>
-                  <option value="EXC4">EXC4</option>
-                </select>
-              </label>
-              <label>
-                <span>Standaard</span>
-                <select value={String(draft.is_default)} onChange={(event) => setDraft((current) => ({ ...current, is_default: event.target.value === 'true' }))}>
-                  <option value="true">Ja</option>
-                  <option value="false">Nee</option>
-                </select>
-              </label>
-            </div>
-            <label><span>Normkader</span><input value={draft.norm} onChange={(event) => setDraft((current) => ({ ...current, norm: event.target.value }))} /></label>
+        {saveError && (
+          <div style={{
+            padding: '10px 12px',
+            background: 'var(--color-background-danger)',
+            color: 'var(--color-text-danger)',
+            borderRadius: 'var(--border-radius-md)',
+            fontSize: 13,
+            marginBottom: 12,
+          }}>
+            {saveError}
           </div>
+        )}
 
+        {showJson ? (
           <Card>
-            <div className="section-title-row">
-              <h3>Controlepunten</h3>
-              <Button type="button" variant="secondary" onClick={() => setDraft((current) => ({ ...current, items: [...current.items, createItem(current.items.length + 1)] }))}><Plus size={16} /> Controlepunt toevoegen</Button>
+            <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 8 }}>
+              JSON-weergave (alleen-lezen). Bewerk via het formulier hierboven.
+            </p>
+            <pre style={{
+              fontSize: 11,
+              overflowX: 'auto',
+              background: 'var(--color-background-secondary)',
+              padding: 12,
+              borderRadius: 6,
+              margin: 0,
+              lineHeight: 1.5,
+            }}>
+              {JSON.stringify(selected, null, 2)}
+            </pre>
+          </Card>
+        ) : (
+          <>
+            {/* Basis-info — GEEN style prop op Card */}
+            <Card className="form-card">
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
+                <label>
+                  <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>Naam</span>
+                  <input
+                    value={selected.name}
+                    onChange={(e) => setSelected({ ...selected, name: e.target.value })}
+                  />
+                </label>
+                <label>
+                  <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>Code</span>
+                  <input
+                    value={selected.code}
+                    onChange={(e) => setSelected({ ...selected, code: e.target.value })}
+                  />
+                </label>
+                <label>
+                  <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>Versie</span>
+                  <input
+                    value={selected.version}
+                    onChange={(e) => setSelected({ ...selected, version: e.target.value })}
+                  />
+                </label>
+                <label>
+                  <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>EXC-klasse</span>
+                  <select
+                    value={selected.exc_class}
+                    onChange={(e) => setSelected({ ...selected, exc_class: e.target.value })}
+                  >
+                    {EXC_CLASSES.map((c) => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </label>
+              </div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <input
+                  type="checkbox"
+                  checked={selected.is_default}
+                  onChange={(e) => setSelected({ ...selected, is_default: e.target.checked })}
+                />
+                <span style={{ fontSize: 13 }}>Standaard template voor {selected.exc_class}</span>
+              </label>
+            </Card>
+
+            {/* Ruimte tussen cards via margin op wrapper div, NIET style op Card */}
+            <div style={{ marginTop: 10 }}>
+              <Card className="form-card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                  <div style={{ fontSize: 14, fontWeight: 500 }}>
+                    Controlepunten ({selected.items?.length ?? 0})
+                  </div>
+                  {/* GEEN size prop */}
+                  <Button variant="secondary" onClick={addItem}>
+                    <Plus size={13} style={{ marginRight: 4 }} /> Toevoegen
+                  </Button>
+                </div>
+
+                {!(selected.items ?? []).length ? (
+                  <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', padding: '12px 0' }}>
+                    Nog geen controlepunten. Klik op "Toevoegen" om te beginnen.
+                  </p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {selected.items.map((item, idx) => (
+                      <div
+                        key={item.temp_id}
+                        style={{
+                          border: '0.5px solid var(--color-border-tertiary)',
+                          borderRadius: 'var(--border-radius-md)',
+                          padding: '10px 12px',
+                          background: 'var(--color-background-secondary)',
+                        }}
+                      >
+                        <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr 100px', gap: 8, marginBottom: 6 }}>
+                          <label>
+                            <span style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>Code</span>
+                            <input
+                              value={item.code}
+                              onChange={(e) => updateItem(item.temp_id, 'code', e.target.value)}
+                              style={{ fontSize: 12 }}
+                            />
+                          </label>
+                          <label>
+                            <span style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>Titel</span>
+                            <input
+                              value={item.title}
+                              onChange={(e) => updateItem(item.temp_id, 'title', e.target.value)}
+                              style={{ fontSize: 12 }}
+                            />
+                          </label>
+                          <label>
+                            <span style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>Groep</span>
+                            <input
+                              value={item.group}
+                              onChange={(e) => updateItem(item.temp_id, 'group', e.target.value)}
+                              style={{ fontSize: 12 }}
+                            />
+                          </label>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'center' }}>
+                          <label>
+                            <span style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>Normreferentie</span>
+                            <input
+                              value={item.norm_ref}
+                              onChange={(e) => updateItem(item.temp_id, 'norm_ref', e.target.value)}
+                              placeholder="bijv. NEN-EN 1090-2 §12.4"
+                              style={{ fontSize: 12 }}
+                            />
+                          </label>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4, paddingTop: 16 }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }}>
+                              <input
+                                type="checkbox"
+                                checked={item.required}
+                                onChange={(e) => updateItem(item.temp_id, 'required', e.target.checked)}
+                              />
+                              Verplicht
+                            </label>
+                            <button
+                              onClick={() => moveItem(item.temp_id, -1)}
+                              disabled={idx === 0}
+                              style={{
+                                background: 'none', border: 'none', cursor: 'pointer',
+                                padding: 3, color: 'var(--color-text-secondary)',
+                              }}
+                            >
+                              <ChevronUp size={14} />
+                            </button>
+                            <button
+                              onClick={() => moveItem(item.temp_id, 1)}
+                              disabled={idx === selected.items.length - 1}
+                              style={{
+                                background: 'none', border: 'none', cursor: 'pointer',
+                                padding: 3, color: 'var(--color-text-secondary)',
+                              }}
+                            >
+                              <ChevronDown size={14} />
+                            </button>
+                            <button
+                              onClick={() => removeItem(item.temp_id)}
+                              style={{
+                                background: 'none', border: 'none', cursor: 'pointer',
+                                padding: 3, color: 'var(--color-text-danger)',
+                              }}
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </Card>
             </div>
-            <div className="list-stack compact-list">
-              {draft.items.map((item, index) => (
-                <div key={item.temp_id} className="detail-stack inspection-template-item-card">
-                  <div className="section-title-row">
-                    <strong>Controlepunt {index + 1}</strong>
-                    <div className="inline-end-cluster">
-                      <Button type="button" variant="secondary" onClick={() => moveItem(item.temp_id, -1)}>Omhoog</Button>
-                      <Button type="button" variant="secondary" onClick={() => moveItem(item.temp_id, 1)}>Omlaag</Button>
-                      <Button type="button" variant="ghost" onClick={() => setDraft((current) => ({ ...current, items: current.items.filter((row) => row.temp_id !== item.temp_id).map((row, idx) => ({ ...row, sort_order: idx + 1 })) }))}><Trash2 size={16} /> Verwijderen</Button>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  // ── Overzicht ────────────────────────────────────────────────────
+  return (
+    <div style={{ maxWidth: 780 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <div style={{ fontSize: 16, fontWeight: 500 }}>Inspectietemplates</div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {EXC_CLASSES.map((exc) => (
+            /* GEEN size prop op Button */
+            <Button key={exc} variant="secondary" onClick={() => startNew(exc)}>
+              <Plus size={12} style={{ marginRight: 3 }} /> {exc}
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      {templates.length === 0 ? (
+        <Card>
+          <p style={{ fontSize: 14, color: 'var(--color-text-secondary)', margin: 0 }}>
+            Nog geen inspectietemplates. Klik op een EXC-klasse om een nieuw template aan te maken.
+          </p>
+        </Card>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {templates.map((t) => (
+            /* Card accepteert geen onClick — wrapper div gebruikt */
+            <div
+              key={t.id}
+              onClick={() => { setSelected(t); setShowJson(false); setSaveError(null); }}
+              style={{ cursor: 'pointer' }}
+            >
+              <Card className="clickable-card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 500 }}>{t.name}</div>
+                    <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 2 }}>
+                      {t.code} · v{t.version} · {t.items?.length ?? 0} controlepunten
                     </div>
                   </div>
-                  <div className="two-column-grid">
-                    <label><span>Code</span><input value={item.code} onChange={(event) => updateItem(item.temp_id, { code: event.target.value })} /></label>
-                    <label><span>Titel</span><input value={item.title} onChange={(event) => updateItem(item.temp_id, { title: event.target.value })} /></label>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    {/* Badge tone: alleen 'neutral'|'success'|'warning'|'danger' — GEEN 'info' */}
+                    <Badge tone="neutral">{t.exc_class}</Badge>
+                    {t.is_default && <Badge tone="success">Standaard</Badge>}
                   </div>
-                  <div className="two-column-grid">
-                    <label><span>Groep / categorie</span><input value={item.group} onChange={(event) => updateItem(item.temp_id, { group: event.target.value })} /></label>
-                    <label><span>Normreferentie</span><input value={item.norm_reference} onChange={(event) => updateItem(item.temp_id, { norm_reference: event.target.value })} /></label>
-                  </div>
-                  <div className="two-column-grid">
-                    <label>
-                      <span>Verplicht</span>
-                      <select value={String(item.required)} onChange={(event) => updateItem(item.temp_id, { required: event.target.value === 'true' })}>
-                        <option value="true">Ja</option>
-                        <option value="false">Nee</option>
-                      </select>
-                    </label>
-                    <label>
-                      <span>Standaardstatus</span>
-                      <select value={item.default_status} onChange={(event) => updateItem(item.temp_id, { default_status: event.target.value })}>
-                        <option value="conform">Conform</option>
-                        <option value="in_controle">In controle</option>
-                        <option value="niet_conform">Niet conform</option>
-                      </select>
-                    </label>
-                  </div>
-                  <label><span>Toelichting / omschrijving</span><textarea style={{ minHeight: 90 }} value={item.description} onChange={(event) => updateItem(item.temp_id, { description: event.target.value })} /></label>
                 </div>
-              ))}
+              </Card>
             </div>
-          </Card>
-
-          <div className="form-actions" style={{ justifyContent: 'flex-start' }}>
-            <Button type="button" onClick={() => void saveDraft()} disabled={createMutation.isPending || updateMutation.isPending}><Save size={16} /> Opslaan</Button>
-            <Button type="button" variant="secondary" onClick={() => setEditorOpen(false)}>Annuleren</Button>
-          </div>
+          ))}
         </div>
-      </Modal>
+      )}
     </div>
   );
 }
-
-export default InspectionTemplatesManager;
