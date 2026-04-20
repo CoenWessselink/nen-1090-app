@@ -1,82 +1,89 @@
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  FileText, ClipboardList, BarChart2, Settings, Layers,
-  CheckCircle, Clock,
-} from 'lucide-react';
+import { FileCheck2, FileText, FolderKanban, FolderPlus, Settings, TriangleAlert, Wrench } from 'lucide-react';
+import { getDashboardSummary } from '@/api/dashboard';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
-import { useAuthStore } from '@/app/store/auth-store';
-
-interface Tile {
-  icon: React.ElementType;
-  label: string;
-  sublabel?: string;
-  href: string;
-  accent?: boolean;
-}
-
-// G-08 fix: PDF Maken tegel toegevoegd
-const TILES: Tile[] = [
-  { icon: Layers,       label: 'Projecten',   sublabel: 'Bekijk en beheer projecten',    href: '/projecten' },
-  { icon: ClipboardList, label: 'Lascontrole', sublabel: 'Inspecties en lassen',          href: '/lascontrole' },
-  { icon: CheckCircle,  label: 'CE-dossier',  sublabel: 'Compliance overzicht',           href: '/ce-dossier' },
-  { icon: FileText,     label: 'PDF maken',   sublabel: 'CE-rapport exporteren',          href: '/rapportage', accent: true },
-  { icon: BarChart2,    label: 'Rapportage',  sublabel: 'Overzichten en exports',         href: '/rapportage' },
-  { icon: Clock,        label: 'Planning',    sublabel: 'Inspectieplanning',              href: '/planning' },
-  { icon: Settings,     label: 'Instellingen', sublabel: 'Masterdata en templates',      href: '/instellingen' },
-];
+import { APP_REFRESH_EVENT, formatValue, normalizeApiError } from '@/features/mobile/mobile-utils';
+import type { DashboardSummary } from '@/types/domain';
 
 export function MobileDashboardPage() {
   const navigate = useNavigate();
-  const user = useAuthStore((s) => s.user);
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadSummary = useCallback((background = false) => {
+    let active = true;
+    if (background) setRefreshing(true);
+    else setLoading(true);
+    getDashboardSummary()
+      .then((result) => {
+        if (!active) return;
+        setSummary(result || {});
+        setError(null);
+      })
+      .catch((err) => {
+        if (!active) return;
+        setError(normalizeApiError(err, 'Dashboard kon niet worden geladen.'));
+      })
+      .finally(() => {
+        if (!active) return;
+        if (background) setRefreshing(false);
+        else setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => loadSummary(false), [loadSummary]);
+
+  useEffect(() => {
+    const reload = () => loadSummary(true);
+    window.addEventListener(APP_REFRESH_EVENT, reload as EventListener);
+    return () => {
+      window.removeEventListener(APP_REFRESH_EVENT, reload as EventListener);
+    };
+  }, [loadSummary]);
+
+  const cards = useMemo(
+    () => [
+      { label: 'Actieve Projecten', value: formatValue(summary?.open_projects || summary?.active_projects || 0, '0'), tone: 'danger', icon: FolderKanban, to: '/projecten' },
+      { label: 'Openstaand Laswerk', value: formatValue(summary?.open_welds || summary?.open_weld_defects || 0, '0'), tone: 'warning', icon: Wrench, to: '/projecten' },
+      { label: 'Afgekeurde Lassen', value: formatValue(summary?.rejected_welds || summary?.open_weld_defects || 0, '0'), tone: 'primary', icon: TriangleAlert, to: '/projecten' },
+      { label: 'Te Valideren Dossiers', value: formatValue(summary?.pending_dossiers || summary?.ce_dossier_ready || 0, '0'), tone: 'success', icon: FileCheck2, to: '/rapportage' },
+      { label: 'Rapportage', value: formatValue(summary?.pending_dossiers || summary?.ce_dossier_ready || 0, '0'), subtitle: 'Open rapportages', tone: 'secondary', icon: FileText, to: '/rapportage', compact: true },
+      { label: 'Instellingen', value: formatValue(summary?.open_projects || summary?.active_projects || 0, '0'), subtitle: 'Beheer stamdata', tone: 'secondary', icon: Settings, to: '/instellingen', compact: true },
+      { label: 'Nieuw project', value: formatValue(summary?.active_projects || 0, '0'), subtitle: 'Project direct aanmaken', tone: 'secondary', icon: FolderPlus, to: '/projecten/nieuw', compact: true },
+      { label: 'Nieuwe las', value: formatValue(summary?.open_welds || summary?.open_weld_defects || 0, '0'), subtitle: 'Kies eerst een project', tone: 'secondary', icon: Wrench, to: '/projecten', compact: true },
+    ],
+    [summary],
+  );
 
   return (
-    // Fix: MobilePageScaffold verwacht title + optioneel subtitle, niet header/footer
-    <MobilePageScaffold title="Dashboard" subtitle={user?.email ?? undefined}>
-      <div style={{ padding: '12px 16px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
-          {TILES.map((tile) => {
-            const Icon = tile.icon;
+    <MobilePageScaffold title="Dashboard" subtitle="Mobiel overzicht">
+      {loading ? <div className="mobile-state-card">Dashboard laden…</div> : null}
+      {error ? <div className="mobile-state-card mobile-state-card-error">{error}</div> : null}
+      {refreshing && !loading ? <div className="mobile-list-card-meta" style={{ marginBottom: 8 }}>Dashboard wordt bijgewerkt…</div> : null}
+      {!loading && !error ? (
+        <div className="mobile-kpi-grid">
+          {cards.map((card) => {
+            const Icon = card.icon;
             return (
               <button
-                key={tile.label}
-                onClick={() => navigate(tile.href)}
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'flex-start',
-                  gap: 8,
-                  padding: 16,
-                  background: tile.accent
-                    ? 'var(--color-background-info)'
-                    : 'var(--color-background-primary)',
-                  border: tile.accent
-                    ? '0.5px solid var(--color-border-info)'
-                    : '0.5px solid var(--color-border-tertiary)',
-                  borderRadius: 'var(--border-radius-lg)',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  width: '100%',
-                }}
+                key={card.label}
+                type="button"
+                className={`mobile-kpi-card mobile-kpi-card-${card.tone} ${card.compact ? 'mobile-kpi-card-action' : ''}`}
+                onClick={() => navigate(card.to)}
               >
-                <Icon
-                  size={22}
-                  style={{ color: tile.accent ? 'var(--color-text-info)' : 'var(--color-text-secondary)' }}
-                />
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 500 }}>{tile.label}</div>
-                  {tile.sublabel && (
-                    <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 2, lineHeight: 1.4 }}>
-                      {tile.sublabel}
-                    </div>
-                  )}
-                </div>
+                <div className="mobile-kpi-top"><Icon size={18} /><span>{card.label}</span></div>
+                <strong>{card.value}</strong>{card.compact ? <small style={{ color: 'rgba(255,255,255,0.82)' }}>{card.subtitle}</small> : null}
               </button>
             );
           })}
         </div>
-      </div>
+      ) : null}
     </MobilePageScaffold>
   );
 }
-
-export default MobileDashboardPage;
