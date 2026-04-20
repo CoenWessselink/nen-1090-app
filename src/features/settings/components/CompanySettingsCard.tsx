@@ -99,8 +99,6 @@ export function CompanySettingsCard({
       <div style={{ fontSize: 15, fontWeight: 500, marginBottom: 16 }}>Bedrijfsinstellingen</div>
 
       <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-
-        {/* Logo */}
         <div>
           <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 8 }}>
             Bedrijfslogo
@@ -111,33 +109,52 @@ export function CompanySettingsCard({
                 <img
                   src={logoPreview}
                   alt="Bedrijfslogo"
-                  style={{ height: 56, maxWidth: 160, objectFit: 'contain',
-                           border: '0.5px solid var(--color-border-tertiary)',
-                           borderRadius: 'var(--border-radius-md)', padding: 4, background: '#fff' }}
+                  style={{
+                    height: 56,
+                    maxWidth: 160,
+                    objectFit: 'contain',
+                    border: '0.5px solid var(--color-border-tertiary)',
+                    borderRadius: 'var(--border-radius-md)',
+                    padding: 4,
+                    background: '#fff',
+                  }}
                 />
                 <button
                   type="button"
                   onClick={handleLogoDelete}
                   style={{
-                    position: 'absolute', top: -6, right: -6,
+                    position: 'absolute',
+                    top: -6,
+                    right: -6,
                     background: 'var(--color-background-danger)',
                     color: 'var(--color-text-danger)',
                     border: '0.5px solid var(--color-border-danger)',
-                    borderRadius: '50%', width: 20, height: 20,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    cursor: 'pointer', padding: 0,
+                    borderRadius: '50%',
+                    width: 20,
+                    height: 20,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    padding: 0,
                   }}
                 >
                   <X size={11} />
                 </button>
               </div>
             ) : (
-              <div style={{
-                width: 80, height: 56, border: '1px dashed var(--color-border-secondary)',
-                borderRadius: 'var(--border-radius-md)', display: 'flex',
-                alignItems: 'center', justifyContent: 'center',
-                color: 'var(--color-text-secondary)',
-              }}>
+              <div
+                style={{
+                  width: 80,
+                  height: 56,
+                  border: '1px dashed var(--color-border-secondary)',
+                  borderRadius: 'var(--border-radius-md)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--color-text-secondary)',
+                }}
+              >
                 <Building size={20} />
               </div>
             )}
@@ -145,12 +162,13 @@ export function CompanySettingsCard({
               <Button
                 type="button"
                 variant="secondary"
-                size="sm"
                 disabled={logoUploading}
                 onClick={() => fileRef.current?.click()}
               >
-                <Upload size={13} style={{ marginRight: 4 }} />
-                {logoUploading ? 'Uploaden…' : 'Logo uploaden'}
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  <Upload size={13} />
+                  {logoUploading ? 'Uploaden…' : 'Logo uploaden'}
+                </span>
               </Button>
               <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginTop: 4 }}>
                 PNG of JPG, max 2 MB. Wordt opgenomen in PDF-rapportage.
@@ -166,13 +184,11 @@ export function CompanySettingsCard({
           </div>
         </div>
 
-        {/* Rij 1: Bedrijfsnaam */}
         <label>
           <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>Bedrijfsnaam</span>
           <input value={values.bedrijfsnaam} onChange={(e) => set('bedrijfsnaam', e.target.value)} />
         </label>
 
-        {/* Rij 2: KvK + BTW */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           <label>
             <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>KvK-nummer</span>
@@ -194,14 +210,11 @@ export function CompanySettingsCard({
           </label>
         </div>
 
-        {/* Adres */}
         <label>
           <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>Adres</span>
-          <input value={values.adres} onChange={(e) => set('adres', e.target.value)}
-                 placeholder="Straat 1, 1234 AB Stad" />
+          <input value={values.adres} onChange={(e) => set('adres', e.target.value)} placeholder="Straat 1, 1234 AB Stad" />
         </label>
 
-        {/* Rij 3: Contactpersoon + Telefoon + Email */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
           <label>
             <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>Contactpersoon</span>
@@ -209,23 +222,19 @@ export function CompanySettingsCard({
           </label>
           <label>
             <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>Telefoon</span>
-            <input value={values.telefoon} onChange={(e) => set('telefoon', e.target.value)}
-                   type="tel" placeholder="+31 6 12345678" />
+            <input value={values.telefoon} onChange={(e) => set('telefoon', e.target.value)} type="tel" placeholder="+31 6 12345678" />
           </label>
           <label>
             <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>E-mailadres</span>
-            <input value={values.email} onChange={(e) => set('email', e.target.value)}
-                   type="email" placeholder="info@bedrijf.nl" />
+            <input value={values.email} onChange={(e) => set('email', e.target.value)} type="email" placeholder="info@bedrijf.nl" />
           </label>
         </div>
 
-        {/* ISO-5817 niveau */}
         <label>
           <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
             ISO-5817 standaard kwaliteitsniveau
           </span>
-          <select value={values.iso5817_default_level}
-                  onChange={(e) => set('iso5817_default_level', e.target.value)}>
+          <select value={values.iso5817_default_level} onChange={(e) => set('iso5817_default_level', e.target.value)}>
             {ISO_LEVELS.map((l) => (
               <option key={l.value} value={l.value}>{l.label}</option>
             ))}
@@ -236,17 +245,29 @@ export function CompanySettingsCard({
         </label>
 
         {saveError && (
-          <div style={{ fontSize: 13, color: 'var(--color-text-danger)',
-                        background: 'var(--color-background-danger)', padding: '8px 12px',
-                        borderRadius: 'var(--border-radius-md)' }}>
+          <div
+            style={{
+              fontSize: 13,
+              color: 'var(--color-text-danger)',
+              background: 'var(--color-background-danger)',
+              padding: '8px 12px',
+              borderRadius: 'var(--border-radius-md)',
+            }}
+          >
             {saveError}
           </div>
         )}
 
         {saved && (
-          <div style={{ fontSize: 13, color: 'var(--color-text-success)',
-                        background: 'var(--color-background-success)', padding: '8px 12px',
-                        borderRadius: 'var(--border-radius-md)' }}>
+          <div
+            style={{
+              fontSize: 13,
+              color: 'var(--color-text-success)',
+              background: 'var(--color-background-success)',
+              padding: '8px 12px',
+              borderRadius: 'var(--border-radius-md)',
+            }}
+          >
             Instellingen opgeslagen.
           </div>
         )}

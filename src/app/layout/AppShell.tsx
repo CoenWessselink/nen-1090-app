@@ -1,9 +1,8 @@
 import React from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/app/store/auth-store';
 
-export function AppShell({ children }: { children: React.ReactNode }) {
-  // Fix: AuthState heeft clearSession, niet logout
+export function AppShell({ children }: { children?: React.ReactNode }) {
   const clearSession = useAuthStore((s) => s.clearSession);
   const user = useAuthStore((s) => s.user);
   const location = useLocation();
@@ -26,7 +25,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         display: 'flex',
         flexDirection: 'column',
         minHeight: '100dvh',
-        // safe-area fix voor iPhones
         paddingTop: 'env(safe-area-inset-top)',
       }}
     >
@@ -59,9 +57,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </Link>
 
         <nav style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-          <NavLink to="/projecten"    label="Projecten"    current={location.pathname} />
-          <NavLink to="/planning"     label="Planning"     current={location.pathname} />
-          <NavLink to="/rapportage"   label="Rapportage"   current={location.pathname} />
+          <NavLink to="/projecten" label="Projecten" current={location.pathname} />
+          <NavLink to="/planning" label="Planning" current={location.pathname} />
+          <NavLink to="/rapportage" label="Rapportage" current={location.pathname} />
           <NavLink to="/instellingen" label="Instellingen" current={location.pathname} />
           {user?.is_platform_admin && (
             <NavLink to="/superadmin" label="Platform" current={location.pathname} />
@@ -75,6 +73,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </span>
           )}
           <button
+            type="button"
             onClick={handleLogout}
             style={{
               fontSize: '13px',
@@ -92,7 +91,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </header>
 
       <main style={{ flex: 1, overflow: 'auto' }}>
-        {children}
+        {children ?? <Outlet />}
       </main>
     </div>
   );

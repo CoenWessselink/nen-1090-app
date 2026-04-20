@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { Plus, Trash2, ChevronUp, ChevronDown, Code } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -25,12 +25,20 @@ interface Template {
 }
 
 const EMPTY_TEMPLATE: Template = {
-  name: '', code: '', version: '1.0', exc_class: 'EXC2',
-  is_default: false, items: [],
+  name: '',
+  code: '',
+  version: '1.0',
+  exc_class: 'EXC2',
+  is_default: false,
+  items: [],
 };
 
 const EMPTY_ITEM: Omit<TemplateItem, 'temp_id' | 'order'> = {
-  code: '', title: '', group: '', norm_ref: '', required: true,
+  code: '',
+  title: '',
+  group: '',
+  norm_ref: '',
+  required: true,
 };
 
 const EXC_CLASSES = ['EXC1', 'EXC2', 'EXC3', 'EXC4'];
@@ -101,9 +109,7 @@ export function InspectionTemplatesManager({
     if (!selected) return;
     setSelected({
       ...selected,
-      items: selected.items.map((i) =>
-        i.temp_id === tempId ? { ...i, [key]: value } : i
-      ),
+      items: selected.items.map((i) => (i.temp_id === tempId ? { ...i, [key]: value } : i)),
     });
   };
 
@@ -140,15 +146,16 @@ export function InspectionTemplatesManager({
   if (selected) {
     return (
       <div style={{ maxWidth: 780 }}>
-        {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <div style={{ fontSize: 16, fontWeight: 500 }}>
             {selected.id ? 'Template bewerken' : 'Nieuw template'}
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <Button variant="ghost" size="sm" onClick={() => setShowJson(!showJson)}>
-              <Code size={13} style={{ marginRight: 4 }} />
-              {showJson ? 'Formulier' : 'JSON bekijken'}
+            <Button variant="ghost" onClick={() => setShowJson(!showJson)}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <Code size={13} />
+                {showJson ? 'Formulier' : 'JSON bekijken'}
+              </span>
             </Button>
             <Button variant="secondary" onClick={() => setSelected(null)}>Annuleren</Button>
             <Button onClick={handleSave} disabled={saving}>
@@ -158,67 +165,79 @@ export function InspectionTemplatesManager({
         </div>
 
         {saveError && (
-          <div style={{ padding: '10px 12px', background: 'var(--color-background-danger)',
-                        color: 'var(--color-text-danger)', borderRadius: 'var(--border-radius-md)',
-                        fontSize: 13, marginBottom: 12 }}>
+          <div
+            style={{
+              padding: '10px 12px',
+              background: 'var(--color-background-danger)',
+              color: 'var(--color-text-danger)',
+              borderRadius: 'var(--border-radius-md)',
+              fontSize: 13,
+              marginBottom: 12,
+            }}
+          >
             {saveError}
           </div>
         )}
 
         {showJson ? (
-          /* JSON bekijken — alleen-lezen, niet bewerkbaar */
           <Card>
             <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 8 }}>
               JSON-weergave (alleen-lezen). Bewerk via het formulier hierboven.
             </p>
-            <pre style={{ fontSize: 11, overflowX: 'auto', background: 'var(--color-background-secondary)',
-                          padding: 12, borderRadius: 6, margin: 0, lineHeight: 1.5 }}>
+            <pre
+              style={{
+                fontSize: 11,
+                overflowX: 'auto',
+                background: 'var(--color-background-secondary)',
+                padding: 12,
+                borderRadius: 6,
+                margin: 0,
+                lineHeight: 1.5,
+              }}
+            >
               {JSON.stringify(selected, null, 2)}
             </pre>
           </Card>
         ) : (
           <>
-            {/* Basis-info */}
-            <Card style={{ marginBottom: 12 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
-                <label>
-                  <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>Naam</span>
-                  <input value={selected.name} onChange={(e) =>
-                    setSelected({ ...selected, name: e.target.value })} />
+            <div style={{ marginBottom: 12 }}>
+              <Card>
+                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
+                  <label>
+                    <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>Naam</span>
+                    <input value={selected.name} onChange={(e) => setSelected({ ...selected, name: e.target.value })} />
+                  </label>
+                  <label>
+                    <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>Code</span>
+                    <input value={selected.code} onChange={(e) => setSelected({ ...selected, code: e.target.value })} />
+                  </label>
+                  <label>
+                    <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>Versie</span>
+                    <input value={selected.version} onChange={(e) => setSelected({ ...selected, version: e.target.value })} />
+                  </label>
+                  <label>
+                    <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>EXC-klasse</span>
+                    <select value={selected.exc_class} onChange={(e) => setSelected({ ...selected, exc_class: e.target.value })}>
+                      {EXC_CLASSES.map((c) => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </label>
+                </div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <input type="checkbox" checked={selected.is_default} onChange={(e) => setSelected({ ...selected, is_default: e.target.checked })} />
+                  <span style={{ fontSize: 13 }}>Standaard template voor {selected.exc_class}</span>
                 </label>
-                <label>
-                  <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>Code</span>
-                  <input value={selected.code} onChange={(e) =>
-                    setSelected({ ...selected, code: e.target.value })} />
-                </label>
-                <label>
-                  <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>Versie</span>
-                  <input value={selected.version} onChange={(e) =>
-                    setSelected({ ...selected, version: e.target.value })} />
-                </label>
-                <label>
-                  <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>EXC-klasse</span>
-                  <select value={selected.exc_class} onChange={(e) =>
-                    setSelected({ ...selected, exc_class: e.target.value })}>
-                    {EXC_CLASSES.map((c) => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                </label>
-              </div>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <input type="checkbox" checked={selected.is_default} onChange={(e) =>
-                  setSelected({ ...selected, is_default: e.target.checked })} />
-                <span style={{ fontSize: 13 }}>Standaard template voor {selected.exc_class}</span>
-              </label>
-            </Card>
+              </Card>
+            </div>
 
-            {/* Controlepunten */}
             <Card>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                 <div style={{ fontSize: 14, fontWeight: 500 }}>
                   Controlepunten ({selected.items?.length ?? 0})
                 </div>
-                <Button variant="secondary" size="sm" onClick={addItem}>
-                  <Plus size={13} style={{ marginRight: 4 }} /> Toevoegen
+                <Button variant="secondary" onClick={addItem}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    <Plus size={13} /> Toevoegen
+                  </span>
                 </Button>
               </div>
 
@@ -241,27 +260,15 @@ export function InspectionTemplatesManager({
                       <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr 100px', gap: 8, marginBottom: 6 }}>
                         <label>
                           <span style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>Code</span>
-                          <input
-                            value={item.code}
-                            onChange={(e) => updateItem(item.temp_id, 'code', e.target.value)}
-                            style={{ fontSize: 12 }}
-                          />
+                          <input value={item.code} onChange={(e) => updateItem(item.temp_id, 'code', e.target.value)} style={{ fontSize: 12 }} />
                         </label>
                         <label>
                           <span style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>Titel</span>
-                          <input
-                            value={item.title}
-                            onChange={(e) => updateItem(item.temp_id, 'title', e.target.value)}
-                            style={{ fontSize: 12 }}
-                          />
+                          <input value={item.title} onChange={(e) => updateItem(item.temp_id, 'title', e.target.value)} style={{ fontSize: 12 }} />
                         </label>
                         <label>
                           <span style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>Groep</span>
-                          <input
-                            value={item.group}
-                            onChange={(e) => updateItem(item.temp_id, 'group', e.target.value)}
-                            style={{ fontSize: 12 }}
-                          />
+                          <input value={item.group} onChange={(e) => updateItem(item.temp_id, 'group', e.target.value)} style={{ fontSize: 12 }} />
                         </label>
                       </div>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'center' }}>
@@ -276,26 +283,30 @@ export function InspectionTemplatesManager({
                         </label>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4, paddingTop: 16 }}>
                           <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }}>
-                            <input
-                              type="checkbox"
-                              checked={item.required}
-                              onChange={(e) => updateItem(item.temp_id, 'required', e.target.checked)}
-                            />
+                            <input type="checkbox" checked={item.required} onChange={(e) => updateItem(item.temp_id, 'required', e.target.checked)} />
                             Verplicht
                           </label>
-                          <button onClick={() => moveItem(item.temp_id, -1)} disabled={idx === 0}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 3,
-                                     color: 'var(--color-text-secondary)' }}>
+                          <button
+                            type="button"
+                            onClick={() => moveItem(item.temp_id, -1)}
+                            disabled={idx === 0}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 3, color: 'var(--color-text-secondary)' }}
+                          >
                             <ChevronUp size={14} />
                           </button>
-                          <button onClick={() => moveItem(item.temp_id, 1)} disabled={idx === selected.items.length - 1}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 3,
-                                     color: 'var(--color-text-secondary)' }}>
+                          <button
+                            type="button"
+                            onClick={() => moveItem(item.temp_id, 1)}
+                            disabled={idx === selected.items.length - 1}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 3, color: 'var(--color-text-secondary)' }}
+                          >
                             <ChevronDown size={14} />
                           </button>
-                          <button onClick={() => removeItem(item.temp_id)}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 3,
-                                     color: 'var(--color-text-danger)' }}>
+                          <button
+                            type="button"
+                            onClick={() => removeItem(item.temp_id)}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 3, color: 'var(--color-text-danger)' }}
+                          >
                             <Trash2 size={14} />
                           </button>
                         </div>
@@ -311,15 +322,16 @@ export function InspectionTemplatesManager({
     );
   }
 
-  // Overzicht
   return (
     <div style={{ maxWidth: 780 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <div style={{ fontSize: 16, fontWeight: 500 }}>Inspectietemplates</div>
         <div style={{ display: 'flex', gap: 8 }}>
           {EXC_CLASSES.map((exc) => (
-            <Button key={exc} variant="secondary" size="sm" onClick={() => startNew(exc)}>
-              <Plus size={12} style={{ marginRight: 3 }} /> {exc}
+            <Button key={exc} variant="secondary" onClick={() => startNew(exc)}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                <Plus size={12} /> {exc}
+              </span>
             </Button>
           ))}
         </div>
@@ -334,24 +346,30 @@ export function InspectionTemplatesManager({
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {templates.map((t) => (
-            <Card
+            <div
               key={t.id}
               style={{ cursor: 'pointer' }}
-              onClick={() => { setSelected(t); setShowJson(false); setSaveError(null); }}
+              onClick={() => {
+                setSelected(t);
+                setShowJson(false);
+                setSaveError(null);
+              }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 500 }}>{t.name}</div>
-                  <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 2 }}>
-                    {t.code} · v{t.version} · {t.items?.length ?? 0} controlepunten
+              <Card>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 500 }}>{t.name}</div>
+                    <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 2 }}>
+                      {t.code} · v{t.version} · {t.items?.length ?? 0} controlepunten
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <Badge tone="warning">{t.exc_class}</Badge>
+                    {t.is_default && <Badge tone="success">Standaard</Badge>}
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <Badge tone="info">{t.exc_class}</Badge>
-                  {t.is_default && <Badge tone="success">Standaard</Badge>}
-                </div>
-              </div>
-            </Card>
+              </Card>
+            </div>
           ))}
         </div>
       )}
