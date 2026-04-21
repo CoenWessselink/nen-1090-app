@@ -41,7 +41,7 @@ export function ActivateAccountPage() {
       <Card className="auth-card">
         <div>
           <div className="eyebrow">CWS NEN-1090</div>
-          <h1>Account activeren</h1>
+          <h1>Activeer je account</h1>
           <p>Stel hier direct je eerste wachtwoord in.</p>
         </div>
         {!token ? <InlineMessage tone="danger">De activatielink bevat geen geldig token.</InlineMessage> : null}
@@ -50,7 +50,7 @@ export function ActivateAccountPage() {
         <form className="form-grid" onSubmit={handleSubmit}>
           <label><span>Nieuw wachtwoord</span><Input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" required /></label>
           <label><span>Herhaal wachtwoord</span><Input type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} autoComplete="new-password" required /></label>
-          <Button type="submit" disabled={submitting || !token}>{submitting ? 'Bezig...' : 'Account activeren'}</Button>
+          <Button type="submit" disabled={submitting || !token}>{submitting ? 'Bezig...' : 'Activeer je account'}</Button>
         </form>
         <div className="stack-actions"><Link to="/login">Terug naar login</Link></div>
       </Card>
