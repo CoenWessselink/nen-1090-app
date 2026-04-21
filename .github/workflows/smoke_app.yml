@@ -12,15 +12,33 @@ jobs:
       - name: Check app root (SPA load)
         run: |
           echo "Checking app root..."
-          RESPONSE=$(curl -s https://nen-1090-app.pages.dev/)
+          RESPONSE=$(curl -fsSL https://nen-1090-app.pages.dev/)
           echo "$RESPONSE" | grep '<div id="root">' || exit 1
 
       - name: Check API health through marketing proxy
         run: |
-          echo "Checking API health through marketing..."
-          curl -fL https://nen1090-marketing-new.pages.dev/api/health \
-            || curl -fL https://nen1090-marketing.pages.dev/api/health \
-            || exit 1
+          set -e
+          echo "Checking API health through marketing proxy..."
+          URLS=(
+            "https://nen1090-marketing-new.pages.dev/api/v1/health"
+            "https://nen1090-marketing.pages.dev/api/v1/health"
+            "https://nen1090-marketing-new.pages.dev/api/health"
+            "https://nen1090-marketing.pages.dev/api/health"
+          )
+
+          ok=0
+          for url in "${URLS[@]}"; do
+            echo "Trying $url"
+            if body=$(curl -fsSL "$url"); then
+              echo "$body"
+              if echo "$body" | grep -Eq '"status"\s*:\s*"(ok|healthy|up)"|"ok"\s*:\s*true'; then
+                ok=1
+                break
+              fi
+            fi
+          done
+
+          [ "$ok" -eq 1 ] || { echo "No healthy API response found through marketing proxy"; exit 1; }
 
       - name: Smoke test completed
         run: echo "Smoke test passed"
