@@ -31,7 +31,7 @@ import { useSession } from '@/app/session/SessionContext';
 import { useAuthStore } from '@/app/store/auth-store';
 import { useUiStore } from '@/app/store/ui-store';
 import { useExitImpersonation, useImpersonateTenant, usePlatformSummary, useTenantActions, useTenants } from '@/hooks/useTenants';
-import { useTenantAudit, useTenantBillingPanel, useTenantDetail, useTenantUserActions, useTenantUsers } from '@/hooks/useTenantAdmin';
+import { useTenantAccessHistory, useTenantAudit, useTenantBillingEvents, useTenantBillingPanel, useTenantDetail, useTenantUserActions, useTenantUsers } from '@/hooks/useTenantAdmin';
 import { useSystemHealth } from '@/hooks/useSystemHealth';
 import { useTenantBillingActions, useTenantBillingDetail, useTenantInvoiceDetail, useTenantInvoices, useTenantPayments } from '@/hooks/usePlatformBilling';
 import type { AuditSummary, BillingPayment, PlatformSummary, Tenant, TenantCreateInput, TenantPatchInput, TenantUser, TenantUserCreateInput, TenantUserPatchInput } from '@/types/domain';
@@ -208,6 +208,8 @@ export function SuperadminPage() {
   const tenantDetail = useTenantDetail(selectedTenant?.id, Boolean(selectedTenant));
   const tenantUsers = useTenantUsers(selectedTenant?.id, Boolean(selectedTenant));
   const tenantAudit = useTenantAudit(selectedTenant?.id, Boolean(selectedTenant));
+  const tenantAccessHistory = useTenantAccessHistory(selectedTenant?.id, Boolean(selectedTenant));
+  const tenantBillingEvents = useTenantBillingEvents(selectedTenant?.id, Boolean(selectedTenant));
   const tenantBilling = useTenantBillingPanel(selectedTenant?.id, Boolean(selectedTenant));
   const tenantBillingDetail = useTenantBillingDetail(selectedTenant?.id);
   const tenantPayments = useTenantPayments(selectedTenant?.id, { page: paymentsPage, limit: 10 });
@@ -231,6 +233,8 @@ export function SuperadminPage() {
 
   const userRows = tenantUsers.data?.items || [];
   const auditRows = tenantAudit.data?.items || [];
+  const accessHistoryRows = tenantAccessHistory.data?.items || [];
+  const billingEventRows = tenantBillingEvents.data?.items || [];
   const billingPayload = { ...(tenantBilling.data || {}), ...(tenantBillingDetail.data || {}) } as Record<string, unknown>;
   const paymentRows = tenantPayments.data?.items || [];
   const invoiceRows = tenantInvoices.data?.items || [];
@@ -409,6 +413,7 @@ export function SuperadminPage() {
             {status === 'inactive' ? <Button variant="ghost" onClick={() => setPendingAction({ type: 'activate', tenant })}>Activeer</Button> : null}
             {status === 'suspended' ? <Button variant="ghost" onClick={() => setPendingAction({ type: 'reactivate', tenant })}>Heractiveer</Button> : null}
             {status === 'trial' ? <Button variant="ghost" onClick={() => setPendingAction({ type: 'activate', tenant })}>Activeer</Button> : null}
+            <Button variant="ghost" onClick={async () => { const response = await tenantActions.toggleDemoMode.mutateAsync({ tenantId: tenant.id, isDemo: !(tenant as any).is_demo }); refreshMessage(String((response as any)?.message || `Demo mode ${!(tenant as any).is_demo ? 'ingeschakeld' : 'uitgeschakeld'}.`)); }}>Demo</Button>
           </div>
         );
       },
@@ -637,7 +642,7 @@ export function SuperadminPage() {
                     <div className="toolbar-cluster">
                       <Button variant="ghost" onClick={() => openUserEditor(row)}>Bewerk</Button>
                       <Button variant="ghost" onClick={() => tenantUserActions.patchUser.mutate({ userId: row.user_id, payload: { role: row.role === 'tenant_admin' ? 'viewer' : 'tenant_admin' } })}>Rol wisselen</Button>
-                      <Button variant="ghost" onClick={() => tenantUserActions.patchUser.mutate({ userId: row.user_id, payload: { is_active: !row.is_active } })}>{row.is_active ? 'Deactiveer' : 'Activeer'}</Button>
+                      <Button variant="ghost" onClick={async () => { const response = row.is_active ? await tenantUserActions.deactivateUser.mutateAsync(row.user_id) : await tenantUserActions.reactivateUser.mutateAsync(row.user_id); refreshMessage(String((response as any)?.message || (row.is_active ? 'Gebruiker gedeactiveerd.' : 'Gebruiker geactiveerd.'))); }}>{row.is_active ? 'Deactiveer' : 'Activeer'}</Button>
                       <Button variant="ghost" onClick={async () => { const response = await tenantUserActions.resendInvite.mutateAsync(row.user_id) as Record<string, unknown>; refreshMessage(String(response?.reset_url || response?.delivery_outbox_path || response?.message || 'Uitnodiging verstuurd.')); }}>Uitnodigen</Button>
                       <Button variant="ghost" onClick={async () => { const response = await tenantUserActions.resetPassword.mutateAsync(row.user_id) as Record<string, unknown>; refreshMessage(String(response?.reset_url || response?.delivery_outbox_path || response?.message || 'Resetlink aangemaakt.')); }}>Reset</Button>
                       <Button variant="ghost" onClick={async () => { await tenantUserActions.deleteUser.mutateAsync(row.user_id); refreshMessage(`Gebruiker ${row.email} verwijderd.`); }}>Verwijder</Button>
@@ -717,6 +722,7 @@ export function SuperadminPage() {
                 {lastBillingFeedback ? (
                   <InlineMessage tone="neutral">{`${String(lastBillingFeedback.message || lastBillingFeedback.number || 'Actie verwerkt.')}${lastBillingFeedback.email_preview_subject ? ` · Mail: ${String(lastBillingFeedback.email_preview_subject)}` : ''}${lastBillingFeedback.delivery_mode ? ` · Delivery: ${String(lastBillingFeedback.delivery_mode)}` : ''}${lastBillingFeedback.delivery_outbox_path ? ` · Outbox: ${String(lastBillingFeedback.delivery_outbox_path)}` : ''}${lastBillingFeedback.pdf_url ? ` · PDF: ${String(lastBillingFeedback.pdf_url)}` : ''}`}</InlineMessage>
                 ) : null}
+                {billingEventRows.length ? <InlineMessage tone="neutral">{`Laatste billing event: ${text((billingEventRows[0] as any).event_type)} · ${formatDatetime(text((billingEventRows[0] as any).created_at, '')) || '—'}`}</InlineMessage> : null}
                 <div className="divider" />
                 {tenantInvoices.isLoading ? <LoadingState label="Facturen laden..." /> : null}
                 {tenantInvoices.isError ? <ErrorState title="Facturen niet geladen" description="Controleer of /platform/tenants/{id}/invoices bereikbaar is." /> : null}
@@ -767,7 +773,12 @@ export function SuperadminPage() {
               <Button variant="secondary" onClick={() => selectedTenant && setPendingAction({ type: 'deactivate', tenant: selectedTenant })}>Deactiveer</Button>
               <Button variant="secondary" onClick={() => selectedTenant && setPendingAction({ type: 'suspend', tenant: selectedTenant })}>Suspend</Button>
               <Button variant="secondary" onClick={() => selectedTenant && setPendingAction({ type: 'trial', tenant: selectedTenant })}>Start trial</Button>
+              <Button variant="secondary" onClick={async () => { if (!selectedTenant) return; const response = await tenantActions.toggleDemoMode.mutateAsync({ tenantId: selectedTenant.id, isDemo: !Boolean((detailTenant as any)?.is_demo) }); refreshMessage(String((response as any)?.message || `Demo mode ${!Boolean((detailTenant as any)?.is_demo) ? 'ingeschakeld' : 'uitgeschakeld'}.`)); }}>Demo mode</Button>
               <Button variant="ghost" onClick={() => setEditTenantOpen(true)}>Tenant bewerken</Button>
+            </div>
+            <div className="detail-grid" style={{ marginTop: 16 }}>
+              <div><span>Demo mode</span><strong>{Boolean((detailTenant as any)?.is_demo) ? 'Aan' : 'Uit'}</strong></div>
+              <div><span>Access history</span><strong>{String(accessHistoryRows.length)}</strong><small>{accessHistoryRows[0] ? text((accessHistoryRows[0] as any).access_mode) : 'Geen snapshots'}</small></div>
             </div>
             <div className="checklist-grid" style={{ marginTop: 16 }}>
               <div className="checklist-item"><strong>Statusmapping</strong><span>Trial, actief, inactief en gesuspendeerd worden expliciet getoond.</span></div>
@@ -812,6 +823,9 @@ export function SuperadminPage() {
           <div className="toolbar-cluster">
             <Button type="button" variant="secondary" onClick={async () => { if (!editingUser) return; const response = await tenantUserActions.resendInvite.mutateAsync(editingUser.user_id) as Record<string, unknown>; refreshMessage(String(response?.reset_url || response?.delivery_outbox_path || response?.message || 'Uitnodiging verstuurd.')); }}>Uitnodiging opnieuw sturen</Button>
             <Button type="button" variant="secondary" onClick={async () => { if (!editingUser) return; const response = await tenantUserActions.resetPassword.mutateAsync(editingUser.user_id) as Record<string, unknown>; refreshMessage(String(response?.reset_url || response?.delivery_outbox_path || response?.message || 'Resetlink aangemaakt.')); }}>Reset wachtwoord</Button>
+            <Button type="button" variant="secondary" onClick={async () => { if (!editingUser) return; const response = editingUser.is_active ? await tenantUserActions.deactivateUser.mutateAsync(editingUser.user_id) : await tenantUserActions.reactivateUser.mutateAsync(editingUser.user_id); refreshMessage(String((response as any)?.message || (editingUser.is_active ? 'Gebruiker gedeactiveerd.' : 'Gebruiker geactiveerd.'))); setEditingUser((current) => current ? { ...current, is_active: !current.is_active } : current); }}>
+              {editingUser?.is_active ? 'Deactiveer gebruiker' : 'Heractiveer gebruiker'}
+            </Button>
             <Button type="button" variant="ghost" onClick={async () => { if (!editingUser) return; await tenantUserActions.deleteUser.mutateAsync(editingUser.user_id); refreshMessage(`Gebruiker ${editingUser.email} verwijderd.`); setEditingUser(null); }}>Verwijder</Button>
           </div>
           <div className="form-actions"><Button type="button" variant="ghost" onClick={() => setEditingUser(null)}>Annuleren</Button><Button type="submit" disabled={tenantUserActions.patchUser.isPending}>Gebruiker opslaan</Button></div>

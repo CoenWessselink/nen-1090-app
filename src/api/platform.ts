@@ -93,7 +93,7 @@ export function getTenantBilling(tenantId: string | number) {
 }
 
 export function forceLogoutTenant(tenantId: string | number) {
-  return client.post<Record<string, unknown>>(`/platform/tenants/${tenantId}/force_logout`, {});
+  return optionalRequest<Record<string, unknown>>([`/platform/tenants/${tenantId}/force-logout`, `/platform/tenants/${tenantId}/force_logout`], { method: 'POST', body: JSON.stringify({}) });
 }
 
 export function exportTenantsCsv() {
@@ -102,6 +102,7 @@ export function exportTenantsCsv() {
 
 export function impersonateTenant(tenantId: string | number) {
   return optionalRequest<LoginResponse>([
+    `/platform/tenants/${tenantId}/impersonate`,
     `/platform/impersonate/${tenantId}`,
     `/admin/tenants/${tenantId}/impersonate`,
     '/admin/impersonate',
@@ -123,4 +124,27 @@ export function resetTenantUserPassword(tenantId: string | number, userId: strin
 
 export function deleteTenantUser(tenantId: string | number, userId: string) {
   return apiRequest<Record<string, unknown>>(`/platform/tenants/${tenantId}/users/${userId}`, { method: 'DELETE' });
+}
+
+
+export function getTenantAccessHistory(tenantId: string | number) {
+  return apiRequest<Record<string, unknown>[] | { items?: Record<string, unknown>[] }>(`/platform/tenants/${tenantId}/access-history`);
+}
+
+export function getTenantBillingEvents(tenantId: string | number) {
+  return apiRequest<Record<string, unknown>[] | { items?: Record<string, unknown>[] }>(`/platform/tenants/${tenantId}/billing-events`);
+}
+
+export function toggleTenantDemoMode(tenantId: string | number, isDemo?: boolean) {
+  return client.post<Record<string, unknown>>(`/platform/tenants/${tenantId}/demo-mode`, { is_demo: isDemo });
+}
+
+export function deactivatePlatformUser(userId: string, tenantId?: string | number) {
+  const query = tenantId ? `?tenant_id=${encodeURIComponent(String(tenantId))}` : '';
+  return client.post<Record<string, unknown>>(`/platform/users/${userId}/deactivate${query}`, {});
+}
+
+export function reactivatePlatformUser(userId: string, tenantId?: string | number) {
+  const query = tenantId ? `?tenant_id=${encodeURIComponent(String(tenantId))}` : '';
+  return client.post<Record<string, unknown>>(`/platform/users/${userId}/reactivate${query}`, {});
 }

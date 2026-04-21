@@ -1,13 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   createTenantUser,
+  deactivatePlatformUser,
   deleteTenantUser,
   forceLogoutTenant,
   getTenant,
+  getTenantAccessHistory,
   getTenantAudit,
   getTenantBilling,
+  getTenantBillingEvents,
   getTenantUsers,
   patchTenantUser,
+  reactivatePlatformUser,
   resendTenantUserInvite,
   resetTenantUserPassword,
 } from '@/api/platform';
@@ -44,6 +48,30 @@ export function useTenantAudit(tenantId?: string | number, enabled = true) {
   });
 }
 
+
+
+export function useTenantAccessHistory(tenantId?: string | number, enabled = true) {
+  return useQuery({
+    queryKey: ['tenant-access-history', tenantId],
+    queryFn: async () => {
+      const payload = await getTenantAccessHistory(String(tenantId));
+      return normalizeListResponse(payload);
+    },
+    enabled: enabled && Boolean(tenantId),
+  });
+}
+
+export function useTenantBillingEvents(tenantId?: string | number, enabled = true) {
+  return useQuery({
+    queryKey: ['tenant-billing-events', tenantId],
+    queryFn: async () => {
+      const payload = await getTenantBillingEvents(String(tenantId));
+      return normalizeListResponse(payload);
+    },
+    enabled: enabled && Boolean(tenantId),
+  });
+}
+
 export function useTenantBillingPanel(tenantId?: string | number, enabled = true) {
   return useQuery({
     queryKey: ['tenant-billing-panel', tenantId],
@@ -58,6 +86,8 @@ export function useTenantUserActions(tenantId?: string | number) {
     queryClient.invalidateQueries({ queryKey: ['tenant-users', tenantId] });
     queryClient.invalidateQueries({ queryKey: ['tenant-detail', tenantId] });
     queryClient.invalidateQueries({ queryKey: ['tenant-audit', tenantId] });
+    queryClient.invalidateQueries({ queryKey: ['tenant-access-history', tenantId] });
+    queryClient.invalidateQueries({ queryKey: ['tenant-billing-events', tenantId] });
     queryClient.invalidateQueries({ queryKey: ['tenants'] });
     queryClient.invalidateQueries({ queryKey: ['platform-summary'] });
   };
@@ -81,6 +111,14 @@ export function useTenantUserActions(tenantId?: string | number) {
     }),
     deleteUser: useMutation({
       mutationFn: (userId: string) => deleteTenantUser(String(tenantId), userId),
+      onSuccess: refresh,
+    }),
+    deactivateUser: useMutation({
+      mutationFn: (userId: string) => deactivatePlatformUser(userId, tenantId),
+      onSuccess: refresh,
+    }),
+    reactivateUser: useMutation({
+      mutationFn: (userId: string) => reactivatePlatformUser(userId, tenantId),
       onSuccess: refresh,
     }),
     forceLogout: useMutation({

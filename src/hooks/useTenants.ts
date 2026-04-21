@@ -14,6 +14,7 @@ import {
   searchTenants,
   startTenantTrial,
   suspendTenant,
+  toggleTenantDemoMode,
 } from '@/api/platform';
 import { normalizeListResponse } from '@/utils/api';
 import type { LoginResponse, ListParams } from '@/types/api';
@@ -58,6 +59,7 @@ export function useTenantActions() {
     suspendTenant: useMutation({ mutationFn: (tenantId: string | number) => suspendTenant(tenantId), onSuccess: refresh }),
     reactivateTenant: useMutation({ mutationFn: (tenantId: string | number) => reactivateTenant(tenantId), onSuccess: refresh }),
     startTrial: useMutation({ mutationFn: (tenantId: string | number) => startTenantTrial(tenantId), onSuccess: refresh }),
+    toggleDemoMode: useMutation({ mutationFn: ({ tenantId, isDemo }: { tenantId: string | number; isDemo?: boolean }) => toggleTenantDemoMode(tenantId, isDemo), onSuccess: refresh }),
     exportCsv: useMutation({ mutationFn: () => exportTenantsCsv() }),
   };
 }
