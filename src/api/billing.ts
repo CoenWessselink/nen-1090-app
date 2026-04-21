@@ -6,13 +6,11 @@ export function getTenantBillingStatus() {
 }
 
 export function getTenantBillingPreview(targetSeats?: number) {
-  if (typeof targetSeats === 'number' && Number.isFinite(targetSeats) && targetSeats > 0) {
-    return apiRequest<Record<string, unknown>>('/tenant/billing/preview', {
-      method: 'POST',
-      body: JSON.stringify({ target_seats: targetSeats }),
-    });
-  }
-  return apiRequest<Record<string, unknown>>('/tenant/billing/preview');
+  const safeTarget = typeof targetSeats === 'number' && Number.isFinite(targetSeats) && targetSeats > 0 ? targetSeats : 1;
+  return apiRequest<Record<string, unknown>>('/tenant/billing/preview', {
+    method: 'POST',
+    body: JSON.stringify({ target_seats: safeTarget }),
+  });
 }
 
 export function changeTenantPlan(payload: Record<string, unknown>) {
@@ -41,4 +39,8 @@ export function openTenantInvoicePdf(invoiceId: string | number) {
 
 export function createPaymentLink(payload: Record<string, unknown>) {
   return apiRequest<Record<string, unknown>>('/billing/create-payment-link', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export function cancelTenantSubscriptionSelfService() {
+  return apiRequest<Record<string, unknown>>('/tenant/billing/cancel-subscription', { method: 'POST', body: JSON.stringify({}) });
 }

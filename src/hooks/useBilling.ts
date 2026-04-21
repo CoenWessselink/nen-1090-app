@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   changeTenantPlan,
   createPaymentLink,
+  cancelTenantSubscriptionSelfService,
   downloadTenantInvoicePdf,
   getTenantBillingPreview,
   getTenantBillingStatus,
@@ -76,4 +77,16 @@ export function useInvoicePdfActions() {
     downloadInvoicePdf: useMutation({ mutationFn: (invoiceId: string | number) => downloadTenantInvoicePdf(invoiceId) }),
     openInvoicePdf: useMutation({ mutationFn: (invoiceId: string | number) => openTenantInvoicePdf(invoiceId) }),
   };
+}
+
+export function useCancelSubscription() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => cancelTenantSubscriptionSelfService(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['billing-status'] });
+      queryClient.invalidateQueries({ queryKey: ['billing-status-plus'] });
+      queryClient.invalidateQueries({ queryKey: ['billing-invoices'] });
+    },
+  });
 }

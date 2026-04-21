@@ -1,4 +1,4 @@
-import { CreditCard, Download, ExternalLink, FileText, RefreshCcw, ShieldCheck } from 'lucide-react';
+import { CreditCard, Download, ExternalLink, FileText, RefreshCcw, ShieldCheck, Wallet } from 'lucide-react';
 import ModuleHero from '@/components/layout/ModuleHero';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { InlineMessage } from '@/components/feedback/InlineMessage';
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { LoadingState } from '@/components/feedback/LoadingState';
-import { useBillingInvoices, useBillingStatus, useBillingStatusPlus, useInvoicePdfActions } from '@/hooks/useBilling';
+import { useBillingInvoices, useBillingStatus, useBillingStatusPlus, useCancelSubscription, useCreatePaymentLink, useInvoicePdfActions } from '@/hooks/useBilling';
 import { useAccess } from '@/hooks/useAccess';
 import { buildAppReturnTo, buildMarketingUrl } from '@/features/auth/marketing-auth';
 import { formatDatetime, toneFromStatus } from '@/utils/format';
@@ -23,6 +23,8 @@ export function BillingPage() {
   const billingStatusPlus = useBillingStatusPlus();
   const invoices = useBillingInvoices();
   const pdfActions = useInvoicePdfActions();
+  const paymentLink = useCreatePaymentLink();
+  const cancelSubscription = useCancelSubscription();
   const status = billingStatus.data || {};
   const statusPlus = billingStatusPlus.data || {};
   const invoiceRows = Array.isArray(invoices.data?.items) ? invoices.data?.items : [];
@@ -35,6 +37,21 @@ export function BillingPage() {
       returnTo: buildAppReturnTo('/billing'),
     },
   });
+
+  const openCheckout = async () => {
+    const payload = await paymentLink.mutateAsync({
+      plan: String((status as any)?.plan || (statusPlus as any)?.subscription?.plan?.code || 'professional'),
+      seats: Number(status.seats_purchased || subscription.seats || 1),
+    });
+    const checkoutUrl = String((payload as any)?.checkout_url || marketingSubscriptionUrl || '');
+    if (checkoutUrl) window.location.href = checkoutUrl;
+  };
+
+  const handleCancel = async () => {
+    await cancelSubscription.mutateAsync();
+    billingStatus.refetch();
+    billingStatusPlus.refetch();
+  };
 
   const summaryRows = [
     { label: 'Status', value: String(status.status || subscription.status || 'Onbekend') },
@@ -53,7 +70,8 @@ export function BillingPage() {
         kicker="Facturatiebasis fase 3"
         actions={
           <>
-            <a href={marketingSubscriptionUrl} target="_self" rel="noreferrer"><Button>Open centraal abonnement</Button></a>
+            <Button onClick={openCheckout} disabled={paymentLink.isPending}><Wallet size={16} /> Betaling / checkout</Button>
+            <a href={marketingSubscriptionUrl} target="_self" rel="noreferrer"><Button variant="secondary">Open centraal abonnement</Button></a>
             <Button variant="secondary" onClick={() => { billingStatus.refetch(); billingStatusPlus.refetch(); invoices.refetch(); }}><RefreshCcw size={16} /> Verversen</Button>
           </>
         }
@@ -87,8 +105,10 @@ export function BillingPage() {
               <div key={row.label}><span>{row.label}</span><strong>{row.value}</strong></div>
             ))}
           </div>
-          <div className="stack-actions" style={{ marginTop: 16 }}>
-            <a href={marketingSubscriptionUrl} target="_self" rel="noreferrer"><Button><ExternalLink size={16} /> Open centraal abonnement</Button></a>
+          <div className="stack-actions" style={{ marginTop: 16, gap: 8, display: 'flex', flexWrap: 'wrap' }}>
+            <Button onClick={openCheckout} disabled={paymentLink.isPending}><Wallet size={16} /> Start betaling</Button>
+            <Button variant="secondary" onClick={handleCancel} disabled={cancelSubscription.isPending}><ExternalLink size={16} /> Abonnement annuleren</Button>
+            <a href={marketingSubscriptionUrl} target="_self" rel="noreferrer"><Button variant="secondary"><ExternalLink size={16} /> Open centraal abonnement</Button></a>
           </div>
         </Card>
 
@@ -117,6 +137,8 @@ export function BillingPage() {
         </Card>
       </div>
 
+      {paymentLink.isSuccess ? <InlineMessage tone="neutral">Checkoutlink aangemaakt en doorgestuurd.</InlineMessage> : null}
+      {cancelSubscription.isSuccess ? <InlineMessage tone="neutral">Abonnement is opgezegd. Toegang blijft actief tot einde periode.</InlineMessage> : null}
       {billingStatus.isLoading || billingStatusPlus.isLoading ? <LoadingState label="Billingstatus laden..." /> : null}
       {billingStatus.isError ? <ErrorState title="Billingstatus niet geladen" description="Controleer of /tenant/billing/status bereikbaar is." /> : null}
     </div>
