@@ -56,6 +56,7 @@ export const routerConfig = [
   { path: '/logout', element: <LogoutPage /> },
   { path: '/change-password', element: <ChangePasswordPage /> },
   { path: '/activate-account', element: <ActivateAccountPage /> },
+  { path: '/activate', element: <Navigate to="/activate-account" replace /> },
   { path: '/app/login', element: <Navigate to="/login" replace /> },
   { path: '/app/forgot-password', element: <Navigate to="/forgot-password" replace /> },
   { path: '/app/reset-password', element: <Navigate to="/reset-password" replace /> },

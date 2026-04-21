@@ -62,7 +62,7 @@ export async function requestPasswordReset(payload: { email: string; tenant: str
 }
 
 export async function confirmPasswordReset(payload: { token: string; password: string }) {
-  return client.post<any>('/auth/reset-password/confirm', payload);
+  return client.post<any>('/auth/reset-password/confirm', { token: payload.token, new_password: payload.password });
 }
 
 export async function changePassword(payload: ChangePasswordPayload) {
@@ -71,5 +71,5 @@ export async function changePassword(payload: ChangePasswordPayload) {
 
 
 export async function activateAccount(payload: { token: string; password: string }) {
-  return confirmPasswordReset(payload);
+  return client.post<any>('/auth/set-password', { token: payload.token, new_password: payload.password });
 }
