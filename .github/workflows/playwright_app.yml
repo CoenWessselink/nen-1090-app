@@ -2,6 +2,7 @@ name: Playwright App Checks
 
 on:
   workflow_dispatch:
+  pull_request:
 
 jobs:
   playwright:
@@ -16,6 +17,7 @@ jobs:
         with:
           node-version: 20
           cache: npm
+          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
         run: npm ci
@@ -23,8 +25,11 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
+      - name: Build frontend
+        run: npm run build
+
       - name: Run auth + routing smoke
-        run: npx playwright test tests/e2e/auth-routing-smoke.spec.ts --project=desktop-chromium
+        run: npx playwright test tests/e2e/auth-routing-smoke.spec.ts tests/e2e/phase5-hardening-smoke.spec.ts --project=desktop-chromium
 
       - name: Upload Playwright report
         if: always()

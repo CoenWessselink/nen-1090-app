@@ -2,8 +2,9 @@ name: Playwright Smoke
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
+  workflow_dispatch:
 
 jobs:
   smoke:
@@ -28,11 +29,14 @@ jobs:
       - name: Build frontend
         run: npm run build
 
-      - name: Start preview server
-        run: npm run preview -- --host 127.0.0.1 --port 4173 &
-
-      - name: Wait for preview
-        run: npx wait-on http://127.0.0.1:4173
-
       - name: Run smoke tests
-        run: npx playwright test tests/e2e/auth-onboarding-flow.spec.ts tests/e2e/platform-shell.spec.ts tests/e2e/lascontrole-shell.spec.ts tests/e2e/superadmin-billing-shell.spec.ts --project=desktop-chromium
+        run: npx playwright test tests/e2e/auth-onboarding-flow.spec.ts tests/e2e/platform-shell.spec.ts tests/e2e/lascontrole-shell.spec.ts tests/e2e/superadmin-billing-shell.spec.ts tests/e2e/phase5-hardening-smoke.spec.ts --project=desktop-chromium
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-smoke-report
+          path: |
+            playwright-report
+            test-results
