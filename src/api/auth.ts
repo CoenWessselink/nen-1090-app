@@ -1,6 +1,13 @@
 import client from '@/api/client';
 import type { AuthRefreshResponse, ChangePasswordPayload, LoginPayload, LoginResponse } from '@/types/api';
 
+type AuthMessageResponse = {
+  ok?: boolean;
+  message?: string;
+  reset_url?: string;
+  activation_url?: string;
+};
+
 function normalizeUser(input: any, fallbackTenant = '') {
   return {
     email: String(input?.email || input?.username || ''),
@@ -47,8 +54,9 @@ export async function getMe() {
   return client.get<any>('/auth/me');
 }
 
-export async function refreshSession(refreshToken: string): Promise<AuthRefreshResponse> {
-  const raw = await client.post<any>('/auth/refresh', { refresh_token: refreshToken });
+export async function refreshSession(refreshToken?: string | null): Promise<AuthRefreshResponse> {
+  const body = refreshToken ? { refresh_token: refreshToken } : {};
+  const raw = await client.post<any>('/auth/refresh', body);
   return normalizeLoginResponse(raw) as AuthRefreshResponse;
 }
 
@@ -57,19 +65,26 @@ export async function refreshCentralSession(): Promise<AuthRefreshResponse> {
   return normalizeLoginResponse(raw) as AuthRefreshResponse;
 }
 
-export async function requestPasswordReset(payload: { email: string; tenant: string }) {
-  return client.post<any>('/auth/reset-password/request', payload);
+export async function requestPasswordReset(payload: { email: string; tenant?: string }) {
+  return client.post<AuthMessageResponse>('/auth/forgot-password', { email: payload.email, tenant: payload.tenant || undefined });
 }
 
 export async function confirmPasswordReset(payload: { token: string; password: string }) {
-  return client.post<any>('/auth/reset-password/confirm', { token: payload.token, new_password: payload.password });
+  return client.post<AuthMessageResponse>('/auth/reset-password', { token: payload.token, new_password: payload.password });
 }
 
 export async function changePassword(payload: ChangePasswordPayload) {
   return client.post<any>('/auth/change-password', payload);
 }
 
-
 export async function activateAccount(payload: { token: string; password: string }) {
-  return client.post<any>('/auth/set-password', { token: payload.token, new_password: payload.password });
+  return client.post<AuthMessageResponse>('/auth/activate', { token: payload.token, new_password: payload.password });
+}
+
+export async function validateActivationToken(token: string) {
+  return client.get<AuthMessageResponse>(`/auth/activate?token=${encodeURIComponent(token)}`);
+}
+
+export async function resendActivation(email: string) {
+  return client.post<AuthMessageResponse>('/onboarding/resend-activation', { email });
 }

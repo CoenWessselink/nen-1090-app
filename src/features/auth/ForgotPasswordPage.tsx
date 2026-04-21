@@ -8,7 +8,7 @@ import { InlineMessage } from '@/components/feedback/InlineMessage';
 import { getFriendlyAuthErrorMessage } from '@/features/auth/auth-utils';
 
 export function ForgotPasswordPage() {
-  const [tenant, setTenant] = useState('demo');
+  const [tenant, setTenant] = useState('');
   const [email, setEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -20,7 +20,7 @@ export function ForgotPasswordPage() {
     setError(null);
     setResult(null);
     try {
-      const response = await requestPasswordReset({ email, tenant });
+      const response = await requestPasswordReset({ email, tenant: tenant || undefined });
       setResult(response || { message: 'Als dit account bestaat, is een resetlink verstuurd.' });
     } catch (requestError) {
       setError(getFriendlyAuthErrorMessage(requestError, 'Reset aanvragen mislukt.'));
@@ -35,7 +35,7 @@ export function ForgotPasswordPage() {
         <div>
           <div className="eyebrow">CWS NEN-1090</div>
           <h1>Wachtwoord vergeten</h1>
-          <p>Vraag hier een resetlink aan voor een tenantgebruiker of platformgebruiker.</p>
+          <p>Vraag hier een resetlink aan. Tenant is optioneel en alleen nodig als je omgeving daarom vraagt.</p>
         </div>
 
         {error ? <InlineMessage tone="danger">{error}</InlineMessage> : null}
@@ -44,7 +44,7 @@ export function ForgotPasswordPage() {
         <form className="form-grid" onSubmit={handleSubmit}>
           <label>
             <span>Tenant</span>
-            <Input value={tenant} onChange={(event) => setTenant(event.target.value)} required />
+            <Input value={tenant} onChange={(event) => setTenant(event.target.value)} placeholder="Optioneel" />
           </label>
           <label>
             <span>E-mail</span>

@@ -57,21 +57,6 @@ function buildUrl(path: string, params?: QueryParams): string {
   return `${url.pathname}${url.search}`;
 }
 
-function extractErrorMessage(details: unknown, fallback: string): string {
-  if (!details) return fallback;
-  if (typeof details === 'string') return details || fallback;
-  if (typeof details === 'object') {
-    const record = details as Record<string, unknown>;
-    const nested = record.error;
-    if (nested && typeof nested === 'object' && typeof (nested as Record<string, unknown>).message === 'string') {
-      return String((nested as Record<string, unknown>).message) || fallback;
-    }
-    if (typeof record.detail === 'string') return String(record.detail) || fallback;
-    if (typeof record.message === 'string') return String(record.message) || fallback;
-  }
-  return fallback;
-}
-
 function isFormData(value: unknown): value is FormData {
   return typeof FormData !== 'undefined' && value instanceof FormData;
 }
@@ -151,7 +136,10 @@ async function parseResponse<T>(response: Response, raw = false): Promise<T> {
     } catch {
       details = null;
     }
-    throw new ApiError(extractErrorMessage(details, response.statusText || 'API request failed'), response.status, details);
+    const detailMessage = typeof details === 'string'
+      ? details
+      : (details as any)?.error?.message || (details as any)?.detail || (details as any)?.message;
+    throw new ApiError(detailMessage || response.statusText || 'API request failed', response.status, details);
   }
 
   if (raw) return response as unknown as T;

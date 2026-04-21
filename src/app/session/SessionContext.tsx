@@ -1,6 +1,6 @@
 import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useState } from 'react';
 import { ApiError } from '@/api/client';
-import { getMe, refreshSession } from '@/api/auth';
+import { getMe, refreshCentralSession, refreshSession } from '@/api/auth';
 import { readAnyPersistedSession, useAuthStore } from '@/app/store/auth-store';
 import type { Role, SessionUser } from '@/types/domain';
 
@@ -130,9 +130,9 @@ export function SessionProvider({ children }: PropsWithChildren) {
           setSession(effectiveToken, normalizeMeUser(me as Record<string, unknown>), effectiveRefreshToken || null);
         }
       } catch (error) {
-        if (isUnauthorized(error) && effectiveRefreshToken) {
+        if (isUnauthorized(error)) {
           try {
-            const refreshed = await refreshSession(effectiveRefreshToken);
+            const refreshed = effectiveRefreshToken ? await refreshSession(effectiveRefreshToken) : await refreshCentralSession();
             if (!cancelled && refreshed.access_token && refreshed.user?.email) {
               const refreshedUser: SessionUser = {
                 email: refreshed.user.email,
@@ -141,11 +141,13 @@ export function SessionProvider({ children }: PropsWithChildren) {
                 role: refreshed.user.role || '',
                 name: refreshed.user.name || '',
               };
-              setSession(refreshed.access_token, refreshedUser, refreshed.refresh_token || effectiveRefreshToken);
+              setSession(refreshed.access_token, refreshedUser, refreshed.refresh_token || effectiveRefreshToken || null);
               updateToken(refreshed.access_token);
+              return;
             }
+            if (!cancelled) clearSession();
           } catch {
-            // keep persisted session intact during hydration
+            if (!cancelled) clearSession();
           }
         }
       } finally {

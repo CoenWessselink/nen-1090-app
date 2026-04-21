@@ -63,6 +63,7 @@ export const routerConfig = [
   { path: '/app/logout', element: <Navigate to="/logout" replace /> },
   { path: '/app/change-password', element: <Navigate to="/change-password" replace /> },
   { path: '/app/activate-account', element: <Navigate to="/activate-account" replace /> },
+  { path: '/app/activate', element: <Navigate to="/activate-account" replace /> },
   {
     path: '/',
     element: (
