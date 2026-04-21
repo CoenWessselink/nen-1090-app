@@ -260,6 +260,10 @@ export function useUpdateProject() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       queryClient.invalidateQueries({ queryKey: ['project', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ['compliance-overview', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ['compliance-missing', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ['compliance-checklist', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ['ce-dossier', variables.id] });
     },
   });
 }

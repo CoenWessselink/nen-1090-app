@@ -12,6 +12,44 @@ function withQuery(path: string, params?: ListParams) {
   return qs ? `${path}?${qs}` : path;
 }
 
+function normalizeInspectionPayload(input: unknown) {
+  const source = (input || {}) as Record<string, unknown>;
+  const payload: Record<string, unknown> = { ...source };
+
+  if (payload.notes !== undefined && payload.remarks === undefined) {
+    payload.remarks = payload.notes;
+  }
+  if (payload.status !== undefined && payload.overall_status === undefined) {
+    payload.overall_status = payload.status;
+  }
+  if (payload.result !== undefined && payload.overall_status === undefined) {
+    payload.overall_status = payload.result;
+  }
+  if (Array.isArray(payload.inspectionResults) && payload.checks === undefined) {
+    payload.checks = payload.inspectionResults;
+  }
+  if (Array.isArray(payload.results) && payload.checks === undefined) {
+    payload.checks = payload.results;
+  }
+
+  if (Array.isArray(payload.checks)) {
+    payload.checks = (payload.checks as Array<Record<string, unknown>>).map((item, index) => {
+      const row = item || {};
+      const code = String(row.criterion_key || row.item_code || row.code || row.group_key || `check_${index + 1}`);
+      return {
+        group_key: row.group_key || code,
+        criterion_key: row.criterion_key || code,
+        applicable: row.applicable ?? true,
+        approved: row.approved ?? ['conform', 'approved', 'ok'].includes(String(row.status || '').toLowerCase()),
+        status: row.status || (row.approved ? 'conform' : 'open'),
+        comment: row.comment ?? row.remark ?? null,
+      };
+    });
+  }
+
+  return payload;
+}
+
 function unwrapInspectionPayload<T = Record<string, unknown> | null>(value: unknown): T | null {
   if (!value || typeof value !== 'object') return (value ?? null) as T | null;
 
@@ -46,7 +84,7 @@ export async function getInspectionForWeld(projectId: string | number, weldId: s
 
 export async function upsertInspectionForWeld(projectId: string | number, weldId: string | number, data: unknown) {
   try {
-    return await apiRequest(`/welds/${weldId}/inspection`, { method: 'PUT', body: JSON.stringify(data) });
+    return await apiRequest(`/welds/${weldId}/inspection`, { method: 'PUT', body: JSON.stringify(normalizeInspectionPayload(data)) });
   } catch (error) {
     if (!(error instanceof ApiError) || ![404, 405].includes(error.status)) {
       throw error;
@@ -55,7 +93,7 @@ export async function upsertInspectionForWeld(projectId: string | number, weldId
 
   const fallback = await optionalRequest([
     `/projects/${projectId}/welds/${weldId}/inspections`,
-  ], { method: 'POST', body: JSON.stringify(data) });
+  ], { method: 'POST', body: JSON.stringify(normalizeInspectionPayload(data)) });
 
   return unwrapInspectionPayload(fallback);
 }
@@ -64,11 +102,11 @@ export function createInspection(projectId: string | number, weldId: string | nu
   return optionalRequest([
     `/projects/${projectId}/welds/${weldId}/inspections`,
     `/welds/${weldId}/inspections`,
-  ], { method: 'POST', body: JSON.stringify(payload) });
+  ], { method: 'POST', body: JSON.stringify(normalizeInspectionPayload(payload)) });
 }
 
 export function updateInspection(inspectionId: string | number, payload: unknown) {
-  return apiRequest(`/inspections/${inspectionId}`, { method: 'PUT', body: JSON.stringify(payload) });
+  return apiRequest(`/inspections/${inspectionId}`, { method: 'PUT', body: JSON.stringify(normalizeInspectionPayload(payload)) });
 }
 
 export function deleteInspection(inspectionId: string | number) {
@@ -78,7 +116,7 @@ export function deleteInspection(inspectionId: string | number) {
 export function createInspectionResult(inspectionId: string | number, payload: unknown) {
   return optionalRequest([
     `/inspections/${inspectionId}/results`,
-  ], { method: 'POST', body: JSON.stringify(payload) });
+  ], { method: 'POST', body: JSON.stringify(normalizeInspectionPayload(payload)) });
 }
 
 export function approveInspection(inspectionId: string | number) {
