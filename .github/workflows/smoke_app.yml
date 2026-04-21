@@ -18,7 +18,9 @@ jobs:
       - name: Check API health through marketing proxy
         run: |
           echo "Checking API health through marketing..."
-          curl -fL https://nen1090-marketing.pages.dev/api/health || exit 1
+          curl -fL https://nen1090-marketing-new.pages.dev/api/health \
+            || curl -fL https://nen1090-marketing.pages.dev/api/health \
+            || exit 1
 
       - name: Smoke test completed
         run: echo "Smoke test passed"
