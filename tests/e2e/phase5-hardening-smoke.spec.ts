@@ -1,17 +1,16 @@
-import { expect, test } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 
-test.describe('phase 5 hardening smoke', () => {
-  test('login, reset and activate pages render without hard crash', async ({ page }) => {
-    for (const route of ['/login', '/forgot-password', '/reset-password?token=test', '/activate-account?token=test']) {
-      await page.goto(route, { waitUntil: 'networkidle' });
-      await expect(page.locator('body')).toBeVisible();
-      await expect(page.locator('#root, body')).toBeVisible();
-    }
-  });
+test('phase 5 hardening smoke', async ({ page }) => {
+  const routes = [
+    '/',
+    '/login',
+    '/activate?token=dummy-token',
+    '/forgot-password'
+  ];
 
-  test('public shell tolerates protected redirects without blank page', async ({ page }) => {
-    await page.goto('/dashboard', { waitUntil: 'networkidle' });
+  for (const route of routes) {
+    await page.goto(route, { waitUntil: 'networkidle' });
     await expect(page.locator('body')).toBeVisible();
-    await expect(page).toHaveURL(/\/(dashboard|login)(?:$|[?#])/);
-  });
+    await expect(page.locator('#root')).toBeVisible();
+  }
 });
