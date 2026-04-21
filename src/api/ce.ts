@@ -243,8 +243,8 @@ export async function createPdfExport(projectId: string | number) {
     status: 'aangemaakt',
     message: 'PDF export aangemaakt.',
     project_id: String(projectId),
-    download_url: `/projects/${projectId}/exports/pdf/download`,
-    viewer_url: `/projects/${projectId}/exports/pdf/download`,
+    download_url: `/projects/${projectId}/exports/compliance/pdf?download=true`,
+    viewer_url: `/projects/${projectId}/exports/compliance/pdf?download=false`,
     direct_download: true,
   };
 }

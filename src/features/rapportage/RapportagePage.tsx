@@ -24,6 +24,10 @@ type ReportRow = {
   client_name?: string;
   pdf_url?: string;
   download_url?: string;
+  ce_status?: string;
+  ce_score?: number;
+  photos_count?: number;
+  documents_count?: number;
 };
 
 function isProjectSummary(row: ReportRow) {

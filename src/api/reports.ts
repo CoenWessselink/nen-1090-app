@@ -51,7 +51,7 @@ function deriveProjectReports(projects: Awaited<ReturnType<typeof getProjects>>)
     project_name: String(project.name || project.omschrijving || ''),
     projectnummer: String(project.projectnummer || project.id || ''),
     client_name: String(project.client_name || project.opdrachtgever || ''),
-    pdf_url: `/api/v1/projects/${project.id}/exports/pdf/download`,
+    pdf_url: `/api/v1/projects/${project.id}/exports/compliance/pdf?download=true`,
   }));
 
   return {
