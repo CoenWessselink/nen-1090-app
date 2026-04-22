@@ -190,7 +190,7 @@ export function CeItemActionModal({
               {item.weld_id ? (
                 <Button onClick={() => handleDirectNavigate(`/projecten/${projectId}/lassen/${item.weld_id}/inspectie`)}>
                   <ArrowRight size={14} style={{ marginRight: 4 }} />
-                  Open cette las
+                  Open deze las
                 </Button>
               ) : null}
               <Button variant="secondary" onClick={() => handleNavigate('welds')}>

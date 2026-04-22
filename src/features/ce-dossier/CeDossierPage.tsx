@@ -1,6 +1,4 @@
 import { useMemo, useState } from 'react';
-import { Modal } from '@/components/overlays/Modal';
-import { ProjectForm } from '@/features/projecten/components/ProjectForm';
 import { useUpdateProject } from '@/hooks/useProjects';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { openDownloadUrl } from '@/utils/download';
@@ -46,6 +44,7 @@ import {
   type CeExportKind,
 } from '@/features/ce-dossier/components/CeExportBlocks';
 import { CePdfLayoutCard } from '@/features/ce-dossier/components/CePdfBlocks';
+import { CeItemActionModal } from '@/features/ce-dossier/components/CeItemActionModal';
 import type { ExportJob } from '@/types/domain';
 import { resolveProjectContextTab } from '@/features/projecten/components/ProjectContextTabs';
 import { ProjectTabShell } from '@/features/projecten/components/ProjectTabShell';
@@ -548,16 +547,6 @@ export function CeDossierPage() {
     setSelectedCeSection(resolveCeItemSection(item) || fallbackSection);
   };
 
-  const ceItemTitle = selectedCeItem ? asText(selectedCeItem.label || selectedCeItem.name, 'CE actie') : 'CE actie';
-  const ceItemDetail = selectedCeItem ? asText(selectedCeItem.detail || selectedCeItem.description || selectedCeItem.reason, '') : '';
-
-  const saveProjectFromCe = async (values: Parameters<Parameters<typeof ProjectForm>[0]['onSubmit']>[0]) => {
-    await updateProject.mutateAsync({ id: projectId, payload: values });
-    await Promise.all([overviewQuery.refetch(), missingItemsQuery.refetch(), checklistQuery.refetch(), dossierQuery.refetch()]);
-    setMessage('Projectgegevens bijgewerkt vanuit het CE dossier.');
-    setSelectedCeItem(null);
-  };
-
   const checklistStats = useMemo(
     () => ({
       total: checklist.length,
@@ -750,45 +739,25 @@ export function CeDossierPage() {
                 )
               }
             />
-
-
-            <Modal open={Boolean(selectedCeItem)} onClose={() => setSelectedCeItem(null)} title={ceItemTitle} size="large">
-              <div className="detail-stack">
-                <InlineMessage tone="neutral">{ceItemDetail || 'Open deze CE-regel om direct de gekoppelde bron te herstellen of aan te vullen.'}</InlineMessage>
-                <Card>
-                  <div className="section-title-row">
-                    <h3>Huidige status</h3>
-                    <Button variant="secondary" onClick={() => openSection(selectedCeSection)}>Open volledige pagina</Button>
-                  </div>
-                  <div className="list-stack compact-list">
-                    <div className="list-row"><div><strong>Doel</strong><div className="list-subtle">{ceItemTitle}</div></div></div>
-                    <div className="list-row"><div><strong>Waarom vereist</strong><div className="list-subtle">{ceItemDetail || 'Deze regel beïnvloedt CE-compleetheid, projectstatus en exportvrijgave.'}</div></div></div>
-                    <div className="list-row"><div><strong>Gekoppelde flow</strong><div className="list-subtle">{selectedCeSection}</div></div></div>
-                  </div>
-                </Card>
-
-                {selectedCeSection === 'project' ? (
-                  <ProjectForm
-                    initial={project as never}
-                    onSubmit={saveProjectFromCe}
-                    isSubmitting={updateProject.isPending}
-                    submitLabel="Project bijwerken"
-                  />
-                ) : null}
-
-                {selectedCeSection !== 'project' ? (
-                  <Card>
-                    <div className="section-title-row"><h3>Directe acties</h3></div>
-                    <div className="toolbar-cluster" style={{ justifyContent: 'flex-start', flexWrap: 'wrap' }}>
-                      <Button type="button" onClick={() => { setSelectedCeItem(null); openSection(selectedCeSection); }}>Open gekoppelde module</Button>
-                      <Button type="button" variant="secondary" onClick={() => { setSelectedCeItem(null); navigate(`/projecten/${projectId}/overzicht`); }}>Project 360</Button>
-                      <Button type="button" variant="secondary" onClick={() => { setSelectedCeItem(null); navigate(`/projecten/${projectId}/documenten`); }}>Documenten</Button>
-                      <Button type="button" variant="secondary" onClick={() => { setSelectedCeItem(null); navigate(`/projecten/${projectId}/lassen`); }}>Lassen en inspecties</Button>
-                    </div>
-                  </Card>
-                ) : null}
-              </div>
-            </Modal>
+            <CeItemActionModal
+              open={Boolean(selectedCeItem)}
+              item={selectedCeItem}
+              section={selectedCeSection}
+              project={project}
+              projectId={projectId}
+              updateProject={updateProject}
+              onClose={() => setSelectedCeItem(null)}
+              onNavigate={openSection}
+              onRefresh={async () => {
+                await Promise.all([
+                  overviewQuery.refetch(),
+                  missingItemsQuery.refetch(),
+                  checklistQuery.refetch(),
+                  dossierQuery.refetch(),
+                ]);
+                setMessage('CE dossier bijgewerkt en opnieuw geladen.');
+              }}
+            />
 
             <div className="toolbar-cluster" style={{ justifyContent: 'space-between' }}>
               <Button variant="secondary" onClick={() => navigate(`/projecten/${projectId}/documenten`)}>
