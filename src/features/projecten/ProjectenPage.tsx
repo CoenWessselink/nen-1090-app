@@ -19,6 +19,7 @@ import { useCreateProject, useDeleteProject, useProjects, useUpdateProject } fro
 import { ProjectForm } from '@/features/projecten/components/ProjectForm';
 import { ProjectsFilterDrawer } from '@/features/projecten/components/ProjectsFilterDrawer';
 import { BulkActionsBar } from '@/features/projecten/components/BulkActionsBar';
+import { ProjectKpiActionCard } from '@/features/projecten/components/ProjectKpiActionCard';
 import type { Project } from '@/types/domain';
 import { formatDate } from '@/utils/format';
 import { downloadCsv } from '@/utils/export';
@@ -29,11 +30,27 @@ const initialFilters = {
   executionClass: 'all',
 };
 
-function toneFromStatus(status: string) {
-  const value = status.toLowerCase();
-  if (['gereed', 'vrijgegeven', 'conform'].includes(value)) return 'success' as const;
-  if (['geblokkeerd', 'afgekeurd', 'niet conform'].includes(value)) return 'danger' as const;
-  return 'warning' as const;
+type NormalizedProjectStatus = {
+  key: 'conform' | 'non_conform' | 'in_progress' | 'warning';
+  label: string;
+  tone: 'success' | 'danger' | 'warning' | 'neutral';
+};
+
+function normalizeProjectStatus(project: Project): NormalizedProjectStatus {
+  const statusText = String(project.status || '').toLowerCase();
+  const complianceText = String((project as Record<string, unknown>).ce_status || (project as Record<string, unknown>).compliance_status || '').toLowerCase();
+  const combined = `${statusText} ${complianceText}`;
+
+  if (combined.includes('niet conform') || combined.includes('non_conform') || combined.includes('non-conform') || combined.includes('afgekeurd') || combined.includes('geblokkeerd') || combined.includes('defect')) {
+    return { key: 'non_conform', label: 'Niet conform', tone: 'danger' };
+  }
+  if (combined.includes('conform') || combined.includes('gereed') || combined.includes('approved') || combined.includes('vrijgegeven')) {
+    return { key: 'conform', label: 'Conform', tone: 'success' };
+  }
+  if (combined.includes('controle') || combined.includes('review') || combined.includes('uitvoering') || combined.includes('in_progress') || combined.includes('progress')) {
+    return { key: 'in_progress', label: 'In controle', tone: 'warning' };
+  }
+  return { key: 'warning', label: 'Aandacht nodig', tone: 'neutral' };
 }
 
 export function ProjectenPage() {
@@ -71,11 +88,11 @@ export function ProjectenPage() {
     const input = [...(query.data?.items || [])];
 
     const filtered = input.filter((project) => {
-      const status = String(project.status || '').toLowerCase();
+      const normalizedStatus = normalizeProjectStatus(project).key;
       const client = String(project.client_name || project.opdrachtgever || '').toLowerCase();
       const exec = String(project.execution_class || project.executieklasse || '').toLowerCase();
 
-      const matchesStatus = filters.status === 'all' || status === filters.status.toLowerCase();
+      const matchesStatus = filters.status === 'all' || normalizedStatus === filters.status.toLowerCase();
       const matchesClient = !filters.opdrachtgever || client.includes(filters.opdrachtgever.toLowerCase());
       const matchesExecutionClass = filters.executionClass === 'all' || exec === filters.executionClass.toLowerCase();
 
@@ -94,6 +111,21 @@ export function ProjectenPage() {
     return filtered;
   }, [query.data, filters, sortKey, sortDirection]);
 
+  const projectStatusSummary = useMemo(() => {
+    return rows.reduce(
+      (summary, project) => {
+        const normalized = normalizeProjectStatus(project).key;
+        summary.total += 1;
+        if (normalized === 'conform') summary.conform += 1;
+        else if (normalized === 'non_conform') summary.nonConform += 1;
+        else if (normalized === 'in_progress') summary.inProgress += 1;
+        else summary.warning += 1;
+        return summary;
+      },
+      { total: 0, conform: 0, nonConform: 0, inProgress: 0, warning: 0 },
+    );
+  }, [rows]);
+
   const columns: ColumnDef<Project>[] = [
     {
       key: 'projectnummer',
@@ -105,7 +137,15 @@ export function ProjectenPage() {
       key: 'name',
       header: 'Omschrijving',
       sortable: true,
-      cell: (row) => row.name || row.omschrijving || '—',
+      cell: (row) => {
+        const normalized = normalizeProjectStatus(row);
+        return (
+          <div>
+            <strong>{row.name || row.omschrijving || '—'}</strong>
+            <div className="list-subtle">{normalized.label} · Project 360 en wijzigflow direct beschikbaar</div>
+          </div>
+        );
+      },
     },
     {
       key: 'client_name',
@@ -123,7 +163,10 @@ export function ProjectenPage() {
       key: 'status',
       header: 'Status',
       sortable: true,
-      cell: (row) => <Badge tone={toneFromStatus(String(row.status || ''))}>{String(row.status || 'Onbekend')}</Badge>,
+      cell: (row) => {
+        const normalized = normalizeProjectStatus(row);
+        return <Badge tone={normalized.tone}>{normalized.label}</Badge>;
+      },
     },
     {
       key: 'start_date',
@@ -219,13 +262,20 @@ export function ProjectenPage() {
     <div className="page-stack">
       <PageHeader
         title="Projecten"
-        description="Dubbelklik op een project opent direct het wijzigvenster. Vanuit dezelfde tabel ga je ook door naar Project 360."
+        description="Dubbelklik op een project opent direct het wijzigvenster. Vanuit dezelfde tabel ga je ook door naar Project 360. Statusen volgen nu consequent de project- en compliancecontext."
       />
 
       {message ? <InlineMessage tone="success">{message}</InlineMessage> : null}
       {selectedRows.length ? (
         <InlineMessage tone="neutral">{`${selectedRows.length} project(en) geselecteerd voor bulkacties.`}</InlineMessage>
       ) : null}
+
+      <div className="project-tab-kpi-grid">
+        <ProjectKpiActionCard label="Projecten totaal" value={projectStatusSummary.total} meta="Volledige projectlijst" onClick={() => { setFilters(initialFilters); setSearch(''); }} />
+        <ProjectKpiActionCard label="Conform" value={projectStatusSummary.conform} meta="Projecten zonder open blokkades" onClick={() => setFilters((current) => ({ ...current, status: 'conform' }))} />
+        <ProjectKpiActionCard label="Niet conform" value={projectStatusSummary.nonConform} meta="Directe opvolging nodig" onClick={() => setFilters((current) => ({ ...current, status: 'non_conform' }))} />
+        <ProjectKpiActionCard label="In controle / aandacht" value={projectStatusSummary.inProgress + projectStatusSummary.warning} meta="Open acties of controle nodig" onClick={() => setFilters((current) => ({ ...current, status: 'in_progress' }))} />
+      </div>
 
       <BulkActionsBar projectIds={selectedRows} onDone={setMessage} />
 
@@ -252,15 +302,18 @@ export function ProjectenPage() {
                   const exportRows = (selectedRows.length
                     ? rows.filter((row) => selectedRows.includes(String(row.id)))
                     : rows
-                  ).map((project) => ({
-                    projectnummer: project.projectnummer || project.id,
-                    omschrijving: project.name || project.omschrijving || '',
-                    opdrachtgever: project.client_name || project.opdrachtgever || '',
-                    executieklasse: project.execution_class || project.executieklasse || '',
-                    status: project.status || '',
-                    start: project.start_date || '',
-                    eind: project.end_date || '',
-                  }));
+                  ).map((project) => {
+                    const normalized = normalizeProjectStatus(project);
+                    return {
+                      projectnummer: project.projectnummer || project.id,
+                      omschrijving: project.name || project.omschrijving || '',
+                      opdrachtgever: project.client_name || project.opdrachtgever || '',
+                      executieklasse: project.execution_class || project.executieklasse || '',
+                      status: normalized.label,
+                      start: project.start_date || '',
+                      eind: project.end_date || '',
+                    };
+                  });
                   downloadCsv('projecten.csv', exportRows);
                   setMessage(
                     selectedRows.length
@@ -302,6 +355,7 @@ export function ProjectenPage() {
         ) : null}
         {!query.isLoading && !query.isError ? (
           <DataTable
+            onRowClick={(row) => navigate(`/projecten/${row.id}/overzicht`)}
             onRowDoubleClick={(row) => { setEditingProject(row); setModalMode('edit'); }}
             columns={columns}
             rows={rows}
