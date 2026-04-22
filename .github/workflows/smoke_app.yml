@@ -11,9 +11,25 @@ jobs:
     steps:
       - name: Check app root (SPA load)
         run: |
+          set -e
           echo "Checking app root..."
           RESPONSE=$(curl -fsSL https://nen-1090-app.pages.dev/)
           echo "$RESPONSE" | grep '<div id="root">' || exit 1
+
+      - name: Check marketing root
+        run: |
+          set -e
+          echo "Checking marketing root..."
+          RESPONSE=$(curl -fsSL https://nen1090-marketing.pages.dev/)
+          echo "$RESPONSE" | grep -Ei 'WeldInspect|CWS NEN-1090|<html' || exit 1
+
+      - name: Check API health direct
+        run: |
+          set -e
+          echo "Checking API health direct..."
+          body=$(curl -fsSL https://nen1090-api-prod-f5ddagedbrftb4ew.westeurope-01.azurewebsites.net/api/v1/health)
+          echo "$body"
+          echo "$body" | grep -Eq '"ok"\s*:\s*true|"status"\s*:\s*"(ok|healthy|up)"'
 
       - name: Check API health through marketing proxy
         run: |

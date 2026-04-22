@@ -5,9 +5,15 @@ on:
   push:
     branches: [ main ]
     paths:
-      - 'src/features/superadmin/**'
-      - 'src/features/billing/**'
-      - 'tests/e2e/superadmin-billing-lifecycle.spec.ts'
+      - "src/features/superadmin/**"
+      - "src/features/billing/**"
+      - "src/api/platform.ts"
+      - "src/api/billing.ts"
+      - "src/hooks/useTenantAdmin.ts"
+      - "src/hooks/useBilling.ts"
+      - "tests/e2e/superadmin-billing-lifecycle.spec.ts"
+      - "playwright.config.ts"
+      - ".github/workflows/superadmin-billing-smoke.yml"
 
 jobs:
   smoke:
@@ -30,11 +36,17 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Preview
-        run: npm run preview -- --host 127.0.0.1 --port 4173 &
-
-      - name: Wait for preview
-        run: npx wait-on http://127.0.0.1:4173
-
       - name: Run superadmin billing smoke
+        env:
+          PLAYWRIGHT_HOST: 127.0.0.1
+          PLAYWRIGHT_PORT: 4173
         run: npx playwright test tests/e2e/superadmin-billing-lifecycle.spec.ts --project=desktop-chromium
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: superadmin-billing-smoke-report
+          path: |
+            playwright-report
+            test-results
