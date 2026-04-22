@@ -185,7 +185,7 @@ export function DashboardPage() {
           <div className="list-stack compact-list">
             <button className="list-row list-row-button" type="button" onClick={() => navigate('/projecten')}>
               <div>
-                <strong>Open Projecten</strong>
+                <strong>Projecten</strong>
                 <div className="list-subtle">Projectoverzicht, Project 360 en bewerken vanuit één route.</div>
               </div>
               <ChevronRight size={16} />

@@ -1,7 +1,7 @@
 $ErrorActionPreference = "Stop"
 Set-Location "C:\NEN1090\nen-1090-app"
 
-$env:PLAYWRIGHT_BASE_URL = "https://nen1090-marketing-new.pages.dev"
+$env:PLAYWRIGHT_BASE_URL = "https://nen1090-marketing.pages.dev"
 
 Write-Host ""
 Write-Host "=== PLAYWRIGHT TEST LIST (LIVE) ===" -ForegroundColor Cyan

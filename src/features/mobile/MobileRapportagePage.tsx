@@ -72,7 +72,7 @@ export function MobileRapportagePage() {
         <div className="mobile-report-cta">
           <div className="mobile-report-icon"><FileText size={26} /></div>
           <div>
-            <strong>{featured?.title || 'Open PDF'}</strong>
+            <strong>{featured?.title || 'Meest recente PDF'}</strong>
             <span className="mobile-list-card-meta">Klik op dit blok om het meest recente rapport direct te openen.</span>
           </div>
         </div>
@@ -95,7 +95,7 @@ export function MobileRapportagePage() {
                 <div className="mobile-inline-actions">
                   {row.project_id ? (
                     <button type="button" className="mobile-secondary-button" onClick={() => navigate(`/projecten/${row.project_id}/overzicht`)}>
-                      Open project
+                      Project bekijken
                     </button>
                   ) : null}
                   <button type="button" className="mobile-primary-button" onClick={() => openReport(row)}>

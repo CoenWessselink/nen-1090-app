@@ -20,9 +20,7 @@ jobs:
           set -e
           echo "Checking API health through marketing proxy..."
           URLS=(
-            "https://nen1090-marketing-new.pages.dev/api/v1/health"
             "https://nen1090-marketing.pages.dev/api/v1/health"
-            "https://nen1090-marketing-new.pages.dev/api/health"
             "https://nen1090-marketing.pages.dev/api/health"
           )
 

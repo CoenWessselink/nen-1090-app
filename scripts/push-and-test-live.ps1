@@ -6,7 +6,7 @@ git commit -m "Stabilize Playwright config and add live/local test runners for a
 git pull origin main --rebase
 git push origin main
 
-$env:PLAYWRIGHT_BASE_URL = "https://nen1090-marketing-new.pages.dev"
+$env:PLAYWRIGHT_BASE_URL = "https://nen1090-marketing.pages.dev"
 
 Write-Host ""
 Write-Host "=== PLAYWRIGHT TEST LIST (LIVE) ===" -ForegroundColor Cyan
