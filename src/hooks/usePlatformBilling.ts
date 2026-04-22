@@ -9,6 +9,7 @@ import {
   getTenantInvoiceDetail,
   getTenantInvoices,
   getTenantPayments,
+  getPlatformBillingPlans,
   overrideTenantAccessMode,
   sendTenantInvoice,
 } from '@/api/platformBilling';
@@ -44,6 +45,15 @@ export function useTenantInvoiceDetail(tenantId?: string | number, invoiceId?: s
     queryKey: ['tenant-invoice-detail', tenantId, invoiceId],
     queryFn: () => getTenantInvoiceDetail(String(tenantId), String(invoiceId)),
     enabled: Boolean(tenantId && invoiceId),
+  });
+}
+
+
+export function usePlatformBillingPlans(enabled = true) {
+  return useQuery({
+    queryKey: ['platform-billing-plans'],
+    queryFn: async () => normalizeListResponse(await getPlatformBillingPlans()),
+    enabled,
   });
 }
 

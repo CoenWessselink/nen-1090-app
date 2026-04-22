@@ -272,3 +272,25 @@ export type GlobalSearchResponse = Record<string, unknown> & {
   inspections?: Inspection[];
   documents?: CeDocument[];
 };
+
+
+export type BillingPlan = EntityBase & {
+  code: string;
+  name?: string;
+  price_cents?: number;
+  price_per_seat_cents?: number;
+  seats_included?: number;
+  max_seats?: number | null;
+  is_active?: boolean;
+};
+
+export type TenantPermissionsSummary = Record<string, unknown> & {
+  tenant_id: string;
+  tenant_name?: string;
+  access_mode?: string;
+  user_count?: number;
+  active_user_count?: number;
+  role_counts?: Record<string, number>;
+  permissions_by_role?: Record<string, string[]>;
+  recent_access?: Array<Record<string, unknown>>;
+};

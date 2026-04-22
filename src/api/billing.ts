@@ -5,11 +5,13 @@ export function getTenantBillingStatus() {
   return apiRequest<BillingStatus>('/tenant/billing/status');
 }
 
-export function getTenantBillingPreview(targetSeats?: number) {
+export function getTenantBillingPreview(targetSeats?: number, targetPlan?: string) {
   const safeTarget = typeof targetSeats === 'number' && Number.isFinite(targetSeats) && targetSeats > 0 ? targetSeats : 1;
+  const payload: Record<string, unknown> = { target_seats: safeTarget };
+  if (targetPlan) payload.plan_code = targetPlan;
   return apiRequest<Record<string, unknown>>('/tenant/billing/preview', {
     method: 'POST',
-    body: JSON.stringify({ target_seats: safeTarget }),
+    body: JSON.stringify(payload),
   });
 }
 
@@ -43,4 +45,9 @@ export function createPaymentLink(payload: Record<string, unknown>) {
 
 export function cancelTenantSubscriptionSelfService() {
   return apiRequest<Record<string, unknown>>('/tenant/billing/cancel-subscription', { method: 'POST', body: JSON.stringify({}) });
+}
+
+
+export function getTenantBillingPlans() {
+  return apiRequest<Record<string, unknown>[] | { items?: Record<string, unknown>[]; total?: number }>('/tenant/billing/plans');
 }

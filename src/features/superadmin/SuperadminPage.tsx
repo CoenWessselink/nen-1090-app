@@ -31,15 +31,16 @@ import { useSession } from '@/app/session/SessionContext';
 import { useAuthStore } from '@/app/store/auth-store';
 import { useUiStore } from '@/app/store/ui-store';
 import { useExitImpersonation, useImpersonateTenant, usePlatformSummary, useTenantActions, useTenants } from '@/hooks/useTenants';
-import { useTenantAccessHistory, useTenantAudit, useTenantBillingEvents, useTenantBillingPanel, useTenantDetail, useTenantUserActions, useTenantUsers } from '@/hooks/useTenantAdmin';
+import { useTenantAccessHistory, useTenantAudit, useTenantBillingEvents, useTenantBillingPanel, useTenantDetail, useTenantPermissionsSummary, useTenantUserActions, useTenantUsers } from '@/hooks/useTenantAdmin';
 import { useSystemHealth } from '@/hooks/useSystemHealth';
-import { useTenantBillingActions, useTenantBillingDetail, useTenantInvoiceDetail, useTenantInvoices, useTenantPayments } from '@/hooks/usePlatformBilling';
+import { usePlatformBillingPlans, useTenantBillingActions, useTenantBillingDetail, useTenantInvoiceDetail, useTenantInvoices, useTenantPayments } from '@/hooks/usePlatformBilling';
 import type { AuditSummary, BillingPayment, PlatformSummary, Tenant, TenantCreateInput, TenantPatchInput, TenantUser, TenantUserCreateInput, TenantUserPatchInput } from '@/types/domain';
 import { formatDatetime, toneFromStatus } from '@/utils/format';
 
 const detailTabs = [
   { value: 'samenvatting', label: 'Samenvatting' },
   { value: 'gebruikers', label: 'Gebruikers' },
+  { value: 'rechten', label: 'Rechten' },
   { value: 'audit', label: 'Audit' },
   { value: 'billing', label: 'Billing' },
   { value: 'status', label: 'Statusbeheer' },
@@ -211,6 +212,8 @@ export function SuperadminPage() {
   const tenantAccessHistory = useTenantAccessHistory(selectedTenant?.id, Boolean(selectedTenant));
   const tenantBillingEvents = useTenantBillingEvents(selectedTenant?.id, Boolean(selectedTenant));
   const tenantBilling = useTenantBillingPanel(selectedTenant?.id, Boolean(selectedTenant));
+  const tenantPermissionsSummary = useTenantPermissionsSummary(selectedTenant?.id, Boolean(selectedTenant));
+  const billingPlans = usePlatformBillingPlans(Boolean(selectedTenant));
   const tenantBillingDetail = useTenantBillingDetail(selectedTenant?.id);
   const tenantPayments = useTenantPayments(selectedTenant?.id, { page: paymentsPage, limit: 10 });
   const tenantInvoices = useTenantInvoices(selectedTenant?.id);
@@ -236,6 +239,8 @@ export function SuperadminPage() {
   const accessHistoryRows = tenantAccessHistory.data?.items || [];
   const billingEventRows = tenantBillingEvents.data?.items || [];
   const billingPayload = { ...(tenantBilling.data || {}), ...(tenantBillingDetail.data || {}) } as Record<string, unknown>;
+  const permissionSummary = (tenantPermissionsSummary.data || {}) as Record<string, unknown>;
+  const platformPlans = Array.isArray((billingPlans.data as any)?.items) ? (billingPlans.data as any).items : Array.isArray(billingPlans.data) ? billingPlans.data : [];
   const paymentRows = tenantPayments.data?.items || [];
   const invoiceRows = tenantInvoices.data?.items || [];
 
@@ -443,15 +448,15 @@ export function SuperadminPage() {
 
       <div className="section-nav-grid cols-5">
         {detailTabs.map((tabItem) => {
-          const icon = tabItem.value === 'samenvatting' ? Building2 : tabItem.value === 'gebruikers' ? Users : tabItem.value === 'audit' ? Activity : tabItem.value === 'billing' ? CreditCard : ShieldCheck;
+          const icon = tabItem.value === 'samenvatting' ? Building2 : tabItem.value === 'gebruikers' ? Users : tabItem.value === 'rechten' ? ShieldCheck : tabItem.value === 'audit' ? Activity : tabItem.value === 'billing' ? CreditCard : ShieldCheck;
           const Icon = icon;
           const active = detailTab === tabItem.value;
           return (
             <button key={tabItem.value} type="button" className={`section-nav-tile ${active ? 'is-active' : ''}`} onClick={() => setDetailTab(tabItem.value)}>
               <div className="section-nav-tile-top"><Icon size={18} /><span>{tabItem.label}</span></div>
-              <div className="section-nav-tile-value">{tabItem.value === 'samenvatting' ? filteredRows.length : tabItem.value === 'gebruikers' ? userRows.length : tabItem.value === 'audit' ? auditRows.length : tabItem.value === 'billing' ? '€' : selectedTenant ? 'Beheer' : 'Kies'}</div>
+              <div className="section-nav-tile-value">{tabItem.value === 'samenvatting' ? filteredRows.length : tabItem.value === 'gebruikers' ? userRows.length : tabItem.value === 'rechten' ? Number((permissionSummary.role_counts as Record<string, number> | undefined)?.tenant_admin || 0) : tabItem.value === 'audit' ? auditRows.length : tabItem.value === 'billing' ? '€' : selectedTenant ? 'Beheer' : 'Kies'}</div>
               <strong>{tabItem.label}</strong>
-              <small>{tabItem.value === 'samenvatting' ? 'Zoek, filter en open tenants vanuit één overzicht.' : tabItem.value === 'gebruikers' ? 'Gebruikers per tenant beheren.' : tabItem.value === 'audit' ? 'Auditregels en gebeurtenissen bekijken.' : tabItem.value === 'billing' ? 'Seats, betalingen en abonnement per tenant.' : 'Activeren, suspenden en tenantstatus beheren.'}</small>
+              <small>{tabItem.value === 'samenvatting' ? 'Zoek, filter en open tenants vanuit één overzicht.' : tabItem.value === 'gebruikers' ? 'Gebruikers per tenant beheren.' : tabItem.value === 'rechten' ? 'RBAC, rolverdeling en toegangsmodi per tenant.' : tabItem.value === 'audit' ? 'Auditregels en gebeurtenissen bekijken.' : tabItem.value === 'billing' ? 'Seats, betalingen en abonnement per tenant.' : 'Activeren, suspenden en tenantstatus beheren.'}</small>
             </button>
           );
         })}
@@ -650,6 +655,57 @@ export function SuperadminPage() {
                   </div>
                 ))}
               </div>
+            ) : null}
+          </Card>
+        ) : null}
+
+
+        {detailTab === 'rechten' ? (
+          <Card>
+            <div className="section-title-row"><h3><ShieldCheck size={18} /> Rechten en toegang</h3></div>
+            {tenantPermissionsSummary.isLoading ? <LoadingState label="Rechten laden..." /> : null}
+            {tenantPermissionsSummary.isError ? <ErrorState title="Rechten niet geladen" description="Controleer of /platform/tenants/{id}/permissions-summary bereikbaar is." /> : null}
+            {!tenantPermissionsSummary.isLoading && !tenantPermissionsSummary.isError ? (
+              <>
+                <div className="dashboard-kpi-grid superadmin-detail-kpis">
+                  <StatCard title="Access mode" value={text(permissionSummary.access_mode, 'full_access')} meta="Actuele toegang" />
+                  <StatCard title="Actieve users" value={Number(permissionSummary.active_user_count || 0)} meta="Gebruikers met toegang" />
+                  <StatCard title="Tenant admins" value={Number((permissionSummary.role_counts as Record<string, number> | undefined)?.tenant_admin || 0)} meta="Beheerrollen" />
+                  <StatCard title="Viewers" value={Number((permissionSummary.role_counts as Record<string, number> | undefined)?.viewer || 0)} meta="Alleen lezen" />
+                </div>
+                <div className="content-grid-2" style={{ marginTop: 16 }}>
+                  <Card>
+                    <div className="section-title-row"><h3>Rolverdeling</h3></div>
+                    <div className="list-stack compact-list">
+                      {Object.entries((permissionSummary.role_counts as Record<string, number> | undefined) || {}).map(([role, count]) => (
+                        <div className="list-row" key={role}><div><strong>{role}</strong></div><Badge tone="neutral">{count}</Badge></div>
+                      ))}
+                    </div>
+                  </Card>
+                  <Card>
+                    <div className="section-title-row"><h3>RBAC matrix</h3></div>
+                    <div className="list-stack compact-list">
+                      {Object.entries((permissionSummary.permissions_by_role as Record<string, string[]> | undefined) || {}).map(([role, perms]) => (
+                        <div className="list-row" key={role}><div><strong>{role}</strong><div className="list-subtle">{(perms || []).join(' · ') || 'Geen expliciete rechten'}</div></div><Badge tone="neutral">{(perms || []).length}</Badge></div>
+                      ))}
+                    </div>
+                  </Card>
+                </div>
+                <div style={{ marginTop: 16 }}><Card>
+                  <div className="section-title-row"><h3>Recente access history</h3></div>
+                  <div className="timeline-list">
+                    {((permissionSummary.recent_access as Array<Record<string, unknown>> | undefined) || []).map((entry, index) => (
+                      <div className="timeline-item" key={String(entry.id || index)}>
+                        <div className="timeline-dot" />
+                        <div>
+                          <strong>{text(entry.access_mode, 'onbekend')}</strong>
+                          <div className="list-subtle">{formatDatetime(text(entry.created_at, '')) || '—'} · {text(entry.reason, 'Geen reden')}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </Card></div>
+              </>
             ) : null}
           </Card>
         ) : null}
@@ -880,7 +936,7 @@ export function SuperadminPage() {
           applyBillingFeedback(response, 'Abonnement bijgewerkt.');
           setChangePlanOpen(false);
         }}>
-          <label><span>Plan code</span><Input value={planForm.plan_code} onChange={(event) => setPlanForm((current) => ({ ...current, plan_code: event.target.value }))} required /></label>
+          <label><span>Plan code</span><Select value={planForm.plan_code} onChange={(event) => setPlanForm((current) => ({ ...current, plan_code: event.target.value }))}>{platformPlans.length ? platformPlans.map((plan: any) => <option key={String(plan.code)} value={String(plan.code)}>{String(plan.name || plan.code)} · {formatCents(plan.price_cents || plan.price_per_seat_cents)}</option>) : <option value="professional">professional</option>}</Select></label>
           <label><span>Seats</span><Input type="number" value={planForm.seats} onChange={(event) => setPlanForm((current) => ({ ...current, seats: Number(event.target.value || 1) }))} min={1} required /></label>
           <label><span>Status</span><Select value={planForm.status} onChange={(event) => setPlanForm((current) => ({ ...current, status: event.target.value }))}><option value="active">active</option><option value="trialing">trialing</option><option value="past_due">past_due</option><option value="suspended">suspended</option><option value="cancelled">cancelled</option><option value="expired">expired</option></Select></label>
           <div className="form-actions"><Button type="submit">Opslaan</Button></div>

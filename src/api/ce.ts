@@ -234,8 +234,9 @@ export async function createZipExport(projectId: string | number) {
 export async function createPdfExport(projectId: string | number) {
   await tryRequestVariants([
     `/projects/${projectId}/exports/pdf`,
+    `/projects/${projectId}/exports/compliance/pdf`,
     `/projects/${projectId}/export/pdf`,
-  ], ['POST']);
+  ], ['POST', 'GET']);
 
   return {
     type: 'pdf',

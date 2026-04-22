@@ -44,3 +44,8 @@ export function creditTenantInvoice(tenantId: string | number, invoiceId: string
 export function overrideTenantAccessMode(tenantId: string | number, payload: Record<string, unknown>) {
   return apiRequest<Record<string, unknown>>(`/platform/tenants/${tenantId}/access-mode/override`, { method: 'POST', body: JSON.stringify(payload) });
 }
+
+
+export function getPlatformBillingPlans() {
+  return apiRequest<Record<string, unknown>[] | { items?: Record<string, unknown>[]; total?: number }>(`/platform/billing/plans`);
+}

@@ -148,3 +148,8 @@ export function reactivatePlatformUser(userId: string, tenantId?: string | numbe
   const query = tenantId ? `?tenant_id=${encodeURIComponent(String(tenantId))}` : '';
   return client.post<Record<string, unknown>>(`/platform/users/${userId}/reactivate${query}`, {});
 }
+
+
+export function getTenantPermissionsSummary(tenantId: string | number) {
+  return apiRequest<Record<string, unknown>>(`/platform/tenants/${tenantId}/permissions-summary`);
+}

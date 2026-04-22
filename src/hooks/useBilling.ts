@@ -7,6 +7,7 @@ import {
   getTenantBillingPreview,
   getTenantBillingStatus,
   getTenantBillingStatusPlus,
+  getTenantBillingPlans,
   getTenantInvoice,
   getTenantInvoices,
   openTenantInvoicePdf,
@@ -29,10 +30,19 @@ export function useBillingStatusPlus(enabled = true) {
   });
 }
 
-export function useBillingPreview(targetSeats?: number, enabled = true) {
+export function useBillingPreview(targetSeats?: number, targetPlan?: string, enabled = true) {
   return useQuery({
-    queryKey: ['billing-preview', targetSeats],
-    queryFn: () => getTenantBillingPreview(targetSeats),
+    queryKey: ['billing-preview', targetSeats, targetPlan],
+    queryFn: () => getTenantBillingPreview(targetSeats, targetPlan),
+    enabled,
+  });
+}
+
+
+export function useBillingPlans(enabled = true) {
+  return useQuery({
+    queryKey: ['billing-plans'],
+    queryFn: async () => normalizeListResponse(await getTenantBillingPlans()),
     enabled,
   });
 }
@@ -61,6 +71,7 @@ export function useChangePlan() {
       queryClient.invalidateQueries({ queryKey: ['billing-status'] });
       queryClient.invalidateQueries({ queryKey: ['billing-status-plus'] });
       queryClient.invalidateQueries({ queryKey: ['billing-preview'] });
+      queryClient.invalidateQueries({ queryKey: ['billing-plans'] });
       queryClient.invalidateQueries({ queryKey: ['billing-invoices'] });
     },
   });

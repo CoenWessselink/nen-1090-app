@@ -20,7 +20,7 @@ export function ExportCenterDrawer({
       <div className="detail-stack">
         <div className="content-panel">
           <h4>Beschikbare exports</h4>
-          <p>Voorbereid voor CE-dossier export, inspectieoverzicht, documentregister en audittrail-export op basis van de bestaande backend.</p>
+          <p>Gebruikt de canonieke compliance-exportflow voor viewer, download en bijlagen. PDF en download lopen via dezelfde backendroute zodat auth en bestandsnamen consistent blijven.</p>
         </div>
         <div className="stack-actions">
           <Button variant="secondary" onClick={() => onExport('excel')} disabled={pending?.excel}><FileSpreadsheet size={16} /> Excel export</Button>

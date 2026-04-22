@@ -8,6 +8,7 @@ import {
   getTenantAccessHistory,
   getTenantAudit,
   getTenantBilling,
+  getTenantPermissionsSummary,
   getTenantBillingEvents,
   getTenantUsers,
   patchTenantUser,
@@ -72,6 +73,15 @@ export function useTenantBillingEvents(tenantId?: string | number, enabled = tru
   });
 }
 
+
+export function useTenantPermissionsSummary(tenantId?: string | number, enabled = true) {
+  return useQuery({
+    queryKey: ['tenant-permissions-summary', tenantId],
+    queryFn: () => getTenantPermissionsSummary(String(tenantId)),
+    enabled: enabled && Boolean(tenantId),
+  });
+}
+
 export function useTenantBillingPanel(tenantId?: string | number, enabled = true) {
   return useQuery({
     queryKey: ['tenant-billing-panel', tenantId],
@@ -88,6 +98,7 @@ export function useTenantUserActions(tenantId?: string | number) {
     queryClient.invalidateQueries({ queryKey: ['tenant-audit', tenantId] });
     queryClient.invalidateQueries({ queryKey: ['tenant-access-history', tenantId] });
     queryClient.invalidateQueries({ queryKey: ['tenant-billing-events', tenantId] });
+    queryClient.invalidateQueries({ queryKey: ['tenant-permissions-summary', tenantId] });
     queryClient.invalidateQueries({ queryKey: ['tenants'] });
     queryClient.invalidateQueries({ queryKey: ['platform-summary'] });
   };

@@ -1,12 +1,15 @@
 import { CreditCard, Download, ExternalLink, FileText, RefreshCcw, ShieldCheck, Wallet } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import ModuleHero from '@/components/layout/ModuleHero';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Select';
 import { InlineMessage } from '@/components/feedback/InlineMessage';
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { LoadingState } from '@/components/feedback/LoadingState';
-import { useBillingInvoices, useBillingStatus, useBillingStatusPlus, useCancelSubscription, useCreatePaymentLink, useInvoicePdfActions } from '@/hooks/useBilling';
+import { useBillingInvoices, useBillingPlans, useBillingPreview, useBillingStatus, useBillingStatusPlus, useCancelSubscription, useChangePlan, useCreatePaymentLink, useInvoicePdfActions } from '@/hooks/useBilling';
 import { useAccess } from '@/hooks/useAccess';
 import { buildAppReturnTo, buildMarketingUrl } from '@/features/auth/marketing-auth';
 import { formatDatetime, toneFromStatus } from '@/utils/format';
@@ -20,14 +23,19 @@ function cents(value: unknown): string {
 export function BillingPage() {
   const canManageBilling = useAccess('billing.manage');
   const billingStatus = useBillingStatus();
+  const [seatTarget, setSeatTarget] = useState<number>(1);
+  const [planTarget, setPlanTarget] = useState<string>('professional');
   const billingStatusPlus = useBillingStatusPlus();
   const invoices = useBillingInvoices();
+  const plans = useBillingPlans();
+  const changePlan = useChangePlan();
   const pdfActions = useInvoicePdfActions();
   const paymentLink = useCreatePaymentLink();
   const cancelSubscription = useCancelSubscription();
   const status = billingStatus.data || {};
   const statusPlus = billingStatusPlus.data || {};
   const invoiceRows = Array.isArray(invoices.data?.items) ? invoices.data?.items : [];
+  const planRows = Array.isArray(plans.data?.items) ? plans.data.items : [];
   const subscription = (statusPlus as any)?.subscription || {};
   const accessSnapshot = (statusPlus as any)?.access_snapshot || {};
   const marketingSubscriptionUrl = buildMarketingUrl('subscription', {
@@ -38,10 +46,26 @@ export function BillingPage() {
     },
   });
 
+  const currentSeats = Number(status.seats_purchased || subscription.seats || 1);
+  const currentPlan = String((status as any)?.plan || (subscription as any)?.plan?.code || 'professional');
+  const billingPreview = useBillingPreview(seatTarget, planTarget, true);
+
+  useEffect(() => {
+    setSeatTarget((current) => (current === 1 ? currentSeats : current));
+    setPlanTarget((current) => (current === 'professional' ? currentPlan : current));
+  }, [currentSeats, currentPlan]);
+
+  const effectivePlanRows = planRows.length ? planRows : [{ code: currentPlan, name: currentPlan, price_cents: Number(status.price_per_seat_year_cents || 0) }];
+
+  const savePlanChange = async () => {
+    await changePlan.mutateAsync({ target_seats: seatTarget, seats: seatTarget, plan_code: planTarget, plan: planTarget });
+    await Promise.all([billingStatus.refetch(), billingStatusPlus.refetch(), invoices.refetch()]);
+  };
+
   const openCheckout = async () => {
     const payload = await paymentLink.mutateAsync({
-      plan: String((status as any)?.plan || (statusPlus as any)?.subscription?.plan?.code || 'professional'),
-      seats: Number(status.seats_purchased || subscription.seats || 1),
+      plan: planTarget || currentPlan,
+      seats: seatTarget || currentSeats,
     });
     const checkoutUrl = String((payload as any)?.checkout_url || marketingSubscriptionUrl || '');
     if (checkoutUrl) window.location.href = checkoutUrl;
@@ -52,6 +76,10 @@ export function BillingPage() {
     billingStatus.refetch();
     billingStatusPlus.refetch();
   };
+
+  if (seatTarget !== currentSeats && seatTarget === 1 && currentSeats > 1) {
+    // initialize only once based on current subscription
+  }
 
   const summaryRows = [
     { label: 'Status', value: String(status.status || subscription.status || 'Onbekend') },
@@ -112,6 +140,36 @@ export function BillingPage() {
           </div>
         </Card>
 
+
+        <Card>
+          <div className="section-title-row">
+            <h3><Wallet size={18} /> Self-service planwijziging</h3>
+            <Badge tone="neutral">Preview</Badge>
+          </div>
+          <div className="content-grid-2" style={{ marginTop: 12 }}>
+            <label>
+              <span>Plan</span>
+              <Select value={planTarget} onChange={(event) => setPlanTarget(event.target.value)}>
+                {effectivePlanRows.map((plan: any) => <option key={String(plan.code)} value={String(plan.code)}>{String(plan.name || plan.code)} · {cents(plan.price_cents || plan.price_per_seat_cents)}</option>)}
+              </Select>
+            </label>
+            <label>
+              <span>Seats</span>
+              <Input type="number" min={1} value={seatTarget} onChange={(event) => setSeatTarget(Math.max(Number(event.target.value || 1), 1))} />
+            </label>
+          </div>
+          <div className="detail-grid" style={{ marginTop: 12 }}>
+            <div><span>Huidig</span><strong>{currentPlan} · {currentSeats} seats</strong></div>
+            <div><span>Actie</span><strong>{String((billingPreview.data as any)?.action || 'preview')}</strong></div>
+            <div><span>Nieuw totaal</span><strong>{cents((billingPreview.data as any)?.new_total_cents || (billingPreview.data as any)?.amount_cents_year)}</strong></div>
+            <div><span>Ingang</span><strong>{formatDatetime(String((billingPreview.data as any)?.effective_at || '')) || 'Direct of einde periode'}</strong></div>
+          </div>
+          <div className="stack-actions" style={{ marginTop: 16, gap: 8, display: 'flex', flexWrap: 'wrap' }}>
+            <Button onClick={savePlanChange} disabled={changePlan.isPending}>Wijzig plan</Button>
+            <Button variant="secondary" onClick={openCheckout} disabled={paymentLink.isPending}>Naar checkout</Button>
+          </div>
+        </Card>
+
         <Card>
           <div className="section-title-row">
             <h3><FileText size={18} /> Facturen</h3>
@@ -138,6 +196,7 @@ export function BillingPage() {
       </div>
 
       {paymentLink.isSuccess ? <InlineMessage tone="neutral">Checkoutlink aangemaakt en doorgestuurd.</InlineMessage> : null}
+      {changePlan.isSuccess ? <InlineMessage tone="neutral">Planwijziging opgeslagen en billingstatus ververst.</InlineMessage> : null}
       {cancelSubscription.isSuccess ? <InlineMessage tone="neutral">Abonnement is opgezegd. Toegang blijft actief tot einde periode.</InlineMessage> : null}
       {billingStatus.isLoading || billingStatusPlus.isLoading ? <LoadingState label="Billingstatus laden..." /> : null}
       {billingStatus.isError ? <ErrorState title="Billingstatus niet geladen" description="Controleer of /tenant/billing/status bereikbaar is." /> : null}
