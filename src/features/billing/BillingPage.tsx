@@ -9,7 +9,7 @@ import { Select } from '@/components/ui/Select';
 import { InlineMessage } from '@/components/feedback/InlineMessage';
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { LoadingState } from '@/components/feedback/LoadingState';
-import { useBillingInvoices, useBillingPlans, useBillingPreview, useBillingStatus, useBillingStatusPlus, useCancelSubscription, useChangePlan, useCreatePaymentLink, useInvoicePdfActions } from '@/hooks/useBilling';
+import { useBillingInvoices, useBillingPlans, useBillingPreview, useBillingStatus, useBillingStatusPlus, useCancelSubscription, useChangePlan, useCreatePaymentLink, useInvoicePdfActions, useTenantAccessRuntime } from '@/hooks/useBilling';
 import { useAccess } from '@/hooks/useAccess';
 import { buildAppReturnTo, buildMarketingUrl } from '@/features/auth/marketing-auth';
 import { formatDatetime, toneFromStatus } from '@/utils/format';
@@ -32,12 +32,14 @@ export function BillingPage() {
   const pdfActions = useInvoicePdfActions();
   const paymentLink = useCreatePaymentLink();
   const cancelSubscription = useCancelSubscription();
+  const accessRuntime = useTenantAccessRuntime();
   const status = billingStatus.data || {};
   const statusPlus = billingStatusPlus.data || {};
   const invoiceRows = Array.isArray(invoices.data?.items) ? invoices.data?.items : [];
   const planRows = Array.isArray(plans.data?.items) ? plans.data.items : [];
   const subscription = (statusPlus as any)?.subscription || {};
   const accessSnapshot = (statusPlus as any)?.access_snapshot || {};
+  const runtime = (accessRuntime.data || {}) as any;
   const marketingSubscriptionUrl = buildMarketingUrl('subscription', {
     next: buildAppReturnTo('/billing'),
     query: {
@@ -83,7 +85,7 @@ export function BillingPage() {
 
   const summaryRows = [
     { label: 'Status', value: String(status.status || subscription.status || 'Onbekend') },
-    { label: 'Access mode', value: String(subscription.access_mode || accessSnapshot.access_mode || '—') },
+    { label: 'Access mode', value: String(runtime.access_mode || subscription.access_mode || accessSnapshot.access_mode || '—') },
     { label: 'Seats', value: String(status.seats_purchased || subscription.seats || '—') },
     { label: 'Gebruikers actief', value: String(status.users_count || '—') },
     { label: 'Volgende factuurdatum', value: formatDatetime(String(status.mollie_next_payment_date || status.valid_until || subscription.current_period_end || '')) || 'Niet beschikbaar' },
@@ -105,7 +107,7 @@ export function BillingPage() {
         }
         tiles={[
           { label: 'Status', value: String(status.status || subscription.status || 'Onbekend'), meta: 'Huidige tenantstatus', icon: CreditCard, tone: 'primary' },
-          { label: 'Access', value: String(subscription.access_mode || accessSnapshot.access_mode || '—'), meta: 'Doorwerking vanuit billing/access rules', icon: ShieldCheck, tone: 'success' },
+          { label: 'Access', value: String(runtime.access_mode || subscription.access_mode || accessSnapshot.access_mode || '—'), meta: runtime.write_blocked ? 'Write-lock actief' : 'Doorwerking vanuit billing/access rules', icon: ShieldCheck, tone: runtime.write_blocked ? 'warning' : 'success' },
           { label: 'Open facturen', value: String(invoiceRows.filter((row: any) => Number(row.balance_due_cents || 0) > 0).length), meta: 'Direct zichtbaar in tenantomgeving', icon: FileText, tone: 'warning' },
           { label: 'Self-service', value: canManageBilling ? 'Beheer actief' : 'Alleen lezen', meta: 'Planwijziging en checkout blijven centraal', icon: ExternalLink, onClick: () => { window.location.href = marketingSubscriptionUrl; }, tone: 'neutral' },
         ]}
@@ -125,6 +127,24 @@ export function BillingPage() {
       <div className="content-grid-2">
         <Card>
           <div className="section-title-row">
+            <h3><ShieldCheck size={18} /> SaaS hardening en runtime toegang</h3>
+            <Badge tone={runtime.write_blocked ? 'danger' : 'success'}>{runtime.write_blocked ? 'Write beperkt' : 'Write toegestaan'}</Badge>
+          </div>
+          <div className="detail-grid" style={{ marginTop: 12 }}>
+            <div><span>Rol</span><strong>{String(runtime.role || '—')}</strong></div>
+            <div><span>Tenantstatus</span><strong>{String(runtime.tenant_status || status.status || '—')}</strong></div>
+            <div><span>Access mode</span><strong>{String(runtime.access_mode || subscription.access_mode || '—')}</strong></div>
+            <div><span>Billing self-service</span><strong>{runtime.self_service_billing_allowed === false ? 'Beperkt' : 'Actief'}</strong></div>
+          </div>
+          {Array.isArray(runtime.write_block_reasons) && runtime.write_block_reasons.length ? (
+            <InlineMessage tone="danger">{`Write lock redenen: ${runtime.write_block_reasons.join(', ')}`}</InlineMessage>
+          ) : (
+            <InlineMessage tone="success">Geen write-lock redenen actief voor deze tenantcontext.</InlineMessage>
+          )}
+        </Card>
+
+        <Card>
+          <div className="section-title-row">
             <h3><CreditCard size={18} /> Abonnement en toegang</h3>
             <Badge tone={toneFromStatus(String(status.status || subscription.status || 'neutral'))}>{String(status.status || subscription.status || 'Onbekend')}</Badge>
           </div>
@@ -135,6 +155,7 @@ export function BillingPage() {
           </div>
           <div className="stack-actions" style={{ marginTop: 16, gap: 8, display: 'flex', flexWrap: 'wrap' }}>
             <Button onClick={openCheckout} disabled={paymentLink.isPending}><Wallet size={16} /> Start betaling</Button>
+            <Button variant="secondary" onClick={savePlanChange} disabled={!canManageBilling || changePlan.isPending || runtime.write_blocked}><RefreshCcw size={16} /> Plan opslaan</Button>
             <Button variant="secondary" onClick={handleCancel} disabled={cancelSubscription.isPending}><ExternalLink size={16} /> Abonnement annuleren</Button>
             <a href={marketingSubscriptionUrl} target="_self" rel="noreferrer"><Button variant="secondary"><ExternalLink size={16} /> Open centraal abonnement</Button></a>
           </div>

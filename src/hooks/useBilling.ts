@@ -8,6 +8,7 @@ import {
   getTenantBillingStatus,
   getTenantBillingStatusPlus,
   getTenantBillingPlans,
+  getTenantAccessRuntime,
   getTenantInvoice,
   getTenantInvoices,
   openTenantInvoicePdf,
@@ -99,5 +100,14 @@ export function useCancelSubscription() {
       queryClient.invalidateQueries({ queryKey: ['billing-status-plus'] });
       queryClient.invalidateQueries({ queryKey: ['billing-invoices'] });
     },
+  });
+}
+
+
+export function useTenantAccessRuntime(enabled = true) {
+  return useQuery({
+    queryKey: ['tenant-access-runtime'],
+    queryFn: getTenantAccessRuntime,
+    enabled,
   });
 }

@@ -51,3 +51,8 @@ export function cancelTenantSubscriptionSelfService() {
 export function getTenantBillingPlans() {
   return apiRequest<Record<string, unknown>[] | { items?: Record<string, unknown>[]; total?: number }>('/tenant/billing/plans');
 }
+
+
+export function getTenantAccessRuntime() {
+  return apiRequest<Record<string, unknown>>('/tenant/billing/access/runtime');
+}

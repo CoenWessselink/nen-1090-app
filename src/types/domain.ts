@@ -294,3 +294,36 @@ export type TenantPermissionsSummary = Record<string, unknown> & {
   permissions_by_role?: Record<string, string[]>;
   recent_access?: Array<Record<string, unknown>>;
 };
+
+
+export type TenantSecurityOverview = Record<string, unknown> & {
+  tenant_id?: string;
+  tenant_name?: string;
+  tenant_status?: string;
+  access_mode?: string;
+  write_blocked?: boolean;
+  write_block_reasons?: string[];
+  role_counts?: Record<string, number>;
+  active_user_count?: number;
+  total_user_count?: number;
+  latest_access_snapshot?: Record<string, unknown> | null;
+  self_service_billing_allowed?: boolean;
+};
+
+export type PlatformSecurityOverview = Record<string, unknown> & {
+  tenant_totals?: Record<string, number>;
+  access_mode_totals?: Record<string, number>;
+  snapshot_count_last_30_days?: number;
+  billing_provider_totals?: Record<string, number>;
+};
+
+export type TenantAccessRuntime = Record<string, unknown> & {
+  tenant_id?: string;
+  role?: string;
+  tenant_status?: string;
+  access_mode?: string;
+  write_blocked?: boolean;
+  write_block_reasons?: string[];
+  self_service_billing_allowed?: boolean;
+  foundation_ready?: boolean;
+};

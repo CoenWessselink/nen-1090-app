@@ -92,6 +92,14 @@ export function getTenantBilling(tenantId: string | number) {
   return apiRequest<Record<string, unknown>>(`/platform/tenants/${tenantId}/billing`);
 }
 
+export function getTenantSecurityOverview(tenantId: string | number) {
+  return apiRequest<Record<string, unknown>>(`/platform/tenants/${tenantId}/security-overview`);
+}
+
+export function getPlatformSecurityOverview() {
+  return apiRequest<Record<string, unknown>>('/platform/security/overview');
+}
+
 export function forceLogoutTenant(tenantId: string | number) {
   return optionalRequest<Record<string, unknown>>([`/platform/tenants/${tenantId}/force-logout`, `/platform/tenants/${tenantId}/force_logout`], { method: 'POST', body: JSON.stringify({}) });
 }

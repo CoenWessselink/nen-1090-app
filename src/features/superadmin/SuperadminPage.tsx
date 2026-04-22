@@ -31,7 +31,7 @@ import { useSession } from '@/app/session/SessionContext';
 import { useAuthStore } from '@/app/store/auth-store';
 import { useUiStore } from '@/app/store/ui-store';
 import { useExitImpersonation, useImpersonateTenant, usePlatformSummary, useTenantActions, useTenants } from '@/hooks/useTenants';
-import { useTenantAccessHistory, useTenantAudit, useTenantBillingEvents, useTenantBillingPanel, useTenantDetail, useTenantPermissionsSummary, useTenantUserActions, useTenantUsers } from '@/hooks/useTenantAdmin';
+import { usePlatformSecurityOverview, useTenantAccessHistory, useTenantAudit, useTenantBillingEvents, useTenantBillingPanel, useTenantDetail, useTenantPermissionsSummary, useTenantSecurityOverview, useTenantUserActions, useTenantUsers } from '@/hooks/useTenantAdmin';
 import { useSystemHealth } from '@/hooks/useSystemHealth';
 import { usePlatformBillingPlans, useTenantBillingActions, useTenantBillingDetail, useTenantInvoiceDetail, useTenantInvoices, useTenantPayments } from '@/hooks/usePlatformBilling';
 import type { AuditSummary, BillingPayment, PlatformSummary, Tenant, TenantCreateInput, TenantPatchInput, TenantUser, TenantUserCreateInput, TenantUserPatchInput } from '@/types/domain';
@@ -41,6 +41,7 @@ const detailTabs = [
   { value: 'samenvatting', label: 'Samenvatting' },
   { value: 'gebruikers', label: 'Gebruikers' },
   { value: 'rechten', label: 'Rechten' },
+  { value: 'security', label: 'Security' },
   { value: 'audit', label: 'Audit' },
   { value: 'billing', label: 'Billing' },
   { value: 'status', label: 'Statusbeheer' },
@@ -213,6 +214,8 @@ export function SuperadminPage() {
   const tenantBillingEvents = useTenantBillingEvents(selectedTenant?.id, Boolean(selectedTenant));
   const tenantBilling = useTenantBillingPanel(selectedTenant?.id, Boolean(selectedTenant));
   const tenantPermissionsSummary = useTenantPermissionsSummary(selectedTenant?.id, Boolean(selectedTenant));
+  const tenantSecurityOverview = useTenantSecurityOverview(selectedTenant?.id, Boolean(selectedTenant));
+  const platformSecurityOverview = usePlatformSecurityOverview(true);
   const billingPlans = usePlatformBillingPlans(Boolean(selectedTenant));
   const tenantBillingDetail = useTenantBillingDetail(selectedTenant?.id);
   const tenantPayments = useTenantPayments(selectedTenant?.id, { page: paymentsPage, limit: 10 });
@@ -240,6 +243,8 @@ export function SuperadminPage() {
   const billingEventRows = tenantBillingEvents.data?.items || [];
   const billingPayload = { ...(tenantBilling.data || {}), ...(tenantBillingDetail.data || {}) } as Record<string, unknown>;
   const permissionSummary = (tenantPermissionsSummary.data || {}) as Record<string, unknown>;
+  const securitySummary = (tenantSecurityOverview.data || {}) as Record<string, unknown>;
+  const globalSecuritySummary = (platformSecurityOverview.data || {}) as Record<string, unknown>;
   const platformPlans = Array.isArray((billingPlans.data as any)?.items) ? (billingPlans.data as any).items : Array.isArray(billingPlans.data) ? billingPlans.data : [];
   const paymentRows = tenantPayments.data?.items || [];
   const invoiceRows = tenantInvoices.data?.items || [];
@@ -456,7 +461,7 @@ export function SuperadminPage() {
               <div className="section-nav-tile-top"><Icon size={18} /><span>{tabItem.label}</span></div>
               <div className="section-nav-tile-value">{tabItem.value === 'samenvatting' ? filteredRows.length : tabItem.value === 'gebruikers' ? userRows.length : tabItem.value === 'rechten' ? Number((permissionSummary.role_counts as Record<string, number> | undefined)?.tenant_admin || 0) : tabItem.value === 'audit' ? auditRows.length : tabItem.value === 'billing' ? '€' : selectedTenant ? 'Beheer' : 'Kies'}</div>
               <strong>{tabItem.label}</strong>
-              <small>{tabItem.value === 'samenvatting' ? 'Zoek, filter en open tenants vanuit één overzicht.' : tabItem.value === 'gebruikers' ? 'Gebruikers per tenant beheren.' : tabItem.value === 'rechten' ? 'RBAC, rolverdeling en toegangsmodi per tenant.' : tabItem.value === 'audit' ? 'Auditregels en gebeurtenissen bekijken.' : tabItem.value === 'billing' ? 'Seats, betalingen en abonnement per tenant.' : 'Activeren, suspenden en tenantstatus beheren.'}</small>
+              <small>{tabItem.value === 'samenvatting' ? 'Zoek, filter en open tenants vanuit één overzicht.' : tabItem.value === 'gebruikers' ? 'Gebruikers per tenant beheren.' : tabItem.value === 'rechten' ? 'RBAC, rolverdeling en toegangsmodi per tenant.' : tabItem.value === 'security' ? 'Tenant write-locks, access runtime en platform-security samenvatting.' : tabItem.value === 'audit' ? 'Auditregels en gebeurtenissen bekijken.' : tabItem.value === 'billing' ? 'Seats, betalingen en abonnement per tenant.' : 'Activeren, suspenden en tenantstatus beheren.'}</small>
             </button>
           );
         })}
@@ -484,8 +489,8 @@ export function SuperadminPage() {
         <div className="section-title-row">
           <h3><Building2 size={18} /> Tenantbeheer</h3>
           <div className="inline-end-cluster">
-            <Badge tone={health.isError ? 'warning' : 'success'}>{health.isError ? 'Health-check fout' : 'Platform online'}</Badge>
-            <Badge tone={session.hasPermission('tenants.impersonate') ? 'success' : 'warning'}>{session.hasPermission('tenants.impersonate') ? 'Impersonatie actief' : 'Alleen lezen'}</Badge>
+            <Badge tone={health.isError ? 'danger' : 'success'}>{health.isError ? 'Health-check fout' : 'Platform online'}</Badge>
+            <Badge tone={session.hasPermission('tenants.impersonate') ? 'success' : 'danger'}>{session.hasPermission('tenants.impersonate') ? 'Impersonatie actief' : 'Alleen lezen'}</Badge>
           </div>
         </div>
 
@@ -732,6 +737,33 @@ export function SuperadminPage() {
             ) : null}
           </Card>
         ) : null}
+
+        {detailTab === 'security' ? (
+          <Card>
+            <div className="section-title-row"><h3><ShieldCheck size={18} /> Security en SaaS hardening</h3></div>
+            {tenantSecurityOverview.isLoading || platformSecurityOverview.isLoading ? <LoadingState label="Security laden..." /> : null}
+            {tenantSecurityOverview.isError ? <ErrorState title="Security niet geladen" description="Controleer of /platform/tenants/{id}/security-overview bereikbaar is." /> : null}
+            {!tenantSecurityOverview.isLoading && !tenantSecurityOverview.isError ? (
+              <>
+                <div className="dashboard-kpi-grid superadmin-detail-kpis">
+                  <StatCard title="Access mode" value={text(securitySummary.access_mode)} meta="Runtime tenanttoegang" />
+                  <StatCard title="Write lock" value={securitySummary.write_blocked ? 'Actief' : 'Uit'} meta={Array.isArray(securitySummary.write_block_reasons) && securitySummary.write_block_reasons.length ? `${securitySummary.write_block_reasons.length} reden(en)` : 'Geen blokkades'} />
+                  <StatCard title="Users actief" value={String(securitySummary.active_user_count || 0)} meta={`Totaal ${String(securitySummary.total_user_count || 0)}`} />
+                  <StatCard title="Platform snapshots" value={String((globalSecuritySummary.snapshot_count_last_30_days as number) || 0)} meta="Laatste 30 dagen" />
+                </div>
+                {Array.isArray(securitySummary.write_block_reasons) && securitySummary.write_block_reasons.length ? <InlineMessage tone="danger">{`Write lock redenen: ${securitySummary.write_block_reasons.join(', ')}`}</InlineMessage> : <InlineMessage tone="success">Geen actieve write lock voor deze tenant.</InlineMessage>}
+                <div className="detail-grid" style={{ marginTop: 12 }}>
+                  <div><span>Tenantstatus</span><strong>{text(securitySummary.tenant_status)}</strong></div>
+                  <div><span>Billing self-service</span><strong>{securitySummary.self_service_billing_allowed === false ? 'Beperkt' : 'Actief'}</strong></div>
+                  <div><span>Access totals platform</span><strong>{metaToString(globalSecuritySummary.access_mode_totals)}</strong></div>
+                  <div><span>Provider totals</span><strong>{metaToString(globalSecuritySummary.billing_provider_totals)}</strong></div>
+                </div>
+                {securitySummary.latest_access_snapshot ? <InlineMessage tone="neutral">{`Laatste snapshot: ${text((securitySummary.latest_access_snapshot as Record<string, unknown>).access_mode)} · ${formatDatetime(text((securitySummary.latest_access_snapshot as Record<string, unknown>).created_at, '')) || '—'}`}</InlineMessage> : null}
+              </>
+            ) : null}
+          </Card>
+        ) : null}
+
 
         {detailTab === 'billing' ? (
           <Card>

@@ -8,6 +8,8 @@ import {
   getTenantAccessHistory,
   getTenantAudit,
   getTenantBilling,
+  getTenantSecurityOverview,
+  getPlatformSecurityOverview,
   getTenantPermissionsSummary,
   getTenantBillingEvents,
   getTenantUsers,
@@ -137,4 +139,21 @@ export function useTenantUserActions(tenantId?: string | number) {
       onSuccess: refresh,
     }),
   };
+}
+
+
+export function useTenantSecurityOverview(tenantId?: string | number, enabled = true) {
+  return useQuery({
+    queryKey: ['tenant-security-overview', tenantId],
+    queryFn: () => getTenantSecurityOverview(String(tenantId)),
+    enabled: enabled && Boolean(tenantId),
+  });
+}
+
+export function usePlatformSecurityOverview(enabled = true) {
+  return useQuery({
+    queryKey: ['platform-security-overview'],
+    queryFn: () => getPlatformSecurityOverview(),
+    enabled,
+  });
 }
