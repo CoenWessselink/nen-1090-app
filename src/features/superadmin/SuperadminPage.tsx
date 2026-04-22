@@ -13,6 +13,9 @@ import {
   Search,
   ShieldCheck,
   Users,
+  BarChart3,
+  PlugZap,
+  LineChart,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -31,7 +34,7 @@ import { useSession } from '@/app/session/SessionContext';
 import { useAuthStore } from '@/app/store/auth-store';
 import { useUiStore } from '@/app/store/ui-store';
 import { useExitImpersonation, useImpersonateTenant, usePlatformSummary, useTenantActions, useTenants } from '@/hooks/useTenants';
-import { usePlatformSecurityOverview, useTenantAccessHistory, useTenantAudit, useTenantBillingEvents, useTenantBillingPanel, useTenantDetail, useTenantPermissionsSummary, useTenantSecurityOverview, useTenantUserActions, useTenantUsers } from '@/hooks/useTenantAdmin';
+import { usePlatformGrowthOverview, usePlatformIntegrationsCatalog, usePlatformReportingInsights, usePlatformSecurityOverview, useTenantAccessHistory, useTenantAudit, useTenantBillingEvents, useTenantBillingPanel, useTenantDetail, useTenantPermissionsSummary, useTenantSecurityOverview, useTenantUserActions, useTenantUsers } from '@/hooks/useTenantAdmin';
 import { useSystemHealth } from '@/hooks/useSystemHealth';
 import { usePlatformBillingPlans, useTenantBillingActions, useTenantBillingDetail, useTenantInvoiceDetail, useTenantInvoices, useTenantPayments } from '@/hooks/usePlatformBilling';
 import type { AuditSummary, BillingPayment, PlatformSummary, Tenant, TenantCreateInput, TenantPatchInput, TenantUser, TenantUserCreateInput, TenantUserPatchInput } from '@/types/domain';
@@ -42,6 +45,7 @@ const detailTabs = [
   { value: 'gebruikers', label: 'Gebruikers' },
   { value: 'rechten', label: 'Rechten' },
   { value: 'security', label: 'Security' },
+  { value: 'groei', label: 'Groei' },
   { value: 'audit', label: 'Audit' },
   { value: 'billing', label: 'Billing' },
   { value: 'status', label: 'Statusbeheer' },
@@ -216,6 +220,9 @@ export function SuperadminPage() {
   const tenantPermissionsSummary = useTenantPermissionsSummary(selectedTenant?.id, Boolean(selectedTenant));
   const tenantSecurityOverview = useTenantSecurityOverview(selectedTenant?.id, Boolean(selectedTenant));
   const platformSecurityOverview = usePlatformSecurityOverview(true);
+  const platformGrowthOverview = usePlatformGrowthOverview(true);
+  const platformIntegrationsCatalog = usePlatformIntegrationsCatalog(true);
+  const platformReportingInsights = usePlatformReportingInsights(true);
   const billingPlans = usePlatformBillingPlans(Boolean(selectedTenant));
   const tenantBillingDetail = useTenantBillingDetail(selectedTenant?.id);
   const tenantPayments = useTenantPayments(selectedTenant?.id, { page: paymentsPage, limit: 10 });
@@ -245,6 +252,9 @@ export function SuperadminPage() {
   const permissionSummary = (tenantPermissionsSummary.data || {}) as Record<string, unknown>;
   const securitySummary = (tenantSecurityOverview.data || {}) as Record<string, unknown>;
   const globalSecuritySummary = (platformSecurityOverview.data || {}) as Record<string, unknown>;
+  const growthSummary = (platformGrowthOverview.data || {}) as Record<string, unknown>;
+  const reportingInsights = (platformReportingInsights.data || {}) as Record<string, unknown>;
+  const integrationsCatalog = Array.isArray((platformIntegrationsCatalog.data as any)?.items) ? ((platformIntegrationsCatalog.data as any)?.items as Record<string, unknown>[]) : [];
   const platformPlans = Array.isArray((billingPlans.data as any)?.items) ? (billingPlans.data as any).items : Array.isArray(billingPlans.data) ? billingPlans.data : [];
   const paymentRows = tenantPayments.data?.items || [];
   const invoiceRows = tenantInvoices.data?.items || [];
@@ -453,15 +463,15 @@ export function SuperadminPage() {
 
       <div className="section-nav-grid cols-5">
         {detailTabs.map((tabItem) => {
-          const icon = tabItem.value === 'samenvatting' ? Building2 : tabItem.value === 'gebruikers' ? Users : tabItem.value === 'rechten' ? ShieldCheck : tabItem.value === 'audit' ? Activity : tabItem.value === 'billing' ? CreditCard : ShieldCheck;
+          const icon = tabItem.value === 'samenvatting' ? Building2 : tabItem.value === 'gebruikers' ? Users : tabItem.value === 'rechten' ? ShieldCheck : tabItem.value === 'security' ? ShieldCheck : tabItem.value === 'groei' ? LineChart : tabItem.value === 'audit' ? Activity : tabItem.value === 'billing' ? CreditCard : ShieldCheck;
           const Icon = icon;
           const active = detailTab === tabItem.value;
           return (
             <button key={tabItem.value} type="button" className={`section-nav-tile ${active ? 'is-active' : ''}`} onClick={() => setDetailTab(tabItem.value)}>
               <div className="section-nav-tile-top"><Icon size={18} /><span>{tabItem.label}</span></div>
-              <div className="section-nav-tile-value">{tabItem.value === 'samenvatting' ? filteredRows.length : tabItem.value === 'gebruikers' ? userRows.length : tabItem.value === 'rechten' ? Number((permissionSummary.role_counts as Record<string, number> | undefined)?.tenant_admin || 0) : tabItem.value === 'audit' ? auditRows.length : tabItem.value === 'billing' ? '€' : selectedTenant ? 'Beheer' : 'Kies'}</div>
+              <div className="section-nav-tile-value">{tabItem.value === 'samenvatting' ? filteredRows.length : tabItem.value === 'gebruikers' ? userRows.length : tabItem.value === 'rechten' ? Number((permissionSummary.role_counts as Record<string, number> | undefined)?.tenant_admin || 0) : tabItem.value === 'security' ? '🔒' : tabItem.value === 'groei' ? String(growthSummary.active_tenant_count || 0) : tabItem.value === 'audit' ? auditRows.length : tabItem.value === 'billing' ? '€' : selectedTenant ? 'Beheer' : 'Kies'}</div>
               <strong>{tabItem.label}</strong>
-              <small>{tabItem.value === 'samenvatting' ? 'Zoek, filter en open tenants vanuit één overzicht.' : tabItem.value === 'gebruikers' ? 'Gebruikers per tenant beheren.' : tabItem.value === 'rechten' ? 'RBAC, rolverdeling en toegangsmodi per tenant.' : tabItem.value === 'security' ? 'Tenant write-locks, access runtime en platform-security samenvatting.' : tabItem.value === 'audit' ? 'Auditregels en gebeurtenissen bekijken.' : tabItem.value === 'billing' ? 'Seats, betalingen en abonnement per tenant.' : 'Activeren, suspenden en tenantstatus beheren.'}</small>
+              <small>{tabItem.value === 'samenvatting' ? 'Zoek, filter en open tenants vanuit één overzicht.' : tabItem.value === 'gebruikers' ? 'Gebruikers per tenant beheren.' : tabItem.value === 'rechten' ? 'RBAC, rolverdeling en toegangsmodi per tenant.' : tabItem.value === 'security' ? 'Tenant write-locks, access runtime en platform-security samenvatting.' : tabItem.value === 'groei' ? 'Analytics, integraties en reporting-insights voor groei.' : tabItem.value === 'audit' ? 'Auditregels en gebeurtenissen bekijken.' : tabItem.value === 'billing' ? 'Seats, betalingen en abonnement per tenant.' : 'Activeren, suspenden en tenantstatus beheren.'}</small>
             </button>
           );
         })}
@@ -714,6 +724,70 @@ export function SuperadminPage() {
             ) : null}
           </Card>
         ) : null}
+
+        {detailTab === 'groei' ? (
+          <Card>
+            <div className="section-title-row"><h3><LineChart size={18} /> Groei, analytics en integraties</h3></div>
+            {(platformGrowthOverview.isLoading || platformIntegrationsCatalog.isLoading || platformReportingInsights.isLoading) ? <LoadingState label="Growth insights laden..." /> : null}
+            {(platformGrowthOverview.isError || platformIntegrationsCatalog.isError || platformReportingInsights.isError) ? <ErrorState title="Growth-insights niet geladen" description="Controleer of de growth-, integrations- en reporting-endpoints bereikbaar zijn." /> : null}
+            {!platformGrowthOverview.isLoading && !platformIntegrationsCatalog.isLoading && !platformReportingInsights.isLoading && !platformGrowthOverview.isError && !platformIntegrationsCatalog.isError && !platformReportingInsights.isError ? (
+              <>
+                <div className="dashboard-kpi-grid superadmin-detail-kpis">
+                  <StatCard title="Actieve tenants" value={String(growthSummary.active_tenant_count || 0)} meta={`Totaal ${String(growthSummary.tenant_count || 0)}`} />
+                  <StatCard title="Nieuwe users 30d" value={String(growthSummary.new_users_last_30_days || 0)} meta="Recente groei" />
+                  <StatCard title="Exports 30d" value={String(reportingInsights.exports_last_30_days || 0)} meta="Reporting-activiteit" />
+                  <StatCard title="ARR indicatie" value={formatCents(growthSummary.annual_run_rate_cents)} meta="Actieve seats x prijs" />
+                </div>
+                <div className="content-grid-2" style={{ marginTop: 12 }}>
+                  <Card>
+                    <div className="section-title-row"><h3><BarChart3 size={18} /> Growth signals</h3></div>
+                    <div className="list-grid">
+                      {Array.isArray(growthSummary.top_growth_signals) && growthSummary.top_growth_signals.length ? (growthSummary.top_growth_signals as Record<string, unknown>[]).map((item, index) => (
+                        <div className="list-row" key={`${String(item.label)}-${index}`}>
+                          <div><strong>{text(item.label)}</strong><div className="list-subtle">Platformsignaal voor acquisitie of retentie</div></div>
+                          <Badge tone={String(item.tone || 'neutral') as any}>{text(item.value)}</Badge>
+                        </div>
+                      )) : <EmptyState title="Geen growth-signals" description="Nog geen analytics beschikbaar." />}
+                    </div>
+                  </Card>
+                  <Card>
+                    <div className="section-title-row"><h3><PlugZap size={18} /> Integraties</h3></div>
+                    <div className="list-grid">
+                      {integrationsCatalog.length ? integrationsCatalog.map((item, index) => (
+                        <div className="list-row" key={`${String(item.key)}-${index}`}>
+                          <div><strong>{text(item.label)}</strong><div className="list-subtle">{text(item.category, 'platform')}</div></div>
+                          <Badge tone={String(item.status) === 'configured' ? 'success' : 'neutral'}>{text(item.status)}</Badge>
+                        </div>
+                      )) : <EmptyState title="Geen integraties" description="Er zijn nog geen integraties geregistreerd." />}
+                    </div>
+                  </Card>
+                </div>
+                <div className="content-grid-2" style={{ marginTop: 12 }}>
+                  <Card>
+                    <div className="section-title-row"><h3><FileText size={18} /> Advanced reporting</h3></div>
+                    <div className="detail-grid">
+                      <div><span>Total exports</span><strong>{String(reportingInsights.export_count || 0)}</strong></div>
+                      <div><span>PDF exports</span><strong>{String(reportingInsights.pdf_export_count || 0)}</strong></div>
+                      <div><span>ZIP exports</span><strong>{String(reportingInsights.zip_export_count || 0)}</strong></div>
+                      <div><span>Failed exports</span><strong>{String(reportingInsights.failed_export_count || 0)}</strong></div>
+                    </div>
+                    {reportingInsights.advanced_reporting_ready ? <InlineMessage tone="success">Reporting-insights endpoint actief en klaar voor verdere differentiatie.</InlineMessage> : <InlineMessage tone="neutral">Reporting-insights nog niet compleet.</InlineMessage>}
+                  </Card>
+                  <Card>
+                    <div className="section-title-row"><h3><Activity size={18} /> Aanbevolen volgende growth-stappen</h3></div>
+                    <div className="checklist-grid">
+                      <div className="checklist-item"><strong>Analytics dashboard</strong><span>Gebruik deze metrics voor een dedicated platform growth dashboard.</span></div>
+                      <div className="checklist-item"><strong>CRM / lead integrations</strong><span>Voeg webhook- of CRM-koppelingen toe op trial en billing events.</span></div>
+                      <div className="checklist-item"><strong>Advanced reporting packs</strong><span>Bied PDF/ZIP/manifest exports als commerciële differentiator aan.</span></div>
+                      <div className="checklist-item"><strong>Retention signalen</strong><span>Combineer overdue, usage en export-activiteit voor churn-preventie.</span></div>
+                    </div>
+                  </Card>
+                </div>
+              </>
+            ) : null}
+          </Card>
+        ) : null}
+
 
         {detailTab === 'audit' ? (
           <Card>

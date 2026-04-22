@@ -161,3 +161,16 @@ export function reactivatePlatformUser(userId: string, tenantId?: string | numbe
 export function getTenantPermissionsSummary(tenantId: string | number) {
   return apiRequest<Record<string, unknown>>(`/platform/tenants/${tenantId}/permissions-summary`);
 }
+
+
+export function getPlatformGrowthOverview() {
+  return apiRequest<Record<string, unknown>>('/platform/growth/overview');
+}
+
+export function getPlatformIntegrationsCatalog() {
+  return apiRequest<Record<string, unknown>>('/platform/integrations/catalog');
+}
+
+export function getPlatformReportingInsights() {
+  return apiRequest<Record<string, unknown>>('/platform/reporting/insights');
+}

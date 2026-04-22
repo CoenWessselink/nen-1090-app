@@ -10,6 +10,9 @@ import {
   getTenantBilling,
   getTenantSecurityOverview,
   getPlatformSecurityOverview,
+  getPlatformGrowthOverview,
+  getPlatformIntegrationsCatalog,
+  getPlatformReportingInsights,
   getTenantPermissionsSummary,
   getTenantBillingEvents,
   getTenantUsers,
@@ -154,6 +157,31 @@ export function usePlatformSecurityOverview(enabled = true) {
   return useQuery({
     queryKey: ['platform-security-overview'],
     queryFn: () => getPlatformSecurityOverview(),
+    enabled,
+  });
+}
+
+
+export function usePlatformGrowthOverview(enabled = true) {
+  return useQuery({
+    queryKey: ['platform-growth-overview'],
+    queryFn: () => getPlatformGrowthOverview(),
+    enabled,
+  });
+}
+
+export function usePlatformIntegrationsCatalog(enabled = true) {
+  return useQuery({
+    queryKey: ['platform-integrations-catalog'],
+    queryFn: () => getPlatformIntegrationsCatalog(),
+    enabled,
+  });
+}
+
+export function usePlatformReportingInsights(enabled = true) {
+  return useQuery({
+    queryKey: ['platform-reporting-insights'],
+    queryFn: () => getPlatformReportingInsights(),
     enabled,
   });
 }
