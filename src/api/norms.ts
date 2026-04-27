@@ -1,4 +1,4 @@
-import { ApiError, apiRequest, listRequest } from '@/api/client';
+import { ApiError, apiRequest, listRequest, optionalRequest } from '@/api/client';
 
 export type NormSystem = { id: string; code: string; name: string; region?: string; description?: string; is_active?: boolean };
 export type NormStandard = { id: string; code: string; title: string; version?: string; norm_system_id?: string; scope?: string; is_active?: boolean };
@@ -35,6 +35,7 @@ export type InspectionTemplateItem = {
   result?: string;
   measured_value?: string;
   comment?: string;
+  section_code?: string;
 };
 export type InspectionTemplateSection = { id?: string; code: string; name: string; phase?: string; sort_order?: number; items?: InspectionTemplateItem[] };
 export type InspectionTemplate = { id: string; code: string; name: string; description?: string; template_type?: string; version?: number; sections?: InspectionTemplateSection[] };
@@ -80,6 +81,80 @@ function asArray<T>(payload: unknown): T[] {
   return record?.items || record?.data || record?.results || [];
 }
 
+function normalizeLegacyInspection(payload: unknown, projectId?: string, weldId?: string): WeldInspectionRun | null {
+  if (!payload) return null;
+  const record = payload as Record<string, unknown>;
+  if (record.sections) return record as WeldInspectionRun;
+
+  const checks = asArray<Record<string, unknown>>(record.checks || record.results || record.items || []);
+  if (!checks.length && !record.id) return null;
+
+  const items: InspectionTemplateItem[] = checks.map((check, index) => ({
+    id: String(check.id || check.item_code || check.criterion_key || `check-${index + 1}`),
+    code: String(check.item_code || check.criterion_key || check.code || `CHECK-${index + 1}`),
+    label: String(check.label || check.title || check.item_code || check.criterion_key || `Controle ${index + 1}`),
+    norm_code: String(check.norm_code || ''),
+    norm_reference: String(check.norm_reference || ''),
+    required: true,
+    result: String(check.result || check.status || (check.approved === false ? 'not_conform' : 'conform')),
+    measured_value: String(check.measured_value || ''),
+    comment: String(check.comment || check.remark || check.remarks || ''),
+    section_code: String(check.section_code || 'VISUAL'),
+  }));
+
+  return {
+    id: String(record.id || `inspection-${weldId || 'new'}`),
+    project_id: String(record.project_id || projectId || ''),
+    weld_id: String(record.weld_id || weldId || ''),
+    status: String(record.status || record.overall_status || 'in_control'),
+    overall_result: String(record.overall_status || record.status || record.result || 'in_control'),
+    notes: String(record.notes || record.remarks || ''),
+    sections: [{ id: 'visual', code: 'VISUAL', name: 'Visuele controle', phase: 'Inspection', sort_order: 1, items }],
+    results: items,
+    history: [],
+    attachments: [],
+  };
+}
+
+function buildDefaultInspection(weldId: string, projectId?: string): WeldInspectionRun {
+  return {
+    id: `draft-${weldId}`,
+    project_id: projectId,
+    weld_id: weldId,
+    status: 'draft',
+    overall_result: 'in_control',
+    notes: '',
+    sections: [
+      {
+        id: 'visual',
+        code: 'VISUAL',
+        name: 'Visuele controle',
+        phase: 'Inspection',
+        sort_order: 1,
+        items: [
+          { code: 'WPS', label: 'Juiste WPS toegepast', norm_code: 'ISO 3834', norm_reference: 'ISO 3834 / ISO 15609', required: true, result: 'not_checked', comment: '' },
+          { code: 'VT', label: 'Visuele inspectie uitgevoerd', norm_code: 'ISO 17637', norm_reference: 'ISO 17637 / ISO 5817', required: true, result: 'not_checked', comment: '' },
+          { code: 'TRACE', label: 'Materiaal- en lassertraceerbaarheid', norm_code: 'NEN-EN 1090-2', norm_reference: 'NEN-EN 1090-2', required: true, result: 'not_checked', comment: '' },
+        ],
+      },
+      {
+        id: 'documents',
+        code: 'DOC',
+        name: 'Documentcontrole',
+        phase: 'Documents',
+        sort_order: 2,
+        items: [
+          { code: 'MATERIAL_CERT', label: 'Materiaalcertificaat aanwezig', norm_code: 'EN 10204', norm_reference: 'EN 10204', required: true, result: 'not_checked', comment: '' },
+          { code: 'WELDER_QUAL', label: 'Lasser gekwalificeerd', norm_code: 'ISO 9606-1', norm_reference: 'ISO 9606-1', required: true, result: 'not_checked', comment: '' },
+        ],
+      },
+    ],
+    results: [],
+    history: [],
+    attachments: [],
+  };
+}
+
 export async function getNormSystems() { return asArray<NormSystem>(await listRequest('/norms/systems')); }
 export async function getNormStandards(params?: Record<string, string | boolean | undefined>) { return asArray<NormStandard>(await listRequest('/norms/standards', params)); }
 export async function getNormProfiles(params?: Record<string, string | boolean | undefined>) { return asArray<NormProfile>(await listRequest('/norms/profiles', params)); }
@@ -96,15 +171,57 @@ export async function setProjectNormSelection(projectId: string, payload: Record
   return await apiRequest<ProjectNormSelection>(`/projects/${projectId}/norm-selection`, { method: 'POST', body: JSON.stringify(payload) });
 }
 
-export async function getWeldInspection(weldId: string) { return await apiRequest<WeldInspectionRun>(`/welds/${weldId}/inspection`); }
-export async function saveWeldInspection(weldId: string, payload: Record<string, unknown>) {
-  return await apiRequest<WeldInspectionRun>(`/welds/${weldId}/inspection`, { method: 'POST', body: JSON.stringify(payload) });
+export async function getWeldInspection(projectIdOrWeldId: string, maybeWeldId?: string) {
+  const projectId = maybeWeldId ? projectIdOrWeldId : undefined;
+  const weldId = maybeWeldId || projectIdOrWeldId;
+  const paths = projectId
+    ? [`/projects/${projectId}/welds/${weldId}/inspection`, `/projects/${projectId}/welds/${weldId}/inspections`, `/welds/${weldId}/inspection`]
+    : [`/welds/${weldId}/inspection`];
+  try {
+    const payload = await optionalRequest<unknown>(paths);
+    const first = Array.isArray(payload) ? payload[0] : payload;
+    return normalizeLegacyInspection(first, projectId, weldId) || buildDefaultInspection(weldId, projectId);
+  } catch (error) {
+    if (error instanceof ApiError && [404, 405, 422, 501].includes(error.status)) return buildDefaultInspection(weldId, projectId);
+    throw error;
+  }
 }
-export async function uploadWeldInspectionAttachment(weldId: string, formData: FormData) {
-  return await apiRequest<Record<string, unknown>>(`/welds/${weldId}/inspection/attachments`, { method: 'POST', body: formData });
+
+export async function saveWeldInspection(projectIdOrWeldId: string, weldIdOrPayload: string | Record<string, unknown>, maybePayload?: Record<string, unknown>) {
+  const projectId = typeof weldIdOrPayload === 'string' ? projectIdOrWeldId : undefined;
+  const weldId = typeof weldIdOrPayload === 'string' ? weldIdOrPayload : projectIdOrWeldId;
+  const payload = (typeof weldIdOrPayload === 'string' ? maybePayload : weldIdOrPayload) || {};
+  const body = { ...payload, weld_id: weldId };
+  const paths = projectId
+    ? [`/projects/${projectId}/welds/${weldId}/inspections`, `/projects/${projectId}/welds/${weldId}/inspection`, `/welds/${weldId}/inspection`]
+    : [`/welds/${weldId}/inspection`];
+  const saved = await optionalRequest<unknown>(paths, { method: 'POST', body: JSON.stringify(body) });
+  return normalizeLegacyInspection(Array.isArray(saved) ? saved[0] : saved, projectId, weldId) || buildDefaultInspection(weldId, projectId);
 }
-export async function createWeldNonconformity(weldId: string, payload: Record<string, unknown>) {
-  return await apiRequest<Record<string, unknown>>(`/welds/${weldId}/nonconformities`, { method: 'POST', body: JSON.stringify(payload) });
+
+export async function uploadWeldInspectionAttachment(projectIdOrWeldId: string, weldIdOrFormData: string | FormData, maybeFormData?: FormData) {
+  const projectId = typeof weldIdOrFormData === 'string' ? projectIdOrWeldId : undefined;
+  const weldId = typeof weldIdOrFormData === 'string' ? weldIdOrFormData : projectIdOrWeldId;
+  const formData = (typeof weldIdOrFormData === 'string' ? maybeFormData : weldIdOrFormData) || new FormData();
+  if (!formData.has('scope_type')) formData.set('scope_type', 'weld');
+  if (!formData.has('scope_id')) formData.set('scope_id', weldId);
+  if (!formData.has('kind')) formData.set('kind', 'photo');
+  if (projectId && !formData.has('project_id')) formData.set('project_id', projectId);
+  return await optionalRequest<Record<string, unknown>>([
+    ...(projectId ? [`/projects/${projectId}/welds/${weldId}/photos`, `/projects/${projectId}/welds/${weldId}/attachments`] : []),
+    `/welds/${weldId}/inspection/attachments`,
+    '/attachments/upload',
+  ], { method: 'POST', body: formData });
+}
+
+export async function createWeldNonconformity(projectIdOrWeldId: string, weldIdOrPayload: string | Record<string, unknown>, maybePayload?: Record<string, unknown>) {
+  const projectId = typeof weldIdOrPayload === 'string' ? projectIdOrWeldId : undefined;
+  const weldId = typeof weldIdOrPayload === 'string' ? weldIdOrPayload : projectIdOrWeldId;
+  const payload = (typeof weldIdOrPayload === 'string' ? maybePayload : weldIdOrPayload) || {};
+  return await optionalRequest<Record<string, unknown>>([
+    ...(projectId ? [`/projects/${projectId}/welds/${weldId}/nonconformities`] : []),
+    `/welds/${weldId}/nonconformities`,
+  ], { method: 'POST', body: JSON.stringify(payload) });
 }
 export async function getCeDossierChecks(projectId: string) { return asArray<CeNormCheck>(await listRequest(`/projects/${projectId}/ce-dossier/checks`)); }
 export async function updateCeDossierCheck(projectId: string, checkId: string, payload: Record<string, unknown>) {
