@@ -1,4 +1,4 @@
-import { ApiError, apiRequest } from '@/api/client';
+import { ApiError, apiRequest, downloadUrlAsBlob } from '@/api/client';
 import type { ApiListResponse, ListParams } from '@/types/api';
 import type { CeDocument } from '@/types/domain';
 
@@ -132,13 +132,13 @@ export async function deleteAttachment(attachmentId: string | number) {
 }
 
 export async function downloadDocument(documentId: string | number): Promise<Blob> {
-  const paths = [`/documents/${documentId}/download`, `/documents/${documentId}`, `/api/v1/documents/${documentId}/download`];
+  const paths = [`/documents/${documentId}/download`, `/api/v1/documents/${documentId}/download`, `/documents/${documentId}`];
   let lastError: unknown = null;
 
   for (const path of paths) {
     try {
-      const response = await apiRequest<Response>(path, { rawResponse: true } as RequestInit & { rawResponse: boolean });
-      return await response.blob();
+      const { blob } = await downloadUrlAsBlob(path);
+      return blob;
     } catch (error) {
       lastError = error;
       if (error instanceof ApiError && [400, 404, 405, 409, 422].includes(error.status)) continue;
