@@ -1,0 +1,104 @@
+/* Mobile hardening for inspection and project overview screens */
+.mobile-action-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  width: 100%;
+}
+
+.mobile-action-card {
+  min-width: 0;
+  min-height: 132px;
+  padding: 22px 14px;
+  border: 0;
+  border-radius: 22px;
+  color: #fff;
+  font-size: 20px;
+  font-weight: 850;
+  line-height: 1.15;
+  text-align: center;
+  display: grid;
+  place-items: center;
+  gap: 12px;
+  overflow-wrap: anywhere;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, .12);
+}
+
+.mobile-action-card svg { width: 28px; height: 28px; }
+.mobile-action-card-primary { background: linear-gradient(135deg, #315faa, #3f78d6); }
+.mobile-action-card-success { background: linear-gradient(135deg, #4f8f5d, #5fa56a); }
+.mobile-action-card-danger { background: linear-gradient(135deg, #c85f4f, #d6725e); }
+.mobile-action-card-warning { background: linear-gradient(135deg, #d49445, #dda457); }
+.mobile-action-card-neutral { background: linear-gradient(135deg, #697381, #7a8492); }
+
+.mobile-project-quick-actions {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px !important;
+  width: 100%;
+  margin: 16px 0;
+}
+
+.mobile-project-quick-actions > button {
+  width: 100%;
+  min-width: 0;
+  white-space: normal;
+  text-align: center;
+  justify-content: center;
+  overflow-wrap: anywhere;
+}
+
+.weld-inspection-layout * { box-sizing: border-box; min-width: 0; }
+.weld-inspection-layout button { white-space: normal; overflow-wrap: anywhere; }
+.weld-inspection-layout input,
+.weld-inspection-layout textarea { max-width: 100%; }
+
+@media (max-width: 920px) {
+  .weld-inspection-layout {
+    display: block !important;
+    grid-template-columns: 1fr !important;
+  }
+  .weld-inspection-layout > aside {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    margin-top: 14px;
+  }
+  .weld-inspection-layout article {
+    padding: 14px !important;
+    overflow: hidden;
+  }
+  .weld-inspection-layout article > div {
+    grid-template-columns: 1fr !important;
+  }
+  .weld-inspection-layout article div[style*='repeat(3'] {
+    grid-template-columns: 1fr !important;
+  }
+  .weld-inspection-layout article div[style*='minmax(180px'] {
+    grid-template-columns: 1fr !important;
+  }
+  .weld-inspection-layout article label.mobile-secondary-button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 520px) {
+  .mobile-page-body { padding-left: 10px !important; padding-right: 10px !important; }
+  .mobile-action-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .mobile-action-card { min-height: 104px; padding: 16px 10px; font-size: 16px; border-radius: 18px; }
+  .mobile-action-card svg { width: 24px; height: 24px; }
+  .mobile-project-quick-actions { grid-template-columns: 1fr 1fr; }
+  .mobile-project-quick-actions > button { font-size: 13px; padding: 0 8px; }
+  .weld-inspection-layout [style*='repeat(auto-fit'] {
+    grid-template-columns: 1fr !important;
+  }
+  .weld-inspection-layout [style*='position: sticky'] {
+    grid-template-columns: 1fr !important;
+    padding-bottom: max(14px, env(safe-area-inset-bottom)) !important;
+  }
+  .weld-inspection-layout h3 { font-size: 22px; line-height: 1.1; }
+  .weld-inspection-layout h4 { font-size: 18px; line-height: 1.15; }
+  .weld-inspection-layout article div[style*='display: flex'] > * {
+    flex: 1 1 100%;
+  }
+}
