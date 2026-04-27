@@ -35,7 +35,7 @@ export function WeldInspectionDetailPage() {
     Promise.all([getProject(projectId).catch(() => null), getWeld(projectId, weldId).catch(() => null), getWeldInspection(weldId)])
       .then(([projectRecord, weldRecord, inspection]) => {
         if (!active) return;
-        setProject(projectRecord); setWeld(weldRecord); setRun(inspection); setNotes(String(inspection.notes || ''));
+        setProject(projectRecord as Project | null); setWeld(weldRecord as Weld | null); setRun(inspection); setNotes(String(inspection.notes || ''));
         const next: Record<string, InspectionTemplateItem> = {};
         const results = Array.isArray(inspection.results) ? inspection.results : [];
         (inspection.sections || []).forEach((section) => (section.items || []).forEach((item) => {
