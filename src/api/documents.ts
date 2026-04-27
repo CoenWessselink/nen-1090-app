@@ -31,15 +31,6 @@ function cloneFormData(input: FormData, field: 'file' | 'files', projectId?: str
   return out;
 }
 
-function getFileNameFromHeaders(headers?: Headers | null, fallback = 'document') {
-  const disposition = headers?.get('content-disposition') || '';
-  const utfMatch = disposition.match(/filename\*=UTF-8''([^;]+)/i);
-  if (utfMatch?.[1]) return decodeURIComponent(utfMatch[1]);
-  const normalMatch = disposition.match(/filename="?([^";]+)"?/i);
-  if (normalMatch?.[1]) return normalMatch[1];
-  return fallback;
-}
-
 async function tryPaths<T>(paths: string[], init?: RequestInit, fallback?: T): Promise<T> {
   let lastError: unknown = null;
   for (const path of paths) {
@@ -140,19 +131,14 @@ export async function deleteAttachment(attachmentId: string | number) {
   }, { success: true });
 }
 
-export async function downloadDocument(documentId: string | number) {
+export async function downloadDocument(documentId: string | number): Promise<Blob> {
   const paths = [`/documents/${documentId}/download`, `/documents/${documentId}`, `/api/v1/documents/${documentId}/download`];
   let lastError: unknown = null;
 
   for (const path of paths) {
     try {
       const response = await apiRequest<Response>(path, { rawResponse: true } as RequestInit & { rawResponse: boolean });
-      const blob = await response.blob();
-      return {
-        blob,
-        fileName: getFileNameFromHeaders(response.headers, `document-${documentId}`),
-        mimeType: response.headers.get('content-type') || blob.type || 'application/octet-stream',
-      };
+      return await response.blob();
     } catch (error) {
       lastError = error;
       if (error instanceof ApiError && [400, 404, 405, 409, 422].includes(error.status)) continue;
