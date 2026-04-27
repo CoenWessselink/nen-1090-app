@@ -1,0 +1,16 @@
+API PUSH COMMANDS
+
+LOCAL REPO:
+C:\NEN1090\NEN10900-api
+
+1. Pak NEN10900_API_BLOCK_A_PATCH.zip uit.
+2. Kopieer de inhoud over de repo heen.
+3. Run:
+
+cd C:\NEN1090\NEN10900-api
+git checkout -b fix/block-a-api-stability
+git add app/api/v1/dashboard.py app/api/v1/audit.py app/api/v1/exports_global.py app/api/v1/router.py app/api/v1/welds.py
+git commit -m "fix(api): block a stability endpoints and weld list hardening"
+git push -u origin fix/block-a-api-stability
+
+4. Open daarna een PR naar main.

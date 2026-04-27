@@ -1,0 +1,40 @@
+AGENT HANDOFF – NEN1090 BLOCK A/B
+
+CURRENT STATUS
+- Block A API patch already prepared as zip: NEN10900_API_BLOCK_A_PATCH.zip
+- Block B APP patch prepared in this package as NEN1090_APP_BLOCK_B_PATCH.zip
+- Repos:
+  - API: C:\NEN1090\NEN10900-api
+  - APP: C:\NEN1090\nen-1090-app
+
+WHAT BLOCK A CHANGES
+- Adds /dashboard/summary
+- Adds /audit/recent
+- Adds /exports/recent
+- Registers new routers
+- Hardens weld list sorting/pagination to prevent lascontrole 500 errors
+
+WHAT BLOCK B CHANGES
+- Aligns frontend API modules to standardized list contract
+- Fixes dashboard summary field mapping
+- Fixes weld/document API typings
+- Fixes document download to use blob download path directly
+- Updates dashboard page to rely on new summary keys
+
+NEXT WORK AFTER APPLYING A+B
+- Validate live:
+  1. login
+  2. dashboard no 404
+  3. lascontrole loads
+  4. project documents load
+  5. recent exports/audit load
+- Then continue with Block C:
+  - weld-first UX
+  - weld actions
+  - CE dossier
+  - export flow end-to-end
+
+IMPORTANT
+- Do not redesign
+- Work from repo state only
+- Verify via UI + network after applying both patches

@@ -1,0 +1,46 @@
+NEN1090 APP — FASE 4 FINAL TESTPLAN
+
+DOEL
+Reproduceerbare eindvalidatie van de projectcentrische appflow.
+
+LOKALE VOLGORDE
+1. cd C:\NEN1090\nen-1090-app
+2. npm ci
+3. npx playwright install chromium
+4. npm run typecheck
+5. npm run build
+6. npx playwright test --list
+7. npx playwright test tests/e2e/auth-and-routing.spec.ts --project=desktop-chromium
+8. npx playwright test tests/e2e/projects-crud.spec.ts --project=desktop-chromium
+9. npx playwright test tests/e2e/weld-flow.spec.ts --project=desktop-chromium
+10. npx playwright test tests/e2e/documents-and-settings.spec.ts --project=desktop-chromium
+11. npx playwright test tests/e2e/global-search-and-export.spec.ts --project=desktop-chromium
+12. npx playwright test --project=desktop-chromium
+
+SNELLE POWERHELL RUNNER
+powershell -ExecutionPolicy Bypass -File scripts/test-local-phase4.ps1
+
+ALLEEN SMOKE
+powershell -ExecutionPolicy Bypass -File scripts/test-local-phase4.ps1 -SmokeOnly
+
+LIVE VOLGORDE
+1. cd C:\NEN1090\nen-1090-app
+2. npm ci
+3. npx playwright install chromium
+4. npm run build
+5. $env:PLAYWRIGHT_BASE_URL = "https://nen1090-marketing-new.pages.dev"
+6. npx playwright test tests/e2e/auth-live.spec.ts --project=desktop-chromium
+7. npx playwright test tests/e2e/smoke.spec.ts --project=desktop-chromium
+8. npx playwright test --project=desktop-chromium
+
+SNELLE LIVE RUNNER
+powershell -ExecutionPolicy Bypass -File scripts/test-live-phase4.ps1
+
+BELANGRIJKSTE FLOWS
+- login -> dashboard -> logout
+- dashboard -> projecten -> project 360
+- project -> assembly CRUD
+- project -> lassen -> detail -> approve
+- project -> documenten/settings
+- project -> CE/export
+- live auth en smoke

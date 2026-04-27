@@ -1,0 +1,6 @@
+{
+  "scripts": {
+    "test:enterprise:local": "playwright test --project=desktop-chromium",
+    "test:enterprise:report": "playwright show-report"
+  }
+}

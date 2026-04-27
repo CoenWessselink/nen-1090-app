@@ -1,0 +1,15 @@
+NEN1090 ENTERPRISE TEST SUITE V2 — CONTROLE
+
+Uitkomst controle:
+- Structuur is logisch en bruikbaar voor opname in build
+- App-suite bevat 3 Playwright specs + gedeelde helper
+- API-suite bevat 4 pytest-bestanden/configs en is Windows-vriendelijk
+- Scripts sluiten aan op vaste lokale paden
+
+Belangrijk aandachtspunt:
+- De Playwright helper seedAuth gebruikt fake local/session storage tokens. Dat is prima voor UI-navigatie en project-flow smoke tests, maar bewijst geen echte backend-auth. Gebruik deze suite dus als enterprise UI/flow suite naast, niet in plaats van, echte auth/E2E validatie.
+
+Advies opname in build:
+- APP: opnemen in tests/e2e, playwright.config.ts en package.json scripts mergen
+- API: opnemen in tests/, pytest.ini en requests/pytest dependencies mergen
+- Deze suite is geschikt als aanvullende build/testlaag.

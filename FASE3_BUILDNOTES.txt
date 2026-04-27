@@ -1,0 +1,25 @@
+NEN1090 FASE 3 BUILDNOTES — 2026-03-30
+
+Uitgevoerd in deze build:
+- CE Dossier pagina herbouwd naar echte eindfase-UX
+- CE statuspanel toegevoegd met score, status, exportgereedheid en bron
+- Missende onderdelen + checklist gekoppeld in nette enterprise kaarten
+- Dossierstructuur en live dossierinhoud zichtbaar gemaakt
+- Exportcentrum uitgebreid met:
+  - CE rapport
+  - PDF export
+  - ZIP export
+  - Excel export
+- Exporthistorie met manifestselectie, download/retry acties en lokale fallbackregistratie
+- PDF layout/printkaart toegevoegd voor dossieropbouw
+- Project 360 tabs uitgebreid met CE Dossier tab
+- Project 360 overzicht uitgebreid met snelle actie naar CE Dossier
+- Build gedraaid: npm run build = PASS
+
+Belangrijkste aangepaste bestanden:
+- src/features/ce-dossier/CeDossierPage.tsx
+- src/features/projecten/Project360Page.tsx
+
+Opmerking:
+- Deze zip is verpakt zonder node_modules, dist en .git.
+- Build is lokaal geslaagd.

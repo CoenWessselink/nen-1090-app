@@ -1,0 +1,101 @@
+name: Smoke Test App
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check app root (SPA load)
+        run: |
+          set -e
+          echo "Checking app root..."
+          RESPONSE=$(curl -fsSL https://nen-1090-app.pages.dev/)
+          echo "$RESPONSE" | grep '<div id="root">' || exit 1
+
+      - name: Check marketing root
+        run: |
+          set -e
+          echo "Checking marketing root..."
+          RESPONSE=$(curl -fsSL https://nen1090-marketing.pages.dev/)
+          echo "$RESPONSE" | grep -Ei 'WeldInspect|CWS NEN-1090|<html' || exit 1
+
+      - name: Check API health direct with retries
+        id: api_direct
+        continue-on-error: true
+        run: |
+          set +e
+          echo "Checking direct API health with retries..."
+          ok=0
+          for i in 1 2 3 4 5; do
+            echo "Direct attempt $i"
+            body=$(curl -fsSL --max-time 20 https://nen1090-api-prod-f5ddagedbrftb4ew.westeurope-01.azurewebsites.net/api/v1/health 2>/dev/null)
+            status=$?
+            if [ "$status" -eq 0 ]; then
+              echo "$body"
+              if echo "$body" | grep -Eq '"ok"\s*:\s*true|"status"\s*:\s*"(ok|healthy|up)"'; then
+                ok=1
+                break
+              fi
+            fi
+            sleep 5
+          done
+          if [ "$ok" -eq 1 ]; then
+            echo "direct_ok=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "direct_ok=false" >> "$GITHUB_OUTPUT"
+          exit 1
+
+      - name: Check API health through marketing proxy
+        id: api_proxy
+        continue-on-error: true
+        run: |
+          set +e
+          echo "Checking proxy API health with retries..."
+          URLS=(
+            "https://nen1090-marketing.pages.dev/api/v1/health"
+            "https://nen1090-marketing.pages.dev/api/health"
+          )
+          ok=0
+          for url in "${URLS[@]}"; do
+            echo "Trying $url"
+            for i in 1 2 3; do
+              body=$(curl -fsSL --max-time 20 "$url" 2>/dev/null)
+              status=$?
+              if [ "$status" -eq 0 ]; then
+                echo "$body"
+                if echo "$body" | grep -Eq '"ok"\s*:\s*true|"status"\s*:\s*"(ok|healthy|up)"'; then
+                  ok=1
+                  break 2
+                fi
+              fi
+              sleep 3
+            done
+          done
+          if [ "$ok" -eq 1 ]; then
+            echo "proxy_ok=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "proxy_ok=false" >> "$GITHUB_OUTPUT"
+          exit 1
+
+      - name: Validate API health result
+        run: |
+          direct_ok="${{ steps.api_direct.outputs.direct_ok }}"
+          proxy_ok="${{ steps.api_proxy.outputs.proxy_ok }}"
+          echo "direct_ok=$direct_ok"
+          echo "proxy_ok=$proxy_ok"
+          if [ "$direct_ok" = "true" ] || [ "$proxy_ok" = "true" ]; then
+            echo "At least one API health path is healthy."
+            exit 0
+          fi
+          echo "Both direct API health and marketing proxy health failed."
+          exit 1
+
+      - name: Smoke test completed
+        run: echo "Smoke test passed"

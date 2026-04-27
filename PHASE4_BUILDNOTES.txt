@@ -1,0 +1,28 @@
+NEN1090 APP — FASE 4 BUILDNOTES
+Datum: 2026-03-30
+
+Uitgevoerd in deze fase:
+- test-/validatiescripts aangevuld voor lokale en live eindcontrole
+- package.json uitgebreid met phase 4 testcommando's
+- expliciete Playwright browser-installatiestap toegevoegd aan runners
+- phase 4 eindvalidatieplan toegevoegd
+- build opnieuw gedraaid
+- playwright test listing opnieuw gedraaid
+
+Toegevoegde/gewijzigde bestanden:
+- package.json
+- scripts/test-local-phase4.ps1
+- scripts/test-live-phase4.ps1
+- PHASE4_BUILDNOTES.txt
+- PHASE4_FINAL_TESTPLAN.txt
+- PHASE4_EXECUTION_STATUS.txt
+
+Resultaat in deze omgeving:
+- npm ci = PASS
+- npm run build = PASS
+- npx playwright test --list = PASS
+
+Belangrijke eerlijke noot:
+- daadwerkelijke Playwright browser-runs konden in deze omgeving niet starten voordat Chromium is geinstalleerd
+- de fout was niet applicatie-inhoudelijk maar environment-gerelateerd: ontbrekende Playwright browser executable
+- daarom zijn de phase 4 runners expliciet uitgebreid met 'npx playwright install chromium'

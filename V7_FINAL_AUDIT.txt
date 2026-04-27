@@ -1,0 +1,31 @@
+V7 FINAL – uitgevoerd op aangeleverde repo
+
+Lokaal gevalideerd:
+- npm run typecheck: OK
+- npm run build: OK
+
+Belangrijkste aanpassingen:
+- Project default route naar CE-Dossier gezet.
+- Overzicht-route laat nu door naar CE-Dossier.
+- Projecttabs aangepast naar: CE-Dossier, Assemblies, Lassen, Documenten, Historie.
+- Project top action bar uitgebreid met Lasrapport-knop.
+- Project360: CE-Dossier als starttab, Lasrapport print/PDF-flow voor lassen, gerepareerd-status naar oranje.
+- WeldInspectionModal: actieve tabs blauw behouden, kopregel aangepast naar Projectnaam – Projectnummer – Lasnummer, snelle lascontroleknoppen verwijderd, gerepareerd-kleur oranje.
+- ProjectenPage: dubbelklik opent Wijzig project, nieuwe projectnavigatie start in CE-Dossier, submitlabel edit naar Opslaan.
+- RapportagePage: uitlijning verbeterd, PDF-tegel/logo toegevoegd, inline PDF-paneel toegevoegd, zoekfilter op projectnaam/projectnummer/opdrachtgever.
+- Reports fallback verrijkt met project_name, projectnummer, client_name, pdf_url.
+- InspectionTemplatesManager vervangen door werkende beheerlaag met CRUD/dupliceren, EXC-presets en normbasis voor NEN-EN 1090 / ISO 3834 / ISO 5817.
+- CE dossier interne projectroute verwijst naar CE-Dossier in plaats van Overzicht.
+
+Aangepaste bestanden:
+- src/app/router/routes.tsx
+- src/features/projecten/components/ProjectContextTabs.tsx
+- src/features/projecten/components/ProjectTopActionBar.tsx
+- src/features/projecten/components/ProjectTabShell.tsx
+- src/features/projecten/Project360Page.tsx
+- src/features/lascontrole/components/WeldInspectionModal.tsx
+- src/features/projecten/ProjectenPage.tsx
+- src/features/rapportage/RapportagePage.tsx
+- src/api/reports.ts
+- src/features/instellingen/components/InspectionTemplatesManager.tsx
+- src/features/ce-dossier/CeDossierPage.tsx

@@ -1,0 +1,30 @@
+FASE 1 BUILD v2 — TOTAL ZIP
+Datum: 2026-04-01
+
+In deze zip opgenomen:
+- uniforme projecttab-shell
+- vaste volgorde: tabs -> actiebalk -> filters -> KPI -> content
+- uniforme hoofdactieknoppen op projecttabs
+- CE dossier en Lascontrole omgezet naar dezelfde projecttab-structuur
+- Project 360 omgezet naar dezelfde projecttab-structuur
+- styling-uitlijning voor projecttabs en KPI-grid
+- root package.json toegevoegd op repo-root zodat de app-setup consistenter is
+
+Aangepaste bestanden:
+- package.json
+- src/features/projecten/components/ProjectTabShell.tsx
+- src/features/projecten/components/ProjectWorkspaceActionBar.tsx
+- src/features/projecten/components/ProjectContextTabs.tsx
+- src/features/projecten/Project360Page.tsx
+- src/features/lascontrole/LascontrolePage.tsx
+- src/features/ce-dossier/CeDossierPage.tsx
+- src/styles/global.css
+
+Buildstatus:
+- TypeScript fase in npm build liep door tot Vite/Rollup start
+- Volledige vite build kon in deze container niet afronden omdat de meegeleverde node_modules een ontbrekende optionele Rollup native dependency heeft:
+  @rollup/rollup-linux-x64-gnu
+- Dit is een omgeving/node_modules probleem in de aangeleverde bundle, geen bevestigde TypeScript syntaxfout in de aangepaste fase-1 bestanden
+
+Volgende stap:
+- Fase 2: popup/bulk/approve/crash/foutmeldingen

@@ -1,0 +1,60 @@
+name: Deploy App to Cloudflare Pages
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "src/**"
+      - "public/**"
+      - "functions/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig*.json"
+      - "vite.config.*"
+      - "index.html"
+      - "index.source.html"
+      - "_headers"
+      - ".github/workflows/deploy_app_to_cloudflare_pages.yml"
+
+concurrency:
+  group: cloudflare-pages-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  deployments: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Build release for Pages
+        run: npm run build:pages
+
+      - name: Verify built Pages artifact
+        run: |
+          test -f release/index.html
+          test -d release/assets
+
+      # 🔥 NIEUWE STABIELE DEPLOY
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CF_API_TOKEN }}
+          accountId: ${{ secrets.CF_ACCOUNT_ID }}
+          command: pages deploy release --project-name=nen-1090-app
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}

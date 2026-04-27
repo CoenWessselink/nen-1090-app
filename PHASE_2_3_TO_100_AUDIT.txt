@@ -1,0 +1,24 @@
+FASE 2+3 HARDENING – UITGEVOERD OP DE AANGELEVERDE BRONREPO
+
+Aangepast in deze ronde:
+- src/features/instellingen/components/InspectionTemplatesManager.tsx
+- src/features/instellingen/InstellingenPage.tsx
+- src/features/rapportage/RapportagePage.tsx
+- src/api/reports.ts
+
+Doorgevoerd:
+1. Inspectietemplates vervangen van stub door werkende beheerlaag.
+2. CRUD-gestuurde template-editor toegevoegd met EXC1 t/m EXC4 presets.
+3. Normkaders expliciet opgenomen: NEN-EN 1090, ISO 3834, ISO 5817.
+4. Instellingen > Masterdata gebruikt nu de echte InspectionTemplatesManager.
+5. Rapportage zoekt op projectnaam, projectnummer en opdrachtgever.
+6. Rapportage toont inline PDF-paneel op dezelfde pagina.
+7. Reports fallback verrijkt met project_name, projectnummer, client_name en pdf_url.
+8. Lokale validatie uitgevoerd:
+   - npm install
+   - npm run typecheck
+   - npm run build
+
+Eerlijke status:
+- Lokaal buildbaar en typecheck groen.
+- Niet volledig live E2E-bewezen tegen Cloudflare/Azure vanuit deze container.

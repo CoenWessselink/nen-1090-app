@@ -1,0 +1,48 @@
+NEN1090 BUILD V2 — FASE 4 EINDCONTROLE / TESTFASE
+Datum: 2026-03-31
+
+UITGEVOERD
+- Playwright test discovery hersteld door ontbrekende helper-export toe te voegen.
+- Enterprise test runner consistent gemaakt door ontbrekend package script toe te voegen.
+- TypeScript typecheck uitgevoerd.
+- Productiebuild uitgevoerd.
+- Playwright test list uitgevoerd.
+
+AANGEPASTE BESTANDEN
+- tests/e2e/helpers.ts
+- package.json
+
+TECHNISCHE RESULTATEN
+1. npm run typecheck
+   STATUS: PASS
+
+2. npm run build
+   STATUS: PASS
+   OPMERKING: na npm ci was de eerdere vite wrapper-fout verdwenen.
+
+3. npx playwright test --list
+   STATUS: PASS
+   RESULTAAT: 68 tests in 33 files gedetecteerd.
+
+BEVESTIGDE FASE-4 FIXES
+- bootstrapAuthenticatedPage export toegevoegd zodat meerdere E2E-bestanden weer laden.
+- Project-, assemblies-, weld-, compliance-, documenten-, rapportage-, billing- en settings-stubs toegevoegd voor test-bootstrap.
+- Ontbrekend npm script test:enterprise:live toegevoegd zodat test-suite-live.ps1 niet meer naar een niet-bestaand script verwijst.
+
+BEPERKINGEN / EERLIJKE STATUS
+- Volledige Playwright uitvoering is in deze container niet bewezen, omdat de browserdownload faalde door netwerk/DNS-fout naar cdn.playwright.dev.
+- Daardoor is LEVEL 3 PROVEN voor de volledige browserflows hier nog niet 100% afgevinkt.
+- Wel bewezen in deze container: typecheck, build, test discovery, script-consistentie.
+
+AANBEVOLEN LOKALE EINDRUN
+In C:\NEN1090\nen-1090-app:
+1. npm ci
+2. npx playwright install chromium
+3. npm run test:phase4:local
+of live:
+4. npm run test:phase4:live
+
+SAMENVATTING
+- Fase 4 buildmatig en teststructuurmatig hersteld.
+- Suite is weer detecteerbaar en startklaar.
+- Laatste ontbrekende stap is volledige browseruitvoering op een machine met werkende Playwright browserinstallatie.

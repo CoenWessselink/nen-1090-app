@@ -1,0 +1,55 @@
+name: Phase C App Contract Smoke
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'src/api/**'
+      - 'src/features/**'
+      - 'tests/e2e/02_reports_and_ce.spec.ts'
+      - 'tests/e2e/phase-11/ce-dossier-network-clean.spec.ts'
+      - 'tests/e2e/phase-d/live-route-proof.spec.ts'
+      - '.github/workflows/phasec-app-contract-smoke.yml'
+      - 'playwright.config.ts'
+
+jobs:
+  phasec-app-contract-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Build app
+        run: npm run build
+
+      - name: Run canonical CE route smoke
+        env:
+          PLAYWRIGHT_HOST: 127.0.0.1
+          PLAYWRIGHT_PORT: 4173
+          TEST_TENANT: demo
+          TEST_EMAIL: admin@demo.com
+          TEST_PASSWORD: Admin123!
+        run: |
+          npx playwright test tests/e2e/02_reports_and_ce.spec.ts --project=desktop-chromium
+          npx playwright test tests/e2e/phase-11/ce-dossier-network-clean.spec.ts --project=desktop-chromium
+          npx playwright test tests/e2e/phase-d/live-route-proof.spec.ts --project=desktop-chromium
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phasec-app-contract-smoke-report
+          path: |
+            playwright-report
+            test-results

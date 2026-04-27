@@ -1,0 +1,31 @@
+CLEAN REPO PACKAGE – BUILD K
+
+This package is intentionally cleaned to keep the ZIP smaller while remaining complete for source control and rebuild.
+
+Removed from the ZIP:
+- .git/
+- node_modules/
+- dist/
+- playwright-report/
+- test-results/
+- tsconfig.app.tsbuildinfo
+
+Kept in the ZIP:
+- full src/
+- tests/
+- scripts/
+- docs/
+- release/
+- assets/
+- .github/
+- env example/production files
+- Build K proof report
+
+Rebuild commands:
+1. npm ci
+2. npm run build
+3. npx playwright install
+4. npx playwright test
+
+Reason Build K is not fully proven in this environment:
+- browser/network restrictions blocked the final live Playwright proof run.

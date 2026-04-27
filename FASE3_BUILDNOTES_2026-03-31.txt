@@ -1,0 +1,23 @@
+FASE 3 — HARDENING + UX FINAL
+
+Uitgevoerd:
+- Proactieve sessievernieuwing toegevoegd in SessionProvider:
+  - interval refresh elke 10 minuten
+  - refresh bij terugkomen naar zichtbare tab
+  - bestaande sessie blijft intact als refresh tijdelijk faalt
+- CE dossier robuuster gemaakt:
+  - fallback naar samengestelde live projectdata als CE endpoints falen
+  - exporthistorie valt veilig terug naar lege lijst als exports endpoint faalt
+- CE snelle actiebalk toegevoegd en sticky gemaakt:
+  - CE rapport
+  - PDF
+  - ZIP
+  - Excel
+  - Vernieuwen
+- Exportsortering verbeterd op echte datumvolgorde
+- CSS hardening toegevoegd voor sticky CE actiebalk en consistente status-opmaak
+
+Buildresultaat:
+- TypeScript build: PASS
+- Vite production build: PASS
+- Alleen chunk size warning, geen blocker

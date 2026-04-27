@@ -1,0 +1,12 @@
+name = "nen-1090-app"
+compatibility_date = "2025-01-01"
+
+[vars]
+# Primaire variabele voor Azure backend URL
+AZURE_API_ORIGIN = "https://nen1090-api-prod-f5ddagedbrftb4ew.westeurope-01.azurewebsites.net"
+# Backwards-compatible alias (kan worden verwijderd als alles up-to-date is)
+BACKEND_API_BASE = "https://nen1090-api-prod-f5ddagedbrftb4ew.westeurope-01.azurewebsites.net"
+
+# Opmerking: Overschrijf AZURE_API_ORIGIN in Cloudflare Pages Dashboard:
+# Settings > Environment variables > AZURE_API_ORIGIN
+# Zodat bij een Azure-domeinwijziging alleen de dashboard-setting hoeft te worden aangepast.

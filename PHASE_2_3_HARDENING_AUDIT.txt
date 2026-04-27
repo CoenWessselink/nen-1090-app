@@ -1,0 +1,26 @@
+FASE 2+3 HARDENING AUDIT
+
+Uitgevoerd in deze ronde:
+- Rapportage direct inline PDF-paneel toegevoegd.
+- Rapportage zoeken werkt op projectnaam, projectnummer en opdrachtgever.
+- Reports fallback verrijkt met project_name, projectnummer, client_name en pdf_url.
+- Inspectietemplates manager vervangen van stub naar werkende CRUD-beheerlaag met EXC1-EXC4 presets.
+- Normbasis zichtbaar gemaakt: NEN-EN 1090 / ISO 3834 / ISO 5817.
+- Inspectietemplates leveren controlepunten voor lascontrole.
+- Fase-2 en fase-3 Playwright specs aangescherpt op project header, tabs, rapportage zoekveld en PDF-paneel.
+
+Aangepaste bestanden:
+- src/api/reports.ts
+- src/features/rapportage/RapportagePage.tsx
+- src/features/instellingen/components/InspectionTemplatesManager.tsx
+- tests/e2e/phase2-weld-inspection.spec.ts
+- tests/e2e/phase3-ui-validation.spec.ts
+- tests/e2e/phase3-rapportage-pdf.spec.ts
+
+Lokale validatie:
+- npm run typecheck = OK
+- npm run build = OK
+
+Niet bewezen in deze container:
+- Live backend contracten op productie
+- Volledige live Playwright-run tegen Cloudflare/Azure
