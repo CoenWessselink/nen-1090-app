@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
-import { AlertTriangle, ArrowLeft, Camera, CheckCircle2, FileUp, History, Save, ShieldCheck, XCircle } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Camera, CheckCircle2, FileUp, Save, ShieldCheck, XCircle } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { createWeldNonconformity, getWeldInspection, saveWeldInspection, uploadWeldInspectionAttachment, type InspectionTemplateItem, type InspectionTemplateSection, type WeldInspectionRun } from '@/api/norms';
 import { getProject } from '@/api/projects';
@@ -21,16 +21,16 @@ function toneFor(value?: string) { if (value === 'conform') return '#16a34a'; if
 function normText(item: InspectionTemplateItem) { return item.norm_reference || item.norm_code || 'Standard not linked'; }
 
 const s: Record<string, CSSProperties> = {
-  grid: { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 300px', gap: 18, alignItems: 'start' },
-  meta: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 14 },
+  grid: { display: 'block', maxWidth: 1480, margin: '0 auto' },
+  meta: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 14 },
   card: { background: '#fff', border: '1px solid #dbe7f7', borderRadius: 18, boxShadow: '0 18px 40px rgba(15,23,42,.06)' },
-  phase: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 12, marginBottom: 16 },
+  phase: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 16 },
   phaseBtn: { padding: 16, border: '1px solid #dbe7f7', borderRadius: 16, background: '#fff', textAlign: 'left', cursor: 'pointer', minWidth: 0 },
   item: { padding: 16, marginBottom: 12, border: '1px solid #dbe7f7', borderRadius: 18, background: '#fff', overflow: 'hidden' },
   statusRow: { display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10, margin: '14px 0' },
-  fieldGrid: { display: 'grid', gridTemplateColumns: 'minmax(160px, 240px) minmax(220px, 1fr)', gap: 12 },
+  fieldGrid: { display: 'grid', gridTemplateColumns: 'minmax(180px, 280px) minmax(280px, 1fr)', gap: 12, alignItems: 'start' },
   input: { width: '100%', border: '1px solid #cfe0f7', borderRadius: 12, padding: '12px 14px', fontSize: 14, background: '#fff' },
-  sticky: { position: 'sticky', bottom: 0, zIndex: 10, display: 'grid', gridTemplateColumns: 'minmax(170px, 1fr) minmax(210px, 1.4fr)', gap: 12, padding: 14, marginTop: 16, background: 'rgba(248,251,255,.94)', backdropFilter: 'blur(12px)', borderTop: '1px solid #dbe7f7' },
+  sticky: { position: 'sticky', bottom: 0, zIndex: 10, display: 'grid', gridTemplateColumns: 'minmax(170px, 1fr) minmax(210px, 1.2fr)', gap: 12, padding: 14, marginTop: 16, background: 'rgba(248,251,255,.94)', backdropFilter: 'blur(12px)', borderTop: '1px solid #dbe7f7' },
 };
 
 export function WeldInspectionDetailPage() {
@@ -62,7 +62,7 @@ export function WeldInspectionDetailPage() {
         const results = Array.isArray(inspection.results) ? inspection.results : [];
         (inspection.sections || []).forEach((section) => (section.items || []).forEach((item) => {
           const match = results.find((result) => result.code === item.code || (result as any).template_item_code === item.code || (result as any).item_code === item.code);
-          next[itemKey(section, item)] = { ...item, ...match, result: match?.result || item.result || 'in_control', comment: match?.comment || item.comment || '' };
+          next[itemKey(section, item)] = { ...item, ...match, result: match?.result || item.result || 'conform', comment: match?.comment || item.comment || '' };
         }));
         setValues(next);
         setSelectedSection(inspection.sections?.[0]?.code || '');
@@ -77,7 +77,6 @@ export function WeldInspectionDetailPage() {
   const activeSection = sections.find((section) => section.code === selectedSection) || sections[0];
   const allItems = useMemo(() => sections.flatMap((section) => (section.items || []).map((item) => values[itemKey(section, item)] || item)), [sections, values]);
   const overall = calcOverall(allItems);
-  const counts = useMemo(() => ({ compliant: allItems.filter((i) => i.result === 'conform').length, control: allItems.filter((i) => !i.result || i.result === 'in_control' || i.result === 'not_checked').length, failed: allItems.filter((i) => i.result === 'not_conform' || i.result === 'repair_required').length }), [allItems]);
 
   function patch(section: InspectionTemplateSection, item: InspectionTemplateItem, next: Partial<InspectionTemplateItem>) {
     const key = itemKey(section, item);
@@ -87,7 +86,7 @@ export function WeldInspectionDetailPage() {
   async function handleSave() {
     setSaving(true); setError(null); setMessage(null);
     try {
-      const payload = { notes, status: overall, overall_status: overall, result: overall, results: allItems.map((item) => ({ template_item_code: item.code, item_code: item.code, code: item.code, section_code: (item as any).section_code, result: item.result || 'in_control', status: item.result || 'in_control', measured_value: item.measured_value || '', comment: item.comment || '', remark: item.comment || '', norm_code: item.norm_code, norm_reference: item.norm_reference, label: item.label, approved: item.result === 'conform' })) };
+      const payload = { notes, status: overall, overall_status: overall, result: overall, results: allItems.map((item) => ({ template_item_code: item.code, item_code: item.code, code: item.code, section_code: (item as any).section_code, result: item.result || 'conform', status: item.result || 'conform', measured_value: item.measured_value || '', comment: item.comment || '', remark: item.comment || '', norm_code: item.norm_code, norm_reference: item.norm_reference, label: item.label, approved: item.result !== 'not_conform' && item.result !== 'repair_required' })) };
       const saved = await saveWeldInspection(projectId, weldId, payload);
       setRun(saved);
       setMessage('Inspection saved.');
@@ -120,10 +119,10 @@ export function WeldInspectionDetailPage() {
       {loading ? <div className="mobile-state-card">Loading inspection…</div> : null}
       {error ? <div className="mobile-state-card mobile-state-card-error">{error}</div> : null}
       {message ? <div className="mobile-state-card mobile-state-card-success">{message}</div> : null}
-      {!loading && run ? <div style={s.grid} className="weld-inspection-layout clean-inspection">
+      {!loading && run ? <div style={s.grid} className="weld-inspection-layout clean-inspection inspection-full-width">
         <section>
           <div style={s.meta} className="inspection-meta-grid">
-            {[['Project', project?.name || projectId], ['Weld', String((weld as any)?.weld_number || (weld as any)?.number || weldId)], ['Material', String((weld as any)?.material || '—')], ['Welder', String((weld as any)?.welder_name || '—')], ['Status', pretty(overall)]].map(([label, value]) => <div key={label} style={{ ...s.card, padding: 16 }} className="inspection-meta-card"><span>{label}</span><strong style={{ color: label === 'Status' ? toneFor(overall) : '#0f172a' }}>{value}</strong></div>)}
+            {[['Project', project?.name || projectId], ['Weld', String((weld as any)?.weld_number || (weld as any)?.number || weldId)], ['Material', String((weld as any)?.material || '—')], ['Welder', String((weld as any)?.welder_name || '—')], ['Inspection status', pretty(overall)]].map(([label, value]) => <div key={label} style={{ ...s.card, padding: 16 }} className="inspection-meta-card"><span>{label}</span><strong style={{ color: label === 'Inspection status' ? toneFor(overall) : '#0f172a' }}>{value}</strong></div>)}
           </div>
 
           <div style={s.phase} className="inspection-phase-grid-clean">{sections.map((section) => { const items = section.items || []; const resolved = items.map((item) => values[itemKey(section, item)] || item); const done = resolved.filter((item) => item.result === 'conform' || item.result === 'not_applicable').length; const active = selectedSection === section.code; return <button key={section.code} type="button" style={{ ...s.phaseBtn, borderBottom: active ? '4px solid #2563eb' : '4px solid #22c55e' }} onClick={() => setSelectedSection(section.code)}><strong>{section.name}</strong><span>{done}/{items.length}</span></button>; })}</div>
@@ -133,7 +132,6 @@ export function WeldInspectionDetailPage() {
           <div style={{ ...s.card, padding: 16, marginTop: 14 }} className="inspection-notes-clean"><label><strong>General remarks</strong><textarea style={{ ...s.input, minHeight: 80, marginTop: 8 }} value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Add general remarks" /></label></div>
           <div style={s.sticky} className="inspection-sticky-actions"><button className="mobile-secondary-button" onClick={() => handleCreateNc()}><AlertTriangle size={16} /> Create NC</button><button className="mobile-primary-button" disabled={saving} onClick={handleSave}><Save size={16} /> {saving ? 'Saving…' : 'Save & close'}</button></div>
         </section>
-        <aside className="inspection-side-clean"><div style={{ ...s.card, padding: 18 }}><h3><ShieldCheck size={18} /> Status</h3><strong style={{ color: toneFor(overall) }}>{pretty(overall)}</strong></div><div style={{ ...s.card, padding: 18 }}><h3>Summary</h3><p>Total <strong>{allItems.length}</strong></p><p>Compliant <strong style={{ color: '#16a34a' }}>{counts.compliant}</strong></p><p>In control <strong style={{ color: '#2563eb' }}>{counts.control}</strong></p><p>Non-compliant <strong style={{ color: '#dc2626' }}>{counts.failed}</strong></p></div><div style={{ ...s.card, padding: 18 }}><h3><History size={18} /> History</h3>{(run.history || []).length ? (run.history || []).map((row, idx) => <p key={idx}>{String(row.action || row.status || 'Change')}</p>) : <p>No history.</p>}</div></aside>
       </div> : null}
     </MobilePageScaffold>
   );
