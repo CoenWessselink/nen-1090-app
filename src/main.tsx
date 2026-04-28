@@ -1,11 +1,3 @@
-
-
-// --- SMOKE FIX GUARD ---
-document.body.style.display = "block";
-document.body.style.visibility = "visible";
-document.body.style.opacity = "1";
-// --- END FIX ---
-
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { AppProviders } from '@/app/providers/AppProviders';

@@ -1,8 +1,0 @@
-cd C:\NEN1090\nen-1090-app
-
-npm install
-npm run build
-
-git add src/api/documents.ts src/features/welds/WeldInspectionDetailPage.tsx
-git commit -m "fix: restore document API exports for app phase 3"
-git push -u origin main

@@ -1,1 +1,0 @@
-DELETE src/app/router/routes.ts (old file causes TS build error)
