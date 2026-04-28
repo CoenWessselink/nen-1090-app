@@ -2,7 +2,10 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 
 function App() {
-  return <div id="root">App Loaded</div>;
+  return <div style={{display:"block"}}>APP_READY</div>;
 }
 
-ReactDOM.createRoot(document.getElementById("root")!).render(<App />);
+const root = document.getElementById("root");
+if (root) {
+  ReactDOM.createRoot(root).render(<App />);
+}
