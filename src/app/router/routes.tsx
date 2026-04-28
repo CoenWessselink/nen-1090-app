@@ -22,7 +22,6 @@ export const routes = [
   },
 ];
 
-// BACKWARD COMPAT
 export const routerConfig = routes;
 
 export const appRouteMeta = routes.map((route: any) => ({
