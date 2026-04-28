@@ -20,6 +20,16 @@ function calcOverall(items: InspectionTemplateItem[]) { if (items.some((i) => ['
 function toneFor(value?: string) { if (value === 'conform') return '#16a34a'; if (value === 'not_conform' || value === 'repair_required') return '#dc2626'; return '#2563eb'; }
 function normText(item: InspectionTemplateItem) { return item.norm_reference || item.norm_code || 'Standard not linked'; }
 
+
+function weldDisplayName(weld: Weld | null, fallback = 'Las zonder nummer') {
+  const record = weld as any;
+  const raw = String(record?.weld_no || record?.weld_number || record?.number || record?.display_name || '').trim();
+  if (raw && raw.toLowerCase() !== 'null' && raw.toLowerCase() !== 'none') return raw;
+  const location = String(record?.location || '').trim();
+  if (location && location !== '-' && location !== '—') return `Las zonder nummer · ${location}`;
+  return fallback;
+}
+
 const s: Record<string, CSSProperties> = {
   grid: { display: 'block', maxWidth: 1480, margin: '0 auto' },
   meta: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 14 },
@@ -115,14 +125,14 @@ export function WeldInspectionDetailPage() {
   }
 
   return (
-    <MobilePageScaffold title={`Weld inspection ${String((weld as any)?.weld_number || (weld as any)?.number || weldId)}`} backTo={`/projecten/${projectId}/lassen`} rightSlot={<button className="mobile-icon-button" onClick={() => navigate(`/projecten/${projectId}/lassen`)} aria-label="Back"><ArrowLeft size={18} /></button>}>
+    <MobilePageScaffold title={`Weld inspection ${weldDisplayName(weld)}`} backTo={`/projecten/${projectId}/lassen`} rightSlot={<button className="mobile-icon-button" onClick={() => navigate(`/projecten/${projectId}/lassen`)} aria-label="Back"><ArrowLeft size={18} /></button>}>
       {loading ? <div className="mobile-state-card">Loading inspection…</div> : null}
       {error ? <div className="mobile-state-card mobile-state-card-error">{error}</div> : null}
       {message ? <div className="mobile-state-card mobile-state-card-success">{message}</div> : null}
       {!loading && run ? <div style={s.grid} className="weld-inspection-layout clean-inspection inspection-full-width">
         <section>
           <div style={s.meta} className="inspection-meta-grid">
-            {[['Project', project?.name || projectId], ['Weld', String((weld as any)?.weld_number || (weld as any)?.number || weldId)], ['Material', String((weld as any)?.material || '—')], ['Welder', String((weld as any)?.welder_name || '—')], ['Inspection status', pretty(overall)]].map(([label, value]) => <div key={label} style={{ ...s.card, padding: 16 }} className="inspection-meta-card"><span>{label}</span><strong style={{ color: label === 'Inspection status' ? toneFor(overall) : '#0f172a' }}>{value}</strong></div>)}
+            {[['Project', project?.name || projectId], ['Weld', weldDisplayName(weld)], ['Material', String((weld as any)?.material || '—')], ['Welder', String((weld as any)?.welder_name || '—')], ['Inspection status', pretty(overall)]].map(([label, value]) => <div key={label} style={{ ...s.card, padding: 16 }} className="inspection-meta-card"><span>{label}</span><strong style={{ color: label === 'Inspection status' ? toneFor(overall) : '#0f172a' }}>{value}</strong></div>)}
           </div>
 
           <div style={s.phase} className="inspection-phase-grid-clean">{sections.map((section) => { const items = section.items || []; const resolved = items.map((item) => values[itemKey(section, item)] || item); const done = resolved.filter((item) => item.result === 'conform' || item.result === 'not_applicable').length; const active = selectedSection === section.code; return <button key={section.code} type="button" style={{ ...s.phaseBtn, borderBottom: active ? '4px solid #2563eb' : '4px solid #22c55e' }} onClick={() => setSelectedSection(section.code)}><strong>{section.name}</strong><span>{done}/{items.length}</span></button>; })}</div>
