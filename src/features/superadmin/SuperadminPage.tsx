@@ -1,41 +1,41 @@
-// PATCHED HANDLERS
+import React, { useState } from "react";
+import { useTenantUserActions } from "@/hooks/useTenantUserActions";
 
-const handleDeleteUser = async (userId: string) => {
-  if (!confirm("Gebruiker verwijderen?")) return;
+type TenantUser = {
+  id: string;
+  email: string;
+  is_active: boolean;
+};
 
-  try {
+export default function SuperadminPage() {
+  const tenantUserActions = useTenantUserActions();
+  const [users, setUsers] = useState<TenantUser[]>([]);
+  const [editingUser, setEditingUser] = useState<TenantUser | null>(null);
+
+  const handleDeleteUser = async (userId: string) => {
+    if (!confirm("Delete user?")) return;
     await tenantUserActions.deleteUser.mutateAsync(userId);
-    refreshMessage("Gebruiker verwijderd.");
-  } catch (e) {
-    refreshMessage(e instanceof Error ? e.message : "Verwijderen mislukt");
-  }
-};
+    setUsers(prev => prev.filter(u => u.id !== userId));
+  };
 
-const handleUpdateUser = async () => {
-  if (!editingUser) return;
-
-  try {
-    await tenantUserActions.updateUser.mutateAsync({
-      userId: editingUser.id,
-      data: tenantUserEditForm,
-    });
-
-    setEditingUser(null);
-    refreshMessage("Gebruiker bijgewerkt.");
-  } catch (e) {
-    refreshMessage(e instanceof Error ? e.message : "Update mislukt");
-  }
-};
-
-const toggleUserActive = async (user: any) => {
-  try {
+  const toggleUserActive = async (user: TenantUser) => {
     await tenantUserActions.updateUser.mutateAsync({
       userId: user.id,
-      data: { is_active: !user.is_active },
+      data: { is_active: !user.is_active }
     });
+    setUsers(prev => prev.map(u => u.id === user.id ? {...u, is_active: !u.is_active} : u));
+  };
 
-    refreshMessage("Status aangepast.");
-  } catch (e) {
-    refreshMessage(e instanceof Error ? e.message : "Toggle mislukt");
-  }
-};
+  return (
+    <div style={{ padding: 20 }}>
+      <h1>Superadmin</h1>
+      {users.map(user => (
+        <div key={user.id}>
+          {user.email}
+          <button onClick={() => toggleUserActive(user)}>Toggle</button>
+          <button onClick={() => handleDeleteUser(user.id)}>Delete</button>
+        </div>
+      ))}
+    </div>
+  );
+}
