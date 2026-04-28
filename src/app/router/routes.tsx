@@ -1,31 +1,43 @@
-import React, { Suspense } from "react";
-import { Navigate, RouteObject } from "react-router-dom";
-import SuperadminPage from "@/features/superadmin/SuperadminPage";
+import { lazy } from "react";
 
-const Loading = () => <div className="page-stack">Loading...</div>;
+// IMPORTANT: this file MUST be TSX because it contains JSX elements
 
-const lazyPage = (factory: () => Promise<{ default: React.ComponentType }>) => {
-  const Component = React.lazy(factory);
-  return (
-    <Suspense fallback={<Loading />}>
-      <Component />
-    </Suspense>
-  );
-};
+const DashboardPage = lazy(() => import("@/pages/DashboardPage"));
+const ProjectsPage = lazy(() => import("@/pages/projects/ProjectsPage"));
+const LoginPage = lazy(() => import("@/pages/LoginPage"));
 
-export const routes: RouteObject[] = [
+export const routes = [
   {
     path: "/",
-    element: <Navigate to="/dashboard" replace />,
+    element: <DashboardPage />,
+    meta: {
+      title: "Dashboard",
+      requiresAuth: true,
+    },
   },
   {
-    path: "/superadmin",
-    element: <SuperadminPage />,
+    path: "/projects",
+    element: <ProjectsPage />,
+    meta: {
+      title: "Projecten",
+      requiresAuth: true,
+    },
   },
   {
-    path: "*",
-    element: lazyPage(() => import("@/app/router/AppRoutes")),
+    path: "/login",
+    element: <LoginPage />,
+    meta: {
+      title: "Login",
+      requiresAuth: false,
+    },
   },
 ];
 
-export default routes;
+// BACKWARD COMPAT (FIX BUILD)
+export const routerConfig = routes;
+
+export const appRouteMeta = routes.map((route: any) => ({
+  path: route.path,
+  title: route.meta?.title || "",
+  requiresAuth: route.meta?.requiresAuth ?? false,
+}));
