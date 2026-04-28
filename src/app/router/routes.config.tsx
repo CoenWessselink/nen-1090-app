@@ -1,23 +1,31 @@
-import { lazy } from "react";
+import { lazy, type ElementType, type LazyExoticComponent, type ComponentType } from "react";
 
 const DashboardPage = lazy(() => import("@/pages/DashboardPage"));
 const ProjectsPage = lazy(() => import("@/pages/projects/ProjectsPage"));
 const LoginPage = lazy(() => import("@/pages/LoginPage"));
 
+export type AppRouteMeta = {
+  title: string;
+  requiresAuth: boolean;
+  label?: string;
+  roles?: string[];
+  icon?: ElementType;
+  description?: string;
+  keywords?: string[];
+  showInSidebar?: boolean;
+};
+
 export type AppRoute = {
   path: string;
-  element: any;
-  meta: {
-    title: string;
-    requiresAuth: boolean;
-    label?: string;
-    roles?: string[];
-    icon?: string;
-    description?: string;
-    keywords?: string[];
-    showInSidebar?: boolean;
-  };
+  element: JSX.Element;
+  meta: AppRouteMeta;
 };
+
+export type AppRouteMetaEntry = AppRouteMeta & {
+  path: string;
+};
+
+const NoopIcon: ElementType = () => null;
 
 export const routes: AppRoute[] = [
   {
@@ -27,6 +35,9 @@ export const routes: AppRoute[] = [
       title: "Dashboard",
       requiresAuth: true,
       label: "Dashboard",
+      icon: NoopIcon,
+      description: "Dashboard overzicht",
+      keywords: ["dashboard", "overzicht"],
       showInSidebar: true,
     },
   },
@@ -37,6 +48,9 @@ export const routes: AppRoute[] = [
       title: "Projecten",
       requiresAuth: true,
       label: "Projecten",
+      icon: NoopIcon,
+      description: "Projectbeheer",
+      keywords: ["projecten", "projectbeheer"],
       showInSidebar: true,
     },
   },
@@ -46,10 +60,18 @@ export const routes: AppRoute[] = [
     meta: {
       title: "Login",
       requiresAuth: false,
+      label: "Login",
+      icon: NoopIcon,
+      description: "Inloggen",
+      keywords: ["login", "auth"],
+      showInSidebar: false,
     },
   },
 ];
 
-export const routerConfig = routes;
+export const routerConfig: AppRoute[] = routes;
 
-export const appRouteMeta = routes.map((r) => r.meta);
+export const appRouteMeta: AppRouteMetaEntry[] = routes.map((route) => ({
+  path: route.path,
+  ...route.meta,
+}));
