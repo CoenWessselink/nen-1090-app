@@ -1,1 +1,1 @@
-export { routes, routerConfig, appRouteMeta } from "./routes";
+export { routes, routerConfig, appRouteMeta } from "./routes.config";
