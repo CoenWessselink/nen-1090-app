@@ -9,22 +9,7 @@ import LoginPage from '@/features/auth/LoginPage';
 import ActivateAccountPage from '@/features/auth/ActivateAccountPage';
 import { ForgotPasswordPage } from '@/features/auth/ForgotPasswordPage';
 import { ResetPasswordPage } from '@/features/auth/ResetPasswordPage';
-
-export type AppRouteMeta = {
-  path: string;
-  label: string;
-  icon?: any;
-  roles?: string[];
-  showInSidebar?: boolean;
-  description?: string;
-  keywords?: string[];
-};
-
-export const appRouteMeta: AppRouteMeta[] = [
-  { path: '/dashboard', label: 'Dashboard', showInSidebar: true },
-  { path: '/projecten', label: 'Projecten', showInSidebar: true },
-  { path: '/billing', label: 'Billing', showInSidebar: true }
-];
+import SuperadminBillingPage from '@/features/superadmin/SuperadminBillingPage';
 
 export const routerConfig = [
   { path: '/login', element: <LoginPage /> },
@@ -42,7 +27,8 @@ export const routerConfig = [
     children: [
       { path: 'dashboard', element: <MobileDashboardPage /> },
       { path: 'projecten', element: <MobileProjectsPage /> },
-      { path: 'billing', element: <BillingPage /> }
+      { path: 'billing', element: <BillingPage /> },
+      { path: 'superadmin/billing', element: <SuperadminBillingPage /> }
     ]
   },
   { path: '*', element: <Navigate to="/dashboard" replace /> }
