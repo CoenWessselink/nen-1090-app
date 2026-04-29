@@ -7,6 +7,13 @@ import BillingPage from '@/features/billing/BillingPage';
 import BillingSuccessPage from '@/features/billing/BillingSuccessPage';
 import LoginPage from '@/features/auth/LoginPage';
 
+// FIX: restore appRouteMeta for components that depend on it
+export const appRouteMeta = [
+  { path: '/dashboard', label: 'Dashboard' },
+  { path: '/projecten', label: 'Projecten' },
+  { path: '/billing', label: 'Billing' }
+];
+
 export const routerConfig = [
   { path: '/login', element: <LoginPage /> },
   { path: '/billing/success', element: <BillingSuccessPage /> },
