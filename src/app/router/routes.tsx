@@ -7,11 +7,21 @@ import BillingPage from '@/features/billing/BillingPage';
 import BillingSuccessPage from '@/features/billing/BillingSuccessPage';
 import LoginPage from '@/features/auth/LoginPage';
 
-// FIX: restore appRouteMeta for components that depend on it
-export const appRouteMeta = [
-  { path: '/dashboard', label: 'Dashboard' },
-  { path: '/projecten', label: 'Projecten' },
-  { path: '/billing', label: 'Billing' }
+// FIX: full meta type to satisfy all components using it
+export type AppRouteMeta = {
+  path: string;
+  label: string;
+  icon?: any;
+  roles?: string[];
+  showInSidebar?: boolean;
+  description?: string;
+  keywords?: string[];
+};
+
+export const appRouteMeta: AppRouteMeta[] = [
+  { path: '/dashboard', label: 'Dashboard', showInSidebar: true },
+  { path: '/projecten', label: 'Projecten', showInSidebar: true },
+  { path: '/billing', label: 'Billing', showInSidebar: true }
 ];
 
 export const routerConfig = [
