@@ -11,6 +11,14 @@ import { ForgotPasswordPage } from '@/features/auth/ForgotPasswordPage';
 import { ResetPasswordPage } from '@/features/auth/ResetPasswordPage';
 import SuperadminBillingPage from '@/features/superadmin/SuperadminBillingPage';
 
+// 🔴 CRITICAL FIX: restore appRouteMeta (used in multiple components)
+export const appRouteMeta = [
+  { path: '/dashboard', label: 'Dashboard', showInSidebar: true },
+  { path: '/projecten', label: 'Projecten', showInSidebar: true },
+  { path: '/billing', label: 'Billing', showInSidebar: true },
+  { path: '/superadmin/billing', label: 'Superadmin Billing', showInSidebar: false }
+];
+
 export const routerConfig = [
   { path: '/login', element: <LoginPage /> },
   { path: '/forgot-password', element: <ForgotPasswordPage /> },
