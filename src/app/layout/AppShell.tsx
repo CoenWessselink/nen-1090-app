@@ -70,9 +70,9 @@ export function AppShell({ children }: PropsWithChildren) {
       <Sidebar mobileOpen={sidebarOpen} />
       <div className="shell-main">
         <Topbar />
-        <main className="page-canvas">
+        <div className="page-canvas" data-testid="app-main">
           {children ?? <Outlet />}
-        </main>
+        </div>
         <MobileTabbar />
       </div>
       <NotificationCenter />
