@@ -1,6 +1,15 @@
 import { optionalRequest } from '@/api/client';
 import type { BillingStatus } from '@/types/domain';
 
+export type BillingPreviewRequest = {
+  target_seats?: number;
+  targetSeats?: number;
+  seats?: number;
+  plan_code?: string;
+  targetPlan?: string;
+  plan?: string;
+};
+
 export type BillingCheckoutRequest = {
   seats: number;
   plan?: string;
@@ -8,6 +17,10 @@ export type BillingCheckoutRequest = {
   billing_cycle?: 'monthly' | 'yearly';
   accepted_terms?: boolean;
   accepted_recurring_payment?: boolean;
+  target_seats?: number;
+  targetSeats?: number;
+  targetPlan?: string;
+  plan_code?: string;
 };
 
 export type BillingCheckoutResponse = {
@@ -31,14 +44,23 @@ function positiveInt(value: unknown, fallback = 1): number {
 
 function normalizeCheckoutPayload(payload: BillingCheckoutRequest): Record<string, unknown> {
   const billingCycle = payload.billing_cycle || (payload.billing === 'monthly' ? 'monthly' : 'yearly');
+  const seats = positiveInt(payload.seats ?? payload.target_seats ?? payload.targetSeats, 1);
   return {
-    seats: positiveInt(payload.seats, 1),
+    seats,
+    target_seats: seats,
     billing_cycle: billingCycle,
     billing: billingCycle,
-    plan: payload.plan || 'core',
+    plan: payload.plan || payload.plan_code || payload.targetPlan || 'core',
+    plan_code: payload.plan_code || payload.plan || payload.targetPlan || 'core',
     accepted_terms: payload.accepted_terms ?? true,
     accepted_recurring_payment: payload.accepted_recurring_payment ?? true,
   };
+}
+
+function normalizePreviewPayload(payload?: BillingPreviewRequest): Record<string, unknown> {
+  const seats = positiveInt(payload?.target_seats ?? payload?.targetSeats ?? payload?.seats, 1);
+  const planCode = payload?.plan_code ?? payload?.targetPlan ?? payload?.plan ?? 'core';
+  return { target_seats: seats, seats, plan_code: planCode, plan: planCode };
 }
 
 export function getTenantBillingStatus() {
@@ -70,6 +92,17 @@ export function getBillingPlans() {
   ]);
 }
 
+export function getTenantBillingPreview(payload?: BillingPreviewRequest) {
+  return optionalRequest<Record<string, unknown>>([
+    '/tenant/billing/preview',
+    '/billing/preview',
+    '/billing/plans',
+  ], {
+    method: 'POST',
+    body: JSON.stringify(normalizePreviewPayload(payload)),
+  });
+}
+
 export function createTenantBillingCheckout(payload: BillingCheckoutRequest) {
   const body = JSON.stringify(normalizeCheckoutPayload(payload));
   return optionalRequest<BillingCheckoutResponse>([
@@ -82,16 +115,21 @@ export function createTenantBillingCheckout(payload: BillingCheckoutRequest) {
   });
 }
 
-export function changeTenantSeats(payload: BillingCheckoutRequest) {
-  const body = JSON.stringify(normalizeCheckoutPayload(payload));
+export function changeTenantSeats(payload: BillingCheckoutRequest | Record<string, unknown>) {
+  const body = JSON.stringify(normalizeCheckoutPayload(payload as BillingCheckoutRequest));
   return optionalRequest<BillingCheckoutResponse>([
     '/billing/change-seats',
     '/tenant/billing/change-plan',
     '/tenant/billing/change',
+    '/billing/change-plan',
   ], {
     method: 'POST',
     body,
   });
+}
+
+export function changeTenantPlan(payload: BillingCheckoutRequest | Record<string, unknown>) {
+  return changeTenantSeats(payload);
 }
 
 export function retryTenantPayment() {
