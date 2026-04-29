@@ -6,8 +6,8 @@ import { MobileProjectsPage } from '@/features/mobile/MobileProjectsPage';
 import BillingPage from '@/features/billing/BillingPage';
 import BillingSuccessPage from '@/features/billing/BillingSuccessPage';
 import LoginPage from '@/features/auth/LoginPage';
+import ActivateAccountPage from '@/features/auth/ActivateAccountPage';
 
-// FIX: full meta type to satisfy all components using it
 export type AppRouteMeta = {
   path: string;
   label: string;
@@ -26,6 +26,7 @@ export const appRouteMeta: AppRouteMeta[] = [
 
 export const routerConfig = [
   { path: '/login', element: <LoginPage /> },
+  { path: '/activate', element: <ActivateAccountPage /> },
   { path: '/billing/success', element: <BillingSuccessPage /> },
   {
     path: '/',
