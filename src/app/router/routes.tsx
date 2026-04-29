@@ -7,6 +7,8 @@ import BillingPage from '@/features/billing/BillingPage';
 import BillingSuccessPage from '@/features/billing/BillingSuccessPage';
 import LoginPage from '@/features/auth/LoginPage';
 import ActivateAccountPage from '@/features/auth/ActivateAccountPage';
+import { ForgotPasswordPage } from '@/features/auth/ForgotPasswordPage';
+import { ResetPasswordPage } from '@/features/auth/ResetPasswordPage';
 
 export type AppRouteMeta = {
   path: string;
@@ -26,6 +28,8 @@ export const appRouteMeta: AppRouteMeta[] = [
 
 export const routerConfig = [
   { path: '/login', element: <LoginPage /> },
+  { path: '/forgot-password', element: <ForgotPasswordPage /> },
+  { path: '/reset-password', element: <ResetPasswordPage /> },
   { path: '/activate', element: <ActivateAccountPage /> },
   { path: '/billing/success', element: <BillingSuccessPage /> },
   {
