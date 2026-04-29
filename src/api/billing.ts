@@ -71,6 +71,12 @@ export function getTenantBillingStatus() {
   ]);
 }
 
+export function getBillingPaymentStatus(paymentId: string) {
+  return optionalRequest<Record<string, unknown>>([
+    `/billing/payment-status/${encodeURIComponent(paymentId)}`,
+  ]);
+}
+
 export function getTenantBillingInvoices() {
   return optionalRequest<Record<string, unknown>>([
     '/billing/invoices',
