@@ -79,13 +79,19 @@ export function createCeReport(projectId: string | number) {
 
 export async function createPdfExport(projectId: string | number) {
   const result = await apiRequest<Record<string, unknown>>(`/projects/${projectId}/exports/pdf`, { method: 'POST' });
+  const premiumPdfPath = `/projects/${projectId}/exports/compliance/pdf?download=true&force=true`;
+  const premiumViewerPath = `/projects/${projectId}/exports/compliance/pdf?download=false&force=true`;
   return {
     ...(result || {}),
     type: 'pdf',
     export_type: 'pdf',
     project_id: String(projectId),
-    download_url: (result as any)?.download_url || `/projects/${projectId}/exports/pdf`,
-    viewer_url: (result as any)?.viewer_url || `/projects/${projectId}/exports/pdf`,
+    title: 'CE-dossier PDF',
+    label: 'CE-dossier downloaden',
+    download_url: (result as any)?.download_url || premiumPdfPath,
+    viewer_url: (result as any)?.viewer_url || premiumViewerPath,
+    fallback_download_url: premiumPdfPath,
+    fallback_viewer_url: premiumViewerPath,
   };
 }
 
@@ -103,4 +109,8 @@ export function retryProjectExport(projectId: string | number, exportId: string 
 
 export function downloadProjectExport(projectId: string | number, exportId: string | number) {
   return downloadRequest(`/projects/${projectId}/exports/${exportId}/download`);
+}
+
+export function downloadPremiumCeDossierPdf(projectId: string | number) {
+  return downloadRequest(`/projects/${projectId}/exports/compliance/pdf?download=true&force=true`);
 }

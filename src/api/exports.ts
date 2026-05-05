@@ -1,15 +1,24 @@
 import { downloadUrlAsBlob } from './client';
 
 const safePart = (value?: string | null, fallback = 'Project') => {
-  const cleaned = String(value || '').trim().replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, ' ');
+  const cleaned = String(value || '')
+    .trim()
+    .replace(/[\\/:*?"<>|]+/g, '-')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
   return cleaned || fallback;
 };
 
-const buildDossierFilename = (projectId: string, project?: { name?: string | null; code?: string | null; client_name?: string | null }) => {
-  const projectName = safePart(project?.name, 'Project');
-  const projectCode = safePart(project?.code || projectId, projectId);
-  const client = safePart(project?.client_name, 'Client');
-  return `${projectName} - ${projectCode} - ${client}.pdf`;
+const today = () => new Date().toISOString().slice(0, 10);
+
+const buildWeldComplianceReportFilename = (
+  projectId: string,
+  project?: { name?: string | null; code?: string | null; client_name?: string | null },
+) => {
+  const projectNumber = safePart(project?.code || projectId, projectId);
+  const projectName = safePart(project?.name, 'project');
+  return `Weld-Compliance-Report-${projectNumber}-${projectName}-${today()}.pdf`;
 };
 
 const triggerBlobDownload = (blob: Blob, filename: string) => {
@@ -44,26 +53,38 @@ const compliancePdfPath = (projectId: string) => `/projects/${projectId}/exports
 const compliancePdfDownloadPath = (projectId: string) => `${compliancePdfPath(projectId)}?download=true`;
 const compliancePdfViewerPath = (projectId: string) => `${compliancePdfPath(projectId)}?download=false`;
 
-export const exportPdf = async (projectId: string, project?: { name?: string | null; code?: string | null; client_name?: string | null }) => {
-  const fallbackFilename = buildDossierFilename(projectId, project);
+export const exportPdf = async (
+  projectId: string,
+  project?: { name?: string | null; code?: string | null; client_name?: string | null },
+) => {
+  const fallbackFilename = buildWeldComplianceReportFilename(projectId, project);
   const { blob, filename } = await downloadUrlAsBlob(compliancePdfDownloadPath(projectId), { method: 'GET' });
   triggerBlobDownload(blob, filename || fallbackFilename);
 };
 
-export const openPdfViewer = async (projectId: string, project?: { name?: string | null; code?: string | null; client_name?: string | null }) => {
-  const fallbackFilename = buildDossierFilename(projectId, project);
+export const openPdfViewer = async (
+  projectId: string,
+  project?: { name?: string | null; code?: string | null; client_name?: string | null },
+) => {
+  const fallbackFilename = buildWeldComplianceReportFilename(projectId, project);
   const { blob, filename } = await downloadUrlAsBlob(compliancePdfViewerPath(projectId), { method: 'GET' });
   openBlobInNewWindow(blob, filename || fallbackFilename);
 };
 
-export const exportZip = async (projectId: string, project?: { name?: string | null; code?: string | null; client_name?: string | null }) => {
-  const base = buildDossierFilename(projectId, project).replace(/\.pdf$/i, '.zip');
+export const exportZip = async (
+  projectId: string,
+  project?: { name?: string | null; code?: string | null; client_name?: string | null },
+) => {
+  const base = buildWeldComplianceReportFilename(projectId, project).replace(/\.pdf$/i, '.zip');
   const { blob, filename } = await downloadUrlAsBlob(`/projects/${projectId}/exports/zip`, { method: 'POST' });
   triggerBlobDownload(blob, filename || base);
 };
 
-export const exportExcel = async (projectId: string, project?: { name?: string | null; code?: string | null; client_name?: string | null }) => {
-  const base = buildDossierFilename(projectId, project).replace(/\.pdf$/i, '.xlsx');
+export const exportExcel = async (
+  projectId: string,
+  project?: { name?: string | null; code?: string | null; client_name?: string | null },
+) => {
+  const base = buildWeldComplianceReportFilename(projectId, project).replace(/\.pdf$/i, '.xlsx');
   const { blob, filename } = await downloadUrlAsBlob(`/projects/${projectId}/exports/excel`, { method: 'POST' });
   triggerBlobDownload(blob, filename || base);
 };

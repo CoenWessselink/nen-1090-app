@@ -1,12 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Download, Square, Video } from 'lucide-react';
+import { Download, FileText, RefreshCw } from 'lucide-react';
 import { useParams } from 'react-router-dom';
-import { createPdfExport } from '@/api/ce';
 import { downloadDocument, getDocument } from '@/api/documents';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
 import { openDownloadUrl, openProtectedPdfPreview } from '@/utils/download';
-import { apiProjectPdfUrl, buildCeDossierFilename, documentPreviewUrl, formatValue, normalizeApiError } from '@/features/mobile/mobile-utils';
+import { documentPreviewUrl, formatValue, normalizeApiError } from '@/features/mobile/mobile-utils';
 import type { CeDocument } from '@/types/domain';
+
+function weldCompliancePdfUrl(projectId: string, download = false, force = true) {
+  return `/api/v1/projects/${projectId}/exports/compliance/pdf?download=${download ? 'true' : 'false'}&force=${force ? 'true' : 'false'}&_=${Date.now()}`;
+}
+
+function weldComplianceFilename(projectId: string) {
+  return `Weld-Compliance-Report-${projectId}-${new Date().toISOString().slice(0, 10)}.pdf`;
+}
 
 export function MobilePdfViewerPage() {
   const { projectId = '', documentId = '' } = useParams();
@@ -15,6 +22,7 @@ export function MobilePdfViewerPage() {
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState('');
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     if (!documentId) return;
@@ -40,8 +48,8 @@ export function MobilePdfViewerPage() {
 
   const sourcePath = useMemo(() => {
     if (documentId) return documentPreviewUrl(projectId, pdfDocument);
-    return apiProjectPdfUrl(projectId);
-  }, [pdfDocument, documentId, projectId]);
+    return weldCompliancePdfUrl(projectId, false, true);
+  }, [pdfDocument, documentId, projectId, reloadKey]);
 
   useEffect(() => {
     let active = true;
@@ -50,6 +58,7 @@ export function MobilePdfViewerPage() {
       setPreviewUrl('');
       return;
     }
+    setCreating(!documentId);
     openProtectedPdfPreview(sourcePath)
       .then((url) => {
         if (!active) {
@@ -63,13 +72,16 @@ export function MobilePdfViewerPage() {
       .catch((err) => {
         if (!active) return;
         setPreviewUrl('');
-        setError(normalizeApiError(err, 'PDF preview kon niet worden geladen.'));
+        setError(normalizeApiError(err, 'Weld Compliance Report kon niet worden geladen.'));
+      })
+      .finally(() => {
+        if (active) setCreating(false);
       });
     return () => {
       active = false;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [sourcePath]);
+  }, [sourcePath, documentId]);
 
   async function handleDownload() {
     if (documentId) {
@@ -87,9 +99,7 @@ export function MobilePdfViewerPage() {
 
     try {
       setCreating(true);
-      const result = await createPdfExport(projectId);
-      const downloadUrl = typeof result === 'object' && result ? String((result as Record<string, unknown>).download_url || (result as Record<string, unknown>).url || '') : '';
-      await openDownloadUrl(downloadUrl || apiProjectPdfUrl(projectId), buildCeDossierFilename(pdfDocument ? { title: pdfDocument.title, name: pdfDocument.title, id: projectId } : { id: projectId }));
+      await openDownloadUrl(weldCompliancePdfUrl(projectId, true, true), weldComplianceFilename(projectId));
     } catch (err) {
       setError(normalizeApiError(err, 'PDF download mislukt.'));
     } finally {
@@ -97,23 +107,28 @@ export function MobilePdfViewerPage() {
     }
   }
 
+  function regenerate() {
+    setReloadKey((value) => value + 1);
+  }
+
   return (
-    <MobilePageScaffold title={formatValue(pdfDocument?.filename || pdfDocument?.uploaded_filename || pdfDocument?.title, 'PDF Viewer')} backTo={`/projecten/${projectId}/ce-dossier`}>
+    <MobilePageScaffold title={formatValue(pdfDocument?.filename || pdfDocument?.uploaded_filename || pdfDocument?.title, 'Weld Compliance Report')} backTo={`/projecten/${projectId}/overzicht`}>
       {loading ? <div className="mobile-state-card">PDF laden…</div> : null}
       {error ? <div className="mobile-state-card mobile-state-card-error">{error}</div> : null}
       {!loading && (
         <div className="mobile-pdf-viewer-card">
           <div className="mobile-pdf-toolbar">
-            <div className="mobile-pdf-toolbar-left"><Video size={16} /><span>PDF</span></div>
+            <div className="mobile-pdf-toolbar-left"><FileText size={16} /><span>Weld Compliance Report</span></div>
             <div className="mobile-pdf-toolbar-right">
-              <button type="button" className="mobile-icon-button" onClick={handleDownload} aria-label="Download PDF"><Download size={16} /></button>
-              <Square size={16} /><Square size={16} />
+              {!documentId ? <button type="button" className="mobile-icon-button" onClick={regenerate} aria-label="Create PDF" disabled={creating}><RefreshCw size={16} /></button> : null}
+              <button type="button" className="mobile-icon-button" onClick={handleDownload} aria-label="Download PDF" disabled={creating}><Download size={16} /></button>
             </div>
           </div>
-          {previewUrl ? <iframe className="mobile-pdf-frame" src={previewUrl} title="PDF preview" /> : <div className="mobile-state-card">Geen preview beschikbaar.</div>}
+          {creating && !previewUrl ? <div className="mobile-state-card">Weld Compliance Report maken…</div> : null}
+          {previewUrl ? <iframe className="mobile-pdf-frame" src={previewUrl} title="Weld Compliance Report preview" /> : !creating ? <div className="mobile-state-card">Geen preview beschikbaar.</div> : null}
           {!documentId ? (
             <button type="button" className="mobile-primary-button" disabled={creating} onClick={handleDownload}>
-              <Download size={16} /> {creating ? 'PDF maken…' : 'PDF downloaden'}
+              <Download size={16} /> {creating ? 'PDF maken…' : 'Download PDF'}
             </button>
           ) : null}
         </div>

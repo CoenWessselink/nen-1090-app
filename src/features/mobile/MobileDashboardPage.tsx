@@ -6,6 +6,13 @@ import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
 import { APP_REFRESH_EVENT, formatValue, normalizeApiError } from '@/features/mobile/mobile-utils';
 import type { DashboardSummary } from '@/types/domain';
 
+type DashboardOnboarding = {
+  show_example_project_hint?: boolean;
+  title?: string;
+  message?: string;
+  project_code?: string | null;
+};
+
 export function MobileDashboardPage() {
   const navigate = useNavigate();
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
@@ -47,13 +54,16 @@ export function MobileDashboardPage() {
     };
   }, [loadSummary]);
 
+  const onboarding = (summary?.onboarding || {}) as DashboardOnboarding;
+  const showExampleHint = Boolean(onboarding.show_example_project_hint || summary?.example_project_available);
+
   const cards = useMemo(
     () => [
       { label: 'Active projects', value: formatValue(summary?.open_projects || summary?.active_projects || 0, '0'), tone: 'danger', icon: FolderKanban, to: '/projecten' },
       { label: 'Open weld work', value: formatValue(summary?.open_welds || summary?.open_weld_defects || 0, '0'), tone: 'warning', icon: Wrench, to: '/projecten' },
       { label: 'Non-compliant welds', value: formatValue(summary?.rejected_welds || summary?.open_weld_defects || 0, '0'), tone: 'primary', icon: TriangleAlert, to: '/projecten' },
       { label: 'Dossiers pending review', value: formatValue(summary?.pending_dossiers || summary?.ce_dossier_ready || 0, '0'), tone: 'success', icon: FileCheck2, to: '/rapportage' },
-      { label: 'Reports', value: formatValue(summary?.pending_dossiers || summary?.ce_dossier_ready || 0, '0'), subtitle: 'Current reports', tone: 'secondary', icon: FileText, to: '/rapportage', compact: true },
+      { label: 'Reports', value: formatValue(summary?.reports || summary?.pending_dossiers || summary?.ce_dossier_ready || 0, '0'), subtitle: 'Current reports', tone: 'secondary', icon: FileText, to: '/rapportage', compact: true },
       { label: 'Settings', value: formatValue(summary?.open_projects || summary?.active_projects || 0, '0'), subtitle: 'Master data & templates', tone: 'secondary', icon: Settings, to: '/instellingen', compact: true },
       { label: 'Create project', value: formatValue(summary?.active_projects || 0, '0'), subtitle: 'Add project', tone: 'secondary', icon: FolderPlus, to: '/projecten/nieuw', compact: true },
       { label: 'Create weld', value: formatValue(summary?.open_welds || summary?.open_weld_defects || 0, '0'), subtitle: 'Select a project', tone: 'secondary', icon: Wrench, to: '/projecten', compact: true },
@@ -66,6 +76,24 @@ export function MobileDashboardPage() {
       {loading ? <div className="mobile-state-card">Loading dashboard…</div> : null}
       {error ? <div className="mobile-state-card mobile-state-card-error">{error}</div> : null}
       {refreshing && !loading ? <div className="mobile-list-card-meta" style={{ marginBottom: 8 }}>Updating dashboard…</div> : null}
+      {!loading && !error && showExampleHint ? (
+        <button
+          type="button"
+          className="mobile-state-card"
+          style={{ textAlign: 'left', marginBottom: 14, borderColor: '#c7d8ff', background: '#eef4ff' }}
+          onClick={() => navigate('/projecten')}
+        >
+          <strong style={{ display: 'block', color: '#2547a8', marginBottom: 6 }}>
+            {onboarding.title || 'Example EN 1090 project is ready'}
+          </strong>
+          <span style={{ display: 'block', color: '#475569', lineHeight: 1.35 }}>
+            {onboarding.message || 'Open the example project to explore projects, welds, inspections, compliance and PDF export.'}
+          </span>
+          {onboarding.project_code ? (
+            <small style={{ display: 'block', color: '#64748b', marginTop: 8 }}>Project: {onboarding.project_code}</small>
+          ) : null}
+        </button>
+      ) : null}
       {!loading && !error ? (
         <div className="mobile-kpi-grid">
           {cards.map((card) => {

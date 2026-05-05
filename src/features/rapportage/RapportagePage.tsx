@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Download, FileText, Search } from 'lucide-react';
+import { Download, FileText, RefreshCw, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card } from '@/components/ui/Card';
@@ -31,18 +31,30 @@ type ReportRow = {
 };
 
 function isProjectSummary(row: ReportRow) {
-  return String(row.type || '').toLowerCase().includes('project') || String(row.id || '').startsWith('project-');
+  return String(row.type || '').toLowerCase().includes('project') || String(row.type || '').toLowerCase().includes('weld_compliance') || String(row.id || '').startsWith('project-');
 }
 
 function toneFromType(type?: string) {
   const value = String(type || '').toLowerCase();
-  if (value.includes('project')) return 'success' as const;
+  if (value.includes('weld') || value.includes('project')) return 'success' as const;
   if (value.includes('ce')) return 'warning' as const;
   return 'neutral' as const;
 }
 
-function resolvePdfUrl(row: ReportRow) {
-  return String(row.pdf_url || row.download_url || '').trim();
+function resolvePdfUrl(row: ReportRow, force = false) {
+  const base = String(row.pdf_url || row.download_url || '').trim();
+  if (!base) return '';
+  if (!force) return base;
+  const separator = base.includes('?') ? '&' : '?';
+  return base.includes('force=true') ? base : `${base}${separator}force=true`;
+}
+
+function reportFilename(row: ReportRow) {
+  const safe = (value: string, fallback: string) => String(value || fallback).trim().replace(/[^A-Za-z0-9._-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || fallback;
+  const projectName = safe(String(row.project_name || row.title || 'project'), 'project');
+  const projectNumber = safe(String(row.projectnummer || row.project_id || row.id || 'zonder-nummer'), 'zonder-nummer');
+  const stamp = new Date().toISOString().slice(0, 10);
+  return `Weld-Compliance-Report-${projectNumber}-${projectName}-${stamp}.pdf`;
 }
 
 export function RapportagePage() {
@@ -53,6 +65,7 @@ export function RapportagePage() {
   const [activePreviewUrl, setActivePreviewUrl] = useState('');
   const [activePreviewTitle, setActivePreviewTitle] = useState('');
   const [previewMessage, setPreviewMessage] = useState<string | null>(null);
+  const [creatingId, setCreatingId] = useState<string | null>(null);
 
   const visibleRows = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -71,9 +84,9 @@ export function RapportagePage() {
     if (activePreviewUrl.startsWith('blob:')) URL.revokeObjectURL(activePreviewUrl);
   }, [activePreviewUrl]);
 
-  async function previewPdf(row: ReportRow) {
+  async function previewPdf(row: ReportRow, force = false) {
     try {
-      const pdfUrl = resolvePdfUrl(row);
+      const pdfUrl = resolvePdfUrl(row, force);
       if (row.project_id && isProjectSummary(row) && !pdfUrl) {
         navigate(`/projecten/${row.project_id}/pdf-viewer`);
         return;
@@ -98,13 +111,20 @@ export function RapportagePage() {
     }
   }
 
+  async function createPdf(row: ReportRow) {
+    const key = String(row.id);
+    setCreatingId(key);
+    try {
+      await previewPdf(row, true);
+    } finally {
+      setCreatingId(null);
+    }
+  }
+
   async function downloadPdf(row: ReportRow) {
-    const pdfUrl = resolvePdfUrl(row);
+    const pdfUrl = resolvePdfUrl(row, true);
     if (pdfUrl) {
-      const projectName = String(row.project_name || row.title || 'project').trim().replace(/[^A-Za-z0-9._-]+/g, '-');
-      const projectNumber = String(row.projectnummer || row.id || 'zonder-nummer').trim().replace(/[^A-Za-z0-9._-]+/g, '-');
-      const stamp = new Date().toISOString().slice(0, 10);
-      await openDownloadUrl(pdfUrl, `CE-Dossier-${projectName || 'project'}-${projectNumber || 'zonder-nummer'}-${stamp}.pdf`);
+      await openDownloadUrl(pdfUrl, reportFilename(row));
       return;
     }
     if (row.project_id) {
@@ -113,16 +133,16 @@ export function RapportagePage() {
   }
 
   return (
-    <div className="page-stack">
-      <PageHeader title="Rapportage" description="Rapportages zijn uitgelijnd, direct filterbaar en openen via een beveiligde PDF-preview met autorisatie." />
+    <div className="page-stack reports-page-fix">
+      <PageHeader title="Rapportage" description="Maak, bekijk en download het Weld Compliance Report per project." />
 
-      <div className="content-grid-2" style={{ alignItems: 'start' }}>
+      <div className="content-grid-2 reports-toolbar-grid" style={{ alignItems: 'start' }}>
         <Card>
-          <div className="section-title-row">
+          <div className="section-title-row reports-title-row">
             <h3>Zoeken in rapportages</h3>
             <Button variant="secondary" onClick={() => setSearch('')}>Wis filter</Button>
           </div>
-          <div className="toolbar-cluster" style={{ alignItems: 'center' }}>
+          <div className="toolbar-cluster reports-searchbar" style={{ alignItems: 'center' }}>
             <Search size={16} />
             <Input
               value={search}
@@ -133,7 +153,7 @@ export function RapportagePage() {
         </Card>
 
         <Card>
-          <div className="section-title-row">
+          <div className="section-title-row reports-title-row">
             <h3>PDF</h3>
             <Badge tone="success">Beveiligde preview</Badge>
           </div>
@@ -141,28 +161,14 @@ export function RapportagePage() {
             type="button"
             onClick={() => {
               const firstRow = visibleRows.find((item) => resolvePdfUrl(item) || item.project_id);
-              if (firstRow) void previewPdf(firstRow);
+              if (firstRow) void createPdf(firstRow);
             }}
-            style={{
-              width: '100%',
-              border: '1px solid #bfdbfe',
-              background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
-              borderRadius: 18,
-              padding: 18,
-              display: 'grid',
-              gap: 8,
-              textAlign: 'left',
-              cursor: 'pointer',
-            }}
+            className="reports-feature-button"
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ width: 52, height: 52, borderRadius: 14, background: '#1d4ed8', color: '#fff', display: 'grid', placeItems: 'center' }}>
-                <FileText size={24} />
-              </div>
-              <div>
-                <strong>Open PDF preview</strong>
-                <div className="list-subtle">De preview gebruikt een beveiligde blob-URL zodat de browser geen losse API-call zonder autorisatie doet.</div>
-              </div>
+            <div className="reports-feature-icon"><FileText size={24} /></div>
+            <div>
+              <strong>Create PDF</strong>
+              <div className="list-subtle">Genereer het meest recente Weld Compliance Report opnieuw en open de preview.</div>
             </div>
           </button>
         </Card>
@@ -176,53 +182,42 @@ export function RapportagePage() {
       ) : null}
 
       {!reports.isLoading && !reports.isError && visibleRows.length > 0 ? (
-        <div className="content-grid-2" style={{ alignItems: 'start' }}>
+        <div className="content-grid-2 reports-content-grid" style={{ alignItems: 'start' }}>
           <Card>
-            <div style={{ width: '100%', overflowX: 'auto' }}>
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Titel</th>
-                  <th>Project</th>
-                  <th>Type</th>
-                  <th>Aangemaakt</th>
-                  <th>Actie</th>
-                </tr>
-              </thead>
-              <tbody>
-                {visibleRows.map((row) => {
-                  const projectPath = row.project_id ? `/projecten/${row.project_id}/overzicht` : null;
-                  return (
-                    <tr key={String(row.id)}>
-                      <td><strong>{row.title || `Rapport ${row.id}`}</strong></td>
-                      <td>{row.project_name || row.projectnummer || row.client_name || '—'}</td>
-                      <td><Badge tone={toneFromType(row.type)}>{row.type || 'project_summary'}</Badge></td>
-                      <td>{row.created_at || '—'}</td>
-                      <td>
-                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                          {projectPath ? (
-                            <button className="icon-button" type="button" onClick={() => navigate(projectPath)}>
-                              Open project
-                            </button>
-                          ) : null}
-                          <button className="icon-button" type="button" onClick={() => void previewPdf(row)}>
-                            Bekijk PDF
-                          </button>
-                          <button className="icon-button" type="button" onClick={() => void downloadPdf(row)}>
-                            <Download size={14} /> Download
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            <div className="reports-list">
+              {visibleRows.map((row) => {
+                const projectPath = row.project_id ? `/projecten/${row.project_id}/overzicht` : null;
+                const key = String(row.id);
+                return (
+                  <article key={key} className="reports-card-row">
+                    <div className="reports-card-main">
+                      <strong>{row.title || `Weld Compliance Report ${row.id}`}</strong>
+                      <span>{row.created_at ? new Date(row.created_at).toLocaleString('nl-NL') : 'Datum onbekend'}</span>
+                      <span>{row.project_name || row.projectnummer || row.client_name || 'Project onbekend'}</span>
+                      <Badge tone={toneFromType(row.type)}>{row.type || 'weld_compliance_report'}</Badge>
+                    </div>
+                    <div className="reports-card-actions">
+                      {projectPath ? (
+                        <button className="reports-action reports-action-secondary" type="button" onClick={() => navigate(projectPath)}>
+                          Project
+                        </button>
+                      ) : null}
+                      <button className="reports-action reports-action-primary" type="button" onClick={() => void createPdf(row)} disabled={creatingId === key}>
+                        {creatingId === key ? <RefreshCw size={15} /> : <FileText size={15} />}
+                        {creatingId === key ? 'Maken…' : 'Create PDF'}
+                      </button>
+                      <button className="reports-action reports-action-secondary" type="button" onClick={() => void downloadPdf(row)}>
+                        <Download size={15} /> Download
+                      </button>
+                    </div>
+                  </article>
+                );
+              })}
             </div>
           </Card>
 
           <Card>
-            <div className="section-title-row">
+            <div className="section-title-row reports-title-row">
               <h3>PDF voorbeeld</h3>
               <Badge tone={activePreviewUrl ? 'success' : 'neutral'}>{activePreviewUrl ? 'Actief' : 'Nog niets geopend'}</Badge>
             </div>
@@ -230,7 +225,7 @@ export function RapportagePage() {
             {activePreviewUrl ? (
               <iframe title="Rapport PDF voorbeeld" src={activePreviewUrl} style={{ width: '100%', minHeight: 720, border: '1px solid #e2e8f0', borderRadius: 14 }} />
             ) : (
-              <EmptyState title="Nog geen PDF gekozen" description="Klik op Open PDF preview of Bekijk PDF om een rapport direct te openen." />
+              <EmptyState title="Nog geen PDF gekozen" description="Klik op Create PDF om een rapport opnieuw te genereren en direct te openen." />
             )}
           </Card>
         </div>

@@ -1,4 +1,3 @@
-
 import { useMemo, useState } from 'react';
 import { Download, Plus, Search, Trash2, Upload } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
@@ -16,65 +15,95 @@ import { useCreateMasterData, useDeleteMasterData, useUpdateMasterData } from '@
 import { useUiStore } from '@/app/store/ui-store';
 import { useAccess } from '@/hooks/useAccess';
 import {
-  deleteWelderCertificate,
-  downloadWelderCertificate,
-  listWelderCertificates,
-  uploadWelderCertificate,
-  type WelderCertificate,
-} from '@/api/welders';
+  deleteEntityDocument,
+  downloadEntityDocument,
+  listEntityDocuments,
+  uploadEntityDocuments,
+  type EntityDocument,
+  type EntityDocumentScope,
+} from '@/api/entityDocuments';
+
+type MasterDataType = 'wps' | 'materials' | 'welders' | 'weld-coordinators' | 'inspection-templates';
 
 const LABEL_MAP: Record<string, string> = {
   code: 'Code',
   name: 'Naam',
+  title: 'Naam / titel',
+  kind: 'Type',
   description: 'Omschrijving',
   status: 'Status',
   process: 'Proces',
+  welding_method: 'Lasmethode',
   qualification: 'Kwalificatie',
   material_group: 'Materiaalgroep',
-  certificate_no: 'Certificaat',
+  thickness_range: 'Diktebereik',
+  welding_position: 'Laspositie',
+  certificate_no: 'Certificaatnummer',
+  document_no: 'Documentnummer',
+  norm: 'Norm',
+  level: 'Niveau',
+  notes: 'Opmerkingen',
   exc_class: 'Executieklasse',
   is_default: 'Standaard',
   version: 'Versie',
+  items_json: 'Template items',
 };
 
-function pickEditableKeys(rows: Array<Record<string, unknown>>, type: 'wps' | 'materials' | 'welders' | 'weld-coordinators' | 'inspection-templates') {
-  if (type === 'inspection-templates') {
-    return ['name', 'exc_class', 'version', 'is_default', 'items_json'];
-  }
-  if (type === 'welders') {
-    return ['code', 'name'];
-  }
-  if (type === 'weld-coordinators') {
-    return ['code', 'name', 'process', 'qualification', 'certificate_no', 'notes'];
-  }
-  const source = rows[0] || { code: '', name: '', description: '', status: '' };
-  return Object.keys(source)
-    .filter((key) => !['id', 'created_at', 'updated_at', 'tenant_id'].includes(key))
-    .slice(0, 6);
+function documentScopeFor(type: MasterDataType): EntityDocumentScope | null {
+  if (type === 'welders') return 'welder';
+  if (type === 'wps') return 'wps';
+  if (type === 'weld-coordinators') return 'weld-coordinator';
+  return null;
 }
 
-function defaultDraft(type: 'wps' | 'materials' | 'welders' | 'weld-coordinators' | 'inspection-templates', rows: Array<Record<string, unknown>>) {
-  const keys = pickEditableKeys(rows, type);
-  const draft: Record<string, unknown> = Object.fromEntries(keys.map((key) => [key, '']));
+function documentKindFor(type: MasterDataType): string {
+  if (type === 'welders') return 'certificate';
+  if (type === 'wps') return 'document';
+  if (type === 'weld-coordinators') return 'certificate';
+  return 'document';
+}
+
+function pickEditableKeys(rows: Array<Record<string, unknown>>, type: MasterDataType) {
+  if (type === 'inspection-templates') return ['name', 'exc_class', 'version', 'is_default', 'items_json'];
+  if (type === 'welders') return ['code', 'name', 'process', 'welding_method', 'qualification', 'certificate_no', 'material_group', 'thickness_range', 'welding_position', 'notes'];
+  if (type === 'weld-coordinators') return ['code', 'name', 'level', 'process', 'qualification', 'certificate_no', 'notes'];
+  if (type === 'wps') return ['kind', 'code', 'title', 'document_no', 'version', 'process', 'welding_method', 'material_group', 'thickness_range', 'welding_position', 'norm', 'status', 'notes'];
+  const source = rows[0] || { code: '', name: '', description: '', status: '' };
+  return Object.keys(source).filter((key) => !['id', 'created_at', 'updated_at', 'tenant_id'].includes(key)).slice(0, 6);
+}
+
+function defaultDraft(type: MasterDataType, rows: Array<Record<string, unknown>>) {
+  const draft: Record<string, unknown> = Object.fromEntries(pickEditableKeys(rows, type).map((key) => [key, '']));
   if (type === 'inspection-templates') {
     draft.exc_class = 'EXC2';
     draft.version = 1;
     draft.is_default = false;
-    draft.items_json = JSON.stringify([
-      { code: 'VISUAL_BASE', title: 'Visuele controle', group: 'algemeen', required: true, default_status: 'conform', sort_order: 1 },
-    ], null, 2);
+    draft.items_json = JSON.stringify([{ code: 'VISUAL_BASE', title: 'Visuele controle', group: 'algemeen', required: true, default_status: 'conform', sort_order: 1 }], null, 2);
   }
+  if (type === 'wps') {
+    draft.kind = 'WPS';
+    draft.status = 'actief';
+  }
+  if (type === 'weld-coordinators') draft.level = 'IWT';
   return draft;
 }
 
-function normalizeTemplateDraft(draft: Record<string, unknown>) {
-  return {
-    name: String(draft.name || ''),
-    exc_class: String(draft.exc_class || 'EXC2'),
-    version: Number(draft.version || 1),
-    is_default: Boolean(draft.is_default),
-    items_json: typeof draft.items_json === 'string' ? JSON.parse(draft.items_json || '[]') : draft.items_json,
-  };
+function normalizeDraft(type: MasterDataType, draft: Record<string, unknown>) {
+  if (type === 'inspection-templates') {
+    return {
+      name: String(draft.name || ''),
+      exc_class: String(draft.exc_class || 'EXC2'),
+      version: Number(draft.version || 1),
+      is_default: Boolean(draft.is_default),
+      items_json: typeof draft.items_json === 'string' ? JSON.parse(draft.items_json || '[]') : draft.items_json,
+    };
+  }
+  const normalized: Record<string, unknown> = {};
+  Object.entries(draft).forEach(([key, value]) => {
+    normalized[key] = typeof value === 'string' ? value.trim() : value;
+  });
+  if (type === 'wps' && normalized.kind === 'WPQ') normalized.kind = 'WPQR';
+  return normalized;
 }
 
 function downloadBlob(filename: string, blob: Blob) {
@@ -95,7 +124,7 @@ export function MasterDataManager({
   refetch,
 }: {
   title: string;
-  type: 'wps' | 'materials' | 'welders' | 'weld-coordinators' | 'inspection-templates';
+  type: MasterDataType;
   rows: Array<Record<string, unknown>>;
   isLoading: boolean;
   isError: boolean;
@@ -106,6 +135,7 @@ export function MasterDataManager({
   const updateMutation = useUpdateMasterData();
   const deleteMutation = useDeleteMasterData();
   const pushNotification = useUiStore((state) => state.pushNotification);
+
   const [search, setSearch] = useState('');
   const [editorOpen, setEditorOpen] = useState(false);
   const [deleteRow, setDeleteRow] = useState<Record<string, unknown> | null>(null);
@@ -113,18 +143,25 @@ export function MasterDataManager({
   const [editingId, setEditingId] = useState<string | number | null>(null);
   const [draft, setDraft] = useState<Record<string, unknown>>(() => defaultDraft(type, rows));
 
-  const [certificateModalOpen, setCertificateModalOpen] = useState(false);
-  const [certificateOwner, setCertificateOwner] = useState<Record<string, unknown> | null>(null);
-  const [certificateRows, setCertificateRows] = useState<WelderCertificate[]>([]);
-  const [certificateLoading, setCertificateLoading] = useState(false);
-  const [uploadingCertificate, setUploadingCertificate] = useState(false);
+  const [docModalOpen, setDocModalOpen] = useState(false);
+  const [docOwner, setDocOwner] = useState<Record<string, unknown> | null>(null);
+  const [docRows, setDocRows] = useState<EntityDocument[]>([]);
+  const [docLoading, setDocLoading] = useState(false);
+  const [docUploading, setDocUploading] = useState(false);
 
-  const filteredRows = useMemo(() => rows.filter((row) => JSON.stringify(row).toLowerCase().includes(search.toLowerCase())), [rows, search]);
-  const visibleKeys = useMemo(() => {
-    const source = filteredRows[0] || rows[0] || { id: '', code: '', name: '', status: '' };
-    return Object.keys(source).filter((key) => key !== 'id').slice(0, 4);
-  }, [filteredRows, rows]);
+  const filteredRows = useMemo(
+    () => rows.filter((row) => JSON.stringify(row).toLowerCase().includes(search.toLowerCase())),
+    [rows, search],
+  );
   const editableKeys = useMemo(() => pickEditableKeys(rows, type), [rows, type]);
+  const visibleKeys = useMemo(() => {
+    const preferred = editableKeys.filter((key) => !['notes', 'items_json'].includes(key));
+    const available = preferred.filter((key) => filteredRows.some((row) => row[key] !== undefined && row[key] !== null && row[key] !== ''));
+    return (available.length ? available : preferred).slice(0, 6);
+  }, [editableKeys, filteredRows]);
+
+  const scope = documentScopeFor(type);
+  const documentLabel = type === 'welders' || type === 'weld-coordinators' ? 'Certificaten' : 'Documenten';
 
   const openCreate = () => {
     setEditingId(null);
@@ -132,20 +169,58 @@ export function MasterDataManager({
     setEditorOpen(true);
   };
 
-  async function openCertificates(row: Record<string, unknown>) {
-    const welderId = String(row.id || '');
-    if (!welderId) return;
-    setCertificateOwner(row);
-    setCertificateModalOpen(true);
-    setCertificateLoading(true);
+  async function loadDocuments(owner: Record<string, unknown>) {
+    const entityId = String(owner.id || '');
+    if (!scope || !entityId) return;
+    setDocOwner(owner);
+    setDocModalOpen(true);
+    setDocLoading(true);
     try {
-      const response = await listWelderCertificates(welderId);
-      setCertificateRows(response || []);
+      const response = await listEntityDocuments(scope, entityId, documentKindFor(type));
+      setDocRows(response || []);
     } catch (error) {
-      setCertificateRows([]);
-      setMessage(error instanceof Error ? error.message : 'Certificaten laden mislukt.');
+      setDocRows([]);
+      setMessage(error instanceof Error ? error.message : `${documentLabel} laden mislukt.`);
     } finally {
-      setCertificateLoading(false);
+      setDocLoading(false);
+    }
+  }
+
+  async function handleDocumentUpload(event: React.ChangeEvent<HTMLInputElement>) {
+    if (!docOwner?.id || !event.target.files?.length || !scope) return;
+    const files = event.target.files;
+    setDocUploading(true);
+    try {
+      await uploadEntityDocuments(scope, String(docOwner.id), files, documentKindFor(type));
+      const response = await listEntityDocuments(scope, String(docOwner.id), documentKindFor(type));
+      setDocRows(response || []);
+      setMessage(`${documentLabel} toegevoegd.`);
+      pushNotification({ title: `${documentLabel} toegevoegd`, description: `${files.length} bestand(en) geüpload.`, tone: 'success' });
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Upload mislukt.');
+      pushNotification({ title: 'Upload mislukt', description: error instanceof Error ? error.message : 'Onbekende fout', tone: 'error' });
+    } finally {
+      setDocUploading(false);
+      event.target.value = '';
+    }
+  }
+
+  async function handleDocumentDownload(document: EntityDocument) {
+    try {
+      const blob = await downloadEntityDocument(String(document.id));
+      downloadBlob(document.filename || 'document.bin', blob);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Download mislukt.');
+    }
+  }
+
+  async function handleDocumentDelete(document: EntityDocument) {
+    try {
+      await deleteEntityDocument(String(document.id));
+      setDocRows((current) => current.filter((item) => String(item.id) !== String(document.id)));
+      setMessage(`${documentLabel} verwijderd.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Verwijderen mislukt.');
     }
   }
 
@@ -154,7 +229,7 @@ export function MasterDataManager({
       key,
       header: LABEL_MAP[key] || key,
       sortable: true,
-      cell: (row: Record<string, unknown>) => String(row[key] || '—'),
+      cell: (row: Record<string, unknown>) => String(row[key] ?? '—'),
     })),
     {
       key: 'actions',
@@ -167,21 +242,21 @@ export function MasterDataManager({
             onClick={() => {
               setEditingId(String(row.id || 'new'));
               const nextDraft = Object.fromEntries(editableKeys.map((key) => [key, row[key] ?? '']));
-              if (type === 'inspection-templates') {
-                nextDraft.items_json = JSON.stringify(row.items_json || [], null, 2);
-              }
+              if (type === 'inspection-templates') nextDraft.items_json = JSON.stringify(row.items_json || [], null, 2);
               setDraft(nextDraft);
               setEditorOpen(true);
             }}
           >
             Wijzigen
           </Button>
-          {type === 'welders' ? (
-            <Button variant="secondary" onClick={() => void openCertificates(row)}>
-              <Upload size={16} /> Certificaten
+          {scope ? (
+            <Button variant="secondary" onClick={() => void loadDocuments(row)}>
+              <Upload size={16} /> {documentLabel}
             </Button>
           ) : null}
-          <Button variant="ghost" disabled={!canWrite} onClick={() => setDeleteRow(row)}><Trash2 size={16} /> Verwijderen</Button>
+          <Button variant="ghost" disabled={!canWrite} onClick={() => setDeleteRow(row)}>
+            <Trash2 size={16} /> Verwijderen
+          </Button>
         </div>
       ),
     },
@@ -190,7 +265,7 @@ export function MasterDataManager({
   const saveRow = async () => {
     if (!canWrite) return;
     try {
-      const payload = type === 'inspection-templates' ? normalizeTemplateDraft(draft) : draft;
+      const payload = normalizeDraft(type, draft);
       if (editingId && editingId !== 'new') {
         await updateMutation.mutateAsync({ type, id: editingId, payload });
         setMessage(`${title} bijgewerkt.`);
@@ -198,7 +273,7 @@ export function MasterDataManager({
         await createMutation.mutateAsync({ type, payload });
         setMessage(`${title} aangemaakt.`);
       }
-      pushNotification({ title: `${title} opgeslagen`, description: 'Wijziging via bestaande settings-endpoints verstuurd.', tone: 'success' });
+      pushNotification({ title: `${title} opgeslagen`, description: 'Wijziging via settings-endpoints verstuurd.', tone: 'success' });
       setEditorOpen(false);
       setEditingId(null);
       setDraft(defaultDraft(type, rows));
@@ -223,43 +298,60 @@ export function MasterDataManager({
     }
   };
 
-  async function handleCertificateUpload(event: React.ChangeEvent<HTMLInputElement>) {
-    if (!certificateOwner?.id || !event.target.files?.[0]) return;
-    const file = event.target.files[0];
-    setUploadingCertificate(true);
-    try {
-      await uploadWelderCertificate(String(certificateOwner.id), file);
-      const response = await listWelderCertificates(String(certificateOwner.id));
-      setCertificateRows(response || []);
-      setMessage('Lascertificaat toegevoegd.');
-      pushNotification({ title: 'Lascertificaat toegevoegd', description: file.name, tone: 'success' });
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Upload mislukt.');
-      pushNotification({ title: 'Upload mislukt', description: error instanceof Error ? error.message : 'Onbekende fout', tone: 'error' });
-    } finally {
-      setUploadingCertificate(false);
-      event.target.value = '';
+  const renderField = (key: string) => {
+    if (type === 'inspection-templates' && key === 'exc_class') {
+      return (
+        <select value={String(draft[key] ?? 'EXC2')} onChange={(event) => setDraft((current) => ({ ...current, [key]: event.target.value }))}>
+          <option value="EXC1">EXC1</option>
+          <option value="EXC2">EXC2</option>
+          <option value="EXC3">EXC3</option>
+          <option value="EXC4">EXC4</option>
+        </select>
+      );
     }
-  }
-
-  async function handleCertificateDownload(certificate: WelderCertificate) {
-    try {
-      const blob = await downloadWelderCertificate(String(certificate.id));
-      downloadBlob(certificate.filename || 'certificaat.bin', blob);
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Download mislukt.');
+    if (type === 'inspection-templates' && key === 'is_default') {
+      return (
+        <select value={String(Boolean(draft[key]))} onChange={(event) => setDraft((current) => ({ ...current, [key]: event.target.value === 'true' }))}>
+          <option value="false">Nee</option>
+          <option value="true">Ja</option>
+        </select>
+      );
     }
-  }
-
-  async function handleCertificateDelete(certificate: WelderCertificate) {
-    try {
-      await deleteWelderCertificate(String(certificate.id));
-      setCertificateRows((current) => current.filter((item) => String(item.id) !== String(certificate.id)));
-      setMessage('Lascertificaat verwijderd.');
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Verwijderen mislukt.');
+    if (key === 'items_json' || key === 'notes') {
+      return <textarea value={String(draft[key] ?? '')} onChange={(event) => setDraft((current) => ({ ...current, [key]: event.target.value }))} style={{ minHeight: key === 'items_json' ? 220 : 96 }} />;
     }
-  }
+    if (key === 'kind') {
+      return (
+        <select value={String(draft[key] ?? 'WPS')} onChange={(event) => setDraft((current) => ({ ...current, [key]: event.target.value }))}>
+          <option value="WPS">WPS</option>
+          <option value="WPQR">WPQR</option>
+        </select>
+      );
+    }
+    if (key === 'process') {
+      return (
+        <select value={String(draft[key] ?? '')} onChange={(event) => setDraft((current) => ({ ...current, [key]: event.target.value }))}>
+          <option value="">Kies proces</option>
+          <option value="111">111 BMBE</option>
+          <option value="135">135 MAG</option>
+          <option value="136">136 MAG gevulde draad</option>
+          <option value="138">138 MAG metaalpoeder</option>
+          <option value="141">141 TIG</option>
+        </select>
+      );
+    }
+    if (key === 'level') {
+      return (
+        <select value={String(draft[key] ?? 'IWT')} onChange={(event) => setDraft((current) => ({ ...current, [key]: event.target.value }))}>
+          <option value="IWE">IWE</option>
+          <option value="IWT">IWT</option>
+          <option value="IWS">IWS</option>
+          <option value="RWC">RWC</option>
+        </select>
+      );
+    }
+    return <Input value={String(draft[key] ?? '')} onChange={(event) => setDraft((current) => ({ ...current, [key]: event.target.value }))} />;
+  };
 
   return (
     <Card>
@@ -267,14 +359,22 @@ export function MasterDataManager({
         <h3>{title}</h3>
         <div className="inline-end-cluster">
           <Badge tone={canWrite ? 'success' : 'warning'}>{canWrite ? 'CRUD actief' : 'Alleen lezen'}</Badge>
-          <Button onClick={openCreate} disabled={!canWrite}><Plus size={16} /> Nieuw</Button>
+          <Button onClick={openCreate} disabled={!canWrite}>
+            <Plus size={16} /> Nieuw
+          </Button>
         </div>
       </div>
+
       {message ? <InlineMessage tone="success">{message}</InlineMessage> : null}
       {!canWrite ? <InlineMessage tone="danger">{`Je hebt geen schrijfrechten voor ${title.toLowerCase()}.`}</InlineMessage> : null}
+
       <div className="toolbar-shell">
-        <div className="search-shell inline-search-shell"><Search size={16} /><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={`Zoek in ${title.toLowerCase()}`} /></div>
+        <div className="search-shell inline-search-shell">
+          <Search size={16} />
+          <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={`Zoek in ${title.toLowerCase()}`} />
+        </div>
       </div>
+
       {isLoading ? <LoadingState label={`${title} laden...`} /> : null}
       {isError ? <ErrorState title={`${title} niet geladen`} description="Controleer of het settings-endpoint bereikbaar is." /> : null}
       {!isLoading && !isError && filteredRows.length === 0 ? <EmptyState title={`Geen ${title.toLowerCase()}`} description="Pas je zoekterm aan of maak een nieuw item aan." /> : null}
@@ -285,53 +385,45 @@ export function MasterDataManager({
           {editableKeys.map((key) => (
             <label key={key}>
               <span>{LABEL_MAP[key] || key}</span>
-              {type === 'inspection-templates' && key === 'exc_class' ? (
-                <select value={String(draft[key] || 'EXC2')} onChange={(event) => setDraft((current) => ({ ...current, [key]: event.target.value }))}>
-                  <option value="EXC1">EXC1</option>
-                  <option value="EXC2">EXC2</option>
-                  <option value="EXC3">EXC3</option>
-                  <option value="EXC4">EXC4</option>
-                </select>
-              ) : type === 'inspection-templates' && key === 'is_default' ? (
-                <select value={String(Boolean(draft[key]))} onChange={(event) => setDraft((current) => ({ ...current, [key]: event.target.value === 'true' }))}>
-                  <option value="false">Nee</option>
-                  <option value="true">Ja</option>
-                </select>
-              ) : key === 'items_json' ? (
-                <textarea value={String(draft[key] || '')} onChange={(event) => setDraft((current) => ({ ...current, [key]: event.target.value }))} style={{ minHeight: 220 }} />
-              ) : (
-                <Input value={String(draft[key] || '')} onChange={(event) => setDraft((current) => ({ ...current, [key]: event.target.value }))} />
-              )}
+              {renderField(key)}
             </label>
           ))}
           <div className="stack-actions">
-            <Button onClick={saveRow} disabled={!canWrite || createMutation.isPending || updateMutation.isPending}>Opslaan</Button>
-            <Button variant="secondary" onClick={() => setEditorOpen(false)}>Annuleren</Button>
+            <Button onClick={saveRow} disabled={!canWrite || createMutation.isPending || updateMutation.isPending}>
+              Opslaan
+            </Button>
+            <Button variant="secondary" onClick={() => setEditorOpen(false)}>
+              Annuleren
+            </Button>
           </div>
         </div>
       </Modal>
 
-      <Modal open={certificateModalOpen} title={`Lascertificaten · ${String(certificateOwner?.name || certificateOwner?.code || '')}`} onClose={() => setCertificateModalOpen(false)}>
+      <Modal open={docModalOpen} title={`${documentLabel} · ${String(docOwner?.name || docOwner?.title || docOwner?.code || '')}`} onClose={() => setDocModalOpen(false)}>
         <div className="page-stack">
           <div className="stack-actions">
             <label className="button button-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-              <Upload size={16} /> {uploadingCertificate ? 'Uploaden...' : 'Certificaat uploaden'}
-              <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx" hidden onChange={handleCertificateUpload} disabled={uploadingCertificate} />
+              <Upload size={16} /> {docUploading ? 'Uploaden...' : `${documentLabel} uploaden`}
+              <input type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx" hidden onChange={handleDocumentUpload} disabled={docUploading} />
             </label>
           </div>
-          {certificateLoading ? <LoadingState label="Certificaten laden..." /> : null}
-          {!certificateLoading && certificateRows.length === 0 ? <EmptyState title="Geen certificaten" description="Voeg hier lascertificaten toe voor deze lasser." /> : null}
-          {!certificateLoading && certificateRows.length > 0 ? (
+          {docLoading ? <LoadingState label={`${documentLabel} laden...`} /> : null}
+          {!docLoading && docRows.length === 0 ? <EmptyState title={`Geen ${documentLabel.toLowerCase()}`} description={`Voeg hier meerdere documenten toe voor deze ${title.toLowerCase()}.`} /> : null}
+          {!docLoading && docRows.length > 0 ? (
             <div className="list-stack compact-list">
-              {certificateRows.map((certificate) => (
-                <div key={String(certificate.id)} className="list-row">
+              {docRows.map((document) => (
+                <div key={String(document.id)} className="list-row">
                   <div>
-                    <strong>{certificate.filename}</strong>
-                    <div className="list-subtle">{certificate.uploaded_at || 'Onbekende datum'}</div>
+                    <strong>{document.filename}</strong>
+                    <div className="list-subtle">{document.uploaded_at || 'Onbekende datum'}</div>
                   </div>
                   <div className="inline-end-cluster">
-                    <Button variant="secondary" onClick={() => void handleCertificateDownload(certificate)}><Download size={16} /> Download</Button>
-                    <Button variant="ghost" onClick={() => void handleCertificateDelete(certificate)}><Trash2 size={16} /> Verwijderen</Button>
+                    <Button variant="secondary" onClick={() => void handleDocumentDownload(document)}>
+                      <Download size={16} /> Download
+                    </Button>
+                    <Button variant="ghost" onClick={() => void handleDocumentDelete(document)}>
+                      <Trash2 size={16} /> Verwijderen
+                    </Button>
                   </div>
                 </div>
               ))}

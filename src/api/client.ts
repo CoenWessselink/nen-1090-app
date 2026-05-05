@@ -65,6 +65,42 @@ function filenameFromResponse(response: Response, fallback = 'download'): string
   return fallback;
 }
 
+function errorMessageFromDetails(details: unknown, fallback: string): string {
+  if (!details) return fallback;
+  if (typeof details === 'string') return details;
+  if (Array.isArray(details)) {
+    const first = details.map((item) => errorMessageFromDetails(item, '')).find(Boolean);
+    return first || fallback;
+  }
+  if (typeof details === 'object') {
+    const record = details as Record<string, unknown>;
+    const direct = record.message || record.error_description || record.title;
+    if (typeof direct === 'string' && direct.trim()) return direct;
+
+    const detail = record.detail;
+    if (typeof detail === 'string' && detail.trim()) return detail;
+    if (detail && typeof detail === 'object') {
+      const nested = errorMessageFromDetails(detail, '');
+      if (nested) return nested;
+    }
+
+    const error = record.error;
+    if (typeof error === 'string' && error.trim()) return error;
+    if (error && typeof error === 'object') {
+      const nested = errorMessageFromDetails(error, '');
+      if (nested) return nested;
+    }
+
+    try {
+      const compact = JSON.stringify(record);
+      if (compact && compact !== '{}') return compact;
+    } catch {
+      return fallback;
+    }
+  }
+  return fallback;
+}
+
 function getAuthSnapshot() {
   const state = useAuthStore.getState();
   if (state?.token || state?.refreshToken || state?.user) return state;
@@ -113,13 +149,7 @@ async function parseResponse<T>(response: Response, raw = false): Promise<T> {
     } catch {
       details = null;
     }
-    const detailMessage =
-      typeof details === 'string'
-        ? details
-        : (details as { error?: { message?: string }; detail?: string; message?: string } | null)?.error?.message ||
-          (details as { detail?: string; message?: string } | null)?.detail ||
-          (details as { message?: string } | null)?.message;
-    throw new ApiError(detailMessage || response.statusText || 'API request failed', response.status, details);
+    throw new ApiError(errorMessageFromDetails(details, response.statusText || 'API request failed'), response.status, details);
   }
 
   if (raw) return response as unknown as T;

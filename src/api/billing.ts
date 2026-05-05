@@ -15,28 +15,25 @@ export type BillingCheckoutRequest = {
   plan?: string;
   billing?: 'monthly' | 'yearly' | string;
   billing_cycle?: 'monthly' | 'yearly';
-  success_url?: string;
-  cancel_url?: string;
+  accepted_terms?: boolean;
+  accepted_recurring_payment?: boolean;
+  target_seats?: number;
+  targetSeats?: number;
+  targetPlan?: string;
+  plan_code?: string;
 };
 
 export type BillingCheckoutResponse = {
   ok?: boolean;
-  mode?: 'mollie' | 'preview' | string;
   checkout_url?: string;
   payment_id?: string;
   provider_payment_id?: string | null;
   tenant_id?: string;
-  tenant?: string | null;
-  plan?: string;
-  billing?: string;
+  subscription_id?: string;
   billing_cycle?: string;
   seats?: number;
-  unit_amount_cents?: number;
   amount_cents?: number;
-  total_cents?: number;
-  currency?: string;
-  description?: string;
-  provider_error?: string | null;
+  price?: Record<string, unknown>;
   [key: string]: unknown;
 };
 
@@ -45,28 +42,25 @@ function positiveInt(value: unknown, fallback = 1): number {
   return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : fallback;
 }
 
-function normalizePreviewPayload(payload?: BillingPreviewRequest): Record<string, unknown> {
-  const targetSeats = positiveInt(
-    payload?.target_seats ?? payload?.targetSeats ?? payload?.seats,
-    1,
-  );
-  const planCode = payload?.plan_code ?? payload?.targetPlan ?? payload?.plan;
+function normalizeCheckoutPayload(payload: BillingCheckoutRequest): Record<string, unknown> {
+  const billingCycle = payload.billing_cycle || (payload.billing === 'monthly' ? 'monthly' : 'yearly');
+  const seats = positiveInt(payload.seats ?? payload.target_seats ?? payload.targetSeats, 1);
   return {
-    target_seats: targetSeats,
-    ...(planCode ? { plan_code: planCode } : {}),
+    seats,
+    target_seats: seats,
+    billing_cycle: billingCycle,
+    billing: billingCycle,
+    plan: payload.plan || payload.plan_code || payload.targetPlan || 'core',
+    plan_code: payload.plan_code || payload.plan || payload.targetPlan || 'core',
+    accepted_terms: payload.accepted_terms ?? true,
+    accepted_recurring_payment: payload.accepted_recurring_payment ?? true,
   };
 }
 
-function normalizeCheckoutPayload(payload: BillingCheckoutRequest): Record<string, unknown> {
-  const billingCycle = payload.billing_cycle || (payload.billing === 'monthly' ? 'monthly' : 'yearly');
-  return {
-    seats: positiveInt(payload.seats, 1),
-    billing_cycle: billingCycle,
-    billing: billingCycle,
-    plan: payload.plan || 'core',
-    success_url: payload.success_url || `${window.location.origin}/billing?payment=success`,
-    cancel_url: payload.cancel_url || `${window.location.origin}/billing?payment=cancelled`,
-  };
+function normalizePreviewPayload(payload?: BillingPreviewRequest): Record<string, unknown> {
+  const seats = positiveInt(payload?.target_seats ?? payload?.targetSeats ?? payload?.seats, 1);
+  const planCode = payload?.plan_code ?? payload?.targetPlan ?? payload?.plan ?? 'core';
+  return { target_seats: seats, seats, plan_code: planCode, plan: planCode };
 }
 
 export function getTenantBillingStatus() {
@@ -77,6 +71,12 @@ export function getTenantBillingStatus() {
   ]);
 }
 
+export function getBillingPaymentStatus(paymentId: string) {
+  return optionalRequest<Record<string, unknown>>([
+    `/billing/payment-status/${encodeURIComponent(paymentId)}`,
+  ]);
+}
+
 export function getTenantBillingInvoices() {
   return optionalRequest<Record<string, unknown>>([
     '/billing/invoices',
@@ -84,44 +84,28 @@ export function getTenantBillingInvoices() {
   ]);
 }
 
+export function getTenantBillingPayments() {
+  return optionalRequest<Record<string, unknown>>([
+    '/billing/payments',
+    '/tenant/billing/payments',
+  ]);
+}
+
+export function getBillingPlans() {
+  return optionalRequest<Record<string, unknown>>([
+    '/billing/plans',
+    '/tenant/billing/plans',
+  ]);
+}
+
 export function getTenantBillingPreview(payload?: BillingPreviewRequest) {
-  const body = JSON.stringify(normalizePreviewPayload(payload));
   return optionalRequest<Record<string, unknown>>([
     '/tenant/billing/preview',
     '/billing/preview',
+    '/billing/plans',
   ], {
     method: 'POST',
-    body,
-  });
-}
-
-export function changeTenantPlan(payload: Record<string, unknown>) {
-  const normalized = {
-    ...payload,
-    target_seats: positiveInt(
-      payload.target_seats ?? payload.targetSeats ?? payload.seats,
-      1,
-    ),
-    plan_code: payload.plan_code ?? payload.targetPlan ?? payload.plan,
-  };
-  return optionalRequest<Record<string, unknown>>([
-    '/tenant/billing/change-plan',
-    '/tenant/billing/change',
-    '/billing/change-plan',
-    '/billing/change-seats',
-  ], {
-    method: 'POST',
-    body: JSON.stringify(normalized),
-  });
-}
-
-export function cancelTenantSubscriptionSelfService() {
-  return optionalRequest<Record<string, unknown>>([
-    '/tenant/billing/cancel-subscription',
-    '/billing/cancel',
-  ], {
-    method: 'POST',
-    body: JSON.stringify({}),
+    body: JSON.stringify(normalizePreviewPayload(payload)),
   });
 }
 
@@ -134,6 +118,44 @@ export function createTenantBillingCheckout(payload: BillingCheckoutRequest) {
   ], {
     method: 'POST',
     body,
+  });
+}
+
+export function changeTenantSeats(payload: BillingCheckoutRequest | Record<string, unknown>) {
+  const body = JSON.stringify(normalizeCheckoutPayload(payload as BillingCheckoutRequest));
+  return optionalRequest<BillingCheckoutResponse>([
+    '/billing/change-seats',
+    '/tenant/billing/change-plan',
+    '/tenant/billing/change',
+    '/billing/change-plan',
+  ], {
+    method: 'POST',
+    body,
+  });
+}
+
+export function changeTenantPlan(payload: BillingCheckoutRequest | Record<string, unknown>) {
+  return changeTenantSeats(payload);
+}
+
+export function retryTenantPayment() {
+  return optionalRequest<BillingCheckoutResponse>([
+    '/billing/retry-payment',
+    '/tenant/billing/retry-payment',
+    '/tenant/billing/checkout',
+  ], {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+}
+
+export function cancelTenantSubscriptionSelfService() {
+  return optionalRequest<Record<string, unknown>>([
+    '/billing/cancel',
+    '/tenant/billing/cancel-subscription',
+  ], {
+    method: 'POST',
+    body: JSON.stringify({}),
   });
 }
 

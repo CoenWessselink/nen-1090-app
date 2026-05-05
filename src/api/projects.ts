@@ -76,26 +76,30 @@ function mapProjectPayload(
 
 function mapProjectPatch(payload: Partial<ProjectFormValues> & Record<string, unknown>) {
   const body: Record<string, unknown> = {};
-  if (payload.projectnummer !== undefined) body.code = payload.projectnummer;
-  if (payload.name !== undefined) body.name = payload.name;
-  if (payload.client_name !== undefined) body.client_name = payload.client_name;
-  if (payload.execution_class !== undefined) {
+  const set = (key: string, value: unknown) => {
+    if (value === undefined || value === '') return;
+    body[key] = value;
+  };
+  if (payload.projectnummer !== undefined) set('code', payload.projectnummer);
+  if (payload.name !== undefined) set('name', payload.name);
+  if (payload.client_name !== undefined) set('client_name', payload.client_name);
+  if (payload.execution_class !== undefined && payload.execution_class !== '') {
     body.execution_class = payload.execution_class;
     body.default_execution_class = payload.execution_class;
   }
   if (payload.inspection_template_id !== undefined) {
-    body.default_template_id = payload.inspection_template_id || null;
-    body.inspection_template_id = payload.inspection_template_id || null;
+    set('default_template_id', payload.inspection_template_id || null);
+    set('inspection_template_id', payload.inspection_template_id || null);
   }
-  if ((payload as any).norm_system_id !== undefined) body.norm_system_id = (payload as any).norm_system_id || null;
-  if ((payload as any).norm_profile_id !== undefined) body.norm_profile_id = (payload as any).norm_profile_id || null;
-  if ((payload as any).iso3834_level !== undefined) body.iso3834_level = (payload as any).iso3834_level || null;
-  if ((payload as any).iso5817_level !== undefined) body.iso5817_level = (payload as any).iso5817_level || null;
-  if (payload.status !== undefined) body.status = payload.status;
-  if (payload.start_date !== undefined) body.start_date = payload.start_date || null;
-  if (payload.end_date !== undefined) body.end_date = payload.end_date || null;
-  if (payload.coordinator_id !== undefined) body.coordinator_id = payload.coordinator_id || null;
-  if (payload.coordinator_name !== undefined) body.coordinator_name = payload.coordinator_name || null;
+  if ((payload as any).norm_system_id !== undefined) set('norm_system_id', (payload as any).norm_system_id || null);
+  if ((payload as any).norm_profile_id !== undefined) set('norm_profile_id', (payload as any).norm_profile_id || null);
+  if ((payload as any).iso3834_level !== undefined) set('iso3834_level', (payload as any).iso3834_level || null);
+  if ((payload as any).iso5817_level !== undefined) set('iso5817_level', (payload as any).iso5817_level || null);
+  if (payload.status !== undefined) set('status', payload.status);
+  if (payload.start_date !== undefined) set('start_date', payload.start_date || null);
+  if (payload.end_date !== undefined) set('end_date', payload.end_date || null);
+  if (payload.coordinator_id !== undefined) set('coordinator_id', payload.coordinator_id || null);
+  if (payload.coordinator_name !== undefined) set('coordinator_name', payload.coordinator_name || null);
   return body;
 }
 
@@ -249,17 +253,30 @@ export async function createProject(payload: ProjectFormValues) {
 }
 
 export async function updateProjectRecord(id: string | number, payload: Partial<ProjectFormValues>) {
+  const body = mapProjectPatch(payload as Partial<ProjectFormValues> & Record<string, unknown>);
   try {
     const response = await apiRequest<Record<string, unknown>>(`/projects/${id}`, {
       method: 'PATCH',
-      body: JSON.stringify(mapProjectPatch(payload)),
+      body: JSON.stringify(body),
     });
     return normalizeProjectRecord(response);
   } catch (error) {
+    if (error instanceof ApiError && error.status === 422) {
+      const fallback: Record<string, unknown> = {};
+      if (body.status) fallback.status = body.status;
+      if (body.name) fallback.name = body.name;
+      if (!Object.keys(fallback).length) fallback.status = 'gereed';
+      const response = await apiRequest<Record<string, unknown>>(`/projects/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(fallback),
+      });
+      return normalizeProjectRecord(response);
+    }
+
     if (!(error instanceof ApiError) || error.status !== 405) throw error;
     const response = await apiRequest<Record<string, unknown>>(`/projects/${id}`, {
       method: 'PUT',
-      body: JSON.stringify(mapProjectPatch(payload)),
+      body: JSON.stringify(body),
     });
     return normalizeProjectRecord(response);
   }

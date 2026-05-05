@@ -37,19 +37,18 @@ type SessionContextValue = {
 const SessionContext = createContext<SessionContextValue | null>(null);
 
 const superadminPermissions: AccessPermission[] = [
-  'dashboard.read',
-  'projects.read',
-  'projects.write',
-  'welds.read',
-  'welds.write',
-  'documents.read',
-  'documents.write',
-  'settings.read',
-  'settings.write',
-  'billing.read',
-  'billing.manage',
-  'tenants.read',
-  'tenants.impersonate',
+  'dashboard.read', 'projects.read', 'projects.write', 'welds.read', 'welds.write', 'documents.read', 'documents.write',
+  'settings.read', 'settings.write', 'billing.read', 'billing.manage', 'tenants.read', 'tenants.impersonate',
+];
+
+const tenantOwnerPermissions: AccessPermission[] = [
+  'dashboard.read', 'projects.read', 'projects.write', 'welds.read', 'welds.write', 'documents.read', 'documents.write',
+  'settings.read', 'settings.write', 'billing.read', 'billing.manage',
+];
+
+const tenantAdminPermissions: AccessPermission[] = [
+  'dashboard.read', 'projects.read', 'projects.write', 'welds.read', 'welds.write', 'documents.read', 'documents.write',
+  'settings.read', 'settings.write', 'billing.read',
 ];
 
 const permissionMap: Record<string, AccessPermission[]> = {
@@ -57,9 +56,14 @@ const permissionMap: Record<string, AccessPermission[]> = {
   SUPER_ADMIN: superadminPermissions,
   PLATFORMADMIN: superadminPermissions,
   PLATFORM_ADMIN: superadminPermissions,
-  ADMIN: ['dashboard.read', 'projects.read', 'projects.write', 'welds.read', 'welds.write', 'documents.read', 'documents.write', 'settings.read', 'settings.write', 'billing.read', 'tenants.read'],
-  TENANTADMIN: ['dashboard.read', 'projects.read', 'projects.write', 'welds.read', 'welds.write', 'documents.read', 'documents.write', 'settings.read', 'settings.write', 'billing.read'],
+  OWNER: tenantOwnerPermissions,
+  TENANTOWNER: tenantOwnerPermissions,
+  TENANT_OWNER: tenantOwnerPermissions,
+  ADMIN: tenantAdminPermissions,
+  TENANTADMIN: tenantAdminPermissions,
+  TENANT_ADMIN: tenantAdminPermissions,
   TENANTUSER: ['dashboard.read', 'projects.read', 'welds.read', 'documents.read', 'settings.read'],
+  TENANT_USER: ['dashboard.read', 'projects.read', 'welds.read', 'documents.read', 'settings.read'],
   PLANNER: ['dashboard.read', 'projects.read', 'projects.write', 'welds.read', 'welds.write', 'documents.read'],
   INSPECTOR: ['dashboard.read', 'projects.read', 'welds.read', 'welds.write', 'documents.read', 'documents.write'],
   USER: ['dashboard.read', 'projects.read', 'welds.read', 'documents.read'],
@@ -97,50 +101,31 @@ export function SessionProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     const persisted = readAnyPersistedSession();
     if (!token && persisted.token && persisted.user) {
-      useAuthStore.setState({
-        token: persisted.token,
-        refreshToken: persisted.refreshToken,
-        user: persisted.user,
-        impersonation: null,
-      });
+      useAuthStore.setState({ token: persisted.token, refreshToken: persisted.refreshToken, user: persisted.user, impersonation: null });
     }
   }, [token]);
 
   useEffect(() => {
     let cancelled = false;
-
     async function bootstrap() {
       const persisted = readAnyPersistedSession();
       const effectiveToken = token || persisted.token;
       const effectiveRefreshToken = refreshToken || persisted.refreshToken;
       const effectiveUser = user || persisted.user;
-
       if (!effectiveToken || !effectiveUser) {
         if (!cancelled) setIsBootstrapping(false);
         return;
       }
-
-      if (!token && effectiveToken && effectiveUser) {
-        setSession(effectiveToken, effectiveUser, effectiveRefreshToken || null);
-      }
-
+      if (!token && effectiveToken && effectiveUser) setSession(effectiveToken, effectiveUser, effectiveRefreshToken || null);
       try {
         const me = await getMe();
-        if (!cancelled) {
-          setSession(effectiveToken, normalizeMeUser(me as Record<string, unknown>), effectiveRefreshToken || null);
-        }
+        if (!cancelled) setSession(effectiveToken, normalizeMeUser(me as Record<string, unknown>), effectiveRefreshToken || null);
       } catch (error) {
         if (isUnauthorized(error)) {
           try {
             const refreshed = effectiveRefreshToken ? await refreshSession(effectiveRefreshToken) : await refreshCentralSession();
             if (!cancelled && refreshed.access_token && refreshed.user?.email) {
-              const refreshedUser: SessionUser = {
-                email: refreshed.user.email,
-                tenant: refreshed.user.tenant || '',
-                tenantId: refreshed.user.tenant_id || '',
-                role: refreshed.user.role || '',
-                name: refreshed.user.name || '',
-              };
+              const refreshedUser: SessionUser = { email: refreshed.user.email, tenant: refreshed.user.tenant || '', tenantId: refreshed.user.tenant_id || '', role: refreshed.user.role || '', name: refreshed.user.name || '' };
               setSession(refreshed.access_token, refreshedUser, refreshed.refresh_token || effectiveRefreshToken || null);
               updateToken(refreshed.access_token);
               return;
@@ -154,11 +139,8 @@ export function SessionProvider({ children }: PropsWithChildren) {
         if (!cancelled) setIsBootstrapping(false);
       }
     }
-
     void bootstrap();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [refreshToken, setSession, token, updateToken, user]);
 
   const persisted = readAnyPersistedSession();
@@ -168,29 +150,26 @@ export function SessionProvider({ children }: PropsWithChildren) {
   const normalizedRole = normalizeRole(effectiveUser?.role);
   const permissions = permissionMap[normalizedRole] || [];
 
-  const value = useMemo<SessionContextValue>(
-    () => ({
-      token: effectiveToken,
-      refreshToken: effectiveRefreshToken,
-      user: effectiveUser,
-      tenant: effectiveUser?.tenant,
-      role: effectiveUser?.role,
-      isAuthenticated: Boolean(effectiveUser && effectiveToken),
-      isImpersonating: Boolean(impersonation?.active),
-      isBootstrapping,
-      impersonationTenantName: impersonation?.tenantName,
-      hasRole: (roles) => roles.length === 0 || roles.some((role) => normalizeRole(String(role)) === normalizedRole),
-      hasPermission: (permission) => permissions.includes(permission),
-      clearSession,
-    }),
-    [clearSession, effectiveRefreshToken, effectiveToken, effectiveUser, impersonation, isBootstrapping, normalizedRole, permissions],
-  );
+  const value = useMemo<SessionContextValue>(() => ({
+    token: effectiveToken,
+    refreshToken: effectiveRefreshToken,
+    user: effectiveUser,
+    tenant: effectiveUser?.tenant,
+    role: effectiveUser?.role,
+    isAuthenticated: Boolean(effectiveUser && effectiveToken),
+    isImpersonating: Boolean(impersonation?.active),
+    isBootstrapping,
+    impersonationTenantName: impersonation?.tenantName,
+    hasRole: (roles) => roles.length === 0 || roles.some((role) => normalizeRole(String(role)) === normalizedRole),
+    hasPermission: (permission) => permissions.includes(permission),
+    clearSession,
+  }), [clearSession, effectiveRefreshToken, effectiveToken, effectiveUser, impersonation, isBootstrapping, normalizedRole, permissions]);
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }
 
 export function useSession() {
   const context = useContext(SessionContext);
-  if (!context) throw new Error('useSession moet binnen SessionProvider gebruikt worden.');
+  if (!context) throw new Error('useSession must be used within SessionProvider.');
   return context;
 }

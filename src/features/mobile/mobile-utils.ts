@@ -5,14 +5,9 @@ export const APP_REFRESH_EVENT = 'nen1090:refresh';
 export function dispatchAppRefresh(detail: Record<string, unknown> = {}) {
   if (typeof window === 'undefined') return;
   window.dispatchEvent(new CustomEvent(APP_REFRESH_EVENT, { detail }));
-  if (detail.reason === 'inspection-saved' && detail.projectId) {
-    window.setTimeout(() => {
-      window.location.assign(`/projecten/${String(detail.projectId)}/lassen`);
-    }, 0);
-  }
 }
 
-export function normalizeApiError(error: unknown, fallback = 'Actie mislukt') {
+export function normalizeApiError(error: unknown, fallback = 'Action failed') {
   if (!error) return fallback;
   if (typeof error === 'string') return error;
   const record = error as Record<string, unknown>;
@@ -29,7 +24,7 @@ export function projectTitle(project: Project | null | undefined) {
 }
 
 export function projectCode(project: Project | null | undefined) {
-  return formatValue(project?.projectnummer || project?.id, '—');
+  return formatValue(project?.projectnummer || project?.code || project?.id, '—');
 }
 
 export function projectClient(project: Project | null | undefined) {
@@ -43,26 +38,35 @@ export function projectExecutionClass(project: Project | null | undefined) {
 }
 
 export function weldNumber(weld: Weld | null | undefined) {
-  return formatValue(weld?.weld_no || weld?.weld_number || weld?.id, 'Onbekende las');
+  return formatValue(weld?.weld_no || weld?.weld_number || weld?.id, 'Unknown weld');
 }
 
 export function weldSubtitle(weld: Weld | null | undefined) {
-  return formatValue(weld?.location || weld?.assembly_name || weld?.assembly_id, 'Geen locatie');
+  return formatValue(weld?.location || weld?.assembly_name || weld?.assembly_id, 'No location');
+}
+
+export function normalizeWeldStatus(value: unknown) {
+  const raw = String(value || '').trim().toLowerCase().replace(/[-\s]+/g, '_');
+  if (['goedgekeurd', 'approved', 'conform', 'compliant', 'ok'].includes(raw)) return 'conform';
+  if (['gerepareerd', 'repaired', 'in_controle', 'controle', 'pending_review', 'in_control'].includes(raw)) return 'in_control';
+  if (['afgekeurd', 'defect', 'rejected', 'niet_conform', 'non_conform', 'noncompliant', 'non_compliant', 'not_conform'].includes(raw)) return 'not_conform';
+  if (['pending', 'open'].includes(raw)) return 'open';
+  return raw || 'open';
 }
 
 export function weldStatusLabel(value: unknown) {
-  const raw = String(value || '').trim().toLowerCase();
-  if (['goedgekeurd', 'approved', 'conform', 'ok'].includes(raw)) return 'Conform';
-  if (['gerepareerd', 'repaired', 'in controle', 'controle', 'pending'].includes(raw)) return 'In controle';
-  if (['afgekeurd', 'defect', 'rejected', 'niet conform', 'non_conform'].includes(raw)) return 'Niet conform';
-  return raw ? raw.charAt(0).toUpperCase() + raw.slice(1) : 'Open';
+  const status = normalizeWeldStatus(value);
+  if (status === 'conform') return 'Compliant';
+  if (status === 'in_control') return 'In control';
+  if (status === 'not_conform') return 'Non-compliant';
+  return status ? status.charAt(0).toUpperCase() + status.slice(1).replace(/_/g, ' ') : 'Open';
 }
 
 export function weldStatusTone(value: unknown) {
-  const label = weldStatusLabel(value).toLowerCase();
-  if (label === 'conform') return 'success';
-  if (label === 'niet conform') return 'danger';
-  if (label === 'in controle') return 'info';
+  const status = normalizeWeldStatus(value);
+  if (status === 'conform') return 'success';
+  if (status === 'not_conform') return 'danger';
+  if (status === 'in_control') return 'info';
   return 'neutral';
 }
 
@@ -85,30 +89,33 @@ export function formatFileSize(value: unknown) {
   return `${size} B`;
 }
 
-export function normalizeChecklist(input: unknown) {
-  if (!Array.isArray(input)) return [] as Array<{ label: string; status: string; group: string }>;
+type ChecklistRow = { label: string; status: string; group?: string };
+
+export function normalizeChecklist(input: unknown): ChecklistRow[] {
+  if (!Array.isArray(input)) return [];
   return input.map((item, index) => {
     const record = item && typeof item === 'object' ? (item as Record<string, unknown>) : {};
-    const label = formatValue(record.label || record.title || record.key, `Onderdeel ${index + 1}`);
+    const label = formatValue(record.label || record.title || record.key || record.code, `Item ${index + 1}`);
     const value = String(record.status || '').toLowerCase();
     const ok = Boolean(record.ok || record.completed || record.complete);
-    let status = 'Vereist';
-    if (ok || ['compleet', 'complete', 'ok', 'ready', 'conform'].includes(value)) status = 'Compleet';
-    else if (value.includes('ontbre') || value.includes('missing')) status = 'Ontbreekt';
+    let status = 'Required';
+    if (ok || ['compleet', 'complete', 'ok', 'ready', 'conform'].includes(value)) status = 'Complete';
+    else if (value.includes('ontbre') || value.includes('missing')) status = 'Missing';
+    else if (value) status = value.charAt(0).toUpperCase() + value.slice(1);
     return { label, status, group: inferChecklistGroup(label) };
   });
 }
 
 function inferChecklistGroup(label: string) {
   const value = label.toLowerCase();
-  if (value.includes('project') || value.includes('exc') || value.includes('opdracht')) return 'Project';
-  if (value.includes('las') || value.includes('wps') || value.includes('wpqr') || value.includes('materiaal')) return 'Lassen';
-  if (value.includes('inspect') || value.includes('ndt') || value.includes('controle')) return 'Inspecties';
-  if (value.includes('document') || value.includes('certific')) return 'Documenten';
-  return 'Overig';
+  if (value.includes('project') || value.includes('exc') || value.includes('client')) return 'Project';
+  if (value.includes('weld') || value.includes('las') || value.includes('wps') || value.includes('wpqr') || value.includes('material')) return 'Welds';
+  if (value.includes('inspect') || value.includes('ndt') || value.includes('control')) return 'Inspections';
+  if (value.includes('document') || value.includes('certific')) return 'Documents';
+  return 'Other';
 }
 
-export function groupChecklist(items: Array<{ label: string; status: string; group?: string }>) {
+export function groupChecklist(items: ChecklistRow[]) {
   const groups = new Map<string, Array<{ label: string; status: string }>>();
   items.forEach((item) => {
     const key = item.group || inferChecklistGroup(item.label);
@@ -121,9 +128,9 @@ export function groupChecklist(items: Array<{ label: string; status: string; gro
 
 export function summarizeChecklist(items: Array<{ label: string; status: string }>) {
   const total = items.length;
-  const complete = items.filter((item) => item.status === 'Compleet').length;
-  const missing = items.filter((item) => item.status === 'Ontbreekt').length;
-  const required = items.filter((item) => item.status === 'Vereist').length;
+  const complete = items.filter((item) => item.status === 'Complete').length;
+  const missing = items.filter((item) => item.status === 'Missing').length;
+  const required = items.filter((item) => item.status === 'Required').length;
   return { total, complete, missing, required };
 }
 

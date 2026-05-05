@@ -53,6 +53,65 @@
 .weld-inspection-layout input,
 .weld-inspection-layout textarea { max-width: 100%; }
 
+.reports-page-fix * { box-sizing: border-box; min-width: 0; }
+.reports-feature-button {
+  width: 100%;
+  border: 1px solid #bfdbfe;
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  border-radius: 18px;
+  padding: 18px;
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  text-align: left;
+  cursor: pointer;
+}
+.reports-feature-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: #1d4ed8;
+  color: #fff;
+  display: grid;
+  place-items: center;
+}
+.reports-list { display: grid; gap: 14px; }
+.reports-card-row {
+  border: 1px solid #dbe7f7;
+  border-radius: 18px;
+  padding: 16px;
+  background: #fff;
+  box-shadow: 0 14px 34px rgba(15, 23, 42, .05);
+  display: grid;
+  gap: 14px;
+}
+.reports-card-main { display: grid; gap: 6px; color: #071b45; }
+.reports-card-main strong { font-size: 18px; line-height: 1.2; overflow-wrap: anywhere; }
+.reports-card-main span { color: #64748b; line-height: 1.25; overflow-wrap: anywhere; }
+.reports-card-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.reports-action {
+  min-height: 46px;
+  border-radius: 14px;
+  border: 1px solid #dbe7f7;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1.05;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.reports-action-primary { background: #2563eb; color: #fff; border-color: #2563eb; }
+.reports-action-secondary { background: #fff; color: #123A7A; }
+
 @media (max-width: 920px) {
   .weld-inspection-layout {
     display: block !important;
@@ -82,13 +141,50 @@
   }
 }
 
+@media (max-width: 640px) {
+  .reports-toolbar-grid,
+  .reports-content-grid { grid-template-columns: 1fr !important; }
+  .reports-title-row { align-items: flex-start !important; gap: 10px; }
+  .reports-searchbar { display: grid !important; grid-template-columns: 22px minmax(0, 1fr); width: 100%; }
+  .reports-card-actions { grid-template-columns: 1fr; }
+  .reports-action { min-height: 52px; font-size: 15px; }
+  .reports-feature-button { grid-template-columns: 44px minmax(0, 1fr); padding: 14px; }
+  .reports-feature-icon { width: 44px; height: 44px; }
+}
+
 @media (max-width: 520px) {
   .mobile-page-body { padding-left: 10px !important; padding-right: 10px !important; }
   .mobile-action-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
   .mobile-action-card { min-height: 104px; padding: 16px 10px; font-size: 16px; border-radius: 18px; }
   .mobile-action-card svg { width: 24px; height: 24px; }
   .mobile-project-quick-actions { grid-template-columns: 1fr 1fr; }
-  .mobile-project-quick-actions > button { font-size: 13px; padding: 0 8px; }
+  .mobile-project-quick-actions > button { font-size: 13px; padding: 0 8px; min-height: 52px; }
+
+  .inspection-meta-grid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    border-radius: 22px !important;
+  }
+  .inspection-meta-cell {
+    display: grid !important;
+    grid-template-columns: 34px minmax(0, 1fr) !important;
+    padding: 14px !important;
+    border-right: 0 !important;
+    border-bottom: 1px solid #e4edf8 !important;
+  }
+  .inspection-meta-cell:last-child { border-bottom: 0 !important; }
+  .inspection-meta-cell strong {
+    display: block !important;
+    white-space: normal !important;
+    word-break: normal !important;
+    overflow-wrap: anywhere !important;
+    line-height: 1.25 !important;
+    font-size: 16px !important;
+  }
+  .inspection-meta-cell span {
+    white-space: normal !important;
+    line-height: 1.2 !important;
+  }
   .weld-inspection-layout [style*='repeat(auto-fit'] {
     grid-template-columns: 1fr !important;
   }
@@ -96,9 +192,14 @@
     grid-template-columns: 1fr !important;
     padding-bottom: max(14px, env(safe-area-inset-bottom)) !important;
   }
-  .weld-inspection-layout h3 { font-size: 22px; line-height: 1.1; }
+  .weld-inspection-layout h1 { font-size: 34px !important; line-height: 1.05 !important; }
+  .weld-inspection-layout h2 { font-size: 28px !important; line-height: 1.12 !important; }
+  .weld-inspection-layout h3 { font-size: 20px; line-height: 1.15; }
   .weld-inspection-layout h4 { font-size: 18px; line-height: 1.15; }
   .weld-inspection-layout article div[style*='display: flex'] > * {
     flex: 1 1 100%;
   }
+  .inspection-section-card { padding: 18px !important; }
+  .inspection-status-grid { grid-template-columns: 1fr !important; }
+  .inspection-fields { grid-template-columns: 1fr !important; }
 }

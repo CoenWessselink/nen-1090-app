@@ -16,7 +16,7 @@ function normalizeReportUrls(items: ReportItem[]) {
 function normalizeItems(payload: ReportResponse | null | undefined) {
   if (Array.isArray(payload)) {
     return {
-      items: payload,
+      items: normalizeReportUrls(payload),
       total: payload.length,
       page: 1,
       limit: payload.length || 25,
@@ -40,19 +40,24 @@ function normalizeItems(payload: ReportResponse | null | undefined) {
 }
 
 function deriveProjectReports(projects: Awaited<ReturnType<typeof getProjects>>) {
-  const items: ReportItem[] = (projects.items || []).map((project, index) => ({
-    id: `project-summary-${project.id}`,
-    title: `${project.name || project.omschrijving || project.projectnummer || `Project ${index + 1}`} – projectoverzicht`,
-    type: 'project_summary',
-    status: String(project.status || 'concept'),
-    owner: String(project.client_name || project.opdrachtgever || 'Projectteam'),
-    created_at: String(project.updated_at || project.created_at || project.start_date || new Date().toISOString()),
-    project_id: project.id,
-    project_name: String(project.name || project.omschrijving || ''),
-    projectnummer: String(project.projectnummer || project.id || ''),
-    client_name: String(project.client_name || project.opdrachtgever || ''),
-    pdf_url: `/api/v1/projects/${project.id}/exports/compliance/pdf?download=true`,
-  }));
+  const items: ReportItem[] = (projects.items || []).map((project, index) => {
+    const projectNumber = String(project.projectnummer || project.code || project.id || '').trim();
+    const projectName = String(project.name || project.omschrijving || project.project_name || '').trim();
+    return {
+      id: `project-summary-${project.id}`,
+      title: `Weld Compliance Report ${projectNumber || index + 1}`,
+      type: 'weld_compliance_report',
+      status: String(project.status || 'concept'),
+      owner: String(project.client_name || project.opdrachtgever || 'Projectteam'),
+      created_at: String(project.updated_at || project.created_at || project.start_date || new Date().toISOString()),
+      project_id: project.id,
+      project_name: projectName,
+      projectnummer: projectNumber,
+      client_name: String(project.client_name || project.opdrachtgever || ''),
+      pdf_url: `/api/v1/projects/${project.id}/exports/compliance/pdf?download=true&force=true`,
+      download_url: `/api/v1/projects/${project.id}/exports/compliance/pdf?download=true&force=true`,
+    };
+  });
 
   return {
     items,

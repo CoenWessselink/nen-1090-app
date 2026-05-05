@@ -1,4 +1,5 @@
 import { ApiError, apiRequest, downloadUrlAsBlob } from '@/api/client';
+import { uploadOne, filesFromInput } from './upload';
 import type { ApiListResponse, ListParams } from '@/types/api';
 import type { CeDocument } from '@/types/domain';
 
@@ -12,23 +13,6 @@ function emptyList<T = DocumentRecord>(params?: ListParams): ApiListResponse<T> 
     page: Number(params?.page || 1),
     limit: Number(params?.limit || params?.pageSize || 25),
   } as ApiListResponse<T>;
-}
-
-function cloneFormData(input: FormData, field: 'file' | 'files', projectId?: string) {
-  const out = new FormData();
-  const files: File[] = [];
-
-  for (const [key, value] of input.entries()) {
-    if (value instanceof File) {
-      files.push(value);
-    } else {
-      out.append(key, value);
-    }
-  }
-
-  files.forEach((file) => out.append(field, file, file.name));
-  if (projectId) out.set('project_id', projectId);
-  return out;
 }
 
 async function tryPaths<T>(paths: string[], init?: RequestInit, fallback?: T): Promise<T> {
@@ -45,6 +29,14 @@ async function tryPaths<T>(paths: string[], init?: RequestInit, fallback?: T): P
   if (fallback !== undefined) return fallback;
   if (lastError) throw lastError;
   throw new ApiError('Document request failed', 500);
+}
+
+function firstStringFromForm(input: FormData, ...keys: string[]): string | undefined {
+  for (const key of keys) {
+    const value = input.get(key);
+    if (typeof value === 'string' && value.trim()) return value.trim();
+  }
+  return undefined;
 }
 
 export async function getProjectDocuments(projectId: string | number, params?: ListParams) {
@@ -76,21 +68,20 @@ export async function getDocumentVersions(documentId: string | number) {
 
 export async function createProjectDocument(projectId: string | number, payload: FormData | Record<string, unknown>) {
   if (payload instanceof FormData) {
-    const paths = [`/projects/${projectId}/documents`, '/documents/upload', '/documents'];
-    let lastError: unknown = null;
-    for (const path of paths) {
-      for (const field of ['files', 'file'] as const) {
-        try {
-          return await apiRequest(path, { method: 'POST', body: cloneFormData(payload, field, String(projectId)) });
-        } catch (error) {
-          lastError = error;
-          if (error instanceof ApiError && [400, 404, 405, 409, 422].includes(error.status)) continue;
-          throw error;
-        }
-      }
+    const files = filesFromInput(payload);
+    if (!files.length) throw new ApiError('Geen document geselecteerd voor upload.', 400);
+
+    const title = firstStringFromForm(payload, 'title', 'name', 'filename');
+    const documentType = firstStringFromForm(payload, 'document_type', 'type', 'kind');
+    const uploaded: unknown[] = [];
+    for (const file of files) {
+      uploaded.push(await uploadOne(`/projects/${projectId}/documents`, file, {
+        title: title || file.name,
+        document_type: documentType || 'document',
+        project_id: String(projectId),
+      }));
     }
-    if (lastError) throw lastError;
-    throw new ApiError('Document upload failed', 500);
+    return uploaded.length === 1 ? uploaded[0] : { items: uploaded, total: uploaded.length };
   }
 
   return tryPaths<DocumentRecord>([

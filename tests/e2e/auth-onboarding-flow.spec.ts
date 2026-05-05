@@ -10,7 +10,7 @@ test.describe('auth + onboarding hardening', () => {
   test('activate route renders stable', async ({ page }) => {
     await page.goto('/activate?token=dummy-token');
     await expect(page.locator('body')).toBeVisible();
-    await expect(page.getByRole('heading', { name: /activeer je account/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /activate your account|activeer je account/i })).toBeVisible();
   });
 
   test('forgot password route renders stable', async ({ page }) => {

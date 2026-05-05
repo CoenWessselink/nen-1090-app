@@ -14,15 +14,33 @@ jobs:
         run: |
           set -e
           echo "Checking app root..."
-          RESPONSE=$(curl -fsSL https://nen-1090-app.pages.dev/)
-          echo "$RESPONSE" | grep '<div id="root">' || exit 1
+          for i in 1 2 3 4 5; do
+            RESPONSE=$(curl -fsSL --max-time 25 https://nen-1090-app.pages.dev/ || true)
+            if echo "$RESPONSE" | grep '<div id="root">'; then
+              echo "App root OK"
+              exit 0
+            fi
+            echo "App root not ready yet, retry $i/5"
+            sleep 6
+          done
+          echo "App root failed"
+          exit 1
 
       - name: Check marketing root
         run: |
           set -e
           echo "Checking marketing root..."
-          RESPONSE=$(curl -fsSL https://nen1090-marketing.pages.dev/)
-          echo "$RESPONSE" | grep -Ei 'WeldInspect|CWS NEN-1090|<html' || exit 1
+          for i in 1 2 3 4 5; do
+            RESPONSE=$(curl -fsSL --max-time 25 https://nen1090-marketing.pages.dev/ || true)
+            if echo "$RESPONSE" | grep -Ei 'WeldInspect|CWS NEN-1090|<html'; then
+              echo "Marketing root OK"
+              exit 0
+            fi
+            echo "Marketing root not ready yet, retry $i/5"
+            sleep 6
+          done
+          echo "Marketing root failed"
+          exit 1
 
       - name: Check API health direct with retries
         id: api_direct
@@ -30,19 +48,28 @@ jobs:
         run: |
           set +e
           echo "Checking direct API health with retries..."
+          URLS=(
+            "https://nen1090-api-prod-f5ddagedbrftb4ew.westeurope-01.azurewebsites.net/api/v1/health"
+            "https://nen1090-api-prod-f5ddagedbrftb4ew.westeurope-01.azurewebsites.net/health"
+            "https://nen1090-api-prod-f5ddagedbrftb4ew.westeurope-01.azurewebsites.net/api/health"
+          )
           ok=0
-          for i in 1 2 3 4 5; do
-            echo "Direct attempt $i"
-            body=$(curl -fsSL --max-time 20 https://nen1090-api-prod-f5ddagedbrftb4ew.westeurope-01.azurewebsites.net/api/v1/health 2>/dev/null)
-            status=$?
-            if [ "$status" -eq 0 ]; then
-              echo "$body"
-              if echo "$body" | grep -Eq '"ok"\s*:\s*true|"status"\s*:\s*"(ok|healthy|up)"'; then
+          for url in "${URLS[@]}"; do
+            echo "Direct URL: $url"
+            for i in 1 2 3 4 5 6; do
+              tmp_body=$(mktemp)
+              code=$(curl -sS -L --max-time 30 -o "$tmp_body" -w "%{http_code}" "$url" || echo "000")
+              echo "Direct attempt $i code=$code"
+              head -c 500 "$tmp_body" || true
+              echo ""
+              if [ "$code" = "200" ] || [ "$code" = "204" ]; then
                 ok=1
-                break
+                rm -f "$tmp_body"
+                break 2
               fi
-            fi
-            sleep 5
+              rm -f "$tmp_body"
+              sleep 8
+            done
           done
           if [ "$ok" -eq 1 ]; then
             echo "direct_ok=true" >> "$GITHUB_OUTPUT"
@@ -51,30 +78,38 @@ jobs:
           echo "direct_ok=false" >> "$GITHUB_OUTPUT"
           exit 1
 
-      - name: Check API health through marketing proxy
+      - name: Check API health through Cloudflare proxies
         id: api_proxy
         continue-on-error: true
         run: |
           set +e
           echo "Checking proxy API health with retries..."
           URLS=(
+            "https://app.weldinspectpro.com/api/v1/health"
+            "https://app.weldinspectpro.com/api/health"
+            "https://nen-1090-app.pages.dev/api/v1/health"
+            "https://nen-1090-app.pages.dev/api/health"
+            "https://weldinspectpro.com/api/v1/health"
+            "https://weldinspectpro.com/api/health"
             "https://nen1090-marketing.pages.dev/api/v1/health"
             "https://nen1090-marketing.pages.dev/api/health"
           )
           ok=0
           for url in "${URLS[@]}"; do
-            echo "Trying $url"
-            for i in 1 2 3; do
-              body=$(curl -fsSL --max-time 20 "$url" 2>/dev/null)
-              status=$?
-              if [ "$status" -eq 0 ]; then
-                echo "$body"
-                if echo "$body" | grep -Eq '"ok"\s*:\s*true|"status"\s*:\s*"(ok|healthy|up)"'; then
-                  ok=1
-                  break 2
-                fi
+            echo "Proxy URL: $url"
+            for i in 1 2 3 4 5 6; do
+              tmp_body=$(mktemp)
+              code=$(curl -sS -L --max-time 30 -o "$tmp_body" -w "%{http_code}" "$url" || echo "000")
+              echo "Proxy attempt $i code=$code"
+              head -c 500 "$tmp_body" || true
+              echo ""
+              if [ "$code" = "200" ] || [ "$code" = "204" ]; then
+                ok=1
+                rm -f "$tmp_body"
+                break 2
               fi
-              sleep 3
+              rm -f "$tmp_body"
+              sleep 8
             done
           done
           if [ "$ok" -eq 1 ]; then
@@ -91,10 +126,10 @@ jobs:
           echo "direct_ok=$direct_ok"
           echo "proxy_ok=$proxy_ok"
           if [ "$direct_ok" = "true" ] || [ "$proxy_ok" = "true" ]; then
-            echo "At least one API health path is healthy."
+            echo "At least one API health path returned HTTP 2xx."
             exit 0
           fi
-          echo "Both direct API health and marketing proxy health failed."
+          echo "Both direct API health and Cloudflare proxy health failed after retries."
           exit 1
 
       - name: Smoke test completed

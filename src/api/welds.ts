@@ -1,4 +1,5 @@
 import client, { ApiError, apiRequest, optionalRequest } from './client';
+import { uploadMany } from './upload';
 import type { ListParams } from '@/types/api';
 
 function withQuery(path: string, params?: ListParams): string {
@@ -19,7 +20,8 @@ function withQuery(path: string, params?: ListParams): string {
 function getProjectId(input: unknown): string | null {
   if (typeof input === 'string' || typeof input === 'number') return String(input);
   if (input && typeof input === 'object') {
-    const projectId = (input as Record<string, unknown>).project_id ?? (input as Record<string, unknown>).projectId;
+    const record = input as Record<string, unknown>;
+    const projectId = record.project_id ?? record.projectId;
     if (typeof projectId === 'string' || typeof projectId === 'number') return String(projectId);
   }
   return null;
@@ -144,20 +146,6 @@ async function tryMethods<T = unknown>(paths: string[], methods: Array<'PATCH' |
   throw new ApiError('No valid API mutation route succeeded', 500);
 }
 
-function cloneFormData(input: FormData, fieldName?: 'file' | 'files', projectId?: string, weldId?: string) {
-  const output = new FormData();
-  const files: File[] = [];
-  for (const [key, value] of input.entries()) {
-    if (value instanceof File) files.push(value);
-    else output.append(key, value);
-  }
-  if (fieldName) files.forEach((file) => output.append(fieldName, file, file.name));
-  else input.forEach((value, key) => output.append(key, value));
-  if (projectId) output.set('project_id', projectId);
-  if (weldId) output.set('weld_id', weldId);
-  return output;
-}
-
 export function getWelds(arg?: string | number | ListParams | Record<string, unknown>) {
   const projectId = getProjectId(arg);
   if (projectId) return apiRequest(`/projects/${projectId}/welds`);
@@ -197,24 +185,10 @@ export function deleteWeld(projectId: string | number, weldId: string | number) 
   return optionalRequest([`/projects/${safeProjectId}/welds/${safeWeldId}`, `/welds/${safeWeldId}`], { method: 'DELETE' });
 }
 
-export async function uploadWeldAttachment(projectId: string | number, weldId: string | number, formData: FormData) {
+export async function uploadWeldAttachment(projectId: string | number, weldId: string | number, upload: FormData | File | File[]) {
   const safeWeldId = requireId(weldId, 'weldId');
   const safeProjectId = requireId(projectId, 'projectId');
-  const paths = [`/projects/${safeProjectId}/welds/${safeWeldId}/photos`, `/projects/${safeProjectId}/welds/${safeWeldId}/attachments`, `/welds/${safeWeldId}/photos`, `/welds/${safeWeldId}/attachments`, '/documents/upload'];
-  let lastError: unknown = null;
-  for (const path of paths) {
-    for (const field of ['files', 'file'] as const) {
-      try {
-        return await apiRequest(path, { method: 'POST', body: cloneFormData(formData, field, safeProjectId, safeWeldId) });
-      } catch (error) {
-        lastError = error;
-        if (error instanceof ApiError && [404, 405, 422].includes(error.status)) continue;
-        throw error;
-      }
-    }
-  }
-  if (lastError) throw lastError;
-  throw new ApiError('Weld photo upload failed', 500);
+  return uploadMany(`/welds/${safeWeldId}/photos`, upload, { project_id: safeProjectId, weld_id: safeWeldId, kind: 'photo' });
 }
 
 export const uploadWeldPhoto = uploadWeldAttachment;
@@ -222,8 +196,7 @@ export const uploadWeldPhotos = uploadWeldAttachment;
 
 export function getWeldAttachments(projectId: string | number, weldId: string | number) {
   const safeWeldId = requireId(weldId, 'weldId');
-  const safeProjectId = requireId(projectId, 'projectId');
-  return optionalRequest([`/projects/${safeProjectId}/welds/${safeWeldId}/attachments`, `/welds/${safeWeldId}/attachments`]);
+  return optionalRequest([`/welds/${safeWeldId}/attachments`, `/welds/${safeWeldId}/photos`]);
 }
 
 export function getWeldCompliance(projectId: string | number, weldId: string | number) {
