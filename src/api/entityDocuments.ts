@@ -34,4 +34,4 @@ export const deleteEntityDocument = (documentId: string) =>
   client.delete(`/masterdata-documents/${documentId}`);
 
 export const downloadEntityDocument = (documentId: string) =>
-  downloadRequest(`/masterdata-documents/${documentId}/download`);
+  downloadRequest(`/masterdata-documents/file/${documentId}`);
