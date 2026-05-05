@@ -1,23 +1,25 @@
-import React from "react";
+import type { ReactNode } from 'react';
 
-type Tone = "success" | "danger" | "neutral";
+export type BadgeTone = 'neutral' | 'success' | 'danger' | 'warning' | 'info';
 
-export default function Badge({
+const toneClassName: Record<BadgeTone, string> = {
+  neutral: 'badge badge-neutral',
+  success: 'badge badge-success',
+  danger: 'badge badge-danger',
+  warning: 'badge badge-warning',
+  info: 'badge badge-info',
+};
+
+export function Badge({
+  tone = 'neutral',
   children,
-  tone = "neutral",
+  className = '',
 }: {
-  children: React.ReactNode;
-  tone?: Tone;
+  tone?: BadgeTone;
+  children: ReactNode;
+  className?: string;
 }) {
-  const colors = {
-    success: "bg-green-500 text-white",
-    danger: "bg-red-500 text-white",
-    neutral: "bg-gray-400 text-white",
-  };
-
-  return (
-    <span className={`px-2 py-1 rounded text-xs ${colors[tone]}`}>
-      {children}
-    </span>
-  );
+  return <span className={`${toneClassName[tone] || toneClassName.neutral} ${className}`.trim()}>{children}</span>;
 }
+
+export default Badge;
