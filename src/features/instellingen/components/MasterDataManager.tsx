@@ -229,7 +229,7 @@ export function MasterDataManager({
       pushNotification({ title: `${documentLabel} toegevoegd`, description: `${files.length} bestand(en) geüpload.`, tone: 'success' });
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Upload mislukt.');
-      pushNotification({ title: 'Upload mislukt', description: error instanceof Error ? error.message : 'Onbekende fout', tone: 'danger' });
+      pushNotification({ title: 'Upload mislukt', description: error instanceof Error ? error.message : 'Onbekende fout', tone: 'error' });
     } finally {
       setDocUploading(false);
     }
@@ -309,7 +309,7 @@ export function MasterDataManager({
       refetch();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Opslaan mislukt.');
-      pushNotification({ title: `${title} opslaan mislukt`, description: error instanceof Error ? error.message : 'Onbekende fout', tone: 'danger' });
+      pushNotification({ title: `${title} opslaan mislukt`, description: error instanceof Error ? error.message : 'Onbekende fout', tone: 'error' });
     }
   };
 
@@ -323,7 +323,7 @@ export function MasterDataManager({
       refetch();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Verwijderen mislukt.');
-      pushNotification({ title: `${title} verwijderen mislukt`, description: error instanceof Error ? error.message : 'Onbekende fout', tone: 'danger' });
+      pushNotification({ title: `${title} verwijderen mislukt`, description: error instanceof Error ? error.message : 'Onbekende fout', tone: 'error' });
     }
   };
 
@@ -481,7 +481,7 @@ export function MasterDataManager({
       </div>
 
       {message ? <InlineMessage tone="success">{message}</InlineMessage> : null}
-      {!canWrite ? <InlineMessage tone="danger">{`Je hebt geen schrijfrechten voor ${title.toLowerCase()}.`}</InlineMessage> : null}
+      {!canWrite ? <InlineMessage tone="error">{`Je hebt geen schrijfrechten voor ${title.toLowerCase()}.`}</InlineMessage> : null}
 
       <div className="toolbar-shell">
         <div className="search-shell inline-search-shell">
