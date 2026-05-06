@@ -10,10 +10,20 @@ const BILLING_STATUS_FALLBACK_ENDPOINTS = [
 const BILLING_STATUS_FALLBACK_COUNT = BILLING_STATUS_FALLBACK_ENDPOINTS.length;
 
 const CANONICAL_BILLING_INVOICES_ENDPOINT = '/billing/invoices';
-const BILLING_INVOICES_FALLBACK_ENDPOINTS = [
-  '/tenant/billing/invoices',
-];
+const BILLING_INVOICES_FALLBACK_ENDPOINTS = ['/tenant/billing/invoices'];
 const BILLING_INVOICES_FALLBACK_COUNT = BILLING_INVOICES_FALLBACK_ENDPOINTS.length;
+
+const CANONICAL_BILLING_PREVIEW_ENDPOINT = '/billing/preview';
+const BILLING_PREVIEW_FALLBACK_ENDPOINTS = [
+  '/tenant/billing/preview',
+  '/billing/plans',
+];
+
+const CANONICAL_BILLING_CHECKOUT_ENDPOINT = '/billing/checkout/trial-upgrade';
+const BILLING_CHECKOUT_FALLBACK_ENDPOINTS = [
+  '/tenant/billing/checkout',
+  '/billing/checkout',
+];
 
 export type BillingPreviewRequest = {
   target_seats?: number;
@@ -51,6 +61,14 @@ export type BillingCheckoutResponse = {
   [key: string]: unknown;
 };
 
+function traceCanonicalRequest(event: string, endpoint: string, fallbacks: string[]) {
+  runtimeTrace(event, {
+    endpoint,
+    fallbackCount: fallbacks.length,
+    fallbackEndpoints: fallbacks,
+  });
+}
+
 function positiveInt(value: unknown, fallback = 1): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : fallback;
@@ -59,6 +77,13 @@ function positiveInt(value: unknown, fallback = 1): number {
 function normalizeCheckoutPayload(payload: BillingCheckoutRequest): Record<string, unknown> {
   const billingCycle = payload.billing_cycle || (payload.billing === 'monthly' ? 'monthly' : 'yearly');
   const seats = positiveInt(payload.seats ?? payload.target_seats ?? payload.targetSeats, 1);
+
+  runtimeTrace('BILLING_CHECKOUT_PAYLOAD_NORMALIZED', {
+    billingCycle,
+    seats,
+    requestedPlan: payload.plan || payload.plan_code || payload.targetPlan || 'core',
+  });
+
   return {
     seats,
     target_seats: seats,
@@ -74,14 +99,21 @@ function normalizeCheckoutPayload(payload: BillingCheckoutRequest): Record<strin
 function normalizePreviewPayload(payload?: BillingPreviewRequest): Record<string, unknown> {
   const seats = positiveInt(payload?.target_seats ?? payload?.targetSeats ?? payload?.seats, 1);
   const planCode = payload?.plan_code ?? payload?.targetPlan ?? payload?.plan ?? 'core';
+
+  runtimeTrace('BILLING_PREVIEW_PAYLOAD_NORMALIZED', {
+    seats,
+    planCode,
+  });
+
   return { target_seats: seats, seats, plan_code: planCode, plan: planCode };
 }
 
 export function getTenantBillingStatus() {
-  runtimeTrace('CANONICAL_BILLING_ENDPOINT_USED', {
-    endpoint: CANONICAL_BILLING_STATUS_ENDPOINT,
-    fallbackCount: BILLING_STATUS_FALLBACK_COUNT,
-  });
+  traceCanonicalRequest(
+    'CANONICAL_BILLING_ENDPOINT_USED',
+    CANONICAL_BILLING_STATUS_ENDPOINT,
+    BILLING_STATUS_FALLBACK_ENDPOINTS,
+  );
 
   return optionalRequest<BillingStatus | Record<string, unknown>>([
     CANONICAL_BILLING_STATUS_ENDPOINT,
@@ -90,16 +122,21 @@ export function getTenantBillingStatus() {
 }
 
 export function getBillingPaymentStatus(paymentId: string) {
+  runtimeTrace('CANONICAL_BILLING_PAYMENT_STATUS_USED', {
+    paymentId,
+  });
+
   return optionalRequest<Record<string, unknown>>([
     `/billing/payment-status/${encodeURIComponent(paymentId)}`,
   ]);
 }
 
 export function getTenantBillingInvoices() {
-  runtimeTrace('CANONICAL_BILLING_ENDPOINT_USED', {
-    endpoint: CANONICAL_BILLING_INVOICES_ENDPOINT,
-    fallbackCount: BILLING_INVOICES_FALLBACK_COUNT,
-  });
+  traceCanonicalRequest(
+    'CANONICAL_BILLING_ENDPOINT_USED',
+    CANONICAL_BILLING_INVOICES_ENDPOINT,
+    BILLING_INVOICES_FALLBACK_ENDPOINTS,
+  );
 
   return optionalRequest<Record<string, unknown>>([
     CANONICAL_BILLING_INVOICES_ENDPOINT,
@@ -108,6 +145,10 @@ export function getTenantBillingInvoices() {
 }
 
 export function getTenantBillingPayments() {
+  traceCanonicalRequest('CANONICAL_BILLING_PAYMENTS_USED', '/billing/payments', [
+    '/tenant/billing/payments',
+  ]);
+
   return optionalRequest<Record<string, unknown>>([
     '/billing/payments',
     '/tenant/billing/payments',
@@ -115,6 +156,10 @@ export function getTenantBillingPayments() {
 }
 
 export function getBillingPlans() {
+  traceCanonicalRequest('CANONICAL_BILLING_PLANS_USED', '/billing/plans', [
+    '/tenant/billing/plans',
+  ]);
+
   return optionalRequest<Record<string, unknown>>([
     '/billing/plans',
     '/tenant/billing/plans',
@@ -122,22 +167,36 @@ export function getBillingPlans() {
 }
 
 export function getTenantBillingPreview(payload?: BillingPreviewRequest) {
-  return optionalRequest<Record<string, unknown>>([
-    '/tenant/billing/preview',
-    '/billing/preview',
-    '/billing/plans',
-  ], {
-    method: 'POST',
-    body: JSON.stringify(normalizePreviewPayload(payload)),
-  });
+  traceCanonicalRequest(
+    'CANONICAL_BILLING_PREVIEW_USED',
+    CANONICAL_BILLING_PREVIEW_ENDPOINT,
+    BILLING_PREVIEW_FALLBACK_ENDPOINTS,
+  );
+
+  return optionalRequest<Record<string, unknown>>(
+    [
+      CANONICAL_BILLING_PREVIEW_ENDPOINT,
+      ...BILLING_PREVIEW_FALLBACK_ENDPOINTS,
+    ],
+    {
+      method: 'POST',
+      body: JSON.stringify(normalizePreviewPayload(payload)),
+    },
+  );
 }
 
 export function createTenantBillingCheckout(payload: BillingCheckoutRequest) {
+  traceCanonicalRequest(
+    'CANONICAL_BILLING_CHECKOUT_USED',
+    CANONICAL_BILLING_CHECKOUT_ENDPOINT,
+    BILLING_CHECKOUT_FALLBACK_ENDPOINTS,
+  );
+
   const body = JSON.stringify(normalizeCheckoutPayload(payload));
+
   return optionalRequest<BillingCheckoutResponse>([
-    '/billing/checkout/trial-upgrade',
-    '/tenant/billing/checkout',
-    '/billing/checkout',
+    CANONICAL_BILLING_CHECKOUT_ENDPOINT,
+    ...BILLING_CHECKOUT_FALLBACK_ENDPOINTS,
   ], {
     method: 'POST',
     body,
@@ -146,6 +205,16 @@ export function createTenantBillingCheckout(payload: BillingCheckoutRequest) {
 
 export function changeTenantSeats(payload: BillingCheckoutRequest | Record<string, unknown>) {
   const body = JSON.stringify(normalizeCheckoutPayload(payload as BillingCheckoutRequest));
+
+  runtimeTrace('CANONICAL_BILLING_CHANGE_REQUEST_USED', {
+    endpoint: '/billing/change-seats',
+    fallbackEndpoints: [
+      '/tenant/billing/change-plan',
+      '/tenant/billing/change',
+      '/billing/change-plan',
+    ],
+  });
+
   return optionalRequest<BillingCheckoutResponse>([
     '/billing/change-seats',
     '/tenant/billing/change-plan',
@@ -162,6 +231,10 @@ export function changeTenantPlan(payload: BillingCheckoutRequest | Record<string
 }
 
 export function retryTenantPayment() {
+  runtimeTrace('CANONICAL_BILLING_RETRY_USED', {
+    endpoint: '/billing/retry-payment',
+  });
+
   return optionalRequest<BillingCheckoutResponse>([
     '/billing/retry-payment',
     '/tenant/billing/retry-payment',
@@ -173,6 +246,10 @@ export function retryTenantPayment() {
 }
 
 export function cancelTenantSubscriptionSelfService() {
+  runtimeTrace('CANONICAL_BILLING_CANCEL_USED', {
+    endpoint: '/billing/cancel',
+  });
+
   return optionalRequest<Record<string, unknown>>([
     '/billing/cancel',
     '/tenant/billing/cancel-subscription',
