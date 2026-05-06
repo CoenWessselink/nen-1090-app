@@ -258,7 +258,18 @@ export async function downloadUrlAsObjectUrl(
   };
 }
 
-export const downloadUrlAsBlobUrl = downloadUrlAsObjectUrl;
+export async function downloadUrlAsBlobUrl(
+  path: string,
+  init?: RequestInit,
+): Promise<{ url: string; filename: string; contentType: string }> {
+  runtimeTrace('DEPRECATED_DOWNLOAD_ALIAS_USED', {
+    alias: 'downloadUrlAsBlobUrl',
+    replacement: 'downloadUrlAsObjectUrl',
+    path,
+  });
+
+  return downloadUrlAsObjectUrl(path, init);
+}
 
 export async function openProtectedFile(
   path: string,
