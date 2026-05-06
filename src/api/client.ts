@@ -48,18 +48,27 @@ function buildHeaders(init?: RequestInit): Headers {
   return headers;
 }
 
-function traceCompatPathUsage(path: string): void {
+function classifyCompatPattern(path: string): void {
   const matchedPattern = LEGACY_COMPAT_PATTERNS.find((pattern) => path.includes(pattern));
 
   if (!matchedPattern) {
-    runtimeTrace('CANONICAL_RUNTIME_PATH_USED', {
+    runtimeTrace('COMPAT_CLASS_A_CANONICAL', {
       path,
     });
 
     return;
   }
 
-  runtimeTrace('LEGACY_COMPAT_PATH_DETECTED', {
+  if (matchedPattern === '/legacy' || matchedPattern === '/fallback') {
+    runtimeTrace('COMPAT_CLASS_C_RETIREMENT_CANDIDATE', {
+      path,
+      matchedPattern,
+    });
+
+    return;
+  }
+
+  runtimeTrace('COMPAT_CLASS_B_LOW_TRAFFIC', {
     path,
     matchedPattern,
   });
@@ -108,7 +117,7 @@ export async function apiRequest<T = unknown>(
   init?: RequestInit,
   ...legacyArgs: unknown[]
 ): Promise<T> {
-  traceCompatPathUsage(path);
+  classifyCompatPattern(path);
 
   if (legacyArgs.length > 0) {
     runtimeTrace('LEGACY_APIREQUEST_SIGNATURE_USED', {
