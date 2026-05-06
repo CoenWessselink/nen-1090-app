@@ -23,6 +23,22 @@ function trace(event: string, payload?: Record<string, unknown>) {
   });
 }
 
+function resolveCreateInput(projectIdOrPayload: unknown, payload?: unknown) {
+  if (payload !== undefined) {
+    return {
+      projectId: String(projectIdOrPayload),
+      payload,
+    };
+  }
+
+  const source = (projectIdOrPayload || {}) as Record<string, unknown>;
+
+  return {
+    projectId: String(source.project_id || source.projectId || ''),
+    payload: projectIdOrPayload,
+  };
+}
+
 export function getWelds(projectId?: string | number | ListParams) {
   if (typeof projectId === 'string' || typeof projectId === 'number') {
     trace('CANONICAL_WELD_LIST_USED', { projectId });
@@ -44,12 +60,16 @@ export function getWeld(projectId: string | number, weldId: string | number) {
   ]);
 }
 
-export function createWeld(projectId: string | number, payload: unknown) {
-  trace('WELD_CREATE_REQUEST', { projectId });
+export function createWeld(projectIdOrPayload: unknown, payload?: unknown) {
+  const resolved = resolveCreateInput(projectIdOrPayload, payload);
 
-  return apiRequest(`/projects/${projectId}/welds`, {
+  trace('WELD_CREATE_REQUEST', {
+    projectId: resolved.projectId,
+  });
+
+  return apiRequest(`/projects/${resolved.projectId}/welds`, {
     method: 'POST',
-    body: JSON.stringify(payload),
+    body: JSON.stringify(resolved.payload),
   });
 }
 
