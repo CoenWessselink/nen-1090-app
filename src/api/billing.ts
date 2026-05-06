@@ -3,10 +3,17 @@ import { runtimeTrace } from '@/utils/runtimeTracing';
 import type { BillingStatus } from '@/types/domain';
 
 const CANONICAL_BILLING_STATUS_ENDPOINT = '/billing/current';
-const BILLING_STATUS_FALLBACK_COUNT = 2;
+const BILLING_STATUS_FALLBACK_ENDPOINTS = [
+  '/tenant/billing/status',
+  '/tenant/billing/subscription',
+];
+const BILLING_STATUS_FALLBACK_COUNT = BILLING_STATUS_FALLBACK_ENDPOINTS.length;
 
 const CANONICAL_BILLING_INVOICES_ENDPOINT = '/billing/invoices';
-const BILLING_INVOICES_FALLBACK_COUNT = 1;
+const BILLING_INVOICES_FALLBACK_ENDPOINTS = [
+  '/tenant/billing/invoices',
+];
+const BILLING_INVOICES_FALLBACK_COUNT = BILLING_INVOICES_FALLBACK_ENDPOINTS.length;
 
 export type BillingPreviewRequest = {
   target_seats?: number;
@@ -77,9 +84,8 @@ export function getTenantBillingStatus() {
   });
 
   return optionalRequest<BillingStatus | Record<string, unknown>>([
-    '/billing/current',
-    '/tenant/billing/status',
-    '/tenant/billing/subscription',
+    CANONICAL_BILLING_STATUS_ENDPOINT,
+    ...BILLING_STATUS_FALLBACK_ENDPOINTS,
   ]);
 }
 
@@ -96,8 +102,8 @@ export function getTenantBillingInvoices() {
   });
 
   return optionalRequest<Record<string, unknown>>([
-    '/billing/invoices',
-    '/tenant/billing/invoices',
+    CANONICAL_BILLING_INVOICES_ENDPOINT,
+    ...BILLING_INVOICES_FALLBACK_ENDPOINTS,
   ]);
 }
 
