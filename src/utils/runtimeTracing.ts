@@ -3,5 +3,8 @@ export function runtimeTrace(event: string, details?: Record<string, unknown>): 
     return;
   }
 
-  console.info(`[runtime-trace] ${event}`, details || {});
+  console.info(`[runtime-trace] ${event}`, {
+    timestamp: new Date().toISOString(),
+    ...(details || {}),
+  });
 }
