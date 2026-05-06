@@ -215,8 +215,7 @@ export async function downloadUrlAsBlob(
   path: string,
   init?: RequestInit,
 ): Promise<{ blob: Blob; filename: string }> {
-  runtimeTrace('DOWNLOAD_ALIAS_RETIREMENT_CANDIDATE_CHECK', {
-    alias: 'downloadUrlAsBlobUrl',
+  runtimeTrace('DOWNLOAD_RUNTIME_USED', {
     path,
   });
 
@@ -233,10 +232,6 @@ export async function downloadUrlAsBlob(
   const blob = await response.blob();
   const disposition = response.headers.get('content-disposition') || '';
   const match = disposition.match(/filename="?([^";]+)"?/i);
-
-  runtimeTrace('DOWNLOAD_BLOB_RUNTIME_USED', {
-    path,
-  });
 
   return {
     blob,
@@ -259,19 +254,6 @@ export async function downloadUrlAsObjectUrl(
     filename,
     contentType: blob.type || 'application/octet-stream',
   };
-}
-
-export async function downloadUrlAsBlobUrl(
-  path: string,
-  init?: RequestInit,
-): Promise<{ url: string; filename: string; contentType: string }> {
-  runtimeTrace('DEPRECATED_DOWNLOAD_ALIAS_USED', {
-    alias: 'downloadUrlAsBlobUrl',
-    replacement: 'downloadUrlAsObjectUrl',
-    path,
-  });
-
-  return downloadUrlAsObjectUrl(path, init);
 }
 
 export async function openProtectedFile(
