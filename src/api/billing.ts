@@ -2,6 +2,9 @@ import { optionalRequest } from '@/api/client';
 import { runtimeTrace } from '@/utils/runtimeTracing';
 import type { BillingStatus } from '@/types/domain';
 
+const CANONICAL_BILLING_STATUS_ENDPOINT = '/billing/current';
+const BILLING_STATUS_FALLBACK_COUNT = 2;
+
 export type BillingPreviewRequest = {
   target_seats?: number;
   targetSeats?: number;
@@ -66,8 +69,8 @@ function normalizePreviewPayload(payload?: BillingPreviewRequest): Record<string
 
 export function getTenantBillingStatus() {
   runtimeTrace('CANONICAL_BILLING_ENDPOINT_USED', {
-    endpoint: '/billing/current',
-    fallbackCount: 2,
+    endpoint: CANONICAL_BILLING_STATUS_ENDPOINT,
+    fallbackCount: BILLING_STATUS_FALLBACK_COUNT,
   });
 
   return optionalRequest<BillingStatus | Record<string, unknown>>([
