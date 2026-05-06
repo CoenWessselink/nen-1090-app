@@ -1,4 +1,5 @@
 import { readAnyPersistedSession, useAuthStore } from '@/app/store/auth-store';
+import { runtimeTrace } from '@/utils/runtimeTracing';
 
 export class ApiError extends Error {
   status: number;
@@ -218,17 +219,62 @@ export async function listRequest<T = unknown>(path: string, params?: QueryParam
 
 export async function optionalRequest<T = unknown>(paths: string[], init?: RequestInit): Promise<T> {
   let lastError: unknown = null;
-  for (const path of paths) {
-    if (!path || path.includes('/undefined') || path.includes('=undefined')) continue;
+
+  runtimeTrace('OPTIONAL_REQUEST_STARTED', {
+    candidateCount: paths.length,
+    candidatePaths: paths,
+  });
+
+  for (const [index, path] of paths.entries()) {
+    if (!path || path.includes('/undefined') || path.includes('=undefined')) {
+      runtimeTrace('OPTIONAL_REQUEST_SKIPPED_INVALID_PATH', {
+        index,
+        path,
+      });
+
+      continue;
+    }
+
     try {
-      return await apiRequest<T>(path, init);
+      const response = await apiRequest<T>(path, init);
+
+      runtimeTrace(index === 0 ? 'OPTIONAL_REQUEST_CANONICAL_SUCCESS' : 'OPTIONAL_REQUEST_FALLBACK_SUCCESS', {
+        index,
+        path,
+      });
+
+      return response;
     } catch (error) {
       lastError = error;
-      if (error instanceof ApiError && [404, 405, 422].includes(error.status)) continue;
+
+      if (error instanceof ApiError && [404, 405, 422].includes(error.status)) {
+        runtimeTrace('OPTIONAL_REQUEST_FALLBACK_TRIGGERED', {
+          index,
+          path,
+          status: error.status,
+        });
+
+        continue;
+      }
+
+      runtimeTrace('OPTIONAL_REQUEST_ABORTED', {
+        index,
+        path,
+        reason: error instanceof ApiError ? error.status : 'unknown_error',
+      });
+
       throw error;
     }
   }
-  if (lastError) throw lastError;
+
+  if (lastError) {
+    runtimeTrace('OPTIONAL_REQUEST_EXHAUSTED', {
+      candidateCount: paths.length,
+    });
+
+    throw lastError;
+  }
+
   throw new ApiError('No matching endpoint path succeeded', 500);
 }
 
