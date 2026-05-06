@@ -156,6 +156,20 @@ export async function optionalRequest<T = unknown>(paths: string[], init?: Reque
     canonicalPath: paths[0] || null,
   });
 
+  if (paths.length === 1) {
+    runtimeTrace('OPTIONAL_REQUEST_RETIREMENT_READY', {
+      canonicalPath: paths[0],
+      fallbackCount: 0,
+    });
+  }
+
+  if (paths.length > 2) {
+    runtimeTrace('OPTIONAL_REQUEST_HIGH_COMPAT_CHAIN', {
+      candidateCount: paths.length,
+      candidatePaths: paths,
+    });
+  }
+
   let lastError: unknown = null;
 
   for (const [index, path] of paths.entries()) {
