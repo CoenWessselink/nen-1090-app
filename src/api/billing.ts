@@ -84,6 +84,11 @@ export function getBillingPaymentStatus(paymentId: string) {
 }
 
 export function getTenantBillingInvoices() {
+  runtimeTrace('CANONICAL_BILLING_ENDPOINT_USED', {
+    endpoint: '/billing/invoices',
+    fallbackCount: 1,
+  });
+
   return optionalRequest<Record<string, unknown>>([
     '/billing/invoices',
     '/tenant/billing/invoices',
