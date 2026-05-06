@@ -100,7 +100,7 @@ function unwrapInspectionPayload<T = Record<string, unknown> | null>(value: unkn
     return (record.inspection ?? null) as T | null;
   }
 
-  runtimeTrace('INSPECTION_ITEMS_ARRAY_RETired', {
+  runtimeTrace('INSPECTION_ITEMS_ARRAY_RETIRED', {
     retiredCompat: 'items_array_unwrap',
   });
 
@@ -142,11 +142,11 @@ export function getInspection(inspectionId: string | number) {
 export async function getInspectionForWeld(projectId: string | number, weldId: string | number) {
   runtimeTrace('CANONICAL_INSPECTION_ENDPOINT_USED', {
     endpoint: `/projects/${projectId}/welds/${weldId}/inspection`,
+    retiredFallback: `/projects/${projectId}/welds/${weldId}/inspections`,
   });
 
   const response = await optionalRequest([
     `/projects/${projectId}/welds/${weldId}/inspection`,
-    `/projects/${projectId}/welds/${weldId}/inspections`,
     `/welds/${weldId}/inspection`,
     `/inspections?project_id=${projectId}&weld_id=${weldId}&limit=1`,
   ]);
