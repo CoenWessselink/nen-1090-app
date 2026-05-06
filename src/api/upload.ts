@@ -4,6 +4,9 @@ import { ApiError } from './client';
 const COOKIE_SESSION_MARKER = '__cookie_session__';
 const MAX_UPLOAD_SIZE_BYTES = 25 * 1024 * 1024;
 
+const BLOCKED_EXTENSIONS = ['.exe', '.bat', '.cmd', '.scr', '.com', '.js', '.msi', '.vbs', '.ps1', '.sh'];
+const ALLOWED_MIME_PREFIXES = ['image/', 'application/pdf', 'text/'];
+
 function trimTrailingSlash(value: string): string {
   return String(value || '').replace(/\/+$/, '');
 }
@@ -67,6 +70,20 @@ function validateFile(file: File): void {
   if (file.size > MAX_UPLOAD_SIZE_BYTES) {
     throw new ApiError('Bestand is groter dan 25MB.', 413);
   }
+
+  const lowerName = file.name.toLowerCase();
+
+  if (BLOCKED_EXTENSIONS.some((extension) => lowerName.endsWith(extension))) {
+    console.error('[upload] blocked dangerous extension', lowerName);
+    throw new ApiError('Bestandstype niet toegestaan.', 415);
+  }
+
+  const mimeAllowed = ALLOWED_MIME_PREFIXES.some((prefix) => file.type.startsWith(prefix));
+
+  if (!mimeAllowed) {
+    console.error('[upload] blocked mime type', file.type);
+    throw new ApiError('Ongeldig bestandstype.', 415);
+  }
 }
 
 async function parse<T>(response: Response): Promise<T> {
@@ -129,9 +146,7 @@ export function filesFromInput(input: FormData | File | File[]): File[] {
   }
 
   if (Array.isArray(input)) {
-    return dedupeFiles(
-      input.filter((item): item is File => item instanceof File && item.size > 0),
-    );
+    return dedupeFiles(input.filter((item): item is File => item instanceof File && item.size > 0));
   }
 
   const files: File[] = [];
