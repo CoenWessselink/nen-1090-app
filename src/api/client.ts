@@ -84,7 +84,11 @@ async function parseResponse<T>(response: Response): Promise<T> {
   return (await response.text()) as T;
 }
 
-export async function apiRequest<T = unknown>(path: string, init?: RequestInit): Promise<T> {
+export async function apiRequest<T = unknown>(
+  path: string,
+  init?: RequestInit,
+  ..._legacyArgs: unknown[]
+): Promise<T> {
   const response = await fetch(buildBasePath(path), {
     credentials: 'include',
     ...init,
@@ -92,6 +96,10 @@ export async function apiRequest<T = unknown>(path: string, init?: RequestInit):
   });
 
   return parseResponse<T>(response);
+}
+
+export async function healthRequest<T = unknown>(): Promise<T> {
+  return apiRequest<T>('/health');
 }
 
 export function buildListPath(path: string, params?: QueryParams): string {
@@ -120,25 +128,6 @@ export async function optionalRequest<T = unknown>(paths: string[], init?: Reque
     canonicalPath: paths[0] || null,
   });
 
-  if (paths.length === 1) {
-    runtimeTrace('OPTIONAL_REQUEST_CANONICAL_ONLY', {
-      path: paths[0],
-    });
-  }
-
-  if (paths.length === 2) {
-    runtimeTrace('OPTIONAL_REQUEST_SINGLE_FALLBACK', {
-      canonicalPath: paths[0],
-      fallbackPath: paths[1],
-    });
-  }
-
-  if (paths.length > 2) {
-    runtimeTrace('OPTIONAL_REQUEST_MULTI_FALLBACK_CHAIN', {
-      candidatePaths: paths,
-    });
-  }
-
   let lastError: unknown = null;
 
   for (const [index, path] of paths.entries()) {
@@ -161,18 +150,10 @@ export async function optionalRequest<T = unknown>(paths: string[], init?: Reque
     }
   }
 
-  runtimeTrace('OPTIONAL_REQUEST_EXHAUSTED', {
-    candidatePaths: paths,
-  });
-
   throw lastError instanceof Error ? lastError : new ApiError('No optional request succeeded');
 }
 
 export async function downloadRequest(path: string, init?: RequestInit): Promise<Blob> {
-  runtimeTrace('CANONICAL_DOWNLOAD_REQUEST_STARTED', {
-    path,
-  });
-
   return apiRequest<Blob>(path, init);
 }
 
@@ -180,10 +161,6 @@ export async function downloadUrlAsBlob(
   path: string,
   init?: RequestInit,
 ): Promise<{ blob: Blob; filename: string }> {
-  runtimeTrace('PROTECTED_DOWNLOAD_BLOB_STARTED', {
-    path,
-  });
-
   const response = await fetch(buildBasePath(path), {
     credentials: 'include',
     ...init,
@@ -191,21 +168,12 @@ export async function downloadUrlAsBlob(
   });
 
   if (!response.ok) {
-    runtimeTrace('PROTECTED_DOWNLOAD_FAILED', {
-      path,
-      status: response.status,
-    });
-
     throw new ApiError('Download failed', response.status);
   }
 
   const blob = await response.blob();
   const disposition = response.headers.get('content-disposition') || '';
   const match = disposition.match(/filename="?([^";]+)"?/i);
-
-  runtimeTrace('PROTECTED_DOWNLOAD_BLOB_SUCCESS', {
-    path,
-  });
 
   return {
     blob,
@@ -217,19 +185,10 @@ export async function downloadUrlAsObjectUrl(
   path: string,
   init?: RequestInit,
 ): Promise<{ url: string; filename: string; contentType: string }> {
-  runtimeTrace('PROTECTED_OBJECT_URL_DOWNLOAD_STARTED', {
-    path,
-  });
-
   const { blob, filename } = await downloadUrlAsBlob(path, init);
-  const url = URL.createObjectURL(blob);
-
-  runtimeTrace('PROTECTED_OBJECT_URL_CREATED', {
-    path,
-  });
 
   return {
-    url,
+    url: URL.createObjectURL(blob),
     filename,
     contentType: blob.type || 'application/octet-stream',
   };
@@ -240,18 +199,10 @@ export async function openProtectedFile(
   fallbackName = 'download.pdf',
   init?: RequestInit,
 ): Promise<void> {
-  runtimeTrace('PROTECTED_FILE_OPEN_STARTED', {
-    path,
-  });
-
   const { url, filename } = await downloadUrlAsObjectUrl(path, init);
   const popup = window.open(url, '_blank', 'noopener,noreferrer');
 
   if (!popup) {
-    runtimeTrace('PROTECTED_FILE_POPUP_BLOCKED', {
-      path,
-    });
-
     const anchor = document.createElement('a');
     anchor.href = url;
     anchor.download = filename || fallbackName;
@@ -261,39 +212,30 @@ export async function openProtectedFile(
   }
 
   window.setTimeout(() => {
-    runtimeTrace('PROTECTED_FILE_OBJECT_URL_REVOKED', {
-      path,
-    });
-
     URL.revokeObjectURL(url);
   }, 60000);
 }
 
 const client = {
-  get: <T = unknown>(path: string, init?: RequestInit) =>
-    apiRequest<T>(path, { ...init, method: 'GET' }),
-
+  get: <T = unknown>(path: string, init?: RequestInit) => apiRequest<T>(path, { ...init, method: 'GET' }),
   post: <T = unknown>(path: string, body?: unknown, init?: RequestInit) =>
     apiRequest<T>(path, {
       ...init,
       method: 'POST',
       body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
     }),
-
   put: <T = unknown>(path: string, body?: unknown, init?: RequestInit) =>
     apiRequest<T>(path, {
       ...init,
       method: 'PUT',
       body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
     }),
-
   patch: <T = unknown>(path: string, body?: unknown, init?: RequestInit) =>
     apiRequest<T>(path, {
       ...init,
       method: 'PATCH',
       body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
     }),
-
   delete: <T = unknown>(path: string, init?: RequestInit) =>
     apiRequest<T>(path, { ...init, method: 'DELETE' }),
 };
