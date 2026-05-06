@@ -26,9 +26,6 @@ const BILLING_CANCEL_FALLBACK_ENDPOINTS = [
 ];
 
 const CANONICAL_BILLING_CHANGE_ENDPOINT = '/billing/change-seats';
-const BILLING_CHANGE_FALLBACK_ENDPOINTS = [
-  '/tenant/billing/change-plan',
-];
 
 export type BillingPreviewRequest = {
   target_seats?: number;
@@ -149,15 +146,17 @@ export function createTenantBillingCheckout(payload: BillingCheckoutRequest) {
 }
 
 export function changeTenantSeats(payload: BillingCheckoutRequest | Record<string, unknown>) {
-  runtimeTrace('DEPRECATED_BILLING_CHANGE_ALIASES_CONTAINED', {
+  runtimeTrace('BILLING_MUTATION_CANONICALIZED', {
     canonicalEndpoint: CANONICAL_BILLING_CHANGE_ENDPOINT,
-    deprecatedFallbacks: BILLING_CHANGE_FALLBACK_ENDPOINTS,
-    retiredFallback: '/tenant/billing/change',
+    retiredFallbacks: [
+      '/billing/change-plan',
+      '/tenant/billing/change',
+      '/tenant/billing/change-plan',
+    ],
   });
 
   return optionalRequest<BillingCheckoutResponse>([
     CANONICAL_BILLING_CHANGE_ENDPOINT,
-    ...BILLING_CHANGE_FALLBACK_ENDPOINTS,
   ], {
     method: 'POST',
     body: JSON.stringify(normalizeCheckoutPayload(payload as BillingCheckoutRequest)),
