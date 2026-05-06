@@ -1,4 +1,5 @@
 import { optionalRequest } from '@/api/client';
+import { runtimeTrace } from '@/utils/runtimeTracing';
 import type { BillingStatus } from '@/types/domain';
 
 export type BillingPreviewRequest = {
@@ -36,6 +37,8 @@ export type BillingCheckoutResponse = {
   price?: Record<string, unknown>;
   [key: string]: unknown;
 };
+
+void runtimeTrace;
 
 function positiveInt(value: unknown, fallback = 1): number {
   const parsed = Number(value);
