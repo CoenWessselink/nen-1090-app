@@ -7,11 +7,9 @@ const BILLING_STATUS_FALLBACK_ENDPOINTS = [
   '/tenant/billing/status',
   '/tenant/billing/subscription',
 ];
-const BILLING_STATUS_FALLBACK_COUNT = BILLING_STATUS_FALLBACK_ENDPOINTS.length;
 
 const CANONICAL_BILLING_INVOICES_ENDPOINT = '/billing/invoices';
 const BILLING_INVOICES_FALLBACK_ENDPOINTS = ['/tenant/billing/invoices'];
-const BILLING_INVOICES_FALLBACK_COUNT = BILLING_INVOICES_FALLBACK_ENDPOINTS.length;
 
 const CANONICAL_BILLING_PREVIEW_ENDPOINT = '/billing/preview';
 const BILLING_PREVIEW_FALLBACK_ENDPOINTS = ['/tenant/billing/preview'];
@@ -230,12 +228,12 @@ export function changeTenantPlan(payload: BillingCheckoutRequest | Record<string
 export function retryTenantPayment() {
   runtimeTrace('CANONICAL_BILLING_RETRY_USED', {
     endpoint: '/billing/retry-payment',
+    removedFallback: '/tenant/billing/checkout',
   });
 
   return optionalRequest<BillingCheckoutResponse>([
     '/billing/retry-payment',
     '/tenant/billing/retry-payment',
-    '/tenant/billing/checkout',
   ], {
     method: 'POST',
     body: JSON.stringify({}),
