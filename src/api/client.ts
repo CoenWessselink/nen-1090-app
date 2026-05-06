@@ -106,9 +106,16 @@ async function parseResponse<T>(response: Response): Promise<T> {
 export async function apiRequest<T = unknown>(
   path: string,
   init?: RequestInit,
-  ..._legacyArgs: unknown[]
+  ...legacyArgs: unknown[]
 ): Promise<T> {
   traceCompatPathUsage(path);
+
+  if (legacyArgs.length > 0) {
+    runtimeTrace('LEGACY_APIREQUEST_SIGNATURE_USED', {
+      path,
+      legacyArgumentCount: legacyArgs.length,
+    });
+  }
 
   const response = await fetch(buildBasePath(path), {
     credentials: 'include',
