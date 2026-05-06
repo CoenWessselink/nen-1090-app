@@ -1,6 +1,7 @@
 import client, { ApiError, apiRequest, optionalRequest } from './client';
 import { uploadMany } from './upload';
 import type { ListParams } from '@/types/api';
+import { runtimeTrace } from '@/utils/runtimeTracing';
 
 function withQuery(path: string, params?: ListParams): string {
   if (!params) return path;
@@ -15,6 +16,14 @@ function withQuery(path: string, params?: ListParams): string {
   });
   const qs = sp.toString();
   return qs ? `${path}?${qs}` : path;
+}
+
+function traceCanonicalWeldRequest(event: string, canonicalPath: string, fallbackPaths: string[] = []) {
+  runtimeTrace(event, {
+    canonicalPath,
+    fallbackPaths,
+    fallbackCount: fallbackPaths.length,
+  });
 }
 
 function getProjectId(input: unknown): string | null {
@@ -90,6 +99,13 @@ function sanitizeWeldPayload(payload: unknown) {
   if (source.status !== undefined) normalized.status = normalizeStatus(source.status, 'open');
   if (source.result !== undefined) normalized.result = normalizeStatus(source.result, 'pending');
   if (source.inspected_at !== undefined) normalized.inspected_at = source.inspected_at || null;
+
+  runtimeTrace('WELD_PAYLOAD_NORMALIZED', {
+    hasAssembly: normalized.assembly_id !== undefined,
+    normalizedStatus: normalized.status,
+    normalizedResult: normalized.result,
+  });
+
   return normalized;
 }
 
@@ -112,6 +128,10 @@ function sanitizeInspectionPayload(payload: unknown) {
         };
       })
     : [];
+
+  runtimeTrace('WELD_INSPECTION_PAYLOAD_NORMALIZED', {
+    checkCount: normalizedChecks.length,
+  });
 
   return {
     weld_id: source.weld_id ?? source.weldId ?? source.las_id,
@@ -136,11 +156,23 @@ async function tryRequest<T = unknown>(path: string, init?: RequestInit): Promis
 }
 
 async function tryMethods<T = unknown>(paths: string[], methods: Array<'PATCH' | 'PUT' | 'POST'>, payload: unknown): Promise<T> {
+  runtimeTrace('WELD_MUTATION_CHAIN_STARTED', {
+    candidatePaths: paths,
+    methods,
+  });
+
   for (const path of paths) {
     if (!path || path.includes('/undefined') || path.includes('=undefined')) continue;
     for (const method of methods) {
       const result = await tryRequest<T>(path, { method, body: JSON.stringify(payload) });
-      if (result !== null) return result;
+      if (result !== null) {
+        runtimeTrace('WELD_MUTATION_SUCCESS', {
+          path,
+          method,
+        });
+
+        return result;
+      }
     }
   }
   throw new ApiError('No valid API mutation route succeeded', 500);
@@ -155,6 +187,13 @@ export function getWelds(arg?: string | number | ListParams | Record<string, unk
 export function getWeld(projectId: string | number, weldId: string | number) {
   const safeWeldId = requireId(weldId, 'weldId');
   const safeProjectId = requireId(projectId, 'projectId');
+
+  traceCanonicalWeldRequest(
+    'CANONICAL_WELD_ENDPOINT_USED',
+    `/projects/${safeProjectId}/welds/${safeWeldId}`,
+    [`/welds/${safeWeldId}`],
+  );
+
   return optionalRequest([`/projects/${safeProjectId}/welds/${safeWeldId}`, `/welds/${safeWeldId}`]);
 }
 
@@ -214,6 +253,17 @@ export function getWeldDefects(projectId: string | number, weldId: string | numb
 export async function getWeldInspection(projectId: string | number, weldId: string | number) {
   const safeWeldId = requireId(weldId, 'weldId');
   const safeProjectId = requireId(projectId, 'projectId');
+
+  traceCanonicalWeldRequest(
+    'CANONICAL_WELD_INSPECTION_ENDPOINT_USED',
+    `/projects/${safeProjectId}/welds/${safeWeldId}/inspection`,
+    [
+      `/projects/${safeProjectId}/welds/${safeWeldId}/inspections`,
+      `/welds/${safeWeldId}/inspection`,
+      `/inspections?project_id=${safeProjectId}&weld_id=${safeWeldId}&limit=1`,
+    ],
+  );
+
   const result = await optionalRequest<any>([
     `/projects/${safeProjectId}/welds/${safeWeldId}/inspection`,
     `/projects/${safeProjectId}/welds/${safeWeldId}/inspections`,
