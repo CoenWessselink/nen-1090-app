@@ -140,17 +140,17 @@ export function getInspection(inspectionId: string | number) {
 }
 
 export async function getInspectionForWeld(projectId: string | number, weldId: string | number) {
-  runtimeTrace('CANONICAL_INSPECTION_ENDPOINT_USED', {
+  runtimeTrace('INSPECTION_LOOKUP_CANONICALIZED', {
     endpoint: `/projects/${projectId}/welds/${weldId}/inspection`,
     retiredFallbacks: [
       `/projects/${projectId}/welds/${weldId}/inspections`,
       `/inspections?project_id=${projectId}&weld_id=${weldId}&limit=1`,
+      `/welds/${weldId}/inspection`,
     ],
   });
 
   const response = await optionalRequest([
     `/projects/${projectId}/welds/${weldId}/inspection`,
-    `/welds/${weldId}/inspection`,
   ]);
 
   return unwrapInspectionPayload(response);
