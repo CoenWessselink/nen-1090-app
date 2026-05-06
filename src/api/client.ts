@@ -203,6 +203,11 @@ export async function downloadUrlAsBlob(
   path: string,
   init?: RequestInit,
 ): Promise<{ blob: Blob; filename: string }> {
+  runtimeTrace('DOWNLOAD_ALIAS_RETIREMENT_CANDIDATE_CHECK', {
+    alias: 'downloadUrlAsBlobUrl',
+    path,
+  });
+
   const response = await fetch(buildBasePath(path), {
     credentials: 'include',
     ...init,
