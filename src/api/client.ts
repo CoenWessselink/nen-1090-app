@@ -17,6 +17,7 @@ type QueryValue = Primitive | null | undefined;
 export type QueryParams = Record<string, QueryValue>;
 
 const LEGACY_COMPAT_PATTERNS = ['/legacy', '/compat', '/fallback', '/v1'];
+const OPTIONAL_REQUEST_SOFT_LIMIT = 2;
 
 function buildBasePath(path: string): string {
   if (path.startsWith('http://') || path.startsWith('https://')) {
@@ -172,10 +173,11 @@ export async function optionalRequest<T = unknown>(paths: string[], init?: Reque
     });
   }
 
-  if (paths.length > 2) {
-    runtimeTrace('OPTIONAL_REQUEST_HIGH_COMPAT_CHAIN', {
+  if (paths.length > OPTIONAL_REQUEST_SOFT_LIMIT) {
+    runtimeTrace('OPTIONAL_REQUEST_SOFT_LIMIT_EXCEEDED', {
       candidateCount: paths.length,
       candidatePaths: paths,
+      recommendedMaximum: OPTIONAL_REQUEST_SOFT_LIMIT,
     });
   }
 
