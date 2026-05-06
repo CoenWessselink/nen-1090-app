@@ -121,9 +121,10 @@ export async function apiRequest<T = unknown>(
   classifyCompatPattern(path);
 
   if (legacyArgs.length > 0) {
-    runtimeTrace('LEGACY_APIREQUEST_SIGNATURE_USED', {
+    runtimeTrace('DEPRECATED_VARIADIC_APIREQUEST_SIGNATURE_USED', {
       path,
       legacyArgumentCount: legacyArgs.length,
+      replacement: 'apiRequest(path, init)',
     });
   }
 
