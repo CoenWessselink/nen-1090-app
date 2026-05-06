@@ -17,7 +17,7 @@ type QueryValue = Primitive | null | undefined;
 export type QueryParams = Record<string, QueryValue>;
 
 const LEGACY_COMPAT_PATTERNS = ['/legacy', '/compat', '/fallback', '/v1'];
-const OPTIONAL_REQUEST_SOFT_LIMIT = 2;
+const OPTIONAL_REQUEST_HARD_LIMIT = 2;
 
 function buildBasePath(path: string): string {
   if (path.startsWith('http://') || path.startsWith('https://')) {
@@ -167,18 +167,23 @@ export async function optionalRequest<T = unknown>(paths: string[], init?: Reque
     canonicalPath: paths[0] || null,
   });
 
+  if (paths.length > OPTIONAL_REQUEST_HARD_LIMIT) {
+    runtimeTrace('OPTIONAL_REQUEST_HARD_LIMIT_BLOCKED', {
+      candidateCount: paths.length,
+      candidatePaths: paths,
+      enforcedMaximum: OPTIONAL_REQUEST_HARD_LIMIT,
+    });
+
+    throw new ApiError(
+      `optionalRequest supports a maximum of ${OPTIONAL_REQUEST_HARD_LIMIT} candidate paths`,
+      400,
+    );
+  }
+
   if (paths.length === 1) {
     runtimeTrace('OPTIONAL_REQUEST_RETIREMENT_READY', {
       canonicalPath: paths[0],
       fallbackCount: 0,
-    });
-  }
-
-  if (paths.length > OPTIONAL_REQUEST_SOFT_LIMIT) {
-    runtimeTrace('OPTIONAL_REQUEST_SOFT_LIMIT_EXCEEDED', {
-      candidateCount: paths.length,
-      candidatePaths: paths,
-      recommendedMaximum: OPTIONAL_REQUEST_SOFT_LIMIT,
     });
   }
 
