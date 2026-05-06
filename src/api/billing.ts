@@ -38,8 +38,6 @@ export type BillingCheckoutResponse = {
   [key: string]: unknown;
 };
 
-void runtimeTrace;
-
 function positiveInt(value: unknown, fallback = 1): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : fallback;
@@ -67,6 +65,11 @@ function normalizePreviewPayload(payload?: BillingPreviewRequest): Record<string
 }
 
 export function getTenantBillingStatus() {
+  runtimeTrace('CANONICAL_BILLING_ENDPOINT_USED', {
+    endpoint: '/billing/current',
+    fallbackCount: 2,
+  });
+
   return optionalRequest<BillingStatus | Record<string, unknown>>([
     '/billing/current',
     '/tenant/billing/status',
