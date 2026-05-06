@@ -5,6 +5,9 @@ import type { BillingStatus } from '@/types/domain';
 const CANONICAL_BILLING_STATUS_ENDPOINT = '/billing/current';
 const BILLING_STATUS_FALLBACK_COUNT = 2;
 
+const CANONICAL_BILLING_INVOICES_ENDPOINT = '/billing/invoices';
+const BILLING_INVOICES_FALLBACK_COUNT = 1;
+
 export type BillingPreviewRequest = {
   target_seats?: number;
   targetSeats?: number;
@@ -88,8 +91,8 @@ export function getBillingPaymentStatus(paymentId: string) {
 
 export function getTenantBillingInvoices() {
   runtimeTrace('CANONICAL_BILLING_ENDPOINT_USED', {
-    endpoint: '/billing/invoices',
-    fallbackCount: 1,
+    endpoint: CANONICAL_BILLING_INVOICES_ENDPOINT,
+    fallbackCount: BILLING_INVOICES_FALLBACK_COUNT,
   });
 
   return optionalRequest<Record<string, unknown>>([
