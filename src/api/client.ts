@@ -194,6 +194,8 @@ export async function downloadUrlAsObjectUrl(
   };
 }
 
+export const downloadUrlAsBlobUrl = downloadUrlAsObjectUrl;
+
 export async function openProtectedFile(
   path: string,
   fallbackName = 'download.pdf',
