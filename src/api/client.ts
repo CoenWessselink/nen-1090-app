@@ -16,6 +16,8 @@ type Primitive = string | number | boolean;
 type QueryValue = Primitive | null | undefined;
 export type QueryParams = Record<string, QueryValue>;
 
+const LEGACY_COMPAT_PATTERNS = ['/legacy', '/compat', '/fallback', '/v1'];
+
 function buildBasePath(path: string): string {
   if (path.startsWith('http://') || path.startsWith('https://')) {
     return path;
@@ -44,6 +46,23 @@ function buildHeaders(init?: RequestInit): Headers {
   }
 
   return headers;
+}
+
+function traceCompatPathUsage(path: string): void {
+  const matchedPattern = LEGACY_COMPAT_PATTERNS.find((pattern) => path.includes(pattern));
+
+  if (!matchedPattern) {
+    runtimeTrace('CANONICAL_RUNTIME_PATH_USED', {
+      path,
+    });
+
+    return;
+  }
+
+  runtimeTrace('LEGACY_COMPAT_PATH_DETECTED', {
+    path,
+    matchedPattern,
+  });
 }
 
 async function parseResponse<T>(response: Response): Promise<T> {
@@ -89,6 +108,8 @@ export async function apiRequest<T = unknown>(
   init?: RequestInit,
   ..._legacyArgs: unknown[]
 ): Promise<T> {
+  traceCompatPathUsage(path);
+
   const response = await fetch(buildBasePath(path), {
     credentials: 'include',
     ...init,
@@ -175,6 +196,10 @@ export async function downloadUrlAsBlob(
   const disposition = response.headers.get('content-disposition') || '';
   const match = disposition.match(/filename="?([^";]+)"?/i);
 
+  runtimeTrace('DOWNLOAD_BLOB_RUNTIME_USED', {
+    path,
+  });
+
   return {
     blob,
     filename: match?.[1] || 'download',
@@ -186,6 +211,10 @@ export async function downloadUrlAsObjectUrl(
   init?: RequestInit,
 ): Promise<{ url: string; filename: string; contentType: string }> {
   const { blob, filename } = await downloadUrlAsBlob(path, init);
+
+  runtimeTrace('OBJECT_URL_RUNTIME_CREATED', {
+    path,
+  });
 
   return {
     url: URL.createObjectURL(blob),
@@ -205,6 +234,10 @@ export async function openProtectedFile(
   const popup = window.open(url, '_blank', 'noopener,noreferrer');
 
   if (!popup) {
+    runtimeTrace('PROTECTED_FILE_POPUP_FALLBACK_USED', {
+      path,
+    });
+
     const anchor = document.createElement('a');
     anchor.href = url;
     anchor.download = filename || fallbackName;
