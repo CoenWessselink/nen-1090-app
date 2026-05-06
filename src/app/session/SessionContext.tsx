@@ -1,4 +1,4 @@
-import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { ApiError } from '@/api/client';
 import { getMe, refreshCentralSession, refreshSession } from '@/api/auth';
 import { readAnyPersistedSession, useAuthStore } from '@/app/store/auth-store';
@@ -35,6 +35,7 @@ type SessionContextValue = {
 };
 
 const SessionContext = createContext<SessionContextValue | null>(null);
+const AUTH_VALIDATE_TTL_MS = 5 * 60 * 1000;
 
 const superadminPermissions: AccessPermission[] = [
   'dashboard.read', 'projects.read', 'projects.write', 'welds.read', 'welds.write', 'documents.read', 'documents.write',
@@ -97,6 +98,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
   const setSession = useAuthStore((state) => state.setSession);
   const updateToken = useAuthStore((state) => state.updateToken);
   const [isBootstrapping, setIsBootstrapping] = useState(true);
+  const lastValidationRef = useRef<{ token: string; timestamp: number } | null>(null);
 
   useEffect(() => {
     const persisted = readAnyPersistedSession();
@@ -112,20 +114,36 @@ export function SessionProvider({ children }: PropsWithChildren) {
       const effectiveToken = token || persisted.token;
       const effectiveRefreshToken = refreshToken || persisted.refreshToken;
       const effectiveUser = user || persisted.user;
+
       if (!effectiveToken || !effectiveUser) {
         if (!cancelled) setIsBootstrapping(false);
         return;
       }
-      if (!token && effectiveToken && effectiveUser) setSession(effectiveToken, effectiveUser, effectiveRefreshToken || null);
+
+      if (!token && effectiveToken && effectiveUser) {
+        setSession(effectiveToken, effectiveUser, effectiveRefreshToken || null);
+      }
+
+      const lastValidation = lastValidationRef.current;
+      const now = Date.now();
+      if (lastValidation?.token === effectiveToken && now - lastValidation.timestamp < AUTH_VALIDATE_TTL_MS) {
+        if (!cancelled) setIsBootstrapping(false);
+        return;
+      }
+      lastValidationRef.current = { token: effectiveToken, timestamp: now };
+
       try {
         const me = await getMe();
-        if (!cancelled) setSession(effectiveToken, normalizeMeUser(me as Record<string, unknown>), effectiveRefreshToken || null);
+        if (!cancelled) {
+          setSession(effectiveToken, normalizeMeUser(me as Record<string, unknown>), effectiveRefreshToken || null);
+        }
       } catch (error) {
         if (isUnauthorized(error)) {
           try {
             const refreshed = effectiveRefreshToken ? await refreshSession(effectiveRefreshToken) : await refreshCentralSession();
             if (!cancelled && refreshed.access_token && refreshed.user?.email) {
               const refreshedUser: SessionUser = { email: refreshed.user.email, tenant: refreshed.user.tenant || '', tenantId: refreshed.user.tenant_id || '', role: refreshed.user.role || '', name: refreshed.user.name || '' };
+              lastValidationRef.current = { token: refreshed.access_token, timestamp: Date.now() };
               setSession(refreshed.access_token, refreshedUser, refreshed.refresh_token || effectiveRefreshToken || null);
               updateToken(refreshed.access_token);
               return;
