@@ -14,10 +14,7 @@ const BILLING_INVOICES_FALLBACK_ENDPOINTS = ['/tenant/billing/invoices'];
 const BILLING_INVOICES_FALLBACK_COUNT = BILLING_INVOICES_FALLBACK_ENDPOINTS.length;
 
 const CANONICAL_BILLING_PREVIEW_ENDPOINT = '/billing/preview';
-const BILLING_PREVIEW_FALLBACK_ENDPOINTS = [
-  '/tenant/billing/preview',
-  '/billing/plans',
-];
+const BILLING_PREVIEW_FALLBACK_ENDPOINTS = ['/tenant/billing/preview'];
 
 const CANONICAL_BILLING_CHECKOUT_ENDPOINT = '/billing/checkout/trial-upgrade';
 const BILLING_CHECKOUT_FALLBACK_ENDPOINTS = [
