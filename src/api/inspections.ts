@@ -100,14 +100,6 @@ function unwrapInspectionPayload<T = Record<string, unknown> | null>(value: unkn
     return (record.inspection ?? null) as T | null;
   }
 
-  if ('item' in record) {
-    runtimeTrace('INSPECTION_COMPAT_MAPPING_TRIGGERED', {
-      shape: 'item',
-    });
-
-    return (record.item ?? null) as T | null;
-  }
-
   if (Array.isArray(record.items)) {
     runtimeTrace('INSPECTION_COMPAT_MAPPING_TRIGGERED', {
       shape: 'items_array',
