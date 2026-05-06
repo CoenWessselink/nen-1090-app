@@ -167,29 +167,31 @@ export async function optionalRequest<T = unknown>(paths: string[], init?: Reque
     canonicalPath: paths[0] || null,
   });
 
+  const normalizedPaths =
+    paths.length > OPTIONAL_REQUEST_HARD_LIMIT
+      ? paths.slice(0, OPTIONAL_REQUEST_HARD_LIMIT)
+      : paths;
+
   if (paths.length > OPTIONAL_REQUEST_HARD_LIMIT) {
-    runtimeTrace('OPTIONAL_REQUEST_HARD_LIMIT_BLOCKED', {
-      candidateCount: paths.length,
-      candidatePaths: paths,
+    runtimeTrace('OPTIONAL_REQUEST_HARD_LIMIT_TRUNCATED', {
+      originalCandidateCount: paths.length,
+      truncatedCandidateCount: normalizedPaths.length,
+      originalCandidatePaths: paths,
+      effectiveCandidatePaths: normalizedPaths,
       enforcedMaximum: OPTIONAL_REQUEST_HARD_LIMIT,
     });
-
-    throw new ApiError(
-      `optionalRequest supports a maximum of ${OPTIONAL_REQUEST_HARD_LIMIT} candidate paths`,
-      400,
-    );
   }
 
-  if (paths.length === 1) {
+  if (normalizedPaths.length === 1) {
     runtimeTrace('OPTIONAL_REQUEST_RETIREMENT_READY', {
-      canonicalPath: paths[0],
+      canonicalPath: normalizedPaths[0],
       fallbackCount: 0,
     });
   }
 
   let lastError: unknown = null;
 
-  for (const [index, path] of paths.entries()) {
+  for (const [index, path] of normalizedPaths.entries()) {
     try {
       const result = await apiRequest<T>(path, init);
 
