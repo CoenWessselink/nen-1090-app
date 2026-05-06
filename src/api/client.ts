@@ -18,6 +18,7 @@ type QueryValue = Primitive | null | undefined;
 type QueryParams = Record<string, QueryValue> | undefined;
 
 const COOKIE_SESSION_MARKER = '__cookie_session__';
+const OPTIONAL_REQUEST_FALLBACK_WARNING_THRESHOLD = 2;
 
 function isAbsoluteUrl(path: string): boolean {
   return /^https?:\/\//i.test(path);
@@ -223,7 +224,16 @@ export async function optionalRequest<T = unknown>(paths: string[], init?: Reque
   runtimeTrace('OPTIONAL_REQUEST_STARTED', {
     candidateCount: paths.length,
     candidatePaths: paths,
+    canonicalPath: paths[0] || null,
   });
+
+  if (paths.length > OPTIONAL_REQUEST_FALLBACK_WARNING_THRESHOLD) {
+    runtimeTrace('OPTIONAL_REQUEST_BREADTH_WARNING', {
+      candidateCount: paths.length,
+      threshold: OPTIONAL_REQUEST_FALLBACK_WARNING_THRESHOLD,
+      candidatePaths: paths,
+    });
+  }
 
   for (const [index, path] of paths.entries()) {
     if (!path || path.includes('/undefined') || path.includes('=undefined')) {
@@ -241,6 +251,7 @@ export async function optionalRequest<T = unknown>(paths: string[], init?: Reque
       runtimeTrace(index === 0 ? 'OPTIONAL_REQUEST_CANONICAL_SUCCESS' : 'OPTIONAL_REQUEST_FALLBACK_SUCCESS', {
         index,
         path,
+        classification: index === 0 ? 'canonical' : 'compat_fallback',
       });
 
       return response;
@@ -252,6 +263,7 @@ export async function optionalRequest<T = unknown>(paths: string[], init?: Reque
           index,
           path,
           status: error.status,
+          classification: index === 0 ? 'canonical_failure' : 'compat_fallback_failure',
         });
 
         continue;
@@ -270,6 +282,7 @@ export async function optionalRequest<T = unknown>(paths: string[], init?: Reque
   if (lastError) {
     runtimeTrace('OPTIONAL_REQUEST_EXHAUSTED', {
       candidateCount: paths.length,
+      candidatePaths: paths,
     });
 
     throw lastError;
