@@ -202,6 +202,11 @@ async function tryRefreshSession(): Promise<boolean> {
     },
     payload.refresh_token || store.refreshToken,
   );
+
+  runtimeTrace('DOWNLOAD_AUTH_REFRESH_SUCCESS', {
+    tenant: payload.user.tenant || null,
+  });
+
   return true;
 }
 
@@ -292,6 +297,10 @@ export async function optionalRequest<T = unknown>(paths: string[], init?: Reque
 }
 
 export async function downloadRequest(path: string, init?: RequestInit): Promise<Blob> {
+  runtimeTrace('CANONICAL_DOWNLOAD_REQUEST_STARTED', {
+    path,
+  });
+
   return apiRequest<Blob>(path, init);
 }
 
@@ -304,21 +313,63 @@ export function healthRequest<T = unknown>(): Promise<T> {
 }
 
 export async function downloadUrlAsBlob(path: string, init?: RequestInit, retries = 0): Promise<{ blob: Blob; filename: string }> {
+  runtimeTrace('PROTECTED_DOWNLOAD_BLOB_STARTED', {
+    path,
+    retries,
+  });
+
   const response = await fetch(buildBasePath(path), normalizeInit(init));
+
   if (response.status === 401 && retries < 1 && !isAuthPath(path)) {
+    runtimeTrace('PROTECTED_DOWNLOAD_AUTH_REFRESH_TRIGGERED', {
+      path,
+      retries,
+    });
+
     const refreshed = await tryRefreshSession().catch(() => false);
     if (refreshed) return downloadUrlAsBlob(path, init, retries + 1);
   }
-  if (!response.ok) return parseResponse<never>(response);
+
+  if (!response.ok) {
+    runtimeTrace('PROTECTED_DOWNLOAD_FAILED', {
+      path,
+      status: response.status,
+    });
+
+    return parseResponse<never>(response);
+  }
+
+  runtimeTrace('PROTECTED_DOWNLOAD_BLOB_SUCCESS', {
+    path,
+    contentType: response.headers.get('content-type') || null,
+  });
+
   return { blob: await response.blob(), filename: filenameFromResponse(response) };
 }
 
 export async function openProtectedFile(path: string, fallbackName = 'download.pdf', init?: RequestInit): Promise<void> {
+  runtimeTrace('PROTECTED_FILE_OPEN_STARTED', {
+    path,
+    fallbackName,
+  });
+
   const { blob, filename } = await downloadUrlAsBlob(path, init);
   const file = new File([blob], filename || fallbackName, { type: blob.type || 'application/octet-stream' });
   const url = URL.createObjectURL(file);
+
+  runtimeTrace('PROTECTED_FILE_OBJECT_URL_CREATED', {
+    path,
+    filename,
+  });
+
   const win = window.open(url, '_blank', 'noopener,noreferrer');
+
   if (!win) {
+    runtimeTrace('PROTECTED_FILE_POPUP_BLOCKED', {
+      path,
+      filename,
+    });
+
     const anchor = document.createElement('a');
     anchor.href = url;
     anchor.download = filename || fallbackName;
@@ -326,7 +377,15 @@ export async function openProtectedFile(path: string, fallbackName = 'download.p
     anchor.click();
     anchor.remove();
   }
-  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+
+  window.setTimeout(() => {
+    runtimeTrace('PROTECTED_FILE_OBJECT_URL_REVOKED', {
+      path,
+      filename,
+    });
+
+    URL.revokeObjectURL(url);
+  }, 60_000);
 }
 
 export async function downloadUrlAsObjectUrl(
@@ -334,19 +393,55 @@ export async function downloadUrlAsObjectUrl(
   init?: RequestInit,
   retries = 0,
 ): Promise<{ url: string; filename: string; contentType: string }> {
+  runtimeTrace('PROTECTED_OBJECT_URL_DOWNLOAD_STARTED', {
+    path,
+    retries,
+  });
+
   const response = await fetch(buildBasePath(path), normalizeInit(init));
+
   if (response.status === 401 && retries < 1 && !isAuthPath(path)) {
+    runtimeTrace('PROTECTED_OBJECT_URL_REFRESH_TRIGGERED', {
+      path,
+      retries,
+    });
+
     const refreshed = await tryRefreshSession().catch(() => false);
     if (refreshed) return downloadUrlAsObjectUrl(path, init, retries + 1);
   }
-  if (!response.ok) return parseResponse<never>(response);
+
+  if (!response.ok) {
+    runtimeTrace('PROTECTED_OBJECT_URL_DOWNLOAD_FAILED', {
+      path,
+      status: response.status,
+    });
+
+    return parseResponse<never>(response);
+  }
 
   const contentType = response.headers.get('content-type') || '';
+
   if (!contentType.includes('application/pdf') && !contentType.includes('application/octet-stream')) {
+    runtimeTrace('PROTECTED_OBJECT_URL_INVALID_CONTENT_TYPE', {
+      path,
+      contentType,
+    });
+
     throw new ApiError('Geen PDF ontvangen', response.status, await response.text().catch(() => null));
   }
+
   const blob = await response.blob();
-  return { url: URL.createObjectURL(blob), filename: filenameFromResponse(response, 'download.pdf'), contentType };
+
+  runtimeTrace('PROTECTED_OBJECT_URL_CREATED', {
+    path,
+    contentType,
+  });
+
+  return {
+    url: URL.createObjectURL(blob),
+    filename: filenameFromResponse(response, 'download.pdf'),
+    contentType,
+  };
 }
 
 const client = {
