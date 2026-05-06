@@ -20,6 +20,11 @@ const BILLING_CHECKOUT_FALLBACK_ENDPOINTS = [
   '/billing/checkout',
 ];
 
+const CANONICAL_BILLING_CANCEL_ENDPOINT = '/billing/cancel';
+const BILLING_CANCEL_FALLBACK_ENDPOINTS = [
+  '/tenant/billing/cancel-subscription',
+];
+
 export type BillingPreviewRequest = {
   target_seats?: number;
   targetSeats?: number;
@@ -241,13 +246,20 @@ export function retryTenantPayment() {
 }
 
 export function cancelTenantSubscriptionSelfService() {
-  runtimeTrace('CANONICAL_BILLING_CANCEL_USED', {
-    endpoint: '/billing/cancel',
+  traceCanonicalRequest(
+    'CANONICAL_BILLING_CANCEL_USED',
+    CANONICAL_BILLING_CANCEL_ENDPOINT,
+    BILLING_CANCEL_FALLBACK_ENDPOINTS,
+  );
+
+  runtimeTrace('LEGACY_BILLING_CANCEL_ALIAS_CONTAINED', {
+    canonicalEndpoint: CANONICAL_BILLING_CANCEL_ENDPOINT,
+    legacyFallbacks: BILLING_CANCEL_FALLBACK_ENDPOINTS,
   });
 
   return optionalRequest<Record<string, unknown>>([
-    '/billing/cancel',
-    '/tenant/billing/cancel-subscription',
+    CANONICAL_BILLING_CANCEL_ENDPOINT,
+    ...BILLING_CANCEL_FALLBACK_ENDPOINTS,
   ], {
     method: 'POST',
     body: JSON.stringify({}),
