@@ -28,7 +28,6 @@ const BILLING_CANCEL_FALLBACK_ENDPOINTS = [
 const CANONICAL_BILLING_CHANGE_ENDPOINT = '/billing/change-seats';
 const BILLING_CHANGE_FALLBACK_ENDPOINTS = [
   '/tenant/billing/change-plan',
-  '/tenant/billing/change',
 ];
 
 export type BillingPreviewRequest = {
@@ -66,14 +65,6 @@ export type BillingCheckoutResponse = {
   price?: Record<string, unknown>;
   [key: string]: unknown;
 };
-
-function traceCanonicalRequest(event: string, endpoint: string, fallbacks: string[]) {
-  runtimeTrace(event, {
-    endpoint,
-    fallbackCount: fallbacks.length,
-    fallbackEndpoints: fallbacks,
-  });
-}
 
 function positiveInt(value: unknown, fallback = 1): number {
   const parsed = Number(value);
@@ -161,6 +152,7 @@ export function changeTenantSeats(payload: BillingCheckoutRequest | Record<strin
   runtimeTrace('DEPRECATED_BILLING_CHANGE_ALIASES_CONTAINED', {
     canonicalEndpoint: CANONICAL_BILLING_CHANGE_ENDPOINT,
     deprecatedFallbacks: BILLING_CHANGE_FALLBACK_ENDPOINTS,
+    retiredFallback: '/tenant/billing/change',
   });
 
   return optionalRequest<BillingCheckoutResponse>([
