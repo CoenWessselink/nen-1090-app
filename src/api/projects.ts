@@ -1,9 +1,17 @@
 import { ApiError, apiRequest, listRequest } from '@/api/client';
+import { runtimeTrace } from '@/utils/runtimeTracing';
 import type { ListParams } from '@/types/api';
 import type { Assembly, CeDocument, ComplianceOverview, ExportJob, Inspection, Project, Weld } from '@/types/domain';
 import type { ProjectAssemblyDraft, ProjectFormValues } from '@/types/forms';
 
 type PagedResponse<T> = T[] | { items?: T[]; total?: number; page?: number; limit?: number; data?: T[] };
+
+function traceProjectRuntime(event: string, details?: Record<string, unknown>) {
+  runtimeTrace(event, {
+    domain: 'projects',
+    ...(details || {}),
+  });
+}
 
 function sanitizeListParams(params?: ListParams): ListParams | undefined {
   if (!params) return params;
@@ -31,6 +39,11 @@ function normalizeProjectRecord(payload: Record<string, unknown>): Project {
 
 function normalizePagedList<T>(response: PagedResponse<T>, fallbackLimit = 25) {
   if (Array.isArray(response)) {
+    traceProjectRuntime('PROJECT_PAGED_RESPONSE_NORMALIZED', {
+      responseShape: 'array',
+      itemCount: response.length,
+    });
+
     return {
       items: response,
       total: response.length,
@@ -45,6 +58,11 @@ function normalizePagedList<T>(response: PagedResponse<T>, fallbackLimit = 25) {
       ? response.data
       : [];
 
+  traceProjectRuntime('PROJECT_PAGED_RESPONSE_NORMALIZED', {
+    responseShape: Array.isArray(response?.items) ? 'items' : 'data',
+    itemCount: items.length,
+  });
+
   return {
     items,
     total: Number(response?.total || items.length || 0),
@@ -56,6 +74,11 @@ function normalizePagedList<T>(response: PagedResponse<T>, fallbackLimit = 25) {
 function mapProjectPayload(
   payload: Pick<ProjectFormValues, 'projectnummer' | 'name' | 'client_name' | 'execution_class' | 'status' | 'start_date' | 'end_date' | 'inspection_template_id'>,
 ) {
+  traceProjectRuntime('PROJECT_CREATE_PAYLOAD_NORMALIZED', {
+    executionClass: payload.execution_class,
+    hasTemplate: Boolean(payload.inspection_template_id),
+  });
+
   return {
     code: payload.projectnummer,
     name: payload.name,
@@ -100,6 +123,12 @@ function mapProjectPatch(payload: Partial<ProjectFormValues> & Record<string, un
   if (payload.end_date !== undefined) set('end_date', payload.end_date || null);
   if (payload.coordinator_id !== undefined) set('coordinator_id', payload.coordinator_id || null);
   if (payload.coordinator_name !== undefined) set('coordinator_name', payload.coordinator_name || null);
+
+  traceProjectRuntime('PROJECT_PATCH_PAYLOAD_NORMALIZED', {
+    fieldCount: Object.keys(body).length,
+    fields: Object.keys(body),
+  });
+
   return body;
 }
 
@@ -120,6 +149,12 @@ function needsProjectReadyStatus(status: string | null | undefined) {
 
 export async function getProjects(params?: ListParams) {
   const safeParams = sanitizeListParams(params);
+
+  traceProjectRuntime('CANONICAL_PROJECT_LIST_USED', {
+    limit: safeParams?.limit,
+    page: safeParams?.page,
+  });
+
   try {
     const response = await listRequest<Project[] | { items?: Project[]; total?: number; page?: number; limit?: number }>(
       '/projects',
@@ -132,6 +167,11 @@ export async function getProjects(params?: ListParams) {
     };
   } catch (error) {
     if (error instanceof ApiError && error.status === 422 && safeParams?.limit) {
+      traceProjectRuntime('PROJECT_LIMIT_FALLBACK_TRIGGERED', {
+        requestedLimit: safeParams.limit,
+        fallbackLimit: 25,
+      });
+
       const retry = await listRequest<Project[] | { items?: Project[]; total?: number; page?: number; limit?: number }>(
         '/projects',
         { ...safeParams, limit: 25 },
@@ -147,6 +187,10 @@ export async function getProjects(params?: ListParams) {
 }
 
 export async function getProject(projectId: string | number) {
+  traceProjectRuntime('CANONICAL_PROJECT_DETAIL_USED', {
+    projectId,
+  });
+
   const direct = await apiRequest<Record<string, unknown>>(`/projects/${projectId}`);
   return normalizeProjectRecord(direct);
 }
@@ -176,6 +220,10 @@ export async function getProjectCompliance(projectId: string | number) {
     return await apiRequest<ComplianceOverview>(`/projects/${projectId}/ce-dossier/preview`);
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) {
+      traceProjectRuntime('PROJECT_COMPLIANCE_EMPTY_FALLBACK', {
+        projectId,
+      });
+
       return emptyComplianceOverview();
     }
     throw error;
@@ -262,6 +310,10 @@ export async function updateProjectRecord(id: string | number, payload: Partial<
     return normalizeProjectRecord(response);
   } catch (error) {
     if (error instanceof ApiError && error.status === 422) {
+      traceProjectRuntime('PROJECT_PATCH_COMPAT_FALLBACK', {
+        projectId: id,
+      });
+
       const fallback: Record<string, unknown> = {};
       if (body.status) fallback.status = body.status;
       if (body.name) fallback.name = body.name;
@@ -274,6 +326,11 @@ export async function updateProjectRecord(id: string | number, payload: Partial<
     }
 
     if (!(error instanceof ApiError) || error.status !== 405) throw error;
+
+    traceProjectRuntime('PROJECT_PATCH_METHOD_FALLBACK', {
+      projectId: id,
+    });
+
     const response = await apiRequest<Record<string, unknown>>(`/projects/${id}`, {
       method: 'PUT',
       body: JSON.stringify(body),
