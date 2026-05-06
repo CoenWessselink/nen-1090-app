@@ -1,6 +1,8 @@
 import { ApiError, apiRequest, optionalRequest } from './client';
 import { uploadMany } from './upload';
 import type { ListParams } from '@/types/api';
+import { normalizeBoolean, normalizeInspectionStatus } from '@/utils/contractNormalization';
+import { runtimeTrace } from '@/utils/runtimeTracing';
 
 function withQuery(path: string, params?: ListParams) {
   if (!params) return path;
@@ -13,14 +15,6 @@ function withQuery(path: string, params?: ListParams) {
   return qs ? `${path}?${qs}` : path;
 }
 
-function normalizeStatus(value: unknown, fallback = 'conform') {
-  const raw = String(value || fallback).trim().toLowerCase().replace(/_/g, ' ');
-  if (['conform', 'approved', 'ok', 'goed', 'compliant'].includes(raw)) return 'conform';
-  if (['defect', 'rejected', 'afgekeurd', 'niet conform', 'non conform', 'niet-conform', 'non-conform', 'non compliant', 'non-compliant', 'not conform', 'not-conform'].includes(raw)) return 'defect';
-  if (['gerepareerd', 'in controle', 'in control', 'in progress', 'pending', 'open', 'repaired'].includes(raw)) return 'gerepareerd';
-  return raw || fallback;
-}
-
 function cleanText(value: unknown): string | null {
   if (value === undefined || value === null) return null;
   const text = String(value).trim();
@@ -31,7 +25,13 @@ function normalizeInspectionPayload(input: unknown) {
   const source = (input || {}) as Record<string, unknown>;
   const payload: Record<string, unknown> = {};
 
-  const status = normalizeStatus(source.overall_status ?? source.status ?? source.result, 'conform');
+  const status = normalizeInspectionStatus(source.overall_status ?? source.status ?? source.result, 'conform');
+
+  runtimeTrace('INSPECTION_STATUS_NORMALIZED', {
+    incomingStatus: source.overall_status ?? source.status ?? source.result,
+    normalizedStatus: status,
+  });
+
   payload.overall_status = status;
   payload.status = status;
   payload.result = status;
@@ -46,46 +46,100 @@ function normalizeInspectionPayload(input: unknown) {
   if (templateId) payload.template_id = templateId;
 
   const rawChecks = source.checks ?? source.inspectionResults ?? source.results ?? source.items ?? [];
-  if (Array.isArray(rawChecks)) {
-    payload.checks = rawChecks.map((item, index) => {
-      const row = (item || {}) as Record<string, unknown>;
-      const code = cleanText(row.criterion_key ?? row.item_code ?? row.code ?? row.label ?? row.title ?? row.group_key) || `CHECK_${index + 1}`;
-      const rowStatus = normalizeStatus(row.status ?? row.result ?? (row.approved === false ? 'defect' : 'conform'), 'conform');
-      const comment = cleanText(row.comment ?? row.remark ?? row.remarks);
-      return {
-        group_key: cleanText(row.group_key ?? row.group ?? row.category) || 'inspectie',
-        criterion_key: code,
-        item_code: code,
-        applicable: row.applicable ?? true,
-        approved: row.approved ?? rowStatus === 'conform',
-        status: rowStatus,
-        result: rowStatus,
-        comment,
-        remark: comment,
-      };
+
+  if (!Array.isArray(rawChecks)) {
+    runtimeTrace('INSPECTION_COMPAT_MAPPING_TRIGGERED', {
+      reason: 'checks_not_array',
+      receivedType: typeof rawChecks,
     });
-  } else {
+
     payload.checks = [];
+    return payload;
   }
+
+  payload.checks = rawChecks.map((item, index) => {
+    const row = (item || {}) as Record<string, unknown>;
+
+    const code =
+      cleanText(row.criterion_key ?? row.item_code ?? row.code ?? row.label ?? row.title ?? row.group_key) ||
+      `CHECK_${index + 1}`;
+
+    const rowStatus = normalizeInspectionStatus(
+      row.status ?? row.result ?? (normalizeBoolean(row.approved) === false ? 'defect' : 'conform'),
+      'conform',
+    );
+
+    const comment = cleanText(row.comment ?? row.remark ?? row.remarks);
+
+    return {
+      group_key: cleanText(row.group_key ?? row.group ?? row.category) || 'inspectie',
+      criterion_key: code,
+      item_code: code,
+      applicable: row.applicable ?? true,
+      approved: row.approved ?? rowStatus === 'conform',
+      status: rowStatus,
+      result: rowStatus,
+      comment,
+      remark: comment,
+    };
+  });
 
   return payload;
 }
 
 function unwrapInspectionPayload<T = Record<string, unknown> | null>(value: unknown): T | null {
   if (!value || typeof value !== 'object') return (value ?? null) as T | null;
+
   const record = value as Record<string, unknown>;
-  if ('inspection' in record) return (record.inspection ?? null) as T | null;
-  if ('item' in record) return (record.item ?? null) as T | null;
-  if (Array.isArray(record.items)) return ((record.items[0] as T | undefined) ?? null);
+
+  if ('inspection' in record) {
+    runtimeTrace('CANONICAL_INSPECTION_RESPONSE_USED', {
+      shape: 'inspection',
+    });
+
+    return (record.inspection ?? null) as T | null;
+  }
+
+  if ('item' in record) {
+    runtimeTrace('INSPECTION_COMPAT_MAPPING_TRIGGERED', {
+      shape: 'item',
+    });
+
+    return (record.item ?? null) as T | null;
+  }
+
+  if (Array.isArray(record.items)) {
+    runtimeTrace('INSPECTION_COMPAT_MAPPING_TRIGGERED', {
+      shape: 'items_array',
+    });
+
+    return ((record.items[0] as T | undefined) ?? null);
+  }
+
+  runtimeTrace('LEGACY_INSPECTION_PAYLOAD_USED', {
+    keys: Object.keys(record),
+  });
+
   return record as T;
 }
 
 async function syncWeldStatus(projectId: string | number, weldId: string | number, status: unknown) {
-  const normalized = normalizeStatus(status, 'conform');
+  const normalized = normalizeInspectionStatus(status, 'conform');
+
   try {
-    await apiRequest(`/projects/${projectId}/welds/${weldId}`, { method: 'PATCH', body: JSON.stringify({ status: normalized }) });
+    await apiRequest(`/projects/${projectId}/welds/${weldId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: normalized }),
+    });
   } catch (error) {
     if (!(error instanceof ApiError) || ![404, 405, 422].includes(error.status)) throw error;
+
+    runtimeTrace('INSPECTION_WELD_STATUS_SYNC_FALLBACK', {
+      projectId,
+      weldId,
+      normalized,
+      statusCode: error.status,
+    });
   }
 }
 
@@ -98,12 +152,17 @@ export function getInspection(inspectionId: string | number) {
 }
 
 export async function getInspectionForWeld(projectId: string | number, weldId: string | number) {
+  runtimeTrace('CANONICAL_INSPECTION_ENDPOINT_USED', {
+    endpoint: `/projects/${projectId}/welds/${weldId}/inspection`,
+  });
+
   const response = await optionalRequest([
     `/projects/${projectId}/welds/${weldId}/inspection`,
     `/projects/${projectId}/welds/${weldId}/inspections`,
     `/welds/${weldId}/inspection`,
     `/inspections?project_id=${projectId}&weld_id=${weldId}&limit=1`,
   ]);
+
   return unwrapInspectionPayload(response);
 }
 
@@ -127,7 +186,10 @@ export function createInspection(projectId: string | number, weldId: string | nu
 }
 
 export function updateInspection(inspectionId: string | number, payload: unknown) {
-  return apiRequest(`/inspections/${inspectionId}`, { method: 'PUT', body: JSON.stringify(normalizeInspectionPayload(payload)) });
+  return apiRequest(`/inspections/${inspectionId}`, {
+    method: 'PUT',
+    body: JSON.stringify(normalizeInspectionPayload(payload)),
+  });
 }
 
 export function deleteInspection(inspectionId: string | number) {
@@ -135,14 +197,20 @@ export function deleteInspection(inspectionId: string | number) {
 }
 
 export function createInspectionResult(inspectionId: string | number, payload: unknown) {
-  return optionalRequest([`/inspections/${inspectionId}/results`], { method: 'POST', body: JSON.stringify(normalizeInspectionPayload(payload)) });
+  return optionalRequest([`/inspections/${inspectionId}/results`], {
+    method: 'POST',
+    body: JSON.stringify(normalizeInspectionPayload(payload)),
+  });
 }
 
 export function approveInspection(inspectionId: string | number) {
   return optionalRequest([`/inspections/${inspectionId}/approve`], { method: 'POST' });
 }
 
-export async function uploadInspectionAttachment(inspectionId: string | number, formData: FormData | File | File[]) {
+export async function uploadInspectionAttachment(
+  inspectionId: string | number,
+  formData: FormData | File | File[],
+) {
   return uploadMany(`/inspections/${inspectionId}/attachments`, formData, { kind: 'photo' });
 }
 
