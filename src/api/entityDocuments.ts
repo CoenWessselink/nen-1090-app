@@ -15,8 +15,34 @@ export type EntityDocument = {
   url?: string;
 };
 
-export const listEntityDocuments = (scopeType: EntityDocumentScope, entityId: string, kind?: string) =>
-  client.get<EntityDocument[]>(buildListPath(`/masterdata-documents/${scopeType}/${entityId}`, { kind }));
+type EntityDocumentListResponse = EntityDocument[] | { items?: EntityDocument[]; data?: EntityDocument[]; documents?: EntityDocument[] };
+
+function normalizeDocuments(payload: EntityDocumentListResponse | null | undefined): EntityDocument[] {
+  if (!payload) return [];
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload.items)) return payload.items;
+  if (Array.isArray(payload.data)) return payload.data;
+  if (Array.isArray(payload.documents)) return payload.documents;
+  return [];
+}
+
+function syntheticDocumentFromFile(scopeType: EntityDocumentScope, entityId: string, file: File, kind: string): EntityDocument {
+  return {
+    id: `pending-${scopeType}-${entityId}-${file.name}-${file.size}`,
+    filename: file.name,
+    mime_type: file.type || 'application/octet-stream',
+    size_bytes: file.size,
+    uploaded_at: new Date().toISOString(),
+    kind,
+    scope_type: scopeType,
+    scope_id: entityId,
+  };
+}
+
+export const listEntityDocuments = async (scopeType: EntityDocumentScope, entityId: string, kind?: string) => {
+  const payload = await client.get<EntityDocumentListResponse>(buildListPath(`/masterdata-documents/${scopeType}/${entityId}`, { kind }));
+  return normalizeDocuments(payload);
+};
 
 export const uploadEntityDocuments = async (
   scopeType: EntityDocumentScope,
@@ -24,10 +50,18 @@ export const uploadEntityDocuments = async (
   files: File[] | FileList,
   kind = 'document',
 ) => {
+  const fileList = Array.from(files);
   const formData = new FormData();
-  Array.from(files).forEach((file) => formData.append('files', file));
+  fileList.forEach((file) => formData.append('files', file));
   formData.append('kind', kind);
-  return client.post(`/masterdata-documents/${scopeType}/${entityId}`, formData);
+
+  try {
+    const payload = await client.post<EntityDocumentListResponse>(`/masterdata-documents/${scopeType}/${entityId}`, formData);
+    const normalized = normalizeDocuments(payload);
+    return normalized.length ? normalized : fileList.map((file) => syntheticDocumentFromFile(scopeType, entityId, file, kind));
+  } catch (error) {
+    throw error instanceof Error ? error : new Error('Upload mislukt.');
+  }
 };
 
 export const deleteEntityDocument = (documentId: string) =>
