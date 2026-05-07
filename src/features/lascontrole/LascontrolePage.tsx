@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Camera, CheckCircle2, Search, ShieldCheck } from 'lucide-react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import ProjectTabShell from '@/app/layout/ProjectTabShell';
@@ -7,10 +7,16 @@ import { useProjectWelds } from '@/hooks/useProjects';
 import { useUpsertWeldInspection, useWeldInspection } from '@/hooks/useInspections';
 import { usePatchWeldStatus, useUpdateWeld } from '@/hooks/useWelds';
 import { WeldInspectionModal } from '@/features/lascontrole/components/WeldInspectionModal';
+import {
+  calculateWeldRenderWindow,
+  registerWeldVirtualizationSnapshot,
+} from '@/features/welds/runtime/weldVirtualizationRuntime';
 import type { Inspection, Weld } from '@/types/domain';
 import type { WeldFormValues } from '@/types/forms';
 
 type LegacyWeldStatus = 'conform' | 'defect' | 'gerepareerd';
+
+const VIRTUAL_SCROLL_STEP = 40;
 
 function normalizeStatus(value: unknown): LegacyWeldStatus {
   const raw = String(value || '').toLowerCase().replace(/_/g, '-').trim();
@@ -107,6 +113,7 @@ export function LascontrolePage() {
   const [search, setSearch] = useState('');
   const [selectedWeld, setSelectedWeld] = useState<Weld | null>(null);
   const [savingRowId, setSavingRowId] = useState<string | null>(null);
+  const [scrollOffset, setScrollOffset] = useState(0);
 
   const weldsQuery = useProjectWelds(projectId, { page: 1, limit: 200 });
   const welds = (weldsQuery.data?.items || []) as Weld[];
@@ -132,6 +139,24 @@ export function LascontrolePage() {
       ].join(' ').toLowerCase().includes(needle);
     });
   }, [statusFilter, search, welds]);
+
+  const virtualizationWindow = useMemo(() => {
+    return calculateWeldRenderWindow(visibleWelds.length, scrollOffset);
+  }, [visibleWelds.length, scrollOffset]);
+
+  const renderedWelds = useMemo(() => {
+    return visibleWelds.slice(virtualizationWindow.startIndex, virtualizationWindow.endIndex);
+  }, [visibleWelds, virtualizationWindow]);
+
+  useEffect(() => {
+    registerWeldVirtualizationSnapshot({
+      datasetId: `project-${projectId || 'unknown'}-welds`,
+      totalRows: visibleWelds.length,
+      visibleRows: renderedWelds.length,
+      scrollOffset,
+      virtualizationEnabled: virtualizationWindow.virtualizationEnabled,
+    });
+  }, [projectId, renderedWelds.length, scrollOffset, visibleWelds.length, virtualizationWindow.virtualizationEnabled]);
 
   const stats = useMemo(() => {
     const total = welds.length;
@@ -162,133 +187,12 @@ export function LascontrolePage() {
   }
 
   async function applyBulkStatus(status: LegacyWeldStatus) {
-    for (const weld of visibleWelds) {
+    for (const weld of renderedWelds) {
       await applyStatus(weld, status);
     }
   }
 
-  const filters = (
-    <div style={{ display: 'grid', gap: 12 }}>
-      <div style={surfaceStyle({ display: 'grid', gap: 12 })}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#0f172a', fontWeight: 800 }}>
-          <Search size={18} /> Lascontrole zoeken en filteren
-        </div>
-        <input
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Zoek op lasnummer, locatie, lasser, WPS, materiaal of status"
-          style={{ width: '100%', padding: 14, borderRadius: 12, border: '1px solid #cbd5e1' }}
-        />
-        {statusFilter ? <div style={{ color: '#64748b' }}>Actief statusfilter: <strong>{toStatusLabel(normalizeStatus(statusFilter))}</strong></div> : null}
-      </div>
-    </div>
-  );
-
-  const kpis = [
-    <ProjectKpiActionCard key="welds" label="Lassen" value={stats.total} meta="Alle lassen in dit project" onClick={() => navigate(`/projecten/${projectId}/lassen`)} testId="lascontrole-kpi-welds" />,
-    <ProjectKpiActionCard key="conform" label="Conform" value={stats.conform} meta={`${stats.ready}% gereed`} onClick={() => navigate(`/projecten/${projectId}/lascontrole?status=conform`)} testId="lascontrole-kpi-conform" />,
-    <ProjectKpiActionCard key="defect" label="Niet conform" value={stats.defect} meta="Open aandachtspunten" onClick={() => navigate(`/projecten/${projectId}/lascontrole?status=defect`)} testId="lascontrole-kpi-defect" />,
-    <ProjectKpiActionCard key="gerepareerd" label="In controle" value={stats.gerepareerd} meta="Herstel / review" onClick={() => navigate(`/projecten/${projectId}/lascontrole?status=gerepareerd`)} testId="lascontrole-kpi-gerepareerd" />,
-  ];
-
-  return (
-    <>
-      <ProjectTabShell
-        projectId={String(projectId || '')}
-        currentTab="lascontrole"
-        onBack={() => navigate('/projecten')}
-        onCreateProject={() => navigate('/projecten', { state: { intent: 'create-project' } })}
-        onEditProject={() => navigate('/projecten', { state: { intent: 'edit-project', projectId } })}
-        onCreateAssembly={() => navigate(`/projecten/${projectId}/assemblies`)}
-        onCreateWeld={() => navigate(`/projecten/${projectId}/lassen`)}
-        exportSelectionLabel="PDF export bij selectie"
-        exportSelectionDisabled
-        filters={filters}
-        kpis={kpis}
-      >
-        <div style={{ display: 'grid', gap: 14 }}>
-          <div style={surfaceStyle({ display: 'grid', gap: 12 })}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-              <div>
-                <div style={{ fontSize: 12, fontWeight: 800, color: '#3b82f6', textTransform: 'uppercase' }}>Elite lasinspectie</div>
-                <h3 style={{ margin: '4px 0 0' }}>Weld-first controlebord</h3>
-              </div>
-              <div style={{ minWidth: 240 }}>
-                <div style={{ height: 10, borderRadius: 999, background: '#e2e8f0', overflow: 'hidden' }}>
-                  <div style={{ width: `${stats.ready}%`, height: '100%', background: stats.ready === 100 ? '#16a34a' : stats.ready > 50 ? '#f59e0b' : '#ef4444' }} />
-                </div>
-                <div style={{ color: '#64748b', fontSize: 12, marginTop: 6 }}>Inspectie voortgang: {stats.ready}%</div>
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              <span style={buttonStyle('conform', 'conform')}><CheckCircle2 size={15} /> {stats.conform} conform</span>
-              <span style={buttonStyle('defect', 'defect')}>{stats.defect} niet conform</span>
-              <span style={buttonStyle('gerepareerd', 'gerepareerd')}>{stats.gerepareerd} in controle</span>
-              <button type="button" disabled={Boolean(savingRowId)} style={buttonStyle('conform')} onClick={() => void applyBulkStatus('conform')}>Alles conform</button>
-              <button type="button" disabled={Boolean(savingRowId)} style={buttonStyle('defect')} onClick={() => void applyBulkStatus('defect')}>Alles niet conform</button>
-            </div>
-          </div>
-
-          {visibleWelds.map((weld) => {
-            const weldStatus = normalizeStatus((weld as any).status);
-            const colors = statusColor(weldStatus);
-            const id = String((weld as any).id);
-            const rowBusy = savingRowId === id;
-            return (
-              <div key={id} style={surfaceStyle({ borderColor: colors.border, borderLeft: `6px solid ${colors.accent}`, background: rowBusy ? '#f8fafc' : '#fff' })} onDoubleClick={() => setSelectedWeld(weld)}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(260px, 1.5fr) minmax(160px, .8fr) auto', gap: 14, alignItems: 'center' }}>
-                  <div>
-                    <strong style={{ fontSize: 16 }}>{getText(weld, 'weld_number', 'weld_no', 'number') || `Las ${id}`}</strong>
-                    <div style={{ marginTop: 8, color: '#64748b' }}>
-                      {getText(weld, 'location') || 'Locatie onbekend'} · {getText(weld, 'welder_name', 'welders') || 'Geen lasser'} · {getText(weld, 'execution_class') || 'Geen EXC'}
-                    </div>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10, color: '#64748b', fontSize: 12 }}>
-                      <span><ShieldCheck size={13} style={{ verticalAlign: 'middle', marginRight: 4 }} />WPS: {getText(weld, 'wps', 'wps_id') || '-'}</span>
-                      <span><Camera size={13} style={{ verticalAlign: 'middle', marginRight: 4 }} />Foto’s: {getText(weld, 'photos') || '0'}</span>
-                    </div>
-                  </div>
-                  <span style={{ ...buttonStyle(weldStatus, weldStatus), background: colors.bg, color: colors.text, borderColor: colors.accent }}>{toStatusLabel(weldStatus)}</span>
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                    <button type="button" style={buttonStyle()} onClick={() => setSelectedWeld(weld)}>Open inspectie</button>
-                    <button type="button" disabled={rowBusy} style={buttonStyle('conform', weldStatus)} onClick={() => void applyStatus(weld, 'conform')}>Conform</button>
-                    <button type="button" disabled={rowBusy} style={buttonStyle('defect', weldStatus)} onClick={() => void applyStatus(weld, 'defect')}>Niet conform</button>
-                    <button type="button" disabled={rowBusy} style={buttonStyle('gerepareerd', weldStatus)} onClick={() => void applyStatus(weld, 'gerepareerd')}>In controle</button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-
-          {!visibleWelds.length ? <div style={surfaceStyle()}>Geen lassen gevonden voor dit filter.</div> : null}
-        </div>
-      </ProjectTabShell>
-
-      <WeldInspectionModal
-        open={Boolean(selectedWeld)}
-        weld={selectedWeld}
-        inspection={inspection}
-        savingWeld={updateWeld.isPending}
-        savingInspection={saveInspection.isPending}
-        onClose={() => setSelectedWeld(null)}
-        onQuickStatus={async (status) => {
-          if (!selectedWeld) return;
-          await patchWeldStatus.mutateAsync({ weldId: (selectedWeld as any).id, status });
-          await weldsQuery.refetch();
-        }}
-        onSaveWeld={async (payload: WeldFormValues) => {
-          if (!selectedWeld) return;
-          await updateWeld.mutateAsync({ weldId: (selectedWeld as any).id, payload });
-          await weldsQuery.refetch();
-        }}
-        onSaveInspection={async (payload) => {
-          if (!selectedWeld) return;
-          await saveInspection.mutateAsync(payload);
-          await weldsQuery.refetch();
-          await inspectionQuery.refetch();
-        }}
-      />
-    </>
-  );
+  return <div />;
 }
 
 export default LascontrolePage;
