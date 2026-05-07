@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { RefreshCcw } from 'lucide-react';
 import { openDownloadUrl } from '@/utils/download';
@@ -98,6 +98,18 @@ export function CeDossierPage() {
   const inspections = useMemo(() => asArray(dossier.inspections), [dossier]);
   const documents = useMemo(() => asArray(dossier.documents), [dossier]);
   const photos = useMemo(() => asArray(dossier.photos), [dossier]);
+
+  useEffect(() => {
+    setChecklistPage(1);
+    setMissingItemsPage(1);
+    setExportsPage(1);
+  }, [ceSearch]);
+
+  useEffect(() => {
+    if (!selectedExportId && exportItems.length > 0) {
+      setSelectedExportId(exportItems[0].id);
+    }
+  }, [selectedExportId]);
 
   const preview = useMemo(
     () =>
