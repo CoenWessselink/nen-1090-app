@@ -19,6 +19,8 @@ export type QueryParams = Record<string, QueryValue>;
 const LEGACY_COMPAT_PATTERNS = ['/legacy', '/compat', '/fallback', '/v1'];
 const OPTIONAL_REQUEST_HARD_LIMIT = 2;
 
+let refreshPromise: Promise<boolean> | null = null;
+
 function buildBasePath(path: string): string {
   if (path.startsWith('http://') || path.startsWith('https://')) {
     return path;
@@ -113,6 +115,22 @@ async function parseResponse<T>(response: Response): Promise<T> {
   return (await response.text()) as T;
 }
 
+async function refreshAuth(): Promise<boolean> {
+  if (!refreshPromise) {
+    refreshPromise = fetch('/api/v1/auth/refresh', {
+      method: 'POST',
+      credentials: 'include',
+    })
+      .then((response) => response.ok)
+      .catch(() => false)
+      .finally(() => {
+        refreshPromise = null;
+      });
+  }
+
+  return refreshPromise;
+}
+
 export async function apiRequest<T = unknown>(
   path: string,
   init?: RequestInit,
@@ -128,11 +146,26 @@ export async function apiRequest<T = unknown>(
     });
   }
 
-  const response = await fetch(buildBasePath(path), {
-    credentials: 'include',
-    ...init,
-    headers: buildHeaders(init),
-  });
+  const executeRequest = () =>
+    fetch(buildBasePath(path), {
+      credentials: 'include',
+      ...init,
+      headers: buildHeaders(init),
+    });
+
+  let response = await executeRequest();
+
+  if (response.status === 401 && !path.includes('/auth/')) {
+    runtimeTrace('AUTH_REFRESH_RETRY_TRIGGERED', {
+      path,
+    });
+
+    const refreshed = await refreshAuth();
+
+    if (refreshed) {
+      response = await executeRequest();
+    }
+  }
 
   return parseResponse<T>(response);
 }
@@ -216,77 +249,6 @@ export async function optionalRequest<T = unknown>(paths: string[], init?: Reque
 
 export async function downloadRequest(path: string, init?: RequestInit): Promise<Blob> {
   return apiRequest<Blob>(path, init);
-}
-
-export async function downloadUrlAsBlob(
-  path: string,
-  init?: RequestInit,
-): Promise<{ blob: Blob; filename: string }> {
-  runtimeTrace('DOWNLOAD_RUNTIME_USED', {
-    path,
-  });
-
-  const response = await fetch(buildBasePath(path), {
-    credentials: 'include',
-    ...init,
-    headers: buildHeaders(init),
-  });
-
-  if (!response.ok) {
-    throw new ApiError('Download failed', response.status);
-  }
-
-  const blob = await response.blob();
-  const disposition = response.headers.get('content-disposition') || '';
-  const match = disposition.match(/filename="?([^";]+)"?/i);
-
-  return {
-    blob,
-    filename: match?.[1] || 'download',
-  };
-}
-
-export async function downloadUrlAsObjectUrl(
-  path: string,
-  init?: RequestInit,
-): Promise<{ url: string; filename: string; contentType: string }> {
-  const { blob, filename } = await downloadUrlAsBlob(path, init);
-
-  runtimeTrace('OBJECT_URL_RUNTIME_CREATED', {
-    path,
-  });
-
-  return {
-    url: URL.createObjectURL(blob),
-    filename,
-    contentType: blob.type || 'application/octet-stream',
-  };
-}
-
-export async function openProtectedFile(
-  path: string,
-  fallbackName = 'download.pdf',
-  init?: RequestInit,
-): Promise<void> {
-  const { url, filename } = await downloadUrlAsObjectUrl(path, init);
-  const popup = window.open(url, '_blank', 'noopener,noreferrer');
-
-  if (!popup) {
-    runtimeTrace('PROTECTED_FILE_POPUP_FALLBACK_USED', {
-      path,
-    });
-
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = filename || fallbackName;
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-  }
-
-  window.setTimeout(() => {
-    URL.revokeObjectURL(url);
-  }, 60000);
 }
 
 const client = {
