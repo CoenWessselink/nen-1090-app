@@ -62,15 +62,6 @@ function classifyCompatPattern(path: string): void {
     return;
   }
 
-  if (matchedPattern === '/legacy' || matchedPattern === '/fallback') {
-    runtimeTrace('COMPAT_CLASS_C_RETIREMENT_CANDIDATE', {
-      path,
-      matchedPattern,
-    });
-
-    return;
-  }
-
   runtimeTrace('COMPAT_CLASS_B_LOW_TRAFFIC', {
     path,
     matchedPattern,
@@ -205,23 +196,6 @@ export async function optionalRequest<T = unknown>(paths: string[], init?: Reque
       ? paths.slice(0, OPTIONAL_REQUEST_HARD_LIMIT)
       : paths;
 
-  if (paths.length > OPTIONAL_REQUEST_HARD_LIMIT) {
-    runtimeTrace('OPTIONAL_REQUEST_HARD_LIMIT_TRUNCATED', {
-      originalCandidateCount: paths.length,
-      truncatedCandidateCount: normalizedPaths.length,
-      originalCandidatePaths: paths,
-      effectiveCandidatePaths: normalizedPaths,
-      enforcedMaximum: OPTIONAL_REQUEST_HARD_LIMIT,
-    });
-  }
-
-  if (normalizedPaths.length === 1) {
-    runtimeTrace('OPTIONAL_REQUEST_RETIREMENT_READY', {
-      canonicalPath: normalizedPaths[0],
-      fallbackCount: 0,
-    });
-  }
-
   let lastError: unknown = null;
 
   for (const [index, path] of normalizedPaths.entries()) {
@@ -249,6 +223,65 @@ export async function optionalRequest<T = unknown>(paths: string[], init?: Reque
 
 export async function downloadRequest(path: string, init?: RequestInit): Promise<Blob> {
   return apiRequest<Blob>(path, init);
+}
+
+export async function downloadUrlAsBlob(
+  path: string,
+  init?: RequestInit,
+): Promise<{ blob: Blob; filename: string }> {
+  const response = await fetch(buildBasePath(path), {
+    credentials: 'include',
+    ...init,
+    headers: buildHeaders(init),
+  });
+
+  if (!response.ok) {
+    throw new ApiError('Download failed', response.status);
+  }
+
+  const blob = await response.blob();
+  const disposition = response.headers.get('content-disposition') || '';
+  const match = disposition.match(/filename="?([^";]+)"?/i);
+
+  return {
+    blob,
+    filename: match?.[1] || 'download',
+  };
+}
+
+export async function downloadUrlAsObjectUrl(
+  path: string,
+  init?: RequestInit,
+): Promise<{ url: string; filename: string; contentType: string }> {
+  const { blob, filename } = await downloadUrlAsBlob(path, init);
+
+  return {
+    url: URL.createObjectURL(blob),
+    filename,
+    contentType: blob.type || 'application/octet-stream',
+  };
+}
+
+export async function openProtectedFile(
+  path: string,
+  fallbackName = 'download.pdf',
+  init?: RequestInit,
+): Promise<void> {
+  const { url, filename } = await downloadUrlAsObjectUrl(path, init);
+  const popup = window.open(url, '_blank', 'noopener,noreferrer');
+
+  if (!popup) {
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = filename || fallbackName;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+  }
+
+  window.setTimeout(() => {
+    URL.revokeObjectURL(url);
+  }, 60000);
 }
 
 const client = {
