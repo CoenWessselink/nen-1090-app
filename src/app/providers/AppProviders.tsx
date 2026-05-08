@@ -2,7 +2,6 @@ import { QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-qu
 import { PropsWithChildren, useState } from 'react';
 import { SessionProvider } from '@/app/session/SessionContext';
 import { ProjectProvider } from '@/context/ProjectContext';
-import { useUiStore } from '@/app/store/ui-store';
 import { notifyApiError } from '@/lib/apiErrorHandler';
 
 export function AppProviders({ children }: PropsWithChildren) {
@@ -16,11 +15,16 @@ export function AppProviders({ children }: PropsWithChildren) {
         }),
         defaultOptions: {
           queries: {
-            retry: 1,
+            retry: 2,
+            retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
             refetchOnWindowFocus: false,
-            staleTime: 30_000,
+            refetchOnReconnect: true,
+            networkMode: 'online',
+            staleTime: 60_000,
+            gcTime: 5 * 60_000,
           },
           mutations: {
+            networkMode: 'online',
             onError: (error) => {
               notifyApiError('Actie mislukt', error);
             },
