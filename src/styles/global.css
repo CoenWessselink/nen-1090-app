@@ -52,7 +52,7 @@ img, svg, video, canvas {
 [role='dialog'] {
   transform: translate3d(0,0,0);
   backface-visibility: hidden;
-  contain: layout paint;
+  contain: layout paint style;
   isolation: isolate;
   will-change: transform;
   pointer-events: auto;
