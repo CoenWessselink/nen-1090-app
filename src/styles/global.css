@@ -53,6 +53,7 @@ img, svg, video, canvas {
   contain: layout paint;
   isolation: isolate;
   will-change: transform;
+  pointer-events: auto;
   transition: box-shadow var(--ui-transition-fast), transform var(--ui-transition-fast);
 }
 
