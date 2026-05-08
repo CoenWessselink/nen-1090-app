@@ -36,6 +36,10 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+::selection {
+  background: rgba(49, 95, 170, 0.18);
+}
+
 *:focus-visible {
   outline: none;
   box-shadow: var(--ui-focus-ring);
