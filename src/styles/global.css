@@ -52,6 +52,7 @@ img, svg, video, canvas {
   backface-visibility: hidden;
   contain: layout paint;
   isolation: isolate;
+  will-change: transform;
   transition: box-shadow var(--ui-transition-fast), transform var(--ui-transition-fast);
 }
 
