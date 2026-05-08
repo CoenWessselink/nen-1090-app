@@ -8,7 +8,13 @@ function normalizePagedList<T>(response: PagedResponse<T>, fallbackLimit = 25) {
   if (Array.isArray(response)) {
     return { items: response, total: response.length, page: 1, limit: fallbackLimit || response.length || 25 };
   }
-  const items = Array.isArray(response?.items) ? response.items : Array.isArray(response?.data) ? response.data : [];
+
+  const items = Array.isArray(response?.items)
+    ? response.items
+    : Array.isArray(response?.data)
+      ? response.data
+      : [];
+
   return {
     items,
     total: Number(response?.total || items.length || 0),
@@ -19,34 +25,62 @@ function normalizePagedList<T>(response: PagedResponse<T>, fallbackLimit = 25) {
 
 function safeParams(params?: ListParams): ListParams | undefined {
   if (!params) return undefined;
+
   return {
     ...params,
     page: typeof params.page === 'number' && params.page > 0 ? params.page : 1,
-    limit: typeof params.limit === 'number' ? Math.min(Math.max(params.limit, 1), 100) : params.limit,
+    limit: typeof params.limit === 'number'
+      ? Math.min(Math.max(params.limit, 1), 100)
+      : params.limit,
   };
 }
 
+async function safeCeRuntimeRequest<T>(path: string, fallback: T): Promise<T> {
+  try {
+    return await apiRequest<T>(path);
+  } catch {
+    return fallback;
+  }
+}
+
 export function getComplianceOverview(projectId: string | number) {
-  return apiRequest<ComplianceOverview>(`/projects/${projectId}/ce-export-runtime`);
+  return safeCeRuntimeRequest<ComplianceOverview>(
+    `/projects/${projectId}/ce-export-runtime`,
+    {} as ComplianceOverview,
+  );
 }
 
 export function getComplianceMissingItems(projectId: string | number) {
-  return apiRequest<Record<string, unknown>>(`/projects/${projectId}/ce-runtime-sync`);
+  return safeCeRuntimeRequest<Record<string, unknown>>(
+    `/projects/${projectId}/ce-runtime-sync`,
+    {},
+  );
 }
 
 export function getComplianceChecklist(projectId: string | number) {
-  return apiRequest<Record<string, unknown>>(`/projects/${projectId}/ce-dossier`);
+  return safeCeRuntimeRequest<Record<string, unknown>>(
+    `/projects/${projectId}/ce-dossier`,
+    {},
+  );
 }
 
 export function getCeDossier(projectId: string | number) {
-  return apiRequest<Record<string, unknown>>(`/projects/${projectId}/ce-runtime-sync`);
+  return safeCeRuntimeRequest<Record<string, unknown>>(
+    `/projects/${projectId}/ce-runtime-sync`,
+    {},
+  );
 }
 
 export function getCeDocuments(params?: ListParams) {
   return optionalRequest<Record<string, unknown>>([
     `/documents`,
     `/attachments`,
-  ]).catch(() => ({ items: [], total: 0, page: Number(params?.page || 1), limit: Number(params?.limit || 25) }));
+  ]).catch(() => ({
+    items: [],
+    total: 0,
+    page: Number(params?.page || 1),
+    limit: Number(params?.limit || 25),
+  }));
 }
 
 export function uploadDocument(formData: FormData) {
@@ -60,27 +94,44 @@ export function uploadDocument(formData: FormData) {
 }
 
 export async function getProjectExports(projectId: string | number, params?: ListParams) {
-  const response = await listRequest<PagedResponse<ExportJob>>(`/projects/${projectId}/exports`, safeParams(params));
+  const response = await listRequest<PagedResponse<ExportJob>>(
+    `/projects/${projectId}/exports`,
+    safeParams(params),
+  );
+
   return normalizePagedList<ExportJob>(response, params?.limit || 25);
 }
 
 export function getProjectExportPreview(projectId: string | number) {
-  return apiRequest<Record<string, unknown>>(`/projects/${projectId}/ce-export-runtime`);
+  return safeCeRuntimeRequest<Record<string, unknown>>(
+    `/projects/${projectId}/ce-export-runtime`,
+    {},
+  );
 }
 
 export function getProjectExportManifest(projectId: string | number, exportId?: string | number) {
-  if (exportId) return apiRequest<Record<string, unknown>>(`/projects/${projectId}/exports/${exportId}`);
+  if (exportId) {
+    return apiRequest<Record<string, unknown>>(`/projects/${projectId}/exports/${exportId}`);
+  }
+
   return apiRequest<Record<string, unknown>>(`/projects/${projectId}/exports/manifest`);
 }
 
 export function createCeReport(projectId: string | number) {
-  return apiRequest<Record<string, unknown>>(`/projects/${projectId}/exports/ce-report`, { method: 'POST' });
+  return apiRequest<Record<string, unknown>>(`/projects/${projectId}/exports/ce-report`, {
+    method: 'POST',
+  });
 }
 
 export async function createPdfExport(projectId: string | number) {
-  const result = await apiRequest<Record<string, unknown>>(`/projects/${projectId}/exports/pdf`, { method: 'POST' });
+  const result = await apiRequest<Record<string, unknown>>(
+    `/projects/${projectId}/exports/pdf`,
+    { method: 'POST' },
+  );
+
   const premiumPdfPath = `/projects/${projectId}/exports/compliance/pdf?download=true&force=true`;
   const premiumViewerPath = `/projects/${projectId}/exports/compliance/pdf?download=false&force=true`;
+
   return {
     ...(result || {}),
     type: 'pdf',
@@ -96,15 +147,22 @@ export async function createPdfExport(projectId: string | number) {
 }
 
 export function createZipExport(projectId: string | number) {
-  return apiRequest<Record<string, unknown>>(`/projects/${projectId}/exports/zip`, { method: 'POST' });
+  return apiRequest<Record<string, unknown>>(`/projects/${projectId}/exports/zip`, {
+    method: 'POST',
+  });
 }
 
 export function createExcelExport(projectId: string | number) {
-  return apiRequest<Record<string, unknown>>(`/projects/${projectId}/exports/excel`, { method: 'POST' });
+  return apiRequest<Record<string, unknown>>(`/projects/${projectId}/exports/excel`, {
+    method: 'POST',
+  });
 }
 
 export function retryProjectExport(projectId: string | number, exportId: string | number) {
-  return apiRequest<Record<string, unknown>>(`/projects/${projectId}/exports/${exportId}/retry`, { method: 'POST' });
+  return apiRequest<Record<string, unknown>>(
+    `/projects/${projectId}/exports/${exportId}/retry`,
+    { method: 'POST' },
+  );
 }
 
 export function downloadProjectExport(projectId: string | number, exportId: string | number) {
