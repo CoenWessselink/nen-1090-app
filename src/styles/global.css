@@ -49,6 +49,7 @@ img, svg, video, canvas {
 [role='dialog'] {
   transform: translateZ(0);
   backface-visibility: hidden;
+  contain: layout paint;
 }
 
 .enterprise-notification,
