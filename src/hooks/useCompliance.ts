@@ -15,12 +15,15 @@ import {
   retryProjectExport,
 } from '@/api/ce';
 
+const COMPLIANCE_STALE_TIME = 60_000;
+
 export function useComplianceOverview(projectId?: string | number) {
   return useQuery({
     queryKey: ['compliance-overview', projectId],
     queryFn: () => getComplianceOverview(String(projectId)),
     enabled: Boolean(projectId),
-    staleTime: 30_000,
+    staleTime: COMPLIANCE_STALE_TIME,
+    refetchOnReconnect: true,
   });
 }
 
@@ -29,7 +32,8 @@ export function useComplianceMissingItems(projectId?: string | number) {
     queryKey: ['compliance-missing', projectId],
     queryFn: () => getComplianceMissingItems(String(projectId)),
     enabled: Boolean(projectId),
-    staleTime: 30_000,
+    staleTime: COMPLIANCE_STALE_TIME,
+    refetchOnReconnect: true,
   });
 }
 
@@ -38,7 +42,8 @@ export function useComplianceChecklist(projectId?: string | number) {
     queryKey: ['compliance-checklist', projectId],
     queryFn: () => getComplianceChecklist(String(projectId)),
     enabled: Boolean(projectId),
-    staleTime: 30_000,
+    staleTime: COMPLIANCE_STALE_TIME,
+    refetchOnReconnect: true,
   });
 }
 
@@ -47,7 +52,8 @@ export function useCeDossier(projectId?: string | number) {
     queryKey: ['ce-dossier', projectId],
     queryFn: () => getCeDossier(String(projectId)),
     enabled: Boolean(projectId),
-    staleTime: 30_000,
+    staleTime: COMPLIANCE_STALE_TIME,
+    refetchOnReconnect: true,
   });
 }
 
@@ -56,19 +62,22 @@ export function useProjectExports(projectId?: string | number) {
     queryKey: ['project-exports', projectId],
     queryFn: async () => getProjectExports(String(projectId)),
     enabled: Boolean(projectId),
-    staleTime: 30_000,
+    staleTime: COMPLIANCE_STALE_TIME,
+    refetchOnReconnect: true,
   });
 }
 
-// 🔥 FIX: ontbrekende hooks toegevoegd
-
 export function useCreateCeReport(projectId: string | number) {
   const qc = useQueryClient();
+
   return useMutation({
     mutationFn: () => createCeReport(projectId),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['project-exports', projectId] });
-      qc.invalidateQueries({ queryKey: ['project-export-preview', projectId] });
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ['project-exports', projectId] }),
+        qc.invalidateQueries({ queryKey: ['project-export-preview', projectId] }),
+        qc.invalidateQueries({ queryKey: ['ce-dossier', projectId] }),
+      ]);
     },
   });
 }
@@ -78,7 +87,7 @@ export function useProjectExportPreview(projectId?: string | number) {
     queryKey: ['project-export-preview', projectId],
     queryFn: () => getProjectExportPreview(String(projectId)),
     enabled: Boolean(projectId),
-    staleTime: 30_000,
+    staleTime: COMPLIANCE_STALE_TIME,
   });
 }
 
@@ -87,48 +96,50 @@ export function useProjectExportManifest(projectId?: string | number, exportId?:
     queryKey: ['project-export-manifest', projectId, exportId],
     queryFn: () => getProjectExportManifest(String(projectId), String(exportId)),
     enabled: Boolean(projectId && exportId),
-    staleTime: 30_000,
+    staleTime: COMPLIANCE_STALE_TIME,
   });
 }
 
-// bestaande exports (behouden)
-
 export function useCreatePdfExport(projectId: string | number) {
   const qc = useQueryClient();
+
   return useMutation({
     mutationFn: () => createPdfExport(projectId),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['project-exports', projectId] });
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ['project-exports', projectId] });
     },
   });
 }
 
 export function useCreateZipExport(projectId: string | number) {
   const qc = useQueryClient();
+
   return useMutation({
     mutationFn: () => createZipExport(projectId),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['project-exports', projectId] });
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ['project-exports', projectId] });
     },
   });
 }
 
 export function useCreateExcelExport(projectId: string | number) {
   const qc = useQueryClient();
+
   return useMutation({
     mutationFn: () => createExcelExport(projectId),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['project-exports', projectId] });
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ['project-exports', projectId] });
     },
   });
 }
 
 export function useRetryProjectExport(projectId: string | number) {
   const qc = useQueryClient();
+
   return useMutation({
     mutationFn: (exportId: string | number) => retryProjectExport(projectId, exportId),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['project-exports', projectId] });
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ['project-exports', projectId] });
     },
   });
 }
