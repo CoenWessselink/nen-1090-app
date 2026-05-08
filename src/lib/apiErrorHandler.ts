@@ -6,6 +6,7 @@ function extractMessage(error: unknown): string {
 
   if (error && typeof error === 'object') {
     const candidate = error as {
+      status?: unknown;
       message?: unknown;
       detail?: unknown;
       error?: { message?: unknown; detail?: unknown };
@@ -22,7 +23,11 @@ function extractMessage(error: unknown): string {
       candidate.detail,
     ].find((value) => typeof value === 'string' && value.trim().length > 0);
 
-    if (typeof nested === 'string') return nested;
+    if (typeof nested === 'string') {
+      return typeof candidate.status === 'number'
+        ? `[${candidate.status}] ${nested}`
+        : nested;
+    }
   }
 
   return 'Onbekende fout tijdens API-verwerking.';
@@ -30,5 +35,18 @@ function extractMessage(error: unknown): string {
 
 export function notifyApiError(title: string, error: unknown) {
   const description = extractMessage(error);
-  useUiStore.getState().pushNotification({ title, description, tone: 'error' });
+
+  if (import.meta.env.DEV) {
+    console.error('[API ERROR]', {
+      title,
+      error,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  useUiStore.getState().pushNotification({
+    title,
+    description,
+    tone: 'error',
+  });
 }
