@@ -68,6 +68,8 @@ img, svg, video, canvas {
   transform: translate3d(0,0,0);
   backface-visibility: hidden;
   contain: layout paint style;
+  content-visibility: auto;
+  contain-intrinsic-size: 480px;
   isolation: isolate;
   will-change: transform;
   pointer-events: auto;
