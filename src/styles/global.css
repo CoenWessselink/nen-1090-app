@@ -50,7 +50,7 @@ img, svg, video, canvas {
 .modal,
 .dialog,
 [role='dialog'] {
-  transform: translateZ(0);
+  transform: translate3d(0,0,0);
   backface-visibility: hidden;
   contain: layout paint;
   isolation: isolate;
