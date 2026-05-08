@@ -79,6 +79,7 @@ img, svg, video, canvas {
   -webkit-user-drag: none;
   border-radius: 18px;
   backdrop-filter: blur(0px);
+  transform-style: preserve-3d;
   transition:
     box-shadow var(--ui-transition-fast),
     transform var(--ui-transition-fast),
