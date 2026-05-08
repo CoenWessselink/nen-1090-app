@@ -3,6 +3,7 @@
 :root {
   --ui-transition-fast: 140ms ease;
   --ui-transition-medium: 180ms ease;
+  --ui-transition-slow: 240ms ease;
   --ui-focus-ring: 0 0 0 3px rgba(79, 124, 255, 0.18);
   --enterprise-blue: #315faa;
   --enterprise-blue-2: #3f78d6;
@@ -76,7 +77,19 @@ img, svg, video, canvas {
   pointer-events: auto;
   touch-action: manipulation pinch-zoom;
   -webkit-user-drag: none;
-  transition: box-shadow var(--ui-transition-fast), transform var(--ui-transition-fast), opacity var(--ui-transition-fast);
+  border-radius: 18px;
+  transition:
+    box-shadow var(--ui-transition-fast),
+    transform var(--ui-transition-fast),
+    opacity var(--ui-transition-fast),
+    border-color var(--ui-transition-slow);
+}
+
+.enterprise-card:hover,
+.card:hover,
+.enterprise-panel:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
 }
 
 .enterprise-notification,
