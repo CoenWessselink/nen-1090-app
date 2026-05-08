@@ -73,7 +73,7 @@ img, svg, video, canvas {
   content-visibility: auto;
   contain-intrinsic-size: 480px;
   isolation: isolate;
-  will-change: transform;
+  will-change: transform, opacity;
   pointer-events: auto;
   touch-action: manipulation pinch-zoom;
   -webkit-user-drag: none;
@@ -82,7 +82,8 @@ img, svg, video, canvas {
     box-shadow var(--ui-transition-fast),
     transform var(--ui-transition-fast),
     opacity var(--ui-transition-fast),
-    border-color var(--ui-transition-slow);
+    border-color var(--ui-transition-slow),
+    background-color var(--ui-transition-slow);
 }
 
 .enterprise-card:hover,
