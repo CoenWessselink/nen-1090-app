@@ -35,11 +35,11 @@ export function getComplianceMissingItems(projectId: string | number) {
 }
 
 export function getComplianceChecklist(projectId: string | number) {
-  return apiRequest<Record<string, unknown>>(`/projects/${projectId}/ce-dossier/aggregate-preview`);
+  return apiRequest<Record<string, unknown>>(`/projects/${projectId}/ce-dossier`);
 }
 
 export function getCeDossier(projectId: string | number) {
-  return apiRequest<Record<string, unknown>>(`/projects/${projectId}/ce-aggregate`);
+  return apiRequest<Record<string, unknown>>(`/projects/${projectId}/ce-runtime-sync`);
 }
 
 export function getCeDocuments(params?: ListParams) {
