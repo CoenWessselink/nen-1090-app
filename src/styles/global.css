@@ -32,6 +32,7 @@ body {
   text-rendering: optimizeLegibility;
   color: var(--enterprise-text);
   min-height: 100dvh;
+  -webkit-tap-highlight-color: transparent;
 }
 
 *:focus-visible {
