@@ -18,6 +18,7 @@ export type QueryParams = Record<string, QueryValue>;
 
 const LEGACY_COMPAT_PATTERNS = ['/legacy', '/compat', '/fallback', '/v1'];
 const OPTIONAL_REQUEST_HARD_LIMIT = 2;
+const API_REQUEST_TIMEOUT = 30_000;
 
 let refreshPromise: Promise<boolean> | null = null;
 
@@ -122,6 +123,23 @@ async function refreshAuth(): Promise<boolean> {
   return refreshPromise;
 }
 
+async function fetchWithTimeout(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+
+  const timeout = window.setTimeout(() => {
+    controller.abort();
+  }, API_REQUEST_TIMEOUT);
+
+  try {
+    return await fetch(input, {
+      ...init,
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export async function apiRequest<T = unknown>(
   path: string,
   init?: RequestInit,
@@ -138,7 +156,7 @@ export async function apiRequest<T = unknown>(
   }
 
   const executeRequest = () =>
-    fetch(buildBasePath(path), {
+    fetchWithTimeout(buildBasePath(path), {
       credentials: 'include',
       ...init,
       headers: buildHeaders(init),
@@ -229,7 +247,7 @@ export async function downloadUrlAsBlob(
   path: string,
   init?: RequestInit,
 ): Promise<{ blob: Blob; filename: string }> {
-  const response = await fetch(buildBasePath(path), {
+  const response = await fetchWithTimeout(buildBasePath(path), {
     credentials: 'include',
     ...init,
     headers: buildHeaders(init),
