@@ -27,19 +27,19 @@ function safeParams(params?: ListParams): ListParams | undefined {
 }
 
 export function getComplianceOverview(projectId: string | number) {
-  return apiRequest<ComplianceOverview>(`/projects/${projectId}/ce-dossier/preview`);
+  return apiRequest<ComplianceOverview>(`/projects/${projectId}/ce-export-preview`);
 }
 
 export function getComplianceMissingItems(projectId: string | number) {
-  return apiRequest<Record<string, unknown>>(`/projects/${projectId}/ce-dossier/missing`);
+  return apiRequest<Record<string, unknown>>(`/projects/${projectId}/ce-export-preview`);
 }
 
 export function getComplianceChecklist(projectId: string | number) {
-  return apiRequest<Record<string, unknown>>(`/projects/${projectId}/ce-dossier/checklist`);
+  return apiRequest<Record<string, unknown>>(`/projects/${projectId}/ce-dossier/aggregate-preview`);
 }
 
 export function getCeDossier(projectId: string | number) {
-  return apiRequest<Record<string, unknown>>(`/projects/${projectId}/ce-dossier/preview`);
+  return apiRequest<Record<string, unknown>>(`/projects/${projectId}/ce-aggregate`);
 }
 
 export function getCeDocuments(params?: ListParams) {
@@ -65,7 +65,7 @@ export async function getProjectExports(projectId: string | number, params?: Lis
 }
 
 export function getProjectExportPreview(projectId: string | number) {
-  return apiRequest<Record<string, unknown>>(`/projects/${projectId}/exports/preview`);
+  return apiRequest<Record<string, unknown>>(`/projects/${projectId}/ce-export-preview`);
 }
 
 export function getProjectExportManifest(projectId: string | number, exportId?: string | number) {
