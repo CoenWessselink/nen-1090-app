@@ -59,6 +59,7 @@ img, svg, video, canvas {
   will-change: transform;
   pointer-events: auto;
   touch-action: manipulation;
+  user-select: none;
   transition: box-shadow var(--ui-transition-fast), transform var(--ui-transition-fast);
 }
 
