@@ -49,26 +49,32 @@ img, svg, video, canvas {
   overflow-wrap: anywhere;
 }
 
-.enterprise-notification.is-error {
-  border-color: #fecaca;
-  background: #fff5f5;
-  color: #991b1b;
+.enterprise-card,
+.card,
+.enterprise-panel,
+.section-banner,
+.section-nav-tile,
+.enterprise-tile {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  border-radius: 18px;
 }
 
-.enterprise-notification.is-success {
-  border-color: #bbf7d0;
-  background: #f0fdf4;
-  color: #166534;
+.enterprise-toolbar,
+.toolbar-shell,
+.section-toolbar,
+.enterprise-actions,
+.action-group,
+.inline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  max-width: 100%;
 }
 
-.enterprise-notification.is-warning {
-  border-color: #fde68a;
-  background: #fffbeb;
-  color: #92400e;
-}
-
-button, .btn, a, .card, .section-banner, .mobile-page-header, .section-nav-tile, .list-row, .timeline-item, .checklist-item {
-  transition: transform var(--ui-transition-fast), box-shadow var(--ui-transition-fast), border-color var(--ui-transition-fast), background-color var(--ui-transition-fast), color var(--ui-transition-fast), opacity var(--ui-transition-fast);
+button, .btn {
+  touch-action: manipulation;
 }
 
 [data-modal],
@@ -108,7 +114,12 @@ button, .btn, a, .card, .section-banner, .mobile-page-header, .section-nav-tile,
   100% { background-position: -200% 0; }
 }
 
-.page-stack, .superadmin-page, .settings-page, .tenant-profile-page, [data-page='billing'], .mobile-page-body {
+.page-stack,
+.superadmin-page,
+.settings-page,
+.tenant-profile-page,
+[data-page='billing'],
+.mobile-page-body {
   display: flex;
   flex-direction: column;
   gap: 18px;
@@ -119,13 +130,15 @@ button, .btn, a, .card, .section-banner, .mobile-page-header, .section-nav-tile,
   overflow-x: hidden;
 }
 
-.mobile-page {
-  width: 100%;
-  max-width: 100%;
-  overflow-x: hidden;
-}
-
-.content-grid-2, .detail-grid, .project-status-summary-grid, .template-editor-grid, .project-tab-kpi-grid, .dashboard-kpi-grid, .tenant-profile-grid, .enterprise-grid-2, .enterprise-kpi-grid {
+.content-grid-2,
+.detail-grid,
+.project-status-summary-grid,
+.template-editor-grid,
+.project-tab-kpi-grid,
+.dashboard-kpi-grid,
+.tenant-profile-grid,
+.enterprise-grid-2,
+.enterprise-kpi-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 18px;
@@ -133,7 +146,10 @@ button, .btn, a, .card, .section-banner, .mobile-page-header, .section-nav-tile,
 }
 
 @media (min-width: 768px) {
-  .content-grid-2, .detail-grid, .tenant-profile-grid, .enterprise-grid-2 {
+  .content-grid-2,
+  .detail-grid,
+  .tenant-profile-grid,
+  .enterprise-grid-2 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -165,6 +181,16 @@ button, .btn, a, .card, .section-banner, .mobile-page-header, .section-nav-tile,
     padding-bottom: env(safe-area-inset-bottom);
   }
 
+  .enterprise-toolbar,
+  .toolbar-shell,
+  .section-toolbar,
+  .enterprise-actions,
+  .action-group,
+  .inline-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
   .superadmin-page table,
   .superadmin-page [role='table'],
   .superadmin-page .data-table,
@@ -178,13 +204,8 @@ button, .btn, a, .card, .section-banner, .mobile-page-header, .section-nav-tile,
     -webkit-overflow-scrolling: touch;
   }
 
-  .section-nav-tile,
-  .enterprise-tile,
-  .card {
-    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
-  }
-
-  .superadmin-row-actions {
+  .superadmin-row-actions,
+  .enterprise-actions {
     width: 100%;
   }
 
