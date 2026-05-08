@@ -48,6 +48,7 @@ body {
 *, *::before, *::after {
   box-sizing: border-box;
   min-width: 0;
+  scrollbar-width: thin;
 }
 
 img, svg, video, canvas {
@@ -75,7 +76,7 @@ img, svg, video, canvas {
   pointer-events: auto;
   touch-action: manipulation pinch-zoom;
   -webkit-user-drag: none;
-  transition: box-shadow var(--ui-transition-fast), transform var(--ui-transition-fast);
+  transition: box-shadow var(--ui-transition-fast), transform var(--ui-transition-fast), opacity var(--ui-transition-fast);
 }
 
 .enterprise-notification,
