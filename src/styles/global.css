@@ -30,7 +30,7 @@ body {
   overflow-anchor: none;
   -webkit-overflow-scrolling: touch;
   -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
+  text-rendering: geometricPrecision;
   color: var(--enterprise-text);
   min-height: 100dvh;
   -webkit-tap-highlight-color: transparent;
