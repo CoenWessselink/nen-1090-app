@@ -27,11 +27,11 @@ function safeParams(params?: ListParams): ListParams | undefined {
 }
 
 export function getComplianceOverview(projectId: string | number) {
-  return apiRequest<ComplianceOverview>(`/projects/${projectId}/ce-export-preview`);
+  return apiRequest<ComplianceOverview>(`/projects/${projectId}/ce-export-runtime`);
 }
 
 export function getComplianceMissingItems(projectId: string | number) {
-  return apiRequest<Record<string, unknown>>(`/projects/${projectId}/ce-export-preview`);
+  return apiRequest<Record<string, unknown>>(`/projects/${projectId}/ce-runtime-sync`);
 }
 
 export function getComplianceChecklist(projectId: string | number) {
@@ -65,7 +65,7 @@ export async function getProjectExports(projectId: string | number, params?: Lis
 }
 
 export function getProjectExportPreview(projectId: string | number) {
-  return apiRequest<Record<string, unknown>>(`/projects/${projectId}/ce-export-preview`);
+  return apiRequest<Record<string, unknown>>(`/projects/${projectId}/ce-export-runtime`);
 }
 
 export function getProjectExportManifest(projectId: string | number, exportId?: string | number) {
