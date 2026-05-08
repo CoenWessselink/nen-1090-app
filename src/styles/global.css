@@ -78,6 +78,7 @@ img, svg, video, canvas {
   touch-action: manipulation pinch-zoom;
   -webkit-user-drag: none;
   border-radius: 18px;
+  backdrop-filter: blur(0px);
   transition:
     box-shadow var(--ui-transition-fast),
     transform var(--ui-transition-fast),
