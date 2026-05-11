@@ -2,9 +2,10 @@ html,
 body,
 #root {
   width: 100%;
+  height: 100%;
   min-height: 100%;
   overflow-x: hidden;
-  overflow-y: auto;
+  overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
 }
 
@@ -16,23 +17,58 @@ body.modal-dragging {
   user-select: none;
 }
 
-/* Restore scrolling */
-.h-screen,
-.min-h-screen {
-  min-height: 100dvh;
+/* ============================================================
+   SINGLE SCROLL CONTAINER ARCHITECTURE
+   ============================================================ */
+
+.app-shell {
+  height: 100dvh !important;
+  min-height: 100dvh !important;
+  overflow: hidden !important;
 }
 
-/* Prevent nested scroll lock */
-[data-settings-page],
+.shell-main {
+  height: 100dvh !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.page-canvas {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain !important;
+  -webkit-overflow-scrolling: touch !important;
+  padding-bottom: 120px !important;
+}
+
+.sidebar {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+/* Remove nested scroll containers */
+.page-stack,
 .settings-page,
-.settings-layout {
+.settings-layout,
+.settings-sections,
+.mobile-page,
+.mobile-page-body,
+.content-grid-2 {
   overflow: visible !important;
   height: auto !important;
   min-height: auto !important;
+  max-height: none !important;
 }
 
-/* Structural fix: global performance CSS used content-visibility/contain on cards and dialogs.
-   That breaks modals, stacking, page scroll and mobile hit testing. Disable it for Settings and overlays. */
+/* ============================================================
+   PERFORMANCE / LAYER FIXES
+   ============================================================ */
+
 .settings-page,
 .settings-page *,
 .overlay-backdrop,
@@ -46,7 +82,10 @@ body.modal-dragging {
   backface-visibility: visible !important;
 }
 
-/* Modal must own its own viewport scroll. Page behind may remain visible but should not be the only scroll target. */
+/* ============================================================
+   MODAL SYSTEM
+   ============================================================ */
+
 .overlay-backdrop {
   position: fixed !important;
   inset: 0 !important;
@@ -65,12 +104,14 @@ body.modal-dragging {
 .modal-panel {
   width: min(980px, calc(100vw - 32px)) !important;
   max-width: calc(100vw - 32px) !important;
-  max-height: none !important;
+  max-height: calc(100dvh - 48px) !important;
   margin: auto 0 !important;
-  overflow: visible !important;
+  overflow: hidden !important;
   background: #fff !important;
   border-radius: 22px !important;
   box-shadow: 0 28px 80px rgba(15, 23, 42, 0.28) !important;
+  display: flex !important;
+  flex-direction: column !important;
 }
 
 .modal-small {
@@ -94,7 +135,8 @@ body.modal-dragging {
 }
 
 .overlay-body {
-  max-height: calc(100dvh - 150px) !important;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
   overflow-y: auto !important;
   overflow-x: hidden !important;
   padding-bottom: 24px !important;
@@ -116,7 +158,10 @@ body.modal-dragging {
   font-size: 16px !important;
 }
 
-/* Settings page production mobile layout */
+/* ============================================================
+   SETTINGS PAGE
+   ============================================================ */
+
 .settings-page {
   width: 100% !important;
   max-width: 1180px !important;
@@ -130,11 +175,6 @@ body.modal-dragging {
   overflow: hidden !important;
 }
 
-.settings-page .section-banner h1 {
-  margin: 0 !important;
-  line-height: 1.1 !important;
-}
-
 .settings-page .section-nav-grid {
   align-items: stretch !important;
 }
@@ -142,72 +182,62 @@ body.modal-dragging {
 .settings-page .section-nav-tile {
   min-height: auto !important;
   padding: 18px !important;
-  text-align: left !important;
   overflow: hidden !important;
 }
 
-.settings-page .section-nav-tile strong,
-.settings-page .section-nav-tile small,
-.settings-page .section-nav-tile-value {
-  overflow-wrap: anywhere !important;
-  word-break: normal !important;
-}
-
 .settings-page .row-actions,
-.settings-page .inline-end-cluster {
+.settings-page .inline-end-cluster,
+.form-actions {
   display: flex !important;
   flex-wrap: wrap !important;
   gap: 8px !important;
 }
 
-.settings-page .row-actions .button,
-.settings-page .row-actions button,
-.settings-page .inline-end-cluster .button,
-.settings-page .inline-end-cluster button {
-  min-width: 0 !important;
-  white-space: normal !important;
-}
+/* ============================================================
+   MOBILE
+   ============================================================ */
 
 @media (max-width: 1024px) {
+  html,
+  body,
+  #root {
+    height: 100dvh !important;
+  }
+
+  .app-shell {
+    grid-template-columns: 1fr !important;
+  }
+
+  .page-canvas {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+    padding-top: 12px !important;
+    padding-bottom: 120px !important;
+  }
+
   .settings-grid,
   .settings-cards,
   .settings-sections,
   .settings-page .section-nav-grid,
-  .settings-page .content-grid-2 {
-    display: flex !important;
-    flex-direction: column !important;
+  .settings-page .content-grid-2,
+  .detail-grid,
+  .two-column-grid {
+    display: grid !important;
     grid-template-columns: 1fr !important;
     gap: 16px !important;
   }
 
-  .settings-sidebar {
-    position: relative !important;
-    width: 100% !important;
-    height: auto !important;
-  }
-
-  .settings-content,
+  .settings-page,
   .settings-card,
   .settings-panel,
   .settings-page .card,
   .settings-page .section-nav-tile {
     width: 100% !important;
     max-width: 100% !important;
-    overflow: visible !important;
-  }
-
-  .settings-page {
-    padding: 0 12px 40px !important;
-  }
-
-  .settings-page .section-banner {
-    padding: 18px !important;
-    border-radius: 20px !important;
   }
 
   .overlay-backdrop {
     padding: 10px !important;
-    align-items: stretch !important;
   }
 
   .modal-panel,
@@ -217,22 +247,13 @@ body.modal-dragging {
   .modal-fullscreen {
     width: 100% !important;
     max-width: 100% !important;
-    margin: 0 !important;
+    max-height: calc(100dvh - 20px) !important;
     border-radius: 18px !important;
     transform: none !important;
   }
 
   .overlay-body {
-    max-height: calc(100dvh - 112px) !important;
     padding: 16px !important;
-  }
-
-  .overlay-header {
-    padding: 14px 16px !important;
-  }
-
-  .overlay-header .list-subtle {
-    display: none !important;
   }
 }
 
@@ -249,9 +270,4 @@ body.modal-dragging {
 .settings-guidance,
 .settings-helper-text {
   display: none !important;
-}
-
-.settings-card,
-.settings-panel {
-  border-radius: 20px;
 }
