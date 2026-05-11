@@ -17,14 +17,11 @@ body.modal-dragging {
   user-select: none;
 }
 
-/* ============================================================
-   SINGLE SCROLL CONTAINER ARCHITECTURE
-   ============================================================ */
-
 .app-shell {
   height: 100dvh !important;
   min-height: 100dvh !important;
   overflow: hidden !important;
+  isolation: isolate !important;
 }
 
 .shell-main {
@@ -43,6 +40,7 @@ body.modal-dragging {
   overscroll-behavior: contain !important;
   -webkit-overflow-scrolling: touch !important;
   padding-bottom: 120px !important;
+  position: relative !important;
 }
 
 .sidebar {
@@ -51,7 +49,6 @@ body.modal-dragging {
   -webkit-overflow-scrolling: touch !important;
 }
 
-/* Remove nested scroll containers */
 .page-stack,
 .settings-page,
 .settings-layout,
@@ -65,9 +62,13 @@ body.modal-dragging {
   max-height: none !important;
 }
 
-/* ============================================================
-   PERFORMANCE / LAYER FIXES
-   ============================================================ */
+/* Remove clipping/stacking contexts that trap modals */
+.page-canvas *,
+.settings-page *,
+.card,
+.section-nav-tile {
+  perspective: none !important;
+}
 
 .settings-page,
 .settings-page *,
@@ -82,14 +83,17 @@ body.modal-dragging {
   backface-visibility: visible !important;
 }
 
-/* ============================================================
-   MODAL SYSTEM
-   ============================================================ */
-
-.overlay-backdrop {
+/* GLOBAL VIEWPORT OVERLAYS */
+.overlay-backdrop,
+[data-overlay],
+[data-modal-overlay],
+.modal-overlay,
+.dialog-overlay {
   position: fixed !important;
   inset: 0 !important;
-  z-index: 9999 !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+  z-index: 2147483647 !important;
   display: flex !important;
   align-items: flex-start !important;
   justify-content: center !important;
@@ -98,10 +102,15 @@ body.modal-dragging {
   overflow-x: hidden !important;
   overscroll-behavior: contain !important;
   background: rgba(15, 23, 42, 0.58) !important;
+  isolation: isolate !important;
   -webkit-overflow-scrolling: touch !important;
 }
 
-.modal-panel {
+.modal-panel,
+[data-modal-panel],
+.dialog-content,
+.modal-content {
+  position: relative !important;
   width: min(980px, calc(100vw - 32px)) !important;
   max-width: calc(100vw - 32px) !important;
   max-height: calc(100dvh - 48px) !important;
@@ -112,21 +121,13 @@ body.modal-dragging {
   box-shadow: 0 28px 80px rgba(15, 23, 42, 0.28) !important;
   display: flex !important;
   flex-direction: column !important;
+  transform: none !important;
+  z-index: 2147483647 !important;
 }
 
-.modal-small {
-  width: min(520px, calc(100vw - 32px)) !important;
-}
-
-.modal-medium {
-  width: min(760px, calc(100vw - 32px)) !important;
-}
-
-.modal-large {
-  width: min(980px, calc(100vw - 32px)) !important;
-}
-
-.overlay-header {
+.overlay-header,
+.modal-header,
+.dialog-header {
   position: sticky !important;
   top: 0 !important;
   z-index: 2 !important;
@@ -134,7 +135,9 @@ body.modal-dragging {
   border-bottom: 1px solid #dbe7f6 !important;
 }
 
-.overlay-body {
+.overlay-body,
+.modal-body,
+.dialog-body {
   flex: 1 1 auto !important;
   min-height: 0 !important;
   overflow-y: auto !important;
@@ -142,25 +145,6 @@ body.modal-dragging {
   padding-bottom: 24px !important;
   -webkit-overflow-scrolling: touch !important;
 }
-
-.overlay-body .form-grid {
-  display: grid !important;
-  grid-template-columns: 1fr !important;
-  gap: 16px !important;
-}
-
-.overlay-body input,
-.overlay-body select,
-.overlay-body textarea {
-  width: 100% !important;
-  max-width: 100% !important;
-  min-height: 48px !important;
-  font-size: 16px !important;
-}
-
-/* ============================================================
-   SETTINGS PAGE
-   ============================================================ */
 
 .settings-page {
   width: 100% !important;
@@ -192,10 +176,6 @@ body.modal-dragging {
   flex-wrap: wrap !important;
   gap: 8px !important;
 }
-
-/* ============================================================
-   MOBILE
-   ============================================================ */
 
 @media (max-width: 1024px) {
   html,
@@ -236,7 +216,11 @@ body.modal-dragging {
     max-width: 100% !important;
   }
 
-  .overlay-backdrop {
+  .overlay-backdrop,
+  [data-overlay],
+  [data-modal-overlay],
+  .modal-overlay,
+  .dialog-overlay {
     padding: 10px !important;
   }
 
@@ -244,7 +228,10 @@ body.modal-dragging {
   .modal-small,
   .modal-medium,
   .modal-large,
-  .modal-fullscreen {
+  .modal-fullscreen,
+  [data-modal-panel],
+  .dialog-content,
+  .modal-content {
     width: 100% !important;
     max-width: 100% !important;
     max-height: calc(100dvh - 20px) !important;
@@ -252,12 +239,13 @@ body.modal-dragging {
     transform: none !important;
   }
 
-  .overlay-body {
+  .overlay-body,
+  .modal-body,
+  .dialog-body {
     padding: 16px !important;
   }
 }
 
-/* Hide runtime/debug UI */
 .settings-runtime-debug,
 .settings-runtime-banner,
 .settings-diagnostics,
