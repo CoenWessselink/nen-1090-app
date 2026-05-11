@@ -10,9 +10,6 @@ import { useInspectionTemplates, useMaterials, useSettings, useWeldCoordinators,
 import { MasterDataManager } from "@/features/instellingen/components/MasterDataManager";
 import { CompanySettingsCard } from "@/features/instellingen/components/CompanySettingsCard";
 import { InspectionTemplatesManager } from "@/features/instellingen/components/InspectionTemplatesManager";
-import { MobilePageScaffold } from "@/features/mobile/MobilePageScaffold";
-
-const SETTINGS_STORAGE_KEY = "nen1090.frontend-settings";
 
 type SettingsTab = "organisatie" | "masterdata";
 
@@ -29,8 +26,6 @@ export function InstellingenPage() {
   const welders = useWelders();
   const weldCoordinators = useWeldCoordinators();
   const inspectionTemplates = useInspectionTemplates();
-
-  const isMobileLayout = typeof window !== "undefined" ? window.innerWidth < 1024 : false;
 
   const masterDataCount = useMemo(
     () =>
@@ -59,16 +54,16 @@ export function InstellingenPage() {
     });
   };
 
-  const content = (
+  return (
     <div className="page-stack settings-page" data-settings-page>
-      <section className="section-banner">
+      <section className="section-banner settings-hero">
         <div className="section-banner-copy">
           <h1>Settings</h1>
         </div>
 
         <div className="section-banner-actions">
           <Button variant="secondary" onClick={refreshAll}>
-            <RefreshCcw size={16} /> Vernieuwen
+            <RefreshCcw size={16} /> Refresh
           </Button>
         </div>
       </section>
@@ -141,7 +136,7 @@ export function InstellingenPage() {
           <div className="section-nav-grid cols-2 settings-grid">
             <button
               type="button"
-              className="section-nav-tile is-active"
+              className="section-nav-tile"
               onClick={() => navigate('/instellingen/templates')}
             >
               <div className="section-nav-tile-top">
@@ -170,55 +165,13 @@ export function InstellingenPage() {
             </button>
           </div>
 
-          <MasterDataManager
-            title="WPS"
-            type="wps"
-            rows={wps.data?.items || []}
-            isLoading={wps.isLoading}
-            isError={wps.isError}
-            refetch={wps.refetch}
-          />
-
-          <MasterDataManager
-            title="Materialen"
-            type="materials"
-            rows={materials.data?.items || []}
-            isLoading={materials.isLoading}
-            isError={materials.isError}
-            refetch={materials.refetch}
-          />
-
-          <MasterDataManager
-            title="Lassers"
-            type="welders"
-            rows={welders.data?.items || []}
-            isLoading={welders.isLoading}
-            isError={welders.isError}
-            refetch={welders.refetch}
-          />
-
-          <MasterDataManager
-            title="Lascoördinatoren"
-            type="weld-coordinators"
-            rows={weldCoordinators.data?.items || []}
-            isLoading={weldCoordinators.isLoading}
-            isError={weldCoordinators.isError}
-            refetch={weldCoordinators.refetch}
-          />
-
+          <MasterDataManager title="WPS" type="wps" rows={wps.data?.items || []} isLoading={wps.isLoading} isError={wps.isError} refetch={wps.refetch} />
+          <MasterDataManager title="Materialen" type="materials" rows={materials.data?.items || []} isLoading={materials.isLoading} isError={materials.isError} refetch={materials.refetch} />
+          <MasterDataManager title="Lassers" type="welders" rows={welders.data?.items || []} isLoading={welders.isLoading} isError={welders.isError} refetch={welders.refetch} />
+          <MasterDataManager title="Lascoördinatoren" type="weld-coordinators" rows={weldCoordinators.data?.items || []} isLoading={weldCoordinators.isLoading} isError={weldCoordinators.isError} refetch={weldCoordinators.refetch} />
           <InspectionTemplatesManager />
         </div>
       ) : null}
     </div>
   );
-
-  if (isMobileLayout) {
-    return (
-      <MobilePageScaffold title="Settings">
-        {content}
-      </MobilePageScaffold>
-    );
-  }
-
-  return content;
 }
