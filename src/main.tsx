@@ -7,6 +7,7 @@ import '@/styles/global.css';
 import '@/styles/marketing-scope.css';
 import '@/styles/ui-polish.css';
 import '@/styles/mobile-overhaul-fixes.css';
+import '@/styles/runtime-mobile-hotfix.css';
 import { installFrontendEnglish } from '@/lib/frontend-english';
 
 installFrontendEnglish();
