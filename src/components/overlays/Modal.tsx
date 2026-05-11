@@ -1,4 +1,5 @@
 import { PropsWithChildren, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
 type ModalSize = 'small' | 'medium' | 'large' | 'fullscreen';
@@ -28,6 +29,11 @@ export function Modal({ open, onClose, title, size = 'medium', children }: Props
   const dragStateRef = useRef<DragState | null>(null);
   const frameRef = useRef<number | null>(null);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const [portalHost, setPortalHost] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    setPortalHost(document.body);
+  }, []);
 
   useEffect(() => {
     if (!open) {
@@ -38,6 +44,16 @@ export function Modal({ open, onClose, title, size = 'medium', children }: Props
         frameRef.current = null;
       }
     }
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
   }, [open]);
 
   useEffect(() => {
@@ -105,9 +121,9 @@ export function Modal({ open, onClose, title, size = 'medium', children }: Props
     };
   }, [open, size]);
 
-  if (!open) return null;
+  if (!open || !portalHost) return null;
 
-  return (
+  const modal = (
     <div className="overlay-backdrop" role="dialog" aria-modal="true" onClick={onClose}>
       <div
         ref={panelRef}
@@ -146,4 +162,6 @@ export function Modal({ open, onClose, title, size = 'medium', children }: Props
       </div>
     </div>
   );
+
+  return createPortal(modal, portalHost);
 }
