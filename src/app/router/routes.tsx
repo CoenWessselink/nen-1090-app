@@ -35,7 +35,7 @@ export const appRouteMeta = [
   { path:'/dashboard', label:'Dashboard', icon:LayoutDashboard, description:'Dashboard', showInSidebar:true, keywords:['dashboard','home'] },
   { path:'/projecten', label:'Projecten', icon:FolderKanban, description:'Projecten', showInSidebar:true, keywords:['projecten','projects','project'] },
   { path:'/rapportage', label:'Rapportages', icon:FileCheck2, description:'Rapportages', showInSidebar:true, keywords:['rapportage','reports','ce'] },
-  { path:'/instellingen', label:'Instellingen', icon:Settings, description:'Instellingen', showInSidebar:true, keywords:['instellingen','settings'] },
+  { path:'/settings-v2', label:'Settings V2', icon:Settings, description:'Settings V2', showInSidebar:true, keywords:['instellingen','settings','v2'] },
   { path:'/billing', label:'Facturatie', icon:CreditCard, description:'Facturatie', roles:ROLES, showInSidebar:true, keywords:['billing','facturatie','mollie'] },
   { path:'/superadmin', label:'Superadmin', icon:Building2, description:'Platformbeheer', roles:ROLES, showInSidebar:true, keywords:['superadmin','platformbeheer','tenant'] },
 ];
@@ -70,7 +70,7 @@ export const routerConfig = [
     { path:'projecten/:projectId/lassen/:weldId/inspectie', element:<WeldInspectionDetailPage/> },
     { path:'projecten/:projectId/documenten', element:<MobileDocumentsPage/> },
     { path:'projecten/:projectId/documenten/:documentId/viewer', element:<MobilePdfViewerPage/> },
-    { path:'projecten/:projectId/ce-dossier', element:<Navigate to="/projects/:projectId/ce-v2" replace/> },
+    { path:'projecten/:projectId/ce-dossier', element:<Navigate to="/projecten/:projectId/ce-v2" replace/> },
     { path:'projecten/:projectId/ce-v2', element:<MobileCeDossierPage/> },
     { path:'projecten/:projectId/pdf-viewer', element:<MobilePdfViewerPage/> },
     { path:'lascontrole', element:<Navigate to="/projecten" replace/> },
