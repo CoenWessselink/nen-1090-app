@@ -1,0 +1,75 @@
+html,
+body,
+#root {
+  width: 100%;
+  min-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+body {
+  position: relative;
+}
+
+/* Restore scrolling */
+.h-screen,
+.min-h-screen {
+  min-height: 100dvh;
+}
+
+/* Prevent nested scroll lock */
+[data-settings-page],
+.settings-page,
+.settings-layout {
+  overflow: visible !important;
+  height: auto !important;
+  min-height: auto !important;
+}
+
+/* Mobile stack */
+@media (max-width: 1024px) {
+  .settings-grid,
+  .settings-cards,
+  .settings-sections {
+    display: flex !important;
+    flex-direction: column !important;
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+
+  .settings-sidebar {
+    position: relative !important;
+    width: 100% !important;
+    height: auto !important;
+  }
+
+  .settings-content,
+  .settings-card,
+  .settings-panel {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+  }
+}
+
+/* Hide runtime/debug UI */
+.settings-runtime-debug,
+.settings-runtime-banner,
+.settings-diagnostics,
+.settings-contract-validation,
+.settings-session-status,
+.settings-security-card,
+.settings-integrations-card,
+.settings-runtime-status,
+.settings-technical-info,
+.settings-guidance,
+.settings-helper-text {
+  display: none !important;
+}
+
+/* Cleaner enterprise spacing */
+.settings-card,
+.settings-panel {
+  border-radius: 20px;
+}
