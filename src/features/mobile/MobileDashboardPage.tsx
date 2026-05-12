@@ -59,14 +59,14 @@ export function MobileDashboardPage() {
 
   const cards = useMemo(
     () => [
-      { label: 'Active projects', value: formatValue(summary?.open_projects || summary?.active_projects || 0, '0'), tone: 'danger', icon: FolderKanban, to: '/projecten' },
-      { label: 'Open weld work', value: formatValue(summary?.open_welds || summary?.open_weld_defects || 0, '0'), tone: 'warning', icon: Wrench, to: '/projecten' },
-      { label: 'Non-compliant welds', value: formatValue(summary?.rejected_welds || summary?.open_weld_defects || 0, '0'), tone: 'primary', icon: TriangleAlert, to: '/projecten' },
-      { label: 'Dossiers pending review', value: formatValue(summary?.pending_dossiers || summary?.ce_dossier_ready || 0, '0'), tone: 'success', icon: FileCheck2, to: '/rapportage' },
-      { label: 'Reports', value: formatValue(summary?.reports || summary?.pending_dossiers || summary?.ce_dossier_ready || 0, '0'), subtitle: 'Current reports', tone: 'secondary', icon: FileText, to: '/rapportage', compact: true },
-      { label: 'Settings', value: formatValue(summary?.open_projects || summary?.active_projects || 0, '0'), subtitle: 'Master data & templates', tone: 'secondary', icon: Settings, to: '/instellingen', compact: true },
-      { label: 'Create project', value: formatValue(summary?.active_projects || 0, '0'), subtitle: 'Add project', tone: 'secondary', icon: FolderPlus, to: '/projecten/nieuw', compact: true },
-      { label: 'Create weld', value: formatValue(summary?.open_welds || summary?.open_weld_defects || 0, '0'), subtitle: 'Select a project', tone: 'secondary', icon: Wrench, to: '/projecten', compact: true },
+      { label: 'Actieve projecten', value: formatValue(summary?.active_projects || summary?.open_projects || 0, '0'), tone: 'danger', icon: FolderKanban, to: '/projecten' },
+      { label: 'Open lassen', value: formatValue(summary?.open_welds || 0, '0'), tone: 'warning', icon: Wrench, to: '/projecten' },
+      { label: 'Niet-conforme lassen', value: formatValue(summary?.rejected_welds || 0, '0'), tone: 'primary', icon: TriangleAlert, to: '/projecten' },
+      { label: 'CE dossiers gereed', value: formatValue(summary?.ce_dossier_ready || summary?.reports || 0, '0'), tone: 'success', icon: FileCheck2, to: '/rapportage' },
+      { label: 'Rapportages', value: formatValue(summary?.reports || 0, '0'), subtitle: 'Beschikbare rapporten', tone: 'secondary', icon: FileText, to: '/rapportage', compact: true },
+      { label: 'Instellingen', value: '', subtitle: 'Stamdata & templates', tone: 'secondary', icon: Settings, to: '/instellingen', compact: true },
+      { label: 'Project aanmaken', value: '', subtitle: 'Nieuw project', tone: 'secondary', icon: FolderPlus, to: '/projecten/nieuw', compact: true },
+      { label: 'Las toevoegen', value: '', subtitle: 'Kies een project', tone: 'secondary', icon: Wrench, to: '/projecten', compact: true },
     ],
     [summary],
   );
