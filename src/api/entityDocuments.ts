@@ -65,7 +65,10 @@ export const uploadEntityDocuments = async (
 };
 
 export const deleteEntityDocument = (documentId: string) =>
-  client.delete(`/masterdata-documents/${documentId}`);
+  // Use /attachments/{id} — the masterdata-documents endpoint requires scope+entityId
+  // but we only have the attachment ID at delete time
+  client.delete(`/attachments/${documentId}`);
 
 export const downloadEntityDocument = (documentId: string) =>
-  downloadRequest(`/masterdata-documents/file/${documentId}`);
+  // Use /attachments/{id}/download — the /masterdata-documents/file/{id} route does not exist
+  downloadRequest(`/attachments/${documentId}/download`);
