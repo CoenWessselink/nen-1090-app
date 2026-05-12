@@ -45,27 +45,25 @@ export function InstellingenPage() {
     weldCoordinators.refetch();
     inspectionTemplates.refetch();
 
-    setMessage("Enterprise runtime synchronized.");
+    setMessage("Backend vernieuwd.");
 
     pushNotification({
-      title: "Runtime synchronized",
-      description: "Settings and masterdata refreshed from backend runtime.",
+      title: "Backend vernieuwd",
+      description: "Settings en masterdata opnieuw geladen.",
       tone: "success",
     });
   };
 
   return (
-    <div className="page-stack settings-page enterprise-settings-v2" data-settings-page>
+    <div className="page-stack settings-page" data-settings-page>
       <section className="section-banner settings-hero">
         <div className="section-banner-copy">
-          <span className="eyebrow">Enterprise Runtime V2</span>
-          <h1>Settings Control Center</h1>
-          <p>Centralized runtime ownership, masterdata governance and CE aggregate configuration.</p>
+          <h1>Settings</h1>
         </div>
 
         <div className="section-banner-actions">
           <Button variant="secondary" onClick={refreshAll}>
-            <RefreshCcw size={16} /> Refresh Runtime
+            <RefreshCcw size={16} /> Refresh
           </Button>
         </div>
       </section>
@@ -80,12 +78,12 @@ export function InstellingenPage() {
         >
           <div className="section-nav-tile-top">
             <DatabaseZap size={18} />
-            <span>Masterdata Runtime</span>
+            <span>Masterdata</span>
           </div>
 
           <div className="section-nav-tile-value">{masterDataCount}</div>
 
-          <strong>WPS, materials, welders, coordinators and inspection templates</strong>
+          <strong>WPS, materialen, lassers en inspectietemplates</strong>
         </button>
 
         <button
@@ -95,12 +93,12 @@ export function InstellingenPage() {
         >
           <div className="section-nav-tile-top">
             <Settings2 size={18} />
-            <span>Organization Runtime</span>
+            <span>Organisatie</span>
           </div>
 
           <div className="section-nav-tile-value">{user?.tenant || "Tenant"}</div>
 
-          <strong>Tenant settings, branding and runtime governance</strong>
+          <strong>Bedrijfsinstellingen en branding</strong>
         </button>
       </div>
 
@@ -110,12 +108,12 @@ export function InstellingenPage() {
 
           <Card className="settings-card">
             <div className="section-title-row">
-              <h3>Tenant Runtime</h3>
+              <h3>Tenant</h3>
             </div>
 
             <div className="detail-grid">
               <div>
-                <span>User</span>
+                <span>Gebruiker</span>
                 <strong>{user?.email || "—"}</strong>
               </div>
 
@@ -125,7 +123,7 @@ export function InstellingenPage() {
               </div>
 
               <div>
-                <span>Role</span>
+                <span>Rol</span>
                 <strong>{user?.role || "—"}</strong>
               </div>
             </div>
@@ -143,12 +141,12 @@ export function InstellingenPage() {
             >
               <div className="section-nav-tile-top">
                 <DatabaseZap size={18} />
-                <span>Inspection Templates</span>
+                <span>Inspectietemplates</span>
               </div>
 
               <div className="section-nav-tile-value">{(inspectionTemplates.data?.items || []).length}</div>
 
-              <strong>Centralized enterprise template management</strong>
+              <strong>Templatebeheer</strong>
             </button>
 
             <button
@@ -158,19 +156,19 @@ export function InstellingenPage() {
             >
               <div className="section-nav-tile-top">
                 <DatabaseZap size={18} />
-                <span>Norm Libraries</span>
+                <span>Normeringen</span>
               </div>
 
-              <div className="section-nav-tile-value">EN</div>
+              <div className="section-nav-tile-value">NEN</div>
 
-              <strong>EN 1090 and ISO runtime configuration</strong>
+              <strong>Normprofielen en normenbibliotheek</strong>
             </button>
           </div>
 
-          <MasterDataManager title="WPS Runtime" type="wps" rows={wps.data?.items || []} isLoading={wps.isLoading} isError={wps.isError} refetch={wps.refetch} />
-          <MasterDataManager title="Materials Runtime" type="materials" rows={materials.data?.items || []} isLoading={materials.isLoading} isError={materials.isError} refetch={materials.refetch} />
-          <MasterDataManager title="Welders Runtime" type="welders" rows={welders.data?.items || []} isLoading={welders.isLoading} isError={welders.isError} refetch={welders.refetch} />
-          <MasterDataManager title="Weld Coordinators Runtime" type="weld-coordinators" rows={weldCoordinators.data?.items || []} isLoading={weldCoordinators.isLoading} isError={weldCoordinators.isError} refetch={weldCoordinators.refetch} />
+          <MasterDataManager title="WPS" type="wps" rows={wps.data?.items || []} isLoading={wps.isLoading} isError={wps.isError} refetch={wps.refetch} />
+          <MasterDataManager title="Materialen" type="materials" rows={materials.data?.items || []} isLoading={materials.isLoading} isError={materials.isError} refetch={materials.refetch} />
+          <MasterDataManager title="Lassers" type="welders" rows={welders.data?.items || []} isLoading={welders.isLoading} isError={welders.isError} refetch={welders.refetch} />
+          <MasterDataManager title="Lascoördinatoren" type="weld-coordinators" rows={weldCoordinators.data?.items || []} isLoading={weldCoordinators.isLoading} isError={weldCoordinators.isError} refetch={weldCoordinators.refetch} />
           <InspectionTemplatesManager />
         </div>
       ) : null}

@@ -52,7 +52,7 @@ export function getComplianceOverview(projectId: string | number) {
 
 export function getComplianceMissingItems(projectId: string | number) {
   return safeCeRuntimeRequest<Record<string, unknown>>(
-    `/projects/${projectId}/ce-runtime-sync`,
+    `/projects/${projectId}/ce-dossier`,
     {},
   );
 }
@@ -66,7 +66,7 @@ export function getComplianceChecklist(projectId: string | number) {
 
 export function getCeDossier(projectId: string | number) {
   return safeCeRuntimeRequest<Record<string, unknown>>(
-    `/projects/${projectId}/ce-runtime-sync`,
+    `/projects/${projectId}/ce-dossier`,
     {},
   );
 }
