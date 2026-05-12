@@ -1,5 +1,5 @@
 import { Building2, CreditCard, FileCheck2, FolderKanban, LayoutDashboard, Settings } from 'lucide-react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useParams } from 'react-router-dom';
 import { AppShell } from '@/app/layout/AppShell';
 import { ProtectedRoute } from '@/app/router/ProtectedRoute';
 import { RoleGuard } from '@/app/router/RoleGuard';
@@ -29,6 +29,11 @@ import { ResetPasswordPage } from '@/features/auth/ResetPasswordPage';
 import { LogoutPage } from '@/features/auth/LogoutPage';
 import { ChangePasswordPage } from '@/features/auth/ChangePasswordPage';
 import { ActivateAccountPage } from '@/features/auth/ActivateAccountPage';
+
+function CeDossierRedirect() {
+  const { projectId } = useParams<{ projectId: string }>();
+  return <Navigate to={`/projecten/${projectId}/ce-v2`} replace />;
+}
 
 const ROLES = ['SUPERADMIN','SUPER_ADMIN','ADMIN','PLATFORM_ADMIN','PLATFORMADMIN','platform_admin','superadmin'];
 export const appRouteMeta = [
@@ -70,7 +75,7 @@ export const routerConfig = [
     { path:'projecten/:projectId/lassen/:weldId/inspectie', element:<WeldInspectionDetailPage/> },
     { path:'projecten/:projectId/documenten', element:<MobileDocumentsPage/> },
     { path:'projecten/:projectId/documenten/:documentId/viewer', element:<MobilePdfViewerPage/> },
-    { path:'projecten/:projectId/ce-dossier', element:<Navigate to="/projecten/:projectId/ce-v2" replace/> },
+    { path:'projecten/:projectId/ce-dossier', element:<CeDossierRedirect /> },
     { path:'projecten/:projectId/ce-v2', element:<MobileCeDossierPage/> },
     { path:'projecten/:projectId/pdf-viewer', element:<MobilePdfViewerPage/> },
     { path:'lascontrole', element:<Navigate to="/projecten" replace/> },
