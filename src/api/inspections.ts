@@ -205,7 +205,7 @@ export async function uploadInspectionAttachment(
 }
 
 export function downloadInspectionAttachment(inspectionId: string | number, attachmentId: string | number) {
-  return apiRequest(`/inspections/${inspectionId}/attachments/${attachmentId}/download`, undefined, 0, true);
+  return apiRequest(`/inspections/${inspectionId}/attachments/${attachmentId}/download`);
 }
 
 export function getInspectionAttachments(inspectionId: string | number) {

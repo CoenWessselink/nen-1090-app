@@ -17,7 +17,7 @@ export function Sidebar({ mobileOpen }: { mobileOpen: boolean }) {
           <div className="brand-mark">WP</div>
           <div>
             <div className="brand-title">WeldInspect Pro</div>
-            <div className="brand-subtitle">Enterprise Runtime V2</div>
+            <div className="brand-subtitle">Lasinspectie software</div>
           </div>
         </div>
         <nav className="sidebar-nav">
