@@ -61,7 +61,7 @@ function isServerMaterialsAggregate(value: unknown): value is {
   return true;
 }
 
-async function composeProjectMaterialsAggregate(projectId: string): Promise<ProjectMaterialsAggregate> {
+export async function composeProjectMaterialsAggregate(projectId: string): Promise<ProjectMaterialsAggregate> {
   const [catalogPayload, selectedResult] = await Promise.allSettled([
     getMaterials(),
     getProjectSelectedMaterials(projectId),
