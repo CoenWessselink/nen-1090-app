@@ -48,6 +48,10 @@ jobs:
         run: npm ci
 
       - name: Build release for Pages
+        env:
+          VITE_MARKETING_BASE_URL: https://nen1090-marketing.pages.dev
+          VITE_COMMIT_SHA: ${{ github.sha }}
+          VITE_DEPLOYMENT_ENV: production
         run: npm run build:pages
 
       - name: Verify built Pages artifact

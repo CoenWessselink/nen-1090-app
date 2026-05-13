@@ -73,7 +73,7 @@ export function MobileProjectsPage() {
       {loading ? <div className="mobile-state-card">Projecten laden…</div> : null}
       {error ? <div className="mobile-inline-alert is-error">{error}</div> : null}
       {!loading && !error ? (
-        <div className="mobile-list-stack compact-project-list">
+        <div className="mobile-list-stack compact-project-list" aria-busy={refreshing}>
           {filtered.map((project) => (
             <button key={String(project.id)} type="button" className="mobile-list-card compact-project-card" onClick={() => navigate(`/projecten/${project.id}/overzicht`)}>
               <div className="mobile-list-card-head compact-project-card-head">

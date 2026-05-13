@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { DashboardPage } from '@/features/dashboard/DashboardPage';
 import { SuperadminPage } from '@/features/superadmin/SuperadminPage';
 import TenantProfilePage from '@/features/superadmin/TenantProfilePage';
+import { captureClientException } from '@/lib/sentry';
 
 class EnterpriseErrorBoundary extends React.Component<
   { children: React.ReactNode },
@@ -17,11 +18,12 @@ class EnterpriseErrorBoundary extends React.Component<
     return { hasError: true };
   }
 
-  componentDidCatch(error: unknown) {
+  override componentDidCatch(error: unknown) {
     console.error('Runtime boundary captured error', error);
+    void captureClientException(error, { boundary: 'EnterpriseErrorBoundary' });
   }
 
-  render() {
+  override render() {
     if (this.state.hasError) {
       return (
         <div

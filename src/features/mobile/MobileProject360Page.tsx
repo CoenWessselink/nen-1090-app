@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FileText, FolderOpen, History, ListChecks, PanelsTopLeft, Pencil, Plus, RefreshCw, Wrench } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getProject } from '@/api/projects';
@@ -27,7 +27,7 @@ export function MobileProject360Page() {
     return () => { active = false; };
   }, [projectId]);
 
-  async function createPdf() {
+  const createPdf = useCallback(async () => {
     setCreatingPdf(true);
     setMessage(null);
     setError(null);
@@ -42,7 +42,7 @@ export function MobileProject360Page() {
     } finally {
       setCreatingPdf(false);
     }
-  }
+  }, [projectId]);
 
   const actions = useMemo(() => [
     { label: 'Nieuwe assembly', color: 'primary', icon: PanelsTopLeft, onClick: () => navigate(`/projecten/${projectId}/assemblies/nieuw`) },
@@ -52,7 +52,7 @@ export function MobileProject360Page() {
     { label: creatingPdf ? 'Bezig met genereren…' : 'Genereer CE PDF', color: 'primary', icon: creatingPdf ? RefreshCw : FileText, onClick: () => void createPdf() },
     { label: 'Historie', color: 'neutral', icon: History, onClick: () => navigate(`/projecten/${projectId}/historie`) },
     { label: 'Inspecties', color: 'neutral', icon: ListChecks, onClick: () => navigate(`/projecten/${projectId}/lassen`) },
-  ], [creatingPdf, navigate, projectId]);
+  ], [creatingPdf, createPdf, navigate, projectId]);
 
   return (
     <MobilePageScaffold

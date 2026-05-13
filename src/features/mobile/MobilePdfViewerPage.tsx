@@ -7,8 +7,9 @@ import { openDownloadUrl, openProtectedPdfPreview } from '@/utils/download';
 import { documentPreviewUrl, formatValue, normalizeApiError } from '@/features/mobile/mobile-utils';
 import type { CeDocument } from '@/types/domain';
 
-function weldCompliancePdfUrl(projectId: string, download = false, force = true) {
-  return `/api/v1/projects/${projectId}/exports/compliance/pdf?download=${download ? 'true' : 'false'}&force=${force ? 'true' : 'false'}&_=${Date.now()}`;
+function weldCompliancePdfUrl(projectId: string, download = false, force = true, bust = 0) {
+  const nonce = bust || Date.now();
+  return `/api/v1/projects/${projectId}/exports/compliance/pdf?download=${download ? 'true' : 'false'}&force=${force ? 'true' : 'false'}&_=${nonce}`;
 }
 
 function weldComplianceFilename(projectId: string) {
@@ -25,7 +26,7 @@ export function MobilePdfViewerPage() {
   const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
-    if (!documentId) return;
+    if (!documentId) return undefined;
     let active = true;
     setLoading(true);
     getDocument(documentId)
@@ -48,7 +49,7 @@ export function MobilePdfViewerPage() {
 
   const sourcePath = useMemo(() => {
     if (documentId) return documentPreviewUrl(projectId, pdfDocument);
-    return weldCompliancePdfUrl(projectId, false, true);
+    return weldCompliancePdfUrl(projectId, false, true, reloadKey);
   }, [pdfDocument, documentId, projectId, reloadKey]);
 
   useEffect(() => {
@@ -56,7 +57,7 @@ export function MobilePdfViewerPage() {
     let objectUrl = '';
     if (!sourcePath) {
       setPreviewUrl('');
-      return;
+      return undefined;
     }
     setCreating(!documentId);
     openProtectedPdfPreview(sourcePath)

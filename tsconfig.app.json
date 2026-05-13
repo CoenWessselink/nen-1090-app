@@ -13,29 +13,13 @@
     "jsx": "react-jsx",
     "strict": false,
     "noImplicitAny": false,
+    "noImplicitReturns": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"]
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-}
+    }
   },
   "include": ["src"]
 }

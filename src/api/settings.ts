@@ -1,4 +1,4 @@
-import { ApiError, apiRequest, buildListPath, listRequest, optionalRequest } from '@/api/client';
+import { ApiError, apiRequest, firstSuccessfulListRequest, listRequest } from '@/api/client';
 import { runtimeTrace } from '@/utils/runtimeTracing';
 import type { Tenant } from '@/types/domain';
 
@@ -135,12 +135,13 @@ export function deleteWps(wpsId: string | number) {
   });
 }
 
+const defaultListParams = { page: 1, limit: 200 } as const;
+
 export async function getClients() {
-  const payload = await optionalRequest<MasterDataListResponse>([
-    '/settings/clients',
-    '/clients',
-    '/customers',
-  ]);
+  const payload = await firstSuccessfulListRequest<MasterDataListResponse>(
+    ['/settings/clients', '/clients', '/customers'],
+    defaultListParams,
+  );
 
   if (payload) {
     return payload;
@@ -160,10 +161,11 @@ export function getProcesses() {
 
 export async function getMaterials() {
   try {
-    return await optionalRequest<MasterDataListResponse>([
-      buildListPath('/settings/materials'),
-      buildListPath('/materials'),
-    ]);
+    const payload = await firstSuccessfulListRequest<MasterDataListResponse>(
+      ['/settings/materials', '/materials'],
+      defaultListParams,
+    );
+    return payload ?? [];
   } catch (error) {
     runtimeTrace('SETTINGS_MATERIALS_UNAVAILABLE', {
       message: error instanceof Error ? error.message : 'unknown',

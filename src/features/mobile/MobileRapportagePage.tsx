@@ -44,7 +44,7 @@ function reportFilename(row: ReportRow) {
 export function MobileRapportagePage() {
   const navigate = useNavigate();
   const reports = useReports({ page: 1, limit: 50 });
-  const rows = ((reports.data?.items || []) as ReportRow[]);
+  const rows = useMemo(() => ((reports.data?.items || []) as ReportRow[]), [reports.data]);
   const [search, setSearch] = useState('');
   const [actionError, setActionError] = useState<string | null>(null);
 

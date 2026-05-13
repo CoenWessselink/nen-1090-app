@@ -71,7 +71,7 @@ const DEFAULT_ITEMS_BY_EXC: Record<string, TemplateItem[]> = {
 export function InspectionTemplatesManager({
   templates = [],
   onSave,
-  onDelete,
+  onDelete: _onDelete,
   saving = false,
 }: {
   templates?: Template[];

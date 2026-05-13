@@ -175,9 +175,9 @@ export function CeExportManifestCard({
             >
               <div>
                 <strong>{String(entry.section || `Onderdeel ${index + 1}`)}</strong>
-                <div className="list-subtle">{Boolean(entry.included) ? 'Opgenomen in export' : 'Niet opgenomen in export'}</div>
+                <div className="list-subtle">{(entry.included ?? false) ? 'Opgenomen in export' : 'Niet opgenomen in export'}</div>
               </div>
-              <Badge tone={Boolean(entry.included) ? 'success' : 'warning'}>{String(entry.count || (Boolean(entry.included) ? 'Ja' : 'Nee'))}</Badge>
+              <Badge tone={(entry.included ?? false) ? 'success' : 'warning'}>{String(entry.count || ((entry.included ?? false) ? 'Ja' : 'Nee'))}</Badge>
             </div>
           ))}
         </div>

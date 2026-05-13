@@ -187,7 +187,7 @@ export function SuperadminPage() {
   });
   const [creditReason, setCreditReason] = useState('Creditnota door superadmin');
 
-  const tenantRows = tenants.data?.items || [];
+  const tenantRows = useMemo(() => tenants.data?.items || [], [tenants.data]);
   const filteredRows = useMemo(() => {
     return tenantRows.filter((tenant) => {
       const status = parseStatus(tenant);
@@ -969,11 +969,11 @@ export function SuperadminPage() {
               <Button variant="secondary" onClick={() => selectedTenant && setPendingAction({ type: 'deactivate', tenant: selectedTenant })}>Deactiveer</Button>
               <Button variant="secondary" onClick={() => selectedTenant && setPendingAction({ type: 'suspend', tenant: selectedTenant })}>Suspend</Button>
               <Button variant="secondary" onClick={() => selectedTenant && setPendingAction({ type: 'trial', tenant: selectedTenant })}>Start trial</Button>
-              <Button variant="secondary" onClick={async () => { if (!selectedTenant) return; const response = await tenantActions.toggleDemoMode.mutateAsync({ tenantId: selectedTenant.id, isDemo: !Boolean((detailTenant as any)?.is_demo) }); refreshMessage(String((response as any)?.message || `Demo mode ${!Boolean((detailTenant as any)?.is_demo) ? 'ingeschakeld' : 'uitgeschakeld'}.`)); }}>Demo mode</Button>
+              <Button variant="secondary" onClick={async () => { if (!selectedTenant) return; const demoOn = !!(detailTenant as any)?.is_demo; const response = await tenantActions.toggleDemoMode.mutateAsync({ tenantId: selectedTenant.id, isDemo: !demoOn }); refreshMessage(String((response as any)?.message || `Demo mode ${!demoOn ? 'ingeschakeld' : 'uitgeschakeld'}.`)); }}>Demo mode</Button>
               <Button variant="ghost" onClick={() => setEditTenantOpen(true)}>Tenant bewerken</Button>
             </div>
             <div className="detail-grid" style={{ marginTop: 16 }}>
-              <div><span>Demo mode</span><strong>{Boolean((detailTenant as any)?.is_demo) ? 'Aan' : 'Uit'}</strong></div>
+              <div><span>Demo mode</span><strong>{(detailTenant as any)?.is_demo ? 'Aan' : 'Uit'}</strong></div>
               <div><span>Access history</span><strong>{String(accessHistoryRows.length)}</strong><small>{accessHistoryRows[0] ? text((accessHistoryRows[0] as any).access_mode) : 'Geen snapshots'}</small></div>
             </div>
             <div className="checklist-grid" style={{ marginTop: 16 }}>
