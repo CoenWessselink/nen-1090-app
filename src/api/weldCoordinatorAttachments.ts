@@ -1,4 +1,4 @@
-import client, { buildListPath, downloadRequest } from '@/api/client';
+import client, { ApiError, buildListPath, downloadRequest } from '@/api/client';
 
 export type WeldCoordinatorCertificate = {
   id: string;
@@ -9,21 +9,46 @@ export type WeldCoordinatorCertificate = {
   kind?: string;
 };
 
-export const listWeldCoordinatorCertificates = (coordinatorId: string) =>
-  client.get<WeldCoordinatorCertificate[]>(buildListPath('/attachments', {
-    scope_type: 'weld_coordinator',
-    scope_id: coordinatorId,
-    kind: 'certificate',
-  }));
+async function listCertificatesForScope(coordinatorId: string, scopeType: string) {
+  return client.get<WeldCoordinatorCertificate[]>(
+    buildListPath('/attachments', {
+      scope_type: scopeType,
+      scope_id: coordinatorId,
+      kind: 'certificate',
+    }),
+  );
+}
 
-export const uploadWeldCoordinatorCertificate = async (coordinatorId: string, file: File) => {
-  const formData = new FormData();
-  formData.append('files', file);
-  formData.append('scope_type', 'weld_coordinator');
-  formData.append('scope_id', coordinatorId);
-  formData.append('kind', 'certificate');
-  return client.post('/attachments/upload', formData);
-};
+export async function listWeldCoordinatorCertificates(coordinatorId: string) {
+  try {
+    return await listCertificatesForScope(coordinatorId, 'weld_coordinator');
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) {
+      return listCertificatesForScope(coordinatorId, 'coordinator');
+    }
+    throw error;
+  }
+}
+
+export async function uploadWeldCoordinatorCertificate(coordinatorId: string, file: File) {
+  const post = (scopeType: string) => {
+    const formData = new FormData();
+    formData.append('files', file);
+    formData.append('scope_type', scopeType);
+    formData.append('scope_id', coordinatorId);
+    formData.append('kind', 'certificate');
+    return client.post('/attachments/upload', formData);
+  };
+
+  try {
+    return await post('weld_coordinator');
+  } catch (error) {
+    if (error instanceof ApiError && (error.status === 400 || error.status === 404 || error.status === 422)) {
+      return post('coordinator');
+    }
+    throw error;
+  }
+}
 
 export const deleteWeldCoordinatorCertificate = (certificateId: string) =>
   client.delete(`/attachments/${certificateId}`);

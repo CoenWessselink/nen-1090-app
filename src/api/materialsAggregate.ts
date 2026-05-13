@@ -2,6 +2,7 @@ import { ApiError, apiRequest } from '@/api/client';
 import { getProjectSelectedMaterials } from '@/api/projects';
 import { getMaterials } from '@/api/settings';
 import { normalizeListResponse, type NormalizedListResult } from '@/utils/api';
+import { runtimeTrace } from '@/utils/runtimeTracing';
 
 export type MaterialRecord = Record<string, unknown>;
 
@@ -61,15 +62,25 @@ function isServerMaterialsAggregate(value: unknown): value is {
 }
 
 async function composeProjectMaterialsAggregate(projectId: string): Promise<ProjectMaterialsAggregate> {
-  const [catalogPayload, selectedPayload] = await Promise.all([
+  const [catalogPayload, selectedResult] = await Promise.allSettled([
     getMaterials(),
     getProjectSelectedMaterials(projectId),
   ]);
 
+  const catalog =
+    catalogPayload.status === 'fulfilled'
+      ? (catalogPayload.value as MaterialsListPayload)
+      : ([] as MaterialRecord[]);
+
+  const selected =
+    selectedResult.status === 'fulfilled'
+      ? selectedResult.value
+      : [];
+
   return {
     meta: { source: 'composed' },
-    catalog: normalizeListResponse(catalogPayload as MaterialsListPayload),
-    selected: normalizeSelectedRows(selectedPayload),
+    catalog: normalizeListResponse(catalog as MaterialsListPayload),
+    selected: normalizeSelectedRows(selected),
   };
 }
 
@@ -104,8 +115,20 @@ export async function fetchProjectMaterialsAggregate(projectId: string | number)
       selected: normalizeSelectedRows(raw.selected),
     };
   } catch (error) {
-    if (error instanceof ApiError && error.status === 404) {
-      return composeProjectMaterialsAggregate(id);
+    if (error instanceof ApiError && (error.status === 404 || error.status === 500 || error.status === 502 || error.status === 503)) {
+      try {
+        return await composeProjectMaterialsAggregate(id);
+      } catch (composeError) {
+        runtimeTrace('MATERIALS_AGGREGATE_COMPOSE_FAILED', {
+          projectId: id,
+          message: composeError instanceof Error ? composeError.message : 'unknown',
+        });
+        return {
+          meta: { source: 'composed' },
+          catalog: normalizeListResponse([]),
+          selected: [],
+        };
+      }
     }
     throw error;
   }

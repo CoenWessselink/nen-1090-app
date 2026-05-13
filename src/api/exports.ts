@@ -1,4 +1,4 @@
-import { downloadUrlAsBlob } from './client';
+import { ApiError, apiRequest, downloadUrlAsBlob } from './client';
 
 const safePart = (value?: string | null, fallback = 'Project') => {
   const cleaned = String(value || '')
@@ -50,15 +50,40 @@ const openBlobInNewWindow = (blob: Blob, fallbackFilename: string) => {
 };
 
 const compliancePdfPath = (projectId: string) => `/projects/${projectId}/exports/compliance/pdf`;
-const compliancePdfDownloadPath = (projectId: string) => `${compliancePdfPath(projectId)}?download=true`;
-const compliancePdfViewerPath = (projectId: string) => `${compliancePdfPath(projectId)}?download=false`;
+const compliancePdfDownloadPath = (projectId: string) => `${compliancePdfPath(projectId)}?download=true&force=true`;
+const compliancePdfViewerPath = (projectId: string) => `${compliancePdfPath(projectId)}?download=false&force=true`;
+
+async function primeCompliancePdfJob(projectId: string) {
+  try {
+    await apiRequest(`/projects/${projectId}/exports/pdf`, { method: 'POST' });
+  } catch {
+    // Best-effort: some backends need a job before GET; ignore if unsupported.
+  }
+}
+
+/**
+ * GET compliance PDF with a single repair pass: POST /exports/pdf then retry GET on 5xx.
+ */
+export async function fetchCompliancePdfBlob(projectId: string, download: boolean) {
+  const base = download ? compliancePdfDownloadPath(projectId) : compliancePdfViewerPath(projectId);
+  const path = `${base}&_=${Date.now()}`;
+  try {
+    return await downloadUrlAsBlob(path, { method: 'GET' });
+  } catch (error) {
+    if (error instanceof ApiError && error.status >= 500) {
+      await primeCompliancePdfJob(projectId);
+      return await downloadUrlAsBlob(`${base}&_=${Date.now()}`, { method: 'GET' });
+    }
+    throw error;
+  }
+}
 
 export const exportPdf = async (
   projectId: string,
   project?: { name?: string | null; code?: string | null; client_name?: string | null },
 ) => {
   const fallbackFilename = buildWeldComplianceReportFilename(projectId, project);
-  const { blob, filename } = await downloadUrlAsBlob(compliancePdfDownloadPath(projectId), { method: 'GET' });
+  const { blob, filename } = await fetchCompliancePdfBlob(projectId, true);
   triggerBlobDownload(blob, filename || fallbackFilename);
 };
 
@@ -67,7 +92,7 @@ export const openPdfViewer = async (
   project?: { name?: string | null; code?: string | null; client_name?: string | null },
 ) => {
   const fallbackFilename = buildWeldComplianceReportFilename(projectId, project);
-  const { blob, filename } = await downloadUrlAsBlob(compliancePdfViewerPath(projectId), { method: 'GET' });
+  const { blob, filename } = await fetchCompliancePdfBlob(projectId, false);
   openBlobInNewWindow(blob, filename || fallbackFilename);
 };
 
