@@ -1,4 +1,4 @@
-import { apiRequest, listRequest, optionalRequest } from '@/api/client';
+import { ApiError, apiRequest, listRequest, optionalRequest } from '@/api/client';
 import type { Tenant } from '@/types/domain';
 
 export type MasterDataItem = Record<string, unknown>;
@@ -65,25 +65,22 @@ async function mutationRequest(
 
     return normalizeMutationResponse(response);
   } catch (error) {
-    if (method === 'PATCH') {
-      const fallback = await apiRequest<unknown>(path, {
-        method: 'PUT',
-        body,
-      });
-
-      return normalizeMutationResponse(fallback);
+    if (!(error instanceof ApiError) || error.status !== 405) {
+      throw error;
     }
 
-    if (method === 'PUT') {
-      const fallback = await apiRequest<unknown>(path, {
-        method: 'PATCH',
-        body,
-      });
-
-      return normalizeMutationResponse(fallback);
+    if (method === 'POST') {
+      throw error;
     }
 
-    throw error;
+    const alternate: 'PATCH' | 'PUT' = method === 'PATCH' ? 'PUT' : 'PATCH';
+
+    const fallback = await apiRequest<unknown>(path, {
+      method: alternate,
+      body,
+    });
+
+    return normalizeMutationResponse(fallback);
   }
 }
 
@@ -93,10 +90,10 @@ export function getTenants() {
 
 export async function getSettings() {
   const [wps, materials, welders, inspectionTemplates] = await Promise.all([
-    optionalRequest<MasterDataListResponse>(['/settings/wps']),
-    optionalRequest<MasterDataListResponse>(['/settings/materials']),
-    optionalRequest<MasterDataListResponse>(['/settings/welders']),
-    optionalRequest<MasterDataListResponse>(['/settings/inspection-templates']),
+    listRequest<MasterDataListResponse>('/settings/wps'),
+    listRequest<MasterDataListResponse>('/settings/materials'),
+    listRequest<MasterDataListResponse>('/settings/welders'),
+    listRequest<MasterDataListResponse>('/settings/inspection-templates'),
   ]);
 
   return {

@@ -14,7 +14,6 @@ import {
   getProject,
   getProjectAssemblies,
   getProjectInspections,
-  getProjectSelectedMaterials,
   getProjectSelectedWelders,
   getProjectSelectedWps,
   getProjectWelds,
@@ -112,10 +111,6 @@ function useProjectSelectionQuery(queryKey: string, projectId?: string | number,
     }),
     enabled: Boolean(projectId && queryFn),
   });
-}
-
-export function useProjectMaterials(projectId?: string | number) {
-  return useProjectSelectionQuery('project-materials', projectId, getProjectSelectedMaterials as SelectionQueryFn);
 }
 
 export function useProjectWps(projectId?: string | number) {
@@ -248,6 +243,7 @@ export function useCreateProject() {
       queryClient.invalidateQueries({ queryKey: ['project-assemblies', project.id] });
       queryClient.invalidateQueries({ queryKey: ['project-welds', project.id] });
       queryClient.invalidateQueries({ queryKey: ['welds'] });
+      queryClient.invalidateQueries({ queryKey: ['project-materials-aggregate', project.id] });
     },
   });
 }
@@ -264,6 +260,7 @@ export function useUpdateProject() {
       queryClient.invalidateQueries({ queryKey: ['compliance-missing', variables.id] });
       queryClient.invalidateQueries({ queryKey: ['compliance-checklist', variables.id] });
       queryClient.invalidateQueries({ queryKey: ['ce-dossier', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ['project-materials-aggregate', variables.id] });
     },
   });
 }
@@ -308,7 +305,7 @@ export function useProjectBulkMutation() {
       queryClient.invalidateQueries({ queryKey: ['project'] });
       queryClient.invalidateQueries({ queryKey: ['project-welds'] });
       queryClient.invalidateQueries({ queryKey: ['project-inspections'] });
-      queryClient.invalidateQueries({ queryKey: ['project-materials'] });
+      queryClient.invalidateQueries({ queryKey: ['project-materials-aggregate'] });
       queryClient.invalidateQueries({ queryKey: ['project-wps'] });
       queryClient.invalidateQueries({ queryKey: ['project-welders'] });
     },
@@ -332,10 +329,12 @@ export function useProjectSelectionMutation() {
       return actions[action]();
     },
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['project-materials', variables.projectId] });
+      queryClient.invalidateQueries({ queryKey: ['project-materials-aggregate', variables.projectId] });
       queryClient.invalidateQueries({ queryKey: ['project-wps', variables.projectId] });
       queryClient.invalidateQueries({ queryKey: ['project-welders', variables.projectId] });
       queryClient.invalidateQueries({ queryKey: ['settings'] });
     },
   });
 }
+
+export { useProjectMaterials, useProjectMaterialsAggregate } from '@/hooks/useMaterialsAggregate';

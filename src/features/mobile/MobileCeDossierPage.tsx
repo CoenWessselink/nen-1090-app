@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Download, RefreshCcw, Save } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { createPdfExport, getCeDossier } from '@/api/ce';
+import { fetchProjectMaterialsAggregate } from '@/api/materialsAggregate';
 import { createProjectDocument, getProjectDocuments } from '@/api/documents';
 import {
   addProjectMaterialLink,
@@ -16,7 +17,7 @@ import {
   removeProjectWpsLink,
   updateProject,
 } from '@/api/projects';
-import { getInspectionTemplates, getMaterials, getWeldCoordinators, getWelders, getWps } from '@/api/settings';
+import { getInspectionTemplates, getWeldCoordinators, getWelders, getWps } from '@/api/settings';
 import { Modal } from '@/components/overlays/Modal';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
 import { CeNormChecksPanel } from '@/features/ce-dossier/CeNormChecksPanel';
@@ -115,24 +116,22 @@ export function MobileCeDossierPage() {
       dossier,
       docs,
       projectRecord,
-      materialRows,
+      materialsAggregate,
       wpsList,
       welderList,
       coordinatorList,
       templateList,
-      selectedMaterials,
       selectedWps,
       selectedWelders,
     ] = await Promise.all([
       getCeDossier(projectId),
       getProjectDocuments(projectId, { page: 1, limit: 100 }).catch(() => ({ items: [] as CeDocument[] })),
       getProject(projectId).catch(() => null),
-      getMaterials().catch(() => ({ items: [] as Option[] })),
+      fetchProjectMaterialsAggregate(projectId),
       getWps().catch(() => ({ items: [] as Option[] })),
       getWelders().catch(() => ({ items: [] as Option[] })),
       getWeldCoordinators().catch(() => ({ items: [] as Option[] })),
       getInspectionTemplates().catch(() => ({ items: [] as Option[] })),
-      getProjectSelectedMaterials(projectId).catch(() => []),
       getProjectSelectedWps(projectId).catch(() => []),
       getProjectSelectedWelders(projectId).catch(() => []),
     ]);
@@ -140,12 +139,16 @@ export function MobileCeDossierPage() {
     setPayload((dossier || {}) as Record<string, unknown>);
     setDocuments(Array.isArray(docs?.items) ? docs.items : []);
     setProject(projectRecord || null);
-    setMaterials(Array.isArray(materialRows) ? materialRows : ((materialRows as { items?: Option[] })?.items || []));
+    setMaterials(materialsAggregate.catalog.items as Option[]);
     setWpsRows(Array.isArray(wpsList) ? wpsList : ((wpsList as { items?: Option[] })?.items || []));
     setWelderRows(Array.isArray(welderList) ? welderList : ((welderList as { items?: Option[] })?.items || []));
     setCoordinatorRows(Array.isArray(coordinatorList) ? coordinatorList : ((coordinatorList as { items?: Option[] })?.items || []));
     setTemplateRows(Array.isArray(templateList) ? templateList : ((templateList as { items?: Option[] })?.items || []));
-    setLinkedMaterialIds((Array.isArray(selectedMaterials) ? selectedMaterials : []).map((item) => String((item as Record<string, unknown>).id || (item as Record<string, unknown>).material_id || '')).filter(Boolean));
+    setLinkedMaterialIds(
+      materialsAggregate.selected.map((item) =>
+        String(item.id ?? item.material_id ?? item.materialId ?? ''),
+      ).filter(Boolean),
+    );
     setLinkedWpsIds((Array.isArray(selectedWps) ? selectedWps : []).map((item) => String((item as Record<string, unknown>).id || (item as Record<string, unknown>).wps_id || '')).filter(Boolean));
     setLinkedWelderIds((Array.isArray(selectedWelders) ? selectedWelders : []).map((item) => String((item as Record<string, unknown>).id || (item as Record<string, unknown>).welder_id || '')).filter(Boolean));
   }

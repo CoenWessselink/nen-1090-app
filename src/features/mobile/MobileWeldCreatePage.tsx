@@ -3,7 +3,8 @@ import { Camera, ImagePlus } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { createWeld, uploadWeldAttachment } from '@/api/welds';
 import { getAssemblies } from '@/api/assemblies';
-import { getInspectionTemplates, getMaterials, getProcesses, getWeldCoordinators, getWelders } from '@/api/settings';
+import { getInspectionTemplates, getProcesses, getWeldCoordinators, getWelders } from '@/api/settings';
+import { useMaterials } from '@/hooks/useSettings';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
 import { dispatchAppRefresh, normalizeApiError } from '@/features/mobile/mobile-utils';
 import type { WeldFormValues } from '@/types/forms';
@@ -40,7 +41,8 @@ export function MobileWeldCreatePage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [processes, setProcesses] = useState<Option[]>([]);
-  const [materials, setMaterials] = useState<Option[]>([]);
+  const materialsQuery = useMaterials();
+  const materials = useMemo(() => materialsQuery.data?.items ?? [], [materialsQuery.data?.items]);
   const [welders, setWelders] = useState<Option[]>([]);
   const [templates, setTemplates] = useState<Option[]>([]);
   const [assemblies, setAssemblies] = useState<Option[]>([]);
@@ -48,11 +50,10 @@ export function MobileWeldCreatePage() {
 
   useEffect(() => {
     let active = true;
-    Promise.all([getProcesses().catch(() => []), getMaterials().catch(() => []), getWelders().catch(() => []), getWeldCoordinators().catch(() => []), getInspectionTemplates().catch(() => []), getAssemblies(projectId).catch(() => ({ items: [] }))])
-      .then(([processRows, materialRows, welderRows, coordinatorRows, templateRows, assemblyRows]) => {
+    Promise.all([getProcesses().catch(() => []), getWelders().catch(() => []), getWeldCoordinators().catch(() => []), getInspectionTemplates().catch(() => []), getAssemblies(projectId).catch(() => ({ items: [] }))])
+      .then(([processRows, welderRows, coordinatorRows, templateRows, assemblyRows]) => {
         if (!active) return;
         setProcesses(asOptions(processRows));
-        setMaterials(asOptions(materialRows));
         setWelders(asOptions(welderRows));
         setCoordinators(asOptions(coordinatorRows));
         setTemplates(asOptions(templateRows));

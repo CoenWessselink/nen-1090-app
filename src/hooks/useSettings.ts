@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useAuthStore } from '@/app/store/auth-store';
 import {
   createInspectionTemplate,
   createMaterial,
@@ -44,16 +45,22 @@ type MasterDataResponse =
     };
 
 export function useSettings(enabled = true) {
+  const tenantId = useAuthStore((s) => s.user?.tenantId);
+  const token = useAuthStore((s) => s.token);
+
   return useQuery({
-    queryKey: ['settings'],
+    queryKey: ['settings', tenantId, token],
     queryFn: () => getSettings(),
     enabled,
   });
 }
 
 function useMasterDataQuery(queryKey: string, queryFn: () => Promise<MasterDataResponse>, enabled = true) {
+  const tenantId = useAuthStore((s) => s.user?.tenantId);
+  const token = useAuthStore((s) => s.token);
+
   return useQuery({
-    queryKey: [queryKey],
+    queryKey: [queryKey, tenantId, token],
     queryFn: async () => normalizeListResponse(await queryFn()),
     enabled,
   });
@@ -88,7 +95,14 @@ export function useWeldCoordinators(enabled = true) {
 }
 
 export function useCompanySettings(enabled = true) {
-  return useQuery({ queryKey: ['settings-company'], queryFn: () => getCompanySettings(), enabled });
+  const tenantId = useAuthStore((s) => s.user?.tenantId);
+  const token = useAuthStore((s) => s.token);
+
+  return useQuery({
+    queryKey: ['settings-company', tenantId, token],
+    queryFn: () => getCompanySettings(),
+    enabled,
+  });
 }
 
 const createHandlers: Record<MasterDataType, (payload: MasterDataRecord) => Promise<unknown>> = {
@@ -119,7 +133,13 @@ export function useCreateMasterData() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ type, payload }: { type: MasterDataType; payload: MasterDataRecord }) => createHandlers[type](payload),
-    onSuccess: (_, variables) => queryClient.invalidateQueries({ queryKey: [`settings-${variables.type}`] }),
+    onSuccess: (_, variables) => {
+      void queryClient.invalidateQueries({ queryKey: [`settings-${variables.type}`] });
+      void queryClient.invalidateQueries({ queryKey: ['settings'] });
+      if (variables.type === 'materials') {
+        void queryClient.invalidateQueries({ queryKey: ['project-materials-aggregate'] });
+      }
+    },
   });
 }
 
@@ -127,7 +147,13 @@ export function useUpdateMasterData() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ type, id, payload }: { type: MasterDataType; id: string | number; payload: MasterDataRecord }) => updateHandlers[type](id, payload),
-    onSuccess: (_, variables) => queryClient.invalidateQueries({ queryKey: [`settings-${variables.type}`] }),
+    onSuccess: (_, variables) => {
+      void queryClient.invalidateQueries({ queryKey: [`settings-${variables.type}`] });
+      void queryClient.invalidateQueries({ queryKey: ['settings'] });
+      if (variables.type === 'materials') {
+        void queryClient.invalidateQueries({ queryKey: ['project-materials-aggregate'] });
+      }
+    },
   });
 }
 
@@ -135,7 +161,13 @@ export function useDeleteMasterData() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ type, id }: { type: MasterDataType; id: string | number }) => deleteHandlers[type](id),
-    onSuccess: (_, variables) => queryClient.invalidateQueries({ queryKey: [`settings-${variables.type}`] }),
+    onSuccess: (_, variables) => {
+      void queryClient.invalidateQueries({ queryKey: [`settings-${variables.type}`] });
+      void queryClient.invalidateQueries({ queryKey: ['settings'] });
+      if (variables.type === 'materials') {
+        void queryClient.invalidateQueries({ queryKey: ['project-materials-aggregate'] });
+      }
+    },
   });
 }
 
