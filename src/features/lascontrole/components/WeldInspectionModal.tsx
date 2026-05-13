@@ -221,7 +221,7 @@ export function WeldInspectionModal({
   projectName = '',
   projectNumber = '',
   onClose,
-  onQuickStatus,
+  onQuickStatus: _onQuickStatus,
   onSaveWeld,
   onSaveInspection,
 }: Props) {

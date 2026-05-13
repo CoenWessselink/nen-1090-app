@@ -19,7 +19,7 @@
     "test:workflows": "playwright test tests/e2e/projects-crud.spec.ts tests/e2e/project-flow.spec.ts tests/e2e/welds-ce-flow.spec.ts --project=desktop-chromium",
     "test:report": "playwright show-report",
     "test:playwright:install": "playwright install chromium",
-    "release:verify": "npm run typecheck && npm run lint && npm run build:pages && npx playwright test --list"
+    "release:verify": "npm run typecheck && npm run lint:ci && npm run build:pages && npx playwright test --list"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

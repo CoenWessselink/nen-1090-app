@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { RefreshCcw, Save, ShieldCheck } from 'lucide-react';
 import { getCeDossierChecks, updateCeDossierCheck, type CeNormCheck } from '@/api/norms';
 
@@ -10,8 +10,20 @@ export function CeNormChecksPanel({ projectId }: { projectId: string }) {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function load() { setLoading(true); setError(null); try { setChecks(await getCeDossierChecks(projectId)); } catch (err) { setError(err instanceof Error ? err.message : 'Normchecks konden niet worden geladen.'); } finally { setLoading(false); } }
-  useEffect(() => { void load(); }, [projectId]);
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      setChecks(await getCeDossierChecks(projectId));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Normchecks konden niet worden geladen.');
+    } finally {
+      setLoading(false);
+    }
+  }, [projectId]);
+  useEffect(() => {
+    void load();
+  }, [load]);
   async function patch(check: CeNormCheck, next: Partial<CeNormCheck>) { setSavingId(check.id); setError(null); try { const saved = await updateCeDossierCheck(projectId, check.id, next); setChecks((rows) => rows.map((row) => row.id === check.id ? { ...row, ...saved } : row)); } catch (err) { setError(err instanceof Error ? err.message : 'Normcheck opslaan mislukt.'); } finally { setSavingId(null); } }
 
   return <section className="ce-norm-checks-panel">

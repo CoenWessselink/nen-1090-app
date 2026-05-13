@@ -29,19 +29,6 @@ function normalizeDocuments(payload: EntityDocumentListResponse | null | undefin
   return [];
 }
 
-function syntheticDocumentFromFile(scopeType: EntityDocumentScope, entityId: string, file: File, kind: string): EntityDocument {
-  return {
-    id: `pending-${scopeType}-${entityId}-${file.name}-${file.size}`,
-    filename: file.name,
-    mime_type: file.type || 'application/octet-stream',
-    size_bytes: file.size,
-    uploaded_at: new Date().toISOString(),
-    kind,
-    scope_type: scopeType,
-    scope_id: entityId,
-  };
-}
-
 export const listEntityDocuments = async (scopeType: EntityDocumentScope, entityId: string, _kind?: string) => {
   if (scopeType === 'welder') {
     const payload = await listWelderCertificates(entityId);

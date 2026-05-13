@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Download, Eye, Upload } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { createProjectDocument, downloadDocument, getProjectDocuments } from '@/api/documents';
@@ -15,10 +15,10 @@ export function MobileDocumentsPage() {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function loadDocuments() {
+  const loadDocuments = useCallback(async () => {
     const response = await getProjectDocuments(projectId, { page: 1, limit: 50 });
     setDocuments(Array.isArray(response?.items) ? response.items : []);
-  }
+  }, [projectId]);
 
   useEffect(() => {
     let active = true;
@@ -36,7 +36,7 @@ export function MobileDocumentsPage() {
     return () => {
       active = false;
     };
-  }, [projectId]);
+  }, [loadDocuments]);
 
   async function handleUpload(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];

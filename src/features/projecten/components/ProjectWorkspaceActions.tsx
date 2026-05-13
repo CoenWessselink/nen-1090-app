@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 
 export function ProjectWorkspaceActions({
-  projectId,
+  projectId: _projectId,
   onCreateAssembly,
   onCreateWeld,
   extraActions,

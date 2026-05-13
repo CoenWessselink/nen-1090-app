@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Download, RefreshCcw, Save } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { createPdfExport } from '@/api/ce';
@@ -131,7 +131,7 @@ export function MobileCeDossierPage() {
   const [selectedRow, setSelectedRow] = useState<CeRowDetail | null>(null);
   const [editState, setEditState] = useState<DossierEditState>(initialEditState);
 
-  async function loadDossier() {
+  const loadDossier = useCallback(async () => {
     const [aggregate, projectRecord, materialsAggregate, coordinatorList, templateList, selectedWps, selectedWelders] = await Promise.all([
       fetchCeAggregate(projectId),
       getProject(projectId).catch(() => null),
@@ -157,7 +157,7 @@ export function MobileCeDossierPage() {
     );
     setLinkedWpsIds((Array.isArray(selectedWps) ? selectedWps : []).map((item) => String((item as Record<string, unknown>).id || (item as Record<string, unknown>).wps_id || '')).filter(Boolean));
     setLinkedWelderIds((Array.isArray(selectedWelders) ? selectedWelders : []).map((item) => String((item as Record<string, unknown>).id || (item as Record<string, unknown>).welder_id || '')).filter(Boolean));
-  }
+  }, [projectId]);
 
   useEffect(() => {
     let active = true;
@@ -177,7 +177,7 @@ export function MobileCeDossierPage() {
     return () => {
       active = false;
     };
-  }, [projectId]);
+  }, [loadDossier]);
 
   const checklist = useMemo(() => normalizeChecklist(payload?.checklist), [payload]);
   const checklistGroups = useMemo(() => groupChecklist(checklist), [checklist]);
@@ -192,7 +192,7 @@ export function MobileCeDossierPage() {
     { label: 'Documenten gekoppeld', value: formatValue(payload?.attachments_count || (payload?.counts as any)?.documents || documents.length, '0'), section: 'documents' as const },
   ];
 
-  function prepareEditState(section: CeRowSection) {
+  function prepareEditState(_section: CeRowSection) {
     const coordinatorId = String((project as Record<string, unknown> | null)?.coordinator_id || '');
     const notes = String((project as Record<string, unknown> | null)?.notes || (payload?.notes as string) || '');
     setEditState({

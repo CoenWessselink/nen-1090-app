@@ -212,7 +212,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
   const effectiveRefreshToken = refreshToken || persisted.refreshToken;
   const effectiveUser = user || persisted.user;
   const normalizedRole = normalizeRole(effectiveUser?.role);
-  const permissions = permissionMap[normalizedRole] || [];
+  const permissions = useMemo(() => permissionMap[normalizedRole] || [], [normalizedRole]);
 
   const value = useMemo<SessionContextValue>(() => ({
     token: effectiveToken,

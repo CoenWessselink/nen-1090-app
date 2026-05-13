@@ -29,7 +29,7 @@ export default function SuperadminBillingPage() {
 
   const kpis = data.kpis || {};
   const tenants = Array.isArray(data.tenants) ? data.tenants : [];
-  const payments = Array.isArray(data.payments) ? data.payments : [];
+  const payments = useMemo(() => (Array.isArray(data.payments) ? data.payments : []), [data.payments]);
   const invoices = Array.isArray(data.invoices) ? data.invoices : [];
 
   const failedPayments = useMemo(() => payments.filter((p) => String(p.status || '').toLowerCase().includes('fail')), [payments]);

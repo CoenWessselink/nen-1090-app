@@ -164,7 +164,7 @@ export function WeldInspectionDetailPage() {
     return () => { active = false; };
   }, [projectId, weldId]);
 
-  const sections = run?.sections || [];
+  const sections = useMemo(() => run?.sections || [], [run?.sections]);
   const activeSection = sections.find((section) => section.code === selectedSection) || sections[0];
   const allItems = useMemo(() => sections.flatMap((section) => (section.items || []).map((item) => values[itemKey(section, item)] || item)), [sections, values]);
   const overall = calcOverall(allItems);

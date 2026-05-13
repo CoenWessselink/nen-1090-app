@@ -1,8 +1,7 @@
 // shortened explanation: changed labels to English, enforce navigation and status sync
 
-import { useEffect, useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { getWeld } from '@/api/welds';
 import { upsertInspectionForWeld } from '@/api/inspections';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
 import { dispatchAppRefresh } from '@/features/mobile/mobile-utils';

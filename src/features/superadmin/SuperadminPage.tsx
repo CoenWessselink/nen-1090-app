@@ -187,7 +187,7 @@ export function SuperadminPage() {
   });
   const [creditReason, setCreditReason] = useState('Creditnota door superadmin');
 
-  const tenantRows = tenants.data?.items || [];
+  const tenantRows = useMemo(() => tenants.data?.items || [], [tenants.data]);
   const filteredRows = useMemo(() => {
     return tenantRows.filter((tenant) => {
       const status = parseStatus(tenant);

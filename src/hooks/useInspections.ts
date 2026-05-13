@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { approveInspection, createInspection, createInspectionResult, deleteInspection, downloadInspectionAttachment, getInspectionAttachments, getInspectionAudit, getInspectionForWeld, getInspectionResults, getInspections, upsertInspectionForWeld, updateInspection, uploadInspectionAttachment } from '@/api/inspections';
+import { downloadInspectionAttachment, getInspectionForWeld, getInspections, upsertInspectionForWeld, uploadInspectionAttachment } from '@/api/inspections';
 import { normalizeListResponse } from '@/utils/api';
 import type { ListParams } from '@/types/api';
 import { useAuthStore } from '@/app/store/auth-store';
