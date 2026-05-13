@@ -392,7 +392,7 @@ export function MasterDataManager({
     const isExisting = Boolean(editingId && editingId !== 'new');
 
     return (
-      <div className="page-stack" style={{ marginTop: 20, padding: 16, border: '1px solid #dbe7ff', borderRadius: 16, background: '#f8fbff' }}>
+      <div className="mobile-unified-body" style={{ marginTop: 20, padding: 16, border: '1px solid #dbe7ff', borderRadius: 16, background: '#f8fbff' }}>
         <div className="section-title-row">
           <div>
             <h3 style={{ margin: 0 }}>{documentLabel}</h3>

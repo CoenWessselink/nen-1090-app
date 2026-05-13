@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import client from '@/api/client';
 import { Button } from '@/components/ui/Button';
@@ -203,13 +204,12 @@ export default function TenantProfilePage() {
   }
 
   return (
-    <div className="tenant-profile-page" style={{ padding: 24, display: 'grid', gap: 20 }}>
-      <div>
-        <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: '#637083' }}>Tenant 360</div>
-        <h1 style={{ margin: '6px 0 8px' }}>{value((tenantDetail.data as any)?.name, tenantId)}</h1>
-        <p style={{ margin: 0, color: '#637083' }}>Compleet overzicht van profiel, WKA, users, mailstatus, billing en audit.</p>
-      </div>
-
+    <MobilePageScaffold
+      title={value((tenantDetail.data as any)?.name, tenantId)}
+      subtitle="Tenant 360 · profiel, billing, audit"
+      backTo="/superadmin"
+    >
+      <div className="tenant-profile-page mobile-unified-body" style={{ display: 'grid', gap: 20 }}>
       {message ? <InlineMessage tone={message.toLowerCase().includes('mislukt') ? 'danger' : 'success'}>{message}</InlineMessage> : null}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 12 }}>
@@ -345,6 +345,7 @@ export default function TenantProfilePage() {
           )) : <div>Nog geen facturen.</div>}
         </div>
       </Section>
-    </div>
+      </div>
+    </MobilePageScaffold>
   );
 }

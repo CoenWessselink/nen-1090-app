@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { getTenantBillingStatus, getBillingPaymentStatus } from '@/api/billing';
+import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
 
 export default function BillingSuccessPage() {
   const navigate = useNavigate();
@@ -41,21 +42,31 @@ export default function BillingSuccessPage() {
     };
 
     check();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [navigate, paymentId]);
 
   return (
-    <main className="billing-success-page">
-      <section className="billing-success-card">
-        <span className="billing-eyebrow">Mollie checkout</span>
-        <h1>Betaling verwerken</h1>
-        <p>{message}</p>
-        <div className="billing-success-progress"><span style={{ width: `${Math.min((attempts / 20) * 100, 100)}%` }} /></div>
-        <div className="billing-action-row">
-          <button onClick={() => navigate('/dashboard')}>Naar dashboard</button>
-          <button className="billing-secondary-button" onClick={() => navigate('/billing')}>Terug naar billing</button>
-        </div>
-      </section>
-    </main>
+    <MobilePageScaffold title="Betaling" subtitle="Mollie checkout">
+      <main className="billing-success-page mobile-unified-body">
+        <section className="billing-success-card">
+          <span className="billing-eyebrow">Mollie checkout</span>
+          <h1>Betaling verwerken</h1>
+          <p>{message}</p>
+          <div className="billing-success-progress">
+            <span style={{ width: `${Math.min((attempts / 20) * 100, 100)}%` }} />
+          </div>
+          <div className="billing-action-row">
+            <button type="button" onClick={() => navigate('/dashboard')}>
+              Naar dashboard
+            </button>
+            <button type="button" className="billing-secondary-button" onClick={() => navigate('/billing')}>
+              Terug naar billing
+            </button>
+          </div>
+        </section>
+      </main>
+    </MobilePageScaffold>
   );
 }

@@ -51,6 +51,7 @@ body.modal-dragging {
 
 .page-stack,
 .settings-page,
+.norms-settings-page,
 .superadmin-v2-page,
 .settings-layout,
 .settings-sections,
@@ -72,8 +73,10 @@ body.modal-dragging {
 }
 
 .settings-page,
+.norms-settings-page,
 .superadmin-v2-page,
 .settings-page *,
+.norms-settings-page *,
 .superadmin-v2-page *,
 .overlay-backdrop,
 .overlay-backdrop *,
@@ -151,7 +154,9 @@ body.modal-dragging {
 
 .settings-page,
 .billing-page,
-.superadmin-v2-page {
+.superadmin-v2-page,
+.norms-settings-page,
+.billing-success-page {
   width: 100% !important;
   max-width: 1180px !important;
   margin: 0 auto !important;
@@ -220,6 +225,7 @@ body.modal-dragging {
   .settings-page .dashboard-kpi-grid,
   .settings-page .mobile-kpi-grid,
   .settings-page .content-grid-2,
+  .norms-settings-page .content-grid-2,
   .billing-page .dashboard-kpi-grid,
   .billing-page .mobile-kpi-grid,
   .superadmin-v2-page .mobile-kpi-grid,
@@ -233,6 +239,8 @@ body.modal-dragging {
   .settings-page,
   .billing-page,
   .superadmin-v2-page,
+  .norms-settings-page,
+  .billing-success-page,
   .settings-card,
   .settings-panel,
   .settings-page .card,

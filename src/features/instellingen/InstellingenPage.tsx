@@ -131,7 +131,7 @@ export function InstellingenPage() {
         ) : null}
 
         {tab === "masterdata" ? (
-          <div className="page-stack settings-sections">
+          <div className="settings-sections mobile-unified-body">
             <div className="mobile-kpi-grid">
               <button
                 type="button"
