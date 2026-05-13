@@ -1,3 +1,4 @@
 [submodule "backend"]
 	path = backend
-	url = https://github.com/CoenWessselink/NEN10900-api.git
+	# Same GitHub user/org as parent — relative URL so clone uses parent credentials (GitHub App / CI).
+	url = ../NEN10900-api.git
