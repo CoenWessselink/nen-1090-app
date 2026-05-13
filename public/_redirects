@@ -12,4 +12,5 @@
 /app/logout.html /logout 302
 /app/subscription /billing 302
 /app/subscription.html /billing 302
-/* /index.html 200
+# SPA: Cloudflare Pages serves unknown paths as the app when there is no top-level 404.html in the
+# build output. Do NOT add "/* /index.html 200" here — Wrangler reports an infinite-loop and ignores it.
