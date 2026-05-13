@@ -243,6 +243,40 @@ export async function listRequest<T = unknown>(path: string, params?: QueryParam
   return apiRequest<T>(buildListPath(path, params));
 }
 
+/**
+ * Try list endpoints in order. On ApiError with a status in skipStatuses, continue to the next path.
+ * Returns null if every candidate failed with a skippable status (typical for optional compat routes).
+ */
+export async function firstSuccessfulListRequest<T = unknown>(
+  paths: readonly string[],
+  params?: QueryParams,
+  options?: { skipStatuses?: readonly number[] },
+): Promise<T | null> {
+  const skip = new Set(options?.skipStatuses ?? [404, 405, 500, 501]);
+  let lastError: unknown = null;
+
+  for (const path of paths) {
+    try {
+      return await listRequest<T>(path, params);
+    } catch (error) {
+      lastError = error;
+      if (error instanceof ApiError && skip.has(error.status)) {
+        continue;
+      }
+      throw error;
+    }
+  }
+
+  if (lastError instanceof Error) {
+    runtimeTrace('LIST_FALLBACK_ALL_SKIPPED', {
+      paths: [...paths],
+      message: lastError.message,
+    });
+  }
+
+  return null;
+}
+
 export async function optionalRequest<T = unknown>(paths: string[], init?: RequestInit): Promise<T> {
   runtimeTrace('OPTIONAL_REQUEST_STARTED', {
     candidateCount: paths.length,
