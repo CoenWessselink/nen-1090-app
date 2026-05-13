@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NEN1090 — Type 2 schermgalerij (haalbaar)</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --border: #e2e8f0;
+      --text: #0f172a;
+      --muted: #64748b;
+      --primary: #2563eb;
+      --primary-soft: #eff6ff;
+      --success-bg: #ecfdf5;
+      --success: #166534;
+      --warn-bg: #fffbeb;
+      --warn: #92400e;
+      --radius: 14px;
+      --radius-sm: 10px;
+      --shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.45;
+    }
+    header {
+      padding: 28px 20px 12px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    header h1 { font-size: 1.35rem; font-weight: 700; margin: 0 0 8px; }
+    header p { margin: 0; color: var(--muted); max-width: 62ch; font-size: 0.95rem; }
+    .gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 22px;
+      padding: 16px 20px 48px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    .panel {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .panel-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .panel-meta strong { font-size: 0.95rem; }
+    .panel-meta code {
+      font-size: 0.72rem;
+      color: var(--muted);
+      background: #e2e8f0;
+      padding: 2px 6px;
+      border-radius: 6px;
+      width: fit-content;
+    }
+    .phone {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      aspect-ratio: 9 / 18.5;
+      display: flex;
+      flex-direction: column;
+      min-height: 380px;
+    }
+    .phone-notch {
+      height: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding-top: 6px;
+    }
+    .phone-notch span {
+      width: 36%;
+      height: 5px;
+      background: #e2e8f0;
+      border-radius: 99px;
+    }
+    .phone-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px 8px;
+      border-bottom: 1px solid var(--border);
+      gap: 8px;
+    }
+    .phone-header .back {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #fff;
+    }
+    .phone-header .titles { flex: 1; min-width: 0; }
+    .phone-header .titles b {
+      display: block;
+      font-size: 0.82rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .phone-header .titles small { color: var(--muted); font-size: 0.68rem; }
+    .phone-header .icon-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #fff;
+    }
+    .phone-body {
+      flex: 1;
+      padding: 10px 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      overflow: hidden;
+    }
+    .search {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 8px 10px;
+      background: #fafafa;
+      font-size: 0.72rem;
+      color: var(--muted);
+    }
+    .kpi-row { display: flex; gap: 6px; flex-wrap: wrap; }
+    .kpi {
+      flex: 1;
+      min-width: 56px;
+      background: var(--primary-soft);
+      border: 1px solid #bfdbfe;
+      border-radius: var(--radius-sm);
+      padding: 6px 8px;
+      text-align: center;
+    }
+    .kpi b { display: block; font-size: 0.85rem; color: var(--primary); }
+    .kpi span { font-size: 0.62rem; color: var(--muted); }
+    .card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 8px 10px;
+      background: #fff;
+      font-size: 0.72rem;
+    }
+    .card .row { display: flex; justify-content: space-between; align-items: center; gap: 6px; margin-top: 4px; }
+    .pill {
+      font-size: 0.62rem;
+      padding: 2px 6px;
+      border-radius: 99px;
+      background: var(--success-bg);
+      color: var(--success);
+      font-weight: 600;
+    }
+    .pill.warn { background: var(--warn-bg); color: var(--warn); }
+    .pill.neutral { background: #f1f5f9; color: #475569; }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 8px 10px;
+      border-radius: var(--radius-sm);
+      border: none;
+      cursor: default;
+    }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-secondary { background: #fff; color: var(--text); border: 1px solid var(--border); }
+    .stack-btns { display: flex; flex-direction: column; gap: 6px; margin-top: auto; }
+    .list { display: flex; flex-direction: column; gap: 5px; }
+    .list-item {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 7px 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.72rem;
+    }
+    .list-item strong { font-size: 0.74rem; }
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      font-size: 0.68rem;
+    }
+    .field label { color: var(--muted); font-size: 0.62rem; }
+    .input {
+      height: 28px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #fafafa;
+    }
+    .pdf-frame {
+      flex: 1;
+      border: 1px dashed #cbd5e1;
+      border-radius: var(--radius-sm);
+      background: repeating-linear-gradient(
+        -45deg,
+        #f8fafc,
+        #f8fafc 6px,
+        #f1f5f9 6px,
+        #f1f5f9 12px
+      );
+      min-height: 120px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      font-size: 0.68rem;
+    }
+    .tabs {
+      display: flex;
+      gap: 4px;
+      border-bottom: 1px solid var(--border);
+      margin: 0 -12px 6px;
+      padding: 0 12px 6px;
+      font-size: 0.65rem;
+    }
+    .tabs span {
+      padding: 4px 8px;
+      border-radius: 6px;
+      color: var(--muted);
+    }
+    .tabs span.on { background: var(--primary-soft); color: var(--primary); font-weight: 700; }
+    .table {
+      font-size: 0.65rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+    }
+    .table .tr {
+      display: grid;
+      grid-template-columns: 1fr 0.5fr;
+      padding: 5px 8px;
+      border-bottom: 1px solid var(--border);
+      background: #fff;
+    }
+    .table .tr.head { background: #f1f5f9; font-weight: 700; color: var(--muted); }
+    .table .tr:last-child { border-bottom: none; }
+    footer {
+      text-align: center;
+      padding: 16px;
+      color: var(--muted);
+      font-size: 0.75rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Type 2 — haalbare uitstraling per scherm</h1>
+    <p>
+      Vereenvoudigde telefoonmockups in dezelfde stijl als “haalbaar”: licht oppervlak, 1px randen, blauw als primaire actie,
+      rustige grijzen voor tekst. Open dit bestand lokaal via de dev-server (<code>/design-type2-screen-gallery.html</code>) of direct vanuit <code>public/</code>.
+    </p>
+  </header>
+  <div class="gallery" id="root"></div>
+  <footer>NEN1090 app — design referentie (statisch, geen productiedata)</footer>
+  <script>
+    const screens = [
+      { title: 'Login', path: '/login', kind: 'authLogin' },
+      { title: 'Wachtwoord vergeten', path: '/forgot-password', kind: 'authForgot' },
+      { title: 'Wachtwoord resetten', path: '/reset-password', kind: 'authReset' },
+      { title: 'Account activeren', path: '/activate-account', kind: 'activate' },
+      { title: 'Wachtwoord wijzigen', path: '/change-password', kind: 'changePwd' },
+      { title: 'Uitloggen', path: '/logout', kind: 'logout' },
+      { title: 'Dashboard', path: '/dashboard', kind: 'dashboard' },
+      { title: 'Projecten', path: '/projecten', kind: 'projects' },
+      { title: 'Nieuw project', path: '/projecten/nieuw', kind: 'projectForm' },
+      { title: 'Project overzicht', path: '/projecten/:projectId/overzicht', kind: 'project360' },
+      { title: 'Project bewerken', path: '/projecten/:projectId/bewerken', kind: 'projectForm' },
+      { title: 'Nieuwe assembly', path: '/projecten/:projectId/assemblies/nieuw', kind: 'assemblyForm' },
+      { title: 'Lassen', path: '/projecten/:projectId/lassen', kind: 'welds' },
+      { title: 'Nieuwe las', path: '/projecten/:projectId/lassen/nieuw', kind: 'weldForm' },
+      { title: 'Las bewerken', path: '/projecten/:projectId/lassen/:weldId/bewerken', kind: 'weldForm' },
+      { title: 'Lasinspectie', path: '/projecten/:projectId/lassen/:weldId/inspectie', kind: 'inspection' },
+      { title: 'Documenten', path: '/projecten/:projectId/documenten', kind: 'documents' },
+      { title: 'PDF viewer', path: '/projecten/:projectId/documenten/:documentId/viewer', kind: 'pdf' },
+      { title: 'CE-dossier', path: '/projecten/:projectId/ce-v2', kind: 'ce' },
+      { title: 'Compliance PDF', path: '/projecten/:projectId/pdf-viewer', kind: 'pdf' },
+      { title: 'Rapportage', path: '/rapportage', kind: 'reports' },
+      { title: 'Instellingen', path: '/settings-v2', kind: 'settings' },
+      { title: 'Inspectietemplates', path: '/instellingen/templates', kind: 'templates' },
+      { title: 'Normeringen', path: '/instellingen/normeringen', kind: 'norms' },
+      { title: 'Facturatie', path: '/billing', kind: 'billing' },
+      { title: 'Betaling gelukt', path: '/billing/success', kind: 'billingSuccess' },
+      { title: 'Superadmin', path: '/superadmin', kind: 'superadmin' },
+      { title: 'Tenantprofiel', path: '/superadmin/tenant/:tenantId/profile', kind: 'tenantProfile' },
+    ];
+
+    function shell(title, subtitle, inner) {
+      return (
+        '<div class="phone">' +
+          '<div class="phone-notch"><span></span></div>' +
+          '<div class="phone-header">' +
+            '<div class="back"></div>' +
+            '<div class="titles"><b>' + title + '</b><small>' + subtitle + '</small></div>' +
+            '<div class="icon-btn"></div>' +
+          '</div>' +
+          '<div class="phone-body">' + inner + '</div>' +
+        '</div>'
+      );
+    }
+
+    function bodyFor(kind) {
+      switch (kind) {
+        case 'authLogin':
+          return (
+            '<div class="field"><label>E-mail</label><div class="input"></div></div>' +
+            '<div class="field"><label>Wachtwoord</label><div class="input"></div></div>' +
+            '<div class="stack-btns"><button type="button" class="btn btn-primary">Inloggen</button>' +
+            '<button type="button" class="btn btn-secondary">Wachtwoord vergeten</button></div>'
+          );
+        case 'authForgot':
+        case 'authReset':
+          return (
+            '<p style="margin:0;font-size:0.72rem;color:var(--muted)">Korte instructie en één duidelijke actie.</p>' +
+            '<div class="field"><label>E-mail</label><div class="input"></div></div>' +
+            '<div class="stack-btns"><button type="button" class="btn btn-primary">Versturen</button></div>'
+          );
+        case 'activate':
+          return (
+            '<div class="card"><strong>Account activeren</strong><div class="row"><span class="pill neutral">Stap 1/2</span></div></div>' +
+            '<div class="field"><label>Nieuw wachtwoord</label><div class="input"></div></div>' +
+            '<div class="field"><label>Bevestigen</label><div class="input"></div></div>' +
+            '<div class="stack-btns"><button type="button" class="btn btn-primary">Activeren</button></div>'
+          );
+        case 'changePwd':
+          return (
+            '<div class="field"><label>Huidig</label><div class="input"></div></div>' +
+            '<div class="field"><label>Nieuw</label><div class="input"></div></div>' +
+            '<div class="stack-btns"><button type="button" class="btn btn-primary">Opslaan</button></div>'
+          );
+        case 'logout':
+          return (
+            '<div class="card">Je sessie wordt beëindigd.</div>' +
+            '<div class="stack-btns"><button type="button" class="btn btn-primary">Doorgaan</button></div>'
+          );
+        case 'dashboard':
+          return (
+            '<div class="kpi-row">' +
+              '<div class="kpi"><b>12</b><span>Projecten</span></div>' +
+              '<div class="kpi"><b>86%</b><span>CE</span></div>' +
+              '<div class="kpi"><b>3</b><span>Open</span></div>' +
+            '</div>' +
+            '<div class="card"><strong>Laatste activiteit</strong><div class="row"><span>Project B</span><span class="pill">Conform</span></div></div>' +
+            '<div class="list">' +
+              '<div class="list-item"><div><strong>Project Alpha</strong><br/><span style="color:var(--muted);font-size:0.65rem">P-2401</span></div><span class="pill warn">Actie</span></div>' +
+              '<div class="list-item"><div><strong>Project Beta</strong></div><span class="pill">OK</span></div>' +
+            '</div>'
+          );
+        case 'projects':
+          return (
+            '<div class="search">Zoek projecten…</div>' +
+            '<div class="list">' +
+              '<div class="list-item"><div><strong>Stalen brug Zuid</strong><br/><span style="color:var(--muted);font-size:0.65rem">EXC3 · P-102</span></div><span class="pill neutral">></span></div>' +
+              '<div class="list-item"><div><strong>Hallenbouw X</strong></div><span class="pill neutral">></span></div>' +
+            '</div>'
+          );
+        case 'projectForm':
+          return (
+            '<div class="field"><label>Projectnaam</label><div class="input"></div></div>' +
+            '<div class="field"><label>Projectnummer</label><div class="input"></div></div>' +
+            '<div class="field"><label>EXC</label><div class="input"></div></div>' +
+            '<div class="stack-btns"><button type="button" class="btn btn-primary">Opslaan</button></div>'
+          );
+        case 'project360':
+          return (
+            '<div class="card"><strong>Project</strong><div class="row"><span>Naam / nummer</span><span class="pill neutral">EXC2</span></div></div>' +
+            '<div class="kpi-row">' +
+              '<div class="kpi"><b>CE</b><span>Score</span></div>' +
+              '<div class="kpi"><b>24</b><span>Lassen</span></div>' +
+            '</div>' +
+            '<div class="stack-btns">' +
+              '<button type="button" class="btn btn-secondary">Lassen</button>' +
+              '<button type="button" class="btn btn-primary">CE-dossier</button>' +
+            '</div>'
+          );
+        case 'assemblyForm':
+          return (
+            '<div class="field"><label>Assembly naam</label><div class="input"></div></div>' +
+            '<div class="field"><label>Referentie</label><div class="input"></div></div>' +
+            '<div class="stack-btns"><button type="button" class="btn btn-primary">Aanmaken</button></div>'
+          );
+        case 'welds':
+          return (
+            '<div class="search">Zoek las…</div>' +
+            '<div class="list">' +
+              '<div class="list-item"><div><strong>W01 · kolom</strong><br/><span style="color:var(--muted);font-size:0.65rem">135 · VT</span></div><span class="pill">Conform</span></div>' +
+              '<div class="list-item"><div><strong>W02 · ligger</strong></div><span class="pill warn">Open</span></div>' +
+            '</div>'
+          );
+        case 'weldForm':
+          return (
+            '<div class="tabs"><span class="on">Basis</span><span>Stamdata</span></div>' +
+            '<div class="field"><label>Lasnummer</label><div class="input"></div></div>' +
+            '<div class="field"><label>WPS</label><div class="input"></div></div>' +
+            '<div class="stack-btns"><button type="button" class="btn btn-primary">Opslaan</button></div>'
+          );
+        case 'inspection':
+          return (
+            '<div class="card"><strong>Inspectie</strong><div class="row"><span>Status</span><span class="pill">Conform</span></div></div>' +
+            '<div class="list">' +
+              '<div class="list-item"><span>1 · Visueel</span><span class="pill">OK</span></div>' +
+              '<div class="list-item"><span>2 · Maatvoering</span><span class="pill warn">Open</span></div>' +
+            '</div>' +
+            '<div class="stack-btns"><button type="button" class="btn btn-primary">Opslaan & sluiten</button></div>'
+          );
+        case 'documents':
+          return (
+            '<div class="search">Documenten…</div>' +
+            '<div class="list">' +
+              '<div class="list-item"><div><strong>WPS.pdf</strong><br/><span style="color:var(--muted);font-size:0.65rem">2.1 MB</span></div><span class="pill neutral">PDF</span></div>' +
+              '<div class="list-item"><div><strong>Foto las W01</strong></div><span class="pill neutral">IMG</span></div>' +
+            '</div>'
+          );
+        case 'pdf':
+          return (
+            '<div class="card"><strong>Preview</strong><div class="row"><span>Document / rapport</span><span class="pill neutral">PDF</span></div></div>' +
+            '<div class="pdf-frame">PDF-voorbeeld</div>' +
+            '<div class="stack-btns"><button type="button" class="btn btn-secondary">Download</button></div>'
+          );
+        case 'ce':
+          return (
+            '<div class="kpi-row"><div class="kpi"><b>78</b><span>Score</span></div><div class="kpi"><b>12</b><span>Checks</span></div></div>' +
+            '<div class="list">' +
+              '<div class="list-item"><div><strong>Stamdata</strong></div><span class="pill">OK</span></div>' +
+              '<div class="list-item"><div><strong>Documenten</strong></div><span class="pill warn">Actie</span></div>' +
+            '</div>' +
+            '<div class="stack-btns"><button type="button" class="btn btn-primary">Exporteren</button></div>'
+          );
+        case 'reports':
+          return (
+            '<div class="search">Rapporten…</div>' +
+            '<div class="card"><strong>Laatste PDF</strong><div class="row"><span>Weld compliance</span><span class="pill neutral">Open</span></div></div>' +
+            '<div class="list"><div class="list-item"><div><strong>Rapport · jan</strong></div><span class="pill">PDF</span></div></div>'
+          );
+        case 'settings':
+          return (
+            '<div class="list">' +
+              '<div class="list-item"><div><strong>Profiel</strong></div><span class="pill neutral">></span></div>' +
+              '<div class="list-item"><div><strong>Templates</strong></div><span class="pill neutral">></span></div>' +
+              '<div class="list-item"><div><strong>Normeringen</strong></div><span class="pill neutral">></span></div>' +
+            '</div>'
+          );
+        case 'templates':
+          return (
+            '<div class="card"><strong>Template</strong><div class="row"><span>EXC2 standaard</span><span class="pill">Standaard</span></div></div>' +
+            '<div class="list"><div class="list-item"><span>VT regels</span><span class="pill neutral">12</span></div></div>' +
+            '<div class="stack-btns"><button type="button" class="btn btn-primary">Opslaan</button></div>'
+          );
+        case 'norms':
+          return (
+            '<div class="tabs"><span class="on">Systemen</span><span>Normen</span><span>Profielen</span></div>' +
+            '<div class="list"><div class="list-item"><div><strong>EN 1090-2</strong></div><span class="pill">Gekoppeld</span></div></div>'
+          );
+        case 'billing':
+          return (
+            '<div class="card"><strong>Abonnement</strong><div class="row"><span>Professional</span><span class="pill">Actief</span></div></div>' +
+            '<div class="table"><div class="tr head"><span>Factuur</span><span>Bedrag</span></div><div class="tr"><span>#1042</span><span>€ 249</span></div></div>' +
+            '<div class="stack-btns"><button type="button" class="btn btn-primary">Beheren</button></div>'
+          );
+        case 'billingSuccess':
+          return (
+            '<div class="card" style="text-align:center"><strong>Betaling geslaagd</strong><p style="margin:6px 0 0;font-size:0.7rem;color:var(--muted)">Je abonnement is bijgewerkt.</p></div>' +
+            '<div class="stack-btns"><button type="button" class="btn btn-primary">Naar dashboard</button></div>'
+          );
+        case 'superadmin':
+          return (
+            '<div class="search">Tenants…</div>' +
+            '<div class="table">' +
+              '<div class="tr head"><span>Naam</span><span>Status</span></div>' +
+              '<div class="tr"><span>Acme BV</span><span class="pill">Actief</span></div>' +
+              '<div class="tr"><span>Beta NV</span><span class="pill warn">Trial</span></div>' +
+            '</div>'
+          );
+        case 'tenantProfile':
+          return (
+            '<div class="card"><strong>Tenant</strong><div class="row"><span>Acme BV</span><span class="pill neutral">ID</span></div></div>' +
+            '<div class="tabs"><span class="on">Samenvatting</span><span>Gebruikers</span><span>Billing</span></div>' +
+            '<div class="field"><label>Seats</label><div class="input"></div></div>' +
+            '<div class="stack-btns"><button type="button" class="btn btn-primary">Wijzigingen opslaan</button></div>'
+          );
+        default:
+          return '<div class="card">Scherm</div>';
+      }
+    }
+
+    const root = document.getElementById('root');
+    screens.forEach(function (s) {
+      const wrap = document.createElement('div');
+      wrap.className = 'panel';
+      wrap.innerHTML =
+        '<div class="panel-meta"><strong>' + s.title + '</strong><code>' + s.path + '</code></div>' +
+        shell(s.title, 'Type 2 · mock', bodyFor(s.kind));
+      root.appendChild(wrap);
+    });
+  </script>
+</body>
+</html>
