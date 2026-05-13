@@ -6,8 +6,6 @@ import {
   createZipExport,
   downloadProjectExport,
   getCeDossier,
-  getComplianceChecklist,
-  getComplianceMissingItems,
   getComplianceOverview,
   getProjectExportManifest,
   getProjectExportPreview,
@@ -36,28 +34,6 @@ export function useComplianceOverview(projectId?: string | number) {
   });
 }
 
-export function useComplianceMissingItems(projectId?: string | number) {
-  const { tenantId, token } = useComplianceSessionKey();
-  return useQuery({
-    queryKey: ['compliance-missing', projectId, tenantId, token],
-    queryFn: () => getComplianceMissingItems(String(projectId)),
-    enabled: Boolean(projectId),
-    staleTime: COMPLIANCE_STALE_TIME,
-    refetchOnReconnect: true,
-  });
-}
-
-export function useComplianceChecklist(projectId?: string | number) {
-  const { tenantId, token } = useComplianceSessionKey();
-  return useQuery({
-    queryKey: ['compliance-checklist', projectId, tenantId, token],
-    queryFn: () => getComplianceChecklist(String(projectId)),
-    enabled: Boolean(projectId),
-    staleTime: COMPLIANCE_STALE_TIME,
-    refetchOnReconnect: true,
-  });
-}
-
 export function useCeDossier(projectId?: string | number) {
   const { tenantId, token } = useComplianceSessionKey();
   return useQuery({
@@ -67,6 +43,16 @@ export function useCeDossier(projectId?: string | number) {
     staleTime: COMPLIANCE_STALE_TIME,
     refetchOnReconnect: true,
   });
+}
+
+/** Same payload as `useCeDossier` — avoids duplicate `/ce-dossier` requests with different cache keys. */
+export function useComplianceMissingItems(projectId?: string | number) {
+  return useCeDossier(projectId);
+}
+
+/** Same payload as `useCeDossier` — avoids duplicate `/ce-dossier` requests with different cache keys. */
+export function useComplianceChecklist(projectId?: string | number) {
+  return useCeDossier(projectId);
 }
 
 export function useProjectExports(projectId?: string | number) {

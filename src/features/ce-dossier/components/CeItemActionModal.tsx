@@ -2,7 +2,7 @@
  * CeItemActionModal — D-01 fix.
  * Contextgevoelige popup per CE-regeltype met directe wijzigactie.
  *
- * Gebruik in CeDossierPage als vervanging van de bestaande modal:
+ * Gebruik in CE-dossier schermen als vervanging van de bestaande modal:
  *
  *   import { CeItemActionModal } from '@/features/ce-dossier/components/CeItemActionModal';
  *

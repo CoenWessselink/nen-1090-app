@@ -1,4 +1,4 @@
-import client, { apiRequest, optionalRequest } from './client';
+import { apiRequest } from './client';
 import { uploadMany } from './upload';
 import { runtimeTrace } from '@/utils/runtimeTracing';
 import type { ListParams } from '@/types/api';
@@ -54,10 +54,7 @@ export function getWeld(projectId: string | number, weldId: string | number) {
     weldId,
   });
 
-  return optionalRequest([
-    `/projects/${projectId}/welds/${weldId}`,
-    `/welds/${weldId}`,
-  ]);
+  return apiRequest(`/projects/${projectId}/welds/${weldId}`);
 }
 
 export function createWeld(projectIdOrPayload: unknown, payload?: unknown) {
@@ -79,20 +76,14 @@ export function updateWeld(projectId: string | number, weldId: string | number, 
     weldId,
   });
 
-  return optionalRequest([
-    `/projects/${projectId}/welds/${weldId}`,
-    `/welds/${weldId}`,
-  ], {
+  return apiRequest(`/projects/${projectId}/welds/${weldId}`, {
     method: 'PATCH',
     body: JSON.stringify(payload),
   });
 }
 
 export function deleteWeld(projectId: string | number, weldId: string | number) {
-  return optionalRequest([
-    `/projects/${projectId}/welds/${weldId}`,
-    `/welds/${weldId}`,
-  ], {
+  return apiRequest<void>(`/projects/${projectId}/welds/${weldId}`, {
     method: 'DELETE',
   });
 }
@@ -107,11 +98,7 @@ export function getWeldInspection(projectId: string | number, weldId: string | n
     weldId,
   });
 
-  return optionalRequest([
-    `/projects/${projectId}/welds/${weldId}/inspection`,
-    `/welds/${weldId}/inspection`,
-    `/inspections?project_id=${projectId}&weld_id=${weldId}&limit=1`,
-  ]);
+  return apiRequest(`/projects/${projectId}/welds/${weldId}/inspection`);
 }
 
 export async function getWeldInspections(projectId: string | number, weldId: string | number) {
@@ -135,7 +122,7 @@ export function uploadWeldAttachment(projectId: string | number, weldId: string 
     weldId,
   });
 
-  return uploadMany(`/welds/${weldId}/photos`, files, {
+  return uploadMany(`/projects/${projectId}/welds/${weldId}/photos`, files, {
     project_id: String(projectId),
     weld_id: String(weldId),
     kind: 'photo',
@@ -146,31 +133,19 @@ export const uploadWeldPhoto = uploadWeldAttachment;
 export const uploadWeldPhotos = uploadWeldAttachment;
 
 export function getWeldAttachments(projectId: string | number, weldId: string | number) {
-  return optionalRequest([
-    `/welds/${weldId}/attachments`,
-    `/welds/${weldId}/photos`,
-  ]);
+  return apiRequest(`/projects/${projectId}/welds/${weldId}/attachments`);
 }
 
 export function getWeldCompliance(projectId: string | number, weldId: string | number) {
-  return optionalRequest([
-    `/projects/${projectId}/welds/${weldId}/compliance`,
-    `/welds/${weldId}/compliance`,
-  ]);
+  return apiRequest(`/projects/${projectId}/welds/${weldId}/compliance`);
 }
 
 export function getWeldDefects(projectId: string | number, weldId: string | number) {
-  return optionalRequest([
-    `/projects/${projectId}/welds/${weldId}/defects`,
-    `/weld-defects?weld_id=${weldId}&project_id=${projectId}`,
-  ]);
+  return apiRequest(`/projects/${projectId}/welds/${weldId}/defects`);
 }
 
 export function resetWeldToNorm(projectId: string | number, weldId: string | number) {
-  return optionalRequest([
-    `/projects/${projectId}/welds/${weldId}/reset-to-norm`,
-    `/welds/${weldId}/reset-to-norm`,
-  ], {
+  return apiRequest(`/projects/${projectId}/welds/${weldId}/reset-to-norm`, {
     method: 'POST',
   });
 }
@@ -187,13 +162,8 @@ export function conformWeld(projectId: string | number, weldId: string | number)
 }
 
 export function copyWeld(projectId: string | number, weldId: string | number, weldNumber?: string) {
-  return optionalRequest([
-    `/projects/${projectId}/welds/${weldId}/copy`,
-    `/welds/${weldId}/copy`,
-  ], {
+  return apiRequest(`/projects/${projectId}/welds/${weldId}/copy`, {
     method: 'POST',
     body: JSON.stringify({ weld_number: weldNumber }),
   });
 }
-
-export default client;
