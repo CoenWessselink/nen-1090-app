@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useReports } from '@/hooks/useReports';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
 import { openDownloadUrl } from '@/utils/download';
-import { formatValue } from '@/features/mobile/mobile-utils';
+import { formatValue, normalizeApiError } from '@/features/mobile/mobile-utils';
 
 type ReportRow = {
   id: string | number;
@@ -46,6 +46,7 @@ export function MobileRapportagePage() {
   const reports = useReports({ page: 1, limit: 50 });
   const rows = ((reports.data?.items || []) as ReportRow[]);
   const [search, setSearch] = useState('');
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const visibleRows = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -55,7 +56,8 @@ export function MobileRapportagePage() {
 
   const featured = visibleRows.find((item) => reportPdfUrl(item) || item.project_id) || null;
 
-  function openReport(row: ReportRow) {
+  async function openReport(row: ReportRow) {
+    setActionError(null);
     if (row.project_id && isProjectSummary(row)) {
       navigate(`/projecten/${row.project_id}/pdf-viewer`);
       return;
@@ -63,7 +65,11 @@ export function MobileRapportagePage() {
 
     const url = reportPdfUrl(row);
     if (url) {
-      void openDownloadUrl(url, reportFilename(row));
+      try {
+        await openDownloadUrl(url, reportFilename(row));
+      } catch (err) {
+        setActionError(normalizeApiError(err, 'PDF openen mislukt.'));
+      }
       return;
     }
     if (row.project_id) navigate(`/projecten/${row.project_id}/pdf-viewer`);
@@ -78,7 +84,7 @@ export function MobileRapportagePage() {
         </div>
       </div>
 
-      <div className="mobile-list-card mobile-report-highlight" role="button" tabIndex={0} onClick={() => { if (featured) openReport(featured); }}>
+      <div className="mobile-list-card mobile-report-highlight" role="button" tabIndex={0} onClick={() => { if (featured) void openReport(featured); }}>
         <div className="mobile-list-card-head">
           <strong>PDF</strong>
           <span className="mobile-pill mobile-pill-success">Open now</span>
@@ -94,6 +100,7 @@ export function MobileRapportagePage() {
 
       {reports.isLoading ? <div className="mobile-state-card">Loading reports…</div> : null}
       {reports.isError ? <div className="mobile-state-card mobile-state-card-error">Reports could not be loaded.</div> : null}
+      {actionError ? <div className="mobile-state-card mobile-state-card-error">{actionError}</div> : null}
 
       {!reports.isLoading && !reports.isError ? (
         <div className="mobile-list-stack">
@@ -112,11 +119,20 @@ export function MobileRapportagePage() {
                       Project
                     </button>
                   ) : null}
-                  <button type="button" className="mobile-primary-button" onClick={() => openReport(row)}>
+                  <button type="button" className="mobile-primary-button" onClick={() => void openReport(row)}>
                     Create PDF
                   </button>
                   {pdfUrl ? (
-                    <button type="button" className="mobile-secondary-button" onClick={() => void openDownloadUrl(pdfUrl, reportFilename(row))}>
+                    <button
+                      type="button"
+                      className="mobile-secondary-button"
+                      onClick={() => {
+                        setActionError(null);
+                        void openDownloadUrl(pdfUrl, reportFilename(row)).catch((err) => {
+                          setActionError(normalizeApiError(err, 'Download mislukt.'));
+                        });
+                      }}
+                    >
                       <Download size={14} /> Download
                     </button>
                   ) : null}
