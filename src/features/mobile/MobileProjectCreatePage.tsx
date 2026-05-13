@@ -43,7 +43,7 @@ export function MobileProjectCreatePage() {
   function templateLabel(item: Record<string, unknown>) { return [String(item.name || item.title || item.code || item.id || 'Template'), String(item.norm || '').trim(), item.version ? `v${String(item.version)}` : ''].filter(Boolean).join(' · '); }
 
   useEffect(() => {
-    if (!projectId) return;
+    if (!projectId) return undefined;
     let active = true; setLoading(true);
     getProject(projectId).then((project) => { if (!active) return; setForm({ ...defaultForm(), projectnummer: String(project.projectnummer || project.code || ''), name: String(project.name || ''), client_name: String(project.client_name || project.opdrachtgever || ''), execution_class: (String(project.execution_class || 'EXC2').toUpperCase() || 'EXC2') as ProjectFormValues['execution_class'], inspection_template_id: String(project.default_template_id || project.inspection_template_id || ''), status: String(project.status || 'conform'), start_date: String(project.start_date || ''), end_date: String(project.end_date || ''), norm_system_id: String((project as any).norm_system_id || ''), norm_profile_id: String((project as any).norm_profile_id || ''), iso3834_level: String((project as any).iso3834_level || ''), iso5817_level: String((project as any).iso5817_level || '') }); })
       .catch((err) => { if (!active) return; setError(normalizeApiError(err, 'Project kon niet worden geladen.')); })

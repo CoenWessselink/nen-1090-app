@@ -290,7 +290,7 @@ export function WeldInspectionModal({
   }, [weld]);
 
   useEffect(() => {
-    if (!open || !weld?.id || !weld.project_id) return;
+    if (!open || !weld?.id || !weld.project_id) return undefined;
     let active = true;
     getWeldAttachments(String(weld.project_id), String(weld.id))
       .then((response) => {
@@ -308,7 +308,7 @@ export function WeldInspectionModal({
     const inspectionId = String((inspection as Record<string, unknown> | null)?.id || '');
     if (!open || !inspectionId) {
       setInspectionAttachments([]);
-      return;
+      return undefined;
     }
     let active = true;
     getInspectionAttachments(inspectionId)

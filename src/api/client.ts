@@ -1,14 +1,17 @@
 import { runtimeTrace } from '@/utils/runtimeTracing';
+import { env } from '@/lib/env';
 
 export class ApiError extends Error {
   status: number;
   details?: unknown;
+  requestId?: string | null;
 
-  constructor(message: string, status = 500, details?: unknown) {
+  constructor(message: string, status = 500, details?: unknown, requestId?: string | null) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
     this.details = details;
+    this.requestId = requestId;
   }
 }
 
@@ -19,22 +22,36 @@ export type QueryParams = Record<string, QueryValue>;
 const OPTIONAL_REQUEST_HARD_LIMIT = 2;
 const API_REQUEST_TIMEOUT = 30_000;
 
-let refreshPromise: Promise<boolean> | null = null;
+function newRequestId(): string {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return crypto.randomUUID();
+  }
+  return `req_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function apiRoot(): string {
+  return env.apiBaseUrl.replace(/\/+$/, '');
+}
 
 function buildBasePath(path: string): string {
   if (path.startsWith('http://') || path.startsWith('https://')) {
     return path;
   }
 
+  const root = apiRoot();
+
+  if (path.startsWith('/api/v1')) {
+    const rest = path.length > 8 ? path.slice(8) : '';
+    const clean = rest.startsWith('/') ? rest.slice(1) : rest;
+    return clean ? `${root}/${clean}` : `${root}/`;
+  }
+
   if (path.startsWith('/api/')) {
     return path;
   }
 
-  if (path.startsWith('/')) {
-    return `/api/v1${path}`;
-  }
-
-  return `/api/v1/${path}`;
+  const trimmed = path.startsWith('/') ? path.slice(1) : path;
+  return trimmed ? `${root}/${trimmed}` : `${root}/`;
 }
 
 function buildHeaders(init?: RequestInit): Headers {
@@ -44,12 +61,18 @@ function buildHeaders(init?: RequestInit): Headers {
     headers.set('Accept', 'application/json');
   }
 
+  if (!headers.has('X-Request-Id')) {
+    headers.set('X-Request-Id', newRequestId());
+  }
+
   if (init?.body && !(init.body instanceof FormData) && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
 
   return headers;
 }
+
+let refreshPromise: Promise<boolean> | null = null;
 
 function classifyCompatPattern(path: string): void {
   const segments = path.split('/').map((s) => s.toLowerCase());
@@ -81,7 +104,13 @@ async function parseResponse<T>(response: Response): Promise<T> {
       }
     }
 
-    throw new ApiError(response.statusText || 'API request failed', response.status, details);
+    const requestId =
+      response.headers.get('x-request-id') ||
+      response.headers.get('X-Request-Id') ||
+      response.headers.get('x-correlation-id') ||
+      null;
+
+    throw new ApiError(response.statusText || 'API request failed', response.status, details, requestId);
   }
 
   if (response.status === 204) {
@@ -107,9 +136,14 @@ async function parseResponse<T>(response: Response): Promise<T> {
 
 async function refreshAuth(): Promise<boolean> {
   if (!refreshPromise) {
-    refreshPromise = fetch('/api/v1/auth/refresh', {
+    refreshPromise = fetch(buildBasePath('/auth/refresh'), {
       method: 'POST',
       credentials: 'include',
+      headers: (() => {
+        const h = new Headers();
+        h.set('X-Request-Id', newRequestId());
+        return h;
+      })(),
     })
       .then((response) => response.ok)
       .catch(() => false)
@@ -178,11 +212,19 @@ export async function apiRequest<T = unknown>(
 }
 
 export async function healthRequest<T = unknown>(): Promise<T> {
-  return apiRequest<T>('/health');
+  const response = await fetchWithTimeout(env.healthUrl, {
+    credentials: 'include',
+    headers: buildHeaders(),
+  });
+  return parseResponse<T>(response);
 }
 
 export function buildListPath(path: string, params?: QueryParams): string {
-  const url = new URL(buildBasePath(path), window.location.origin);
+  const resolved = buildBasePath(path);
+  const url =
+    resolved.startsWith('http://') || resolved.startsWith('https://')
+      ? new URL(resolved)
+      : new URL(resolved, window.location.origin);
 
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
@@ -252,7 +294,12 @@ export async function downloadUrlAsBlob(
   });
 
   if (!response.ok) {
-    throw new ApiError('Download failed', response.status);
+    const requestId =
+      response.headers.get('x-request-id') ||
+      response.headers.get('X-Request-Id') ||
+      response.headers.get('x-correlation-id') ||
+      null;
+    throw new ApiError('Download failed', response.status, undefined, requestId);
   }
 
   const blob = await response.blob();

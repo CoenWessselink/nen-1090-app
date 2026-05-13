@@ -47,7 +47,7 @@ export function Modal({ open, onClose, title, size = 'medium', children }: Props
   }, [open]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) return undefined;
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
@@ -57,7 +57,7 @@ export function Modal({ open, onClose, title, size = 'medium', children }: Props
   }, [open]);
 
   useEffect(() => {
-    if (!open || size === 'fullscreen') return;
+    if (!open || size === 'fullscreen') return undefined;
 
     const getBounds = () => {
       if (typeof window === 'undefined') return { x: 0, y: 0 };

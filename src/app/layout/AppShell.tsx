@@ -1,4 +1,4 @@
-import { PropsWithChildren, useEffect } from 'react';
+import { PropsWithChildren, Suspense, useEffect } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Topbar } from '@/components/layout/Topbar';
@@ -71,7 +71,17 @@ export function AppShell({ children }: PropsWithChildren) {
       <div className="shell-main">
         <Topbar />
         <div className="page-canvas" data-testid="app-main">
-          {children ?? <Outlet />}
+          {children ?? (
+            <Suspense
+              fallback={
+                <div className="route-fallback" role="status" aria-live="polite" style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>
+                  Laden…
+                </div>
+              }
+            >
+              <Outlet />
+            </Suspense>
+          )}
         </div>
         <MobileTabbar />
       </div>

@@ -25,7 +25,7 @@ export function MobilePdfViewerPage() {
   const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
-    if (!documentId) return;
+    if (!documentId) return undefined;
     let active = true;
     setLoading(true);
     getDocument(documentId)
@@ -56,7 +56,7 @@ export function MobilePdfViewerPage() {
     let objectUrl = '';
     if (!sourcePath) {
       setPreviewUrl('');
-      return;
+      return undefined;
     }
     setCreating(!documentId);
     openProtectedPdfPreview(sourcePath)
