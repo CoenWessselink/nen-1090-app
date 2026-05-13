@@ -39,17 +39,12 @@ export function getComplianceOverview(projectId: string | number) {
   return apiRequest<ComplianceOverview>(`/projects/${projectId}/ce-export-runtime`);
 }
 
-export function getComplianceMissingItems(projectId: string | number) {
-  return apiRequest<Record<string, unknown>>(`/projects/${projectId}/ce-dossier`);
-}
-
-export function getComplianceChecklist(projectId: string | number) {
-  return apiRequest<Record<string, unknown>>(`/projects/${projectId}/ce-dossier`);
-}
-
 export function getCeDossier(projectId: string | number) {
   return apiRequest<Record<string, unknown>>(`/projects/${projectId}/ce-dossier`);
 }
+
+export const getComplianceMissingItems = getCeDossier;
+export const getComplianceChecklist = getCeDossier;
 
 export function getCeDocuments(params?: ListParams) {
   return listRequest<Record<string, unknown>>('/documents', safeParams(params));

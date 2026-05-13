@@ -18,4 +18,9 @@ export async function createDefect(projectId: string | number, weldId: string | 
 export async function updateDefect(defectId: string | number, payload: Record<string, unknown>) { const current = (await getDefect(defectId)) as unknown as Record<string, unknown>; const next = { ...current, ...payload, id: defectId } as unknown as Defect; defectStore.set(String(defectId), next); return next; }
 export async function resolveDefect(defectId: string | number) { return await updateDefect(defectId, { status: 'resolved' }); }
 export async function reopenDefect(defectId: string | number) { return await updateDefect(defectId, { status: 'open' }); }
-export async function deleteDefect(defectId: string | number) { defectStore.delete(String(defectId)); }
+export async function deleteDefect(defectId: string | number) {
+  const key = String(defectId);
+  const existing = defectStore.get(key) as unknown as Record<string, unknown> | undefined;
+  defectStore.delete(key);
+  return { id: defectId, project_id: existing?.project_id } as Record<string, unknown>;
+}

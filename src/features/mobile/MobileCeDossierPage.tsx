@@ -1,15 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Download, RefreshCcw, Save } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { createPdfExport, getCeDossier } from '@/api/ce';
+import { createPdfExport } from '@/api/ce';
 import { fetchProjectMaterialsAggregate } from '@/api/materialsAggregate';
-import { createProjectDocument, getProjectDocuments } from '@/api/documents';
+import { createProjectDocument } from '@/api/documents';
+import { fetchCeAggregate } from '@/api/ceAggregateApi';
 import {
   addProjectMaterialLink,
   addProjectWelderLink,
   addProjectWpsLink,
   getProject,
-  getProjectSelectedMaterials,
   getProjectSelectedWelders,
   getProjectSelectedWps,
   removeProjectMaterialLink,
@@ -17,12 +17,13 @@ import {
   removeProjectWpsLink,
   updateProject,
 } from '@/api/projects';
-import { getInspectionTemplates, getWeldCoordinators, getWelders, getWps } from '@/api/settings';
+import { getInspectionTemplates, getWeldCoordinators } from '@/api/settings';
 import { Modal } from '@/components/overlays/Modal';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
 import { CeNormChecksPanel } from '@/features/ce-dossier/CeNormChecksPanel';
 import { openDownloadUrl } from '@/utils/download';
 import { apiProjectPdfUrl, buildCeDossierFilename, firstPdfDocument, formatValue, groupChecklist, normalizeApiError, normalizeChecklist, summarizeChecklist } from '@/features/mobile/mobile-utils';
+import { attachmentsAsCeDocuments, dossierPayloadFromAggregate } from '@/utils/ceAggregateView';
 import type { CeDocument, Project } from '@/types/domain';
 
 type CeRowSection = 'project' | 'welds' | 'inspections' | 'documents' | 'settings';
@@ -113,35 +114,29 @@ export function MobileCeDossierPage() {
 
   async function loadDossier() {
     const [
-      dossier,
-      docs,
+      aggregate,
       projectRecord,
       materialsAggregate,
-      wpsList,
-      welderList,
       coordinatorList,
       templateList,
       selectedWps,
       selectedWelders,
     ] = await Promise.all([
-      getCeDossier(projectId),
-      getProjectDocuments(projectId, { page: 1, limit: 100 }).catch(() => ({ items: [] as CeDocument[] })),
-      getProject(projectId).catch(() => null),
+      fetchCeAggregate(projectId),
+      getProject(projectId),
       fetchProjectMaterialsAggregate(projectId),
-      getWps().catch(() => ({ items: [] as Option[] })),
-      getWelders().catch(() => ({ items: [] as Option[] })),
-      getWeldCoordinators().catch(() => ({ items: [] as Option[] })),
-      getInspectionTemplates().catch(() => ({ items: [] as Option[] })),
-      getProjectSelectedWps(projectId).catch(() => []),
-      getProjectSelectedWelders(projectId).catch(() => []),
+      getWeldCoordinators(),
+      getInspectionTemplates(),
+      getProjectSelectedWps(projectId),
+      getProjectSelectedWelders(projectId),
     ]);
 
-    setPayload((dossier || {}) as Record<string, unknown>);
-    setDocuments(Array.isArray(docs?.items) ? docs.items : []);
+    setPayload(dossierPayloadFromAggregate(aggregate));
+    setDocuments(attachmentsAsCeDocuments((aggregate.attachments || []) as Record<string, unknown>[]));
     setProject(projectRecord || null);
     setMaterials(materialsAggregate.catalog.items as Option[]);
-    setWpsRows(Array.isArray(wpsList) ? wpsList : ((wpsList as { items?: Option[] })?.items || []));
-    setWelderRows(Array.isArray(welderList) ? welderList : ((welderList as { items?: Option[] })?.items || []));
+    setWpsRows((Array.isArray(aggregate.wps) ? aggregate.wps : []) as Option[]);
+    setWelderRows((Array.isArray(aggregate.welders) ? aggregate.welders : []) as Option[]);
     setCoordinatorRows(Array.isArray(coordinatorList) ? coordinatorList : ((coordinatorList as { items?: Option[] })?.items || []));
     setTemplateRows(Array.isArray(templateList) ? templateList : ((templateList as { items?: Option[] })?.items || []));
     setLinkedMaterialIds(

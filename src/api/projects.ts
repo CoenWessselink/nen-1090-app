@@ -132,16 +132,6 @@ function mapProjectPatch(payload: Partial<ProjectFormValues> & Record<string, un
   return body;
 }
 
-function emptyComplianceOverview(): ComplianceOverview {
-  return {
-    score: 0,
-    status: 'onbekend',
-    summary: {},
-    checklist: [],
-    missing_items: [],
-  } as ComplianceOverview;
-}
-
 function needsProjectReadyStatus(status: string | null | undefined) {
   const normalized = String(status || '').trim().toLowerCase().replace(/_/g, '-');
   return ['concept', 'in-controle', 'in controle', 'in-uitvoering', 'in uitvoering', 'open', 'in-behandeling', 'in behandeling'].includes(normalized);
@@ -216,18 +206,7 @@ export async function getProjectDocuments(projectId: string | number, params?: L
 }
 
 export async function getProjectCompliance(projectId: string | number) {
-  try {
-    return await apiRequest<ComplianceOverview>(`/projects/${projectId}/ce-dossier/preview`);
-  } catch (error) {
-    if (error instanceof ApiError && error.status === 404) {
-      traceProjectRuntime('PROJECT_COMPLIANCE_EMPTY_FALLBACK', {
-        projectId,
-      });
-
-      return emptyComplianceOverview();
-    }
-    throw error;
-  }
+  return await apiRequest<ComplianceOverview>(`/projects/${projectId}/ce-dossier/preview`);
 }
 
 export async function getProjectExports(projectId: string | number, params?: ListParams) {
