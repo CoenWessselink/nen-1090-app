@@ -11,7 +11,6 @@ on:
       - 'tsconfig*.json'
       - 'vite.config.*'
       - 'scripts/**'
-      - '.gitmodules'
       - '.github/workflows/app_ci_pages_validation.yml'
       - '.github/workflows/deploy_app_to_cloudflare_pages.yml'
   workflow_dispatch:

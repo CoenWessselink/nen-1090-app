@@ -15,7 +15,6 @@ on:
       - "index.html"
       - "index.source.html"
       - "_headers"
-      - ".gitmodules"
       - "scripts/submodules-init.mjs"
       - ".github/workflows/deploy_app_to_cloudflare_pages.yml"
 

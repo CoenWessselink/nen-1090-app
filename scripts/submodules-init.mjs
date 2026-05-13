@@ -1,6 +1,7 @@
 /**
- * Cloudflare Pages / CI: ensure git submodules are checked out when .git is present.
- * Frontend build does not import backend; failing submodule fetch must not break the Pages build.
+ * Optional: run `git submodule update --init` when .gitmodules exists.
+ * This app does not ship a backend submodule (Cloudflare Pages cannot clone private submodules reliably).
+ * Frontend bundle does not import ../backend.
  */
 import { execSync } from 'node:child_process';
 import { existsSync } from 'node:fs';

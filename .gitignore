@@ -1,3 +1,6 @@
+# API: clone https://github.com/CoenWessselink/NEN10900-api.git into ./backend for local monorepo (not tracked).
+/backend/
+
 node_modules/
 dist/
 release/

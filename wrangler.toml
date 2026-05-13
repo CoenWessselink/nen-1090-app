@@ -7,15 +7,8 @@ AZURE_API_ORIGIN = "https://nen1090-api-prod-f5ddagedbrftb4ew.westeurope-01.azur
 # Backwards-compatible alias (kan worden verwijderd als alles up-to-date is)
 BACKEND_API_BASE = "https://nen1090-api-prod-f5ddagedbrftb4ew.westeurope-01.azurewebsites.net"
 
-# Cloudflare Pages (Git): zet Build command op `npm run build` of `npm run build:pages`
-# zodat scripts/submodules-init.mjs submodules kan initialiseren na toevoegen van backend/.
-#
-# Private submodule (backend → NEN10900-api): Cloudflare clone faalt met
-#   fatal: could not read Username for 'https://github.com'
-# als de Cloudflare GitHub-app geen toegang heeft tot de API-repo.
-# Fix: GitHub → Settings → Applications → "Cloudflare Workers/Pages" → Configure
-# → Repository access: zowel nen-1090-app als NEN10900-api selecteren (of "All repositories").
-# Daarna opnieuw deployen. (.gitmodules gebruikt ../NEN10900-api.git zodat dezelfde host/token geldt.)
+# Cloudflare Pages: backend API staat in repo NEN10900-api (niet als submodule in deze repo).
+# Lokaal: git clone .../NEN10900-api.git backend  (map staat in .gitignore).
 #
 # Opmerking: Overschrijf AZURE_API_ORIGIN in Cloudflare Pages Dashboard:
 # Settings > Environment variables > AZURE_API_ORIGIN
