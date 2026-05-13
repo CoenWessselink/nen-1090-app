@@ -5,6 +5,9 @@ import { useSession } from '@/app/session/SessionContext';
 
 function isLocalPreviewBypassEnabled() {
   if (typeof window === 'undefined') return false;
+  // Playwright (and local strict runs) use 127.0.0.1 / localhost as baseURL; bypass would skip
+  // login redirect and break auth-routing-smoke. Opt in to bypass only when this is unset.
+  if (import.meta.env.VITE_STRICT_AUTH_LOCAL === 'true') return false;
   const host = window.location.hostname;
   return host === '127.0.0.1' || host === 'localhost';
 }

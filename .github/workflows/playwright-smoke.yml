@@ -27,6 +27,8 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Build frontend
+        env:
+          VITE_STRICT_AUTH_LOCAL: 'true'
         run: npm run build
 
       - name: Run smoke tests
