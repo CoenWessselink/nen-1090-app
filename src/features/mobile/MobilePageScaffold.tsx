@@ -40,7 +40,9 @@ export function MobilePageScaffold({ title, subtitle, children, backTo = null, r
           )}
         </div>
       </header>
-      <div className="mobile-page-body">{children}</div>
+      <div className="mobile-page-body">
+        <div className="mobile-unified-body">{children}</div>
+      </div>
     </div>
   );
 }

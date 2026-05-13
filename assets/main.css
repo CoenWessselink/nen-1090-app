@@ -210,6 +210,11 @@ pre {
   border-color: rgba(47, 107, 255, .22);
   box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
 }
+.card.stat-card.card-button.settings-kpi-active {
+  border-color: rgba(47, 107, 255, 0.32);
+  background: linear-gradient(180deg, #f8fbff 0%, #eef4ff 100%);
+  box-shadow: 0 8px 22px rgba(47, 107, 255, 0.1);
+}
 .dashboard-action-bar {
   display: flex;
   align-items: center;

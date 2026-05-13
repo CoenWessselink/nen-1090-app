@@ -1,4 +1,5 @@
 import { apiRequest, downloadRequest, listRequest } from '@/api/client';
+import { fetchCompliancePdfBlob } from '@/api/exports';
 import type { ListParams } from '@/types/api';
 import type { ComplianceOverview, ExportJob } from '@/types/domain';
 
@@ -133,5 +134,5 @@ export function downloadProjectExport(projectId: string | number, exportId: stri
 }
 
 export function downloadPremiumCeDossierPdf(projectId: string | number) {
-  return downloadRequest(`/projects/${projectId}/exports/compliance/pdf?download=true&force=true`);
+  return fetchCompliancePdfBlob(String(projectId), true).then((result) => result.blob);
 }

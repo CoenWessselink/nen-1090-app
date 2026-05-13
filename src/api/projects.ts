@@ -123,6 +123,9 @@ function mapProjectPatch(payload: Partial<ProjectFormValues> & Record<string, un
   if (payload.end_date !== undefined) set('end_date', payload.end_date || null);
   if (payload.coordinator_id !== undefined) set('coordinator_id', payload.coordinator_id || null);
   if (payload.coordinator_name !== undefined) set('coordinator_name', payload.coordinator_name || null);
+  if (payload.notes !== undefined) {
+    body.notes = payload.notes === '' || payload.notes === null ? null : payload.notes;
+  }
 
   traceProjectRuntime('PROJECT_PATCH_PAYLOAD_NORMALIZED', {
     fieldCount: Object.keys(body).length,

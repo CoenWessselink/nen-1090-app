@@ -1,4 +1,5 @@
-import { ApiError, apiRequest, listRequest, optionalRequest } from '@/api/client';
+import { ApiError, apiRequest, buildListPath, listRequest, optionalRequest } from '@/api/client';
+import { runtimeTrace } from '@/utils/runtimeTracing';
 import type { Tenant } from '@/types/domain';
 
 export type MasterDataItem = Record<string, unknown>;
@@ -89,18 +90,30 @@ export function getTenants() {
 }
 
 export async function getSettings() {
-  const [wps, materials, welders, inspectionTemplates] = await Promise.all([
+  const [wpsR, materialsR, weldersR, inspectionTemplatesR] = await Promise.allSettled([
     listRequest<MasterDataListResponse>('/settings/wps'),
-    listRequest<MasterDataListResponse>('/settings/materials'),
+    getMaterials(),
     listRequest<MasterDataListResponse>('/settings/welders'),
     listRequest<MasterDataListResponse>('/settings/inspection-templates'),
   ]);
 
+  const take = (result: PromiseSettledResult<MasterDataListResponse>, key: string): MasterDataListResponse => {
+    if (result.status === 'fulfilled') {
+      return result.value;
+    }
+    runtimeTrace('SETTINGS_SECTION_FAILED', {
+      key,
+      message: result.reason instanceof Error ? result.reason.message : 'unknown',
+      status: result.reason instanceof ApiError ? result.reason.status : undefined,
+    });
+    return [];
+  };
+
   return {
-    wps: normalizeItems(wps),
-    materials: normalizeItems(materials),
-    welders: normalizeItems(welders),
-    inspection_templates: normalizeItems(inspectionTemplates),
+    wps: normalizeItems(take(wpsR, 'wps')),
+    materials: normalizeItems(take(materialsR, 'materials')),
+    welders: normalizeItems(take(weldersR, 'welders')),
+    inspection_templates: normalizeItems(take(inspectionTemplatesR, 'inspection-templates')),
   } satisfies Record<string, unknown>;
 }
 
@@ -145,8 +158,19 @@ export function getProcesses() {
   return listRequest<MasterDataListResponse>('/settings/processes');
 }
 
-export function getMaterials() {
-  return listRequest<MasterDataListResponse>('/settings/materials');
+export async function getMaterials() {
+  try {
+    return await optionalRequest<MasterDataListResponse>([
+      buildListPath('/settings/materials'),
+      buildListPath('/materials'),
+    ]);
+  } catch (error) {
+    runtimeTrace('SETTINGS_MATERIALS_UNAVAILABLE', {
+      message: error instanceof Error ? error.message : 'unknown',
+      status: error instanceof ApiError ? error.status : undefined,
+    });
+    return [];
+  }
 }
 
 export function createMaterial(payload: Record<string, unknown>) {

@@ -52,7 +52,7 @@ jobs:
           test -d release/assets
 
       - name: Upload Pages artifact preview
-        if: always()
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: app-pages-release-preview

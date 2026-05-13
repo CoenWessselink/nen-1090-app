@@ -35,9 +35,12 @@ body {
 .mobile-page-body,
 .page-stack,
 .superadmin-page,
+.superadmin-v2-page,
 .settings-page,
+.norms-settings-page,
 .tenant-profile-page,
-[data-page='billing'] {
+[data-page='billing'],
+.billing-success-page {
   background: transparent !important;
 }
 

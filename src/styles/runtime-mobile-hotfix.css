@@ -51,6 +51,12 @@ body.modal-dragging {
 
 .page-stack,
 .settings-page,
+.norms-settings-page,
+.superadmin-v2-page,
+.superadmin-page,
+.tenant-profile-page,
+.billing-page,
+.planning-page,
 .settings-layout,
 .settings-sections,
 .mobile-page,
@@ -71,7 +77,19 @@ body.modal-dragging {
 }
 
 .settings-page,
+.norms-settings-page,
+.superadmin-v2-page,
+.superadmin-page,
+.tenant-profile-page,
+.billing-page,
+.planning-page,
 .settings-page *,
+.norms-settings-page *,
+.superadmin-v2-page *,
+.superadmin-page *,
+.tenant-profile-page *,
+.billing-page *,
+.planning-page *,
 .overlay-backdrop,
 .overlay-backdrop *,
 .modal-panel,
@@ -146,11 +164,40 @@ body.modal-dragging {
   -webkit-overflow-scrolling: touch !important;
 }
 
-.settings-page {
+/* Canonical content width for all MobilePageScaffold routes */
+.mobile-page > .mobile-page-body {
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 16px 40px;
+  box-sizing: border-box;
+}
+
+.settings-page,
+.billing-page,
+.superadmin-v2-page,
+.norms-settings-page,
+.billing-success-page,
+.tenant-profile-page,
+.superadmin-page,
+.planning-page {
   width: 100% !important;
-  max-width: 1180px !important;
-  margin: 0 auto !important;
-  padding: 0 16px 48px !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Column stack inside scaffold body (single wrapper from MobilePageScaffold) */
+.mobile-unified-body {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 20px !important;
+  width: 100% !important;
+}
+
+.mobile-kpi-tile-active {
+  box-shadow: 0 0 0 3px rgba(79, 124, 255, 0.45) !important;
+  outline: 1px solid rgba(147, 197, 253, 0.9) !important;
 }
 
 .settings-page .section-banner {
@@ -199,7 +246,18 @@ body.modal-dragging {
   .settings-cards,
   .settings-sections,
   .settings-page .section-nav-grid,
+  .settings-page .dashboard-kpi-grid,
+  .settings-page .mobile-kpi-grid,
   .settings-page .content-grid-2,
+  .norms-settings-page .content-grid-2,
+  .billing-page .dashboard-kpi-grid,
+  .billing-page .mobile-kpi-grid,
+  .superadmin-v2-page .mobile-kpi-grid,
+  .mobile-page .mobile-kpi-grid,
+  .mobile-page .dashboard-kpi-grid,
+  .mobile-page .content-grid-2,
+  .mobile-page .detail-grid,
+  .mobile-page .mobile-list-stack,
   .detail-grid,
   .two-column-grid {
     display: grid !important;
@@ -208,6 +266,14 @@ body.modal-dragging {
   }
 
   .settings-page,
+  .billing-page,
+  .superadmin-v2-page,
+  .norms-settings-page,
+  .billing-success-page,
+  .tenant-profile-page,
+  .superadmin-page,
+  .planning-page,
+  .mobile-page > .mobile-page-body,
   .settings-card,
   .settings-panel,
   .settings-page .card,

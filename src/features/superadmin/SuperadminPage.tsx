@@ -30,6 +30,7 @@ import { LoadingState } from '@/components/feedback/LoadingState';
 import { InlineMessage } from '@/components/feedback/InlineMessage';
 import { ConfirmActionDialog } from '@/components/dialogs/ConfirmActionDialog';
 import { StatCard } from '@/components/ui/StatCard';
+import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
 import { useSession } from '@/app/session/SessionContext';
 import { useAuthStore } from '@/app/store/auth-store';
 import { useUiStore } from '@/app/store/ui-store';
@@ -441,37 +442,70 @@ export function SuperadminPage() {
   ];
 
   return (
-    <div className="page-stack superadmin-page">
-      <section className="section-banner">
-        <div className="section-banner-copy">
-          <span className="section-banner-kicker">Platformcontrole</span>
-          <h1>Superadmin</h1>
-          <p>Tenantbeheer, tenant 360, gebruikersbeheer, billingcontrole en platformstatus met dezelfde header- en tegeltaal als Project 360.</p>
+    <MobilePageScaffold
+      title="Superadmin"
+      subtitle="Tenantbeheer, billing en platformstatus"
+      rightSlot={
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <Button variant="secondary" onClick={handleExportCsv} disabled={tenantActions.exportCsv.isPending}>
+            <Download size={16} /> Export CSV
+          </Button>
+          <Button onClick={() => setCreateTenantOpen(true)}>
+            <Plus size={16} /> Nieuwe tenant
+          </Button>
         </div>
-        <div className="section-banner-actions">
-          <Button variant="secondary" onClick={handleExportCsv} disabled={tenantActions.exportCsv.isPending}><Download size={16} /> Export CSV</Button>
-          <Button onClick={() => setCreateTenantOpen(true)}><Plus size={16} /> Nieuwe tenant</Button>
-        </div>
-      </section>
+      }
+    >
+      <div className="superadmin-page">
 
-      <div className="section-nav-grid">
-        <div className="section-nav-tile is-active"><div className="section-nav-tile-top"><Building2 size={18} /><span>Tenants</span></div><div className="section-nav-tile-value">{String(summary.total_tenants || 0)}</div><strong>Alle tenants in platform</strong><small>Overzicht van alle omgevingen en tenants.</small></div>
-        <div className="section-nav-tile is-active"><div className="section-nav-tile-top"><BadgeCheck size={18} /><span>Actief</span></div><div className="section-nav-tile-value">{String(summary.active_tenants || 0)}</div><strong>Direct inzetbaar</strong><small>Tenants met actieve status.</small></div>
-        <div className="section-nav-tile is-active"><div className="section-nav-tile-top"><Users size={18} /><span>Gebruikers</span></div><div className="section-nav-tile-value">{String(summary.total_users || 0)}</div><strong>Gekoppelde tenant-users</strong><small>Gebruikers verspreid over alle tenants.</small></div>
-        <div className="section-nav-tile is-active"><div className="section-nav-tile-top"><Activity size={18} /><span>Platform</span></div><div className="section-nav-tile-value">{health.isError ? 'Check' : 'Online'}</div><strong>Health en contracten</strong><small>Health-check en billingcontracten.</small></div>
+      <div className="mobile-kpi-grid">
+        <div className="mobile-kpi-card mobile-kpi-card-primary">
+          <div className="mobile-kpi-top" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Building2 size={16} aria-hidden />
+            <span>Tenants</span>
+          </div>
+          <strong>{String(summary.total_tenants || 0)}</strong>
+          <small style={{ color: 'rgba(255,255,255,0.82)' }}>Alle tenants in platform</small>
+        </div>
+        <div className="mobile-kpi-card mobile-kpi-card-success">
+          <div className="mobile-kpi-top" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <BadgeCheck size={16} aria-hidden />
+            <span>Actief</span>
+          </div>
+          <strong>{String(summary.active_tenants || 0)}</strong>
+          <small style={{ color: 'rgba(255,255,255,0.82)' }}>Direct inzetbare tenants</small>
+        </div>
+        <div className="mobile-kpi-card mobile-kpi-card-warning">
+          <div className="mobile-kpi-top" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Users size={16} aria-hidden />
+            <span>Gebruikers</span>
+          </div>
+          <strong>{String(summary.total_users || 0)}</strong>
+          <small style={{ color: 'rgba(255,255,255,0.82)' }}>Gekoppelde tenant-users</small>
+        </div>
+        <div className="mobile-kpi-card mobile-kpi-card-secondary">
+          <div className="mobile-kpi-top" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Activity size={16} aria-hidden />
+            <span>Platform</span>
+          </div>
+          <strong>{health.isError ? '—' : 'OK'}</strong>
+          <small style={{ color: 'rgba(255,255,255,0.82)' }}>{health.isError ? 'Health-check mislukt' : 'Health en contracten'}</small>
+        </div>
       </div>
 
-      <div className="section-nav-grid cols-5">
+      <div className="tabs" role="tablist" aria-label="Tenant detail weergave">
         {detailTabs.map((tabItem) => {
-          const icon = tabItem.value === 'samenvatting' ? Building2 : tabItem.value === 'gebruikers' ? Users : tabItem.value === 'rechten' ? ShieldCheck : tabItem.value === 'security' ? ShieldCheck : tabItem.value === 'groei' ? LineChart : tabItem.value === 'audit' ? Activity : tabItem.value === 'billing' ? CreditCard : ShieldCheck;
-          const Icon = icon;
           const active = detailTab === tabItem.value;
           return (
-            <button key={tabItem.value} type="button" className={`section-nav-tile ${active ? 'is-active' : ''}`} onClick={() => setDetailTab(tabItem.value)}>
-              <div className="section-nav-tile-top"><Icon size={18} /><span>{tabItem.label}</span></div>
-              <div className="section-nav-tile-value">{tabItem.value === 'samenvatting' ? filteredRows.length : tabItem.value === 'gebruikers' ? userRows.length : tabItem.value === 'rechten' ? Number((permissionSummary.role_counts as Record<string, number> | undefined)?.tenant_admin || 0) : tabItem.value === 'security' ? '🔒' : tabItem.value === 'groei' ? String(growthSummary.active_tenant_count || 0) : tabItem.value === 'audit' ? auditRows.length : tabItem.value === 'billing' ? '€' : selectedTenant ? 'Beheer' : 'Kies'}</div>
-              <strong>{tabItem.label}</strong>
-              <small>{tabItem.value === 'samenvatting' ? 'Zoek, filter en open tenants vanuit één overzicht.' : tabItem.value === 'gebruikers' ? 'Gebruikers per tenant beheren.' : tabItem.value === 'rechten' ? 'RBAC, rolverdeling en toegangsmodi per tenant.' : tabItem.value === 'security' ? 'Tenant write-locks, access runtime en platform-security samenvatting.' : tabItem.value === 'groei' ? 'Analytics, integraties en reporting-insights voor groei.' : tabItem.value === 'audit' ? 'Auditregels en gebeurtenissen bekijken.' : tabItem.value === 'billing' ? 'Seats, betalingen en abonnement per tenant.' : 'Activeren, suspenden en tenantstatus beheren.'}</small>
+            <button
+              key={tabItem.value}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              className={`tab-button${active ? ' tab-button-active' : ''}`}
+              onClick={() => setDetailTab(tabItem.value)}
+            >
+              {tabItem.label}
             </button>
           );
         })}
@@ -564,7 +598,7 @@ export function SuperadminPage() {
       </div>
 
       <Drawer open={createTenantOpen} title="Nieuwe tenant" onClose={() => setCreateTenantOpen(false)}>
-        <form className="page-stack" onSubmit={handleCreateTenant}>
+        <form className="mobile-unified-body" onSubmit={handleCreateTenant}>
           <div className="content-grid-2">
             <label>
               <span>Tenantnaam</span>
@@ -949,7 +983,7 @@ export function SuperadminPage() {
               <div className="checklist-item"><strong>RBAC</strong><span>Alleen platform_admin / superadmin ziet deze module en acties.</span></div>
             </div>
             {detailTenant ? (
-              <form className="page-stack" style={{ marginTop: 16 }} onSubmit={async (event) => {
+              <form className="mobile-unified-body" style={{ marginTop: 16 }} onSubmit={async (event) => {
                 event.preventDefault();
                 if (!selectedTenant) return;
                 await tenantActions.patchTenant.mutateAsync({ tenantId: selectedTenant.id, payload: tenantEditForm });
@@ -972,7 +1006,7 @@ export function SuperadminPage() {
       </Drawer>
 
       <Drawer open={Boolean(editingUser)} title={editingUser ? `Gebruiker bewerken · ${editingUser.email}` : 'Gebruiker bewerken'} onClose={() => setEditingUser(null)}>
-        <form className="page-stack" onSubmit={async (event) => {
+        <form className="mobile-unified-body" onSubmit={async (event) => {
           event.preventDefault();
           if (!editingUser) return;
           await tenantUserActions.patchUser.mutateAsync({ userId: editingUser.user_id, payload: tenantUserEditForm });
@@ -995,7 +1029,7 @@ export function SuperadminPage() {
       </Drawer>
 
       <Drawer open={createInvoiceOpen} title="Factuur aanmaken" onClose={() => setCreateInvoiceOpen(false)}>
-        <form className="page-stack" onSubmit={async (event) => {
+        <form className="mobile-unified-body" onSubmit={async (event) => {
           event.preventDefault();
           if (!selectedTenant) return;
           const response = await tenantBillingActions.createInvoice.mutateAsync(invoiceForm as unknown as Record<string, unknown>);
@@ -1011,7 +1045,7 @@ export function SuperadminPage() {
       </Drawer>
 
       <Drawer open={manualPaymentOpen} title="Handmatige betaling" onClose={() => setManualPaymentOpen(false)}>
-        <form className="page-stack" onSubmit={async (event) => {
+        <form className="mobile-unified-body" onSubmit={async (event) => {
           event.preventDefault();
           if (!selectedTenant) return;
           const payload: Record<string, unknown> = {
@@ -1035,7 +1069,7 @@ export function SuperadminPage() {
       </Drawer>
 
       <Drawer open={changePlanOpen} title="Abonnement wijzigen" onClose={() => setChangePlanOpen(false)}>
-        <form className="page-stack" onSubmit={async (event) => {
+        <form className="mobile-unified-body" onSubmit={async (event) => {
           event.preventDefault();
           if (!selectedTenant) return;
           const response = await tenantBillingActions.changePlan.mutateAsync(planForm as unknown as Record<string, unknown>);
@@ -1050,7 +1084,7 @@ export function SuperadminPage() {
       </Drawer>
 
       <Drawer open={accessOverrideOpen} title="Access mode override" onClose={() => setAccessOverrideOpen(false)}>
-        <form className="page-stack" onSubmit={async (event) => {
+        <form className="mobile-unified-body" onSubmit={async (event) => {
           event.preventDefault();
           if (!selectedTenant) return;
           const response = await tenantBillingActions.overrideAccessMode.mutateAsync(accessOverrideForm as unknown as Record<string, unknown>);
@@ -1068,7 +1102,7 @@ export function SuperadminPage() {
         {selectedInvoiceDetail.isLoading ? <LoadingState label="Factuurdetail laden..." /> : null}
         {selectedInvoiceDetail.isError ? <ErrorState title="Factuurdetail niet geladen" description="Controleer /platform/tenants/{id}/invoices/{invoice_id}." /> : null}
         {selectedInvoiceDetail.data ? (
-          <div className="page-stack">
+          <div className="mobile-unified-body">
             <div className="detail-grid">
               <div><span>Factuur</span><strong>{text(selectedInvoiceDetail.data.number || selectedInvoiceDetail.data.id)}</strong></div>
               <div><span>Status</span><strong>{text(selectedInvoiceDetail.data.status)}</strong></div>
@@ -1100,7 +1134,7 @@ export function SuperadminPage() {
       </Drawer>
 
       <Drawer open={Boolean(creditInvoiceId)} title="Creditfactuur verwerken" onClose={() => setCreditInvoiceId(null)}>
-        <form className="page-stack" onSubmit={async (event) => {
+        <form className="mobile-unified-body" onSubmit={async (event) => {
           event.preventDefault();
           if (!creditInvoiceId) return;
           const response = await tenantBillingActions.creditInvoice.mutateAsync({ invoiceId: creditInvoiceId, payload: { reason: creditReason } });
@@ -1114,7 +1148,7 @@ export function SuperadminPage() {
       </Drawer>
 
       <Drawer open={createUserOpen} title="Nieuwe tenant-user" onClose={() => setCreateUserOpen(false)}>
-        <form className="page-stack" onSubmit={handleCreateUser}>
+        <form className="mobile-unified-body" onSubmit={handleCreateUser}>
           <label>
             <span>E-mail</span>
             <Input type="email" value={tenantUserForm.email} onChange={(event) => setTenantUserForm((current) => ({ ...current, email: event.target.value }))} required />
@@ -1160,5 +1194,6 @@ export function SuperadminPage() {
         onConfirm={handleTenantAction}
       />
     </div>
+    </MobilePageScaffold>
   );
 }

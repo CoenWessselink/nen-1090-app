@@ -1,8 +1,7 @@
-import { DatabaseZap, RefreshCcw, Settings2 } from "lucide-react";
+import { BookMarked, DatabaseZap, RefreshCcw, Settings2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
 import { InlineMessage } from "@/components/feedback/InlineMessage";
 import { useAuthStore } from "@/app/store/auth-store";
 import { useUiStore } from "@/app/store/ui-store";
@@ -10,9 +9,13 @@ import { useInspectionTemplates, useMaterials, useSettings, useWeldCoordinators,
 import { MasterDataManager } from "@/features/instellingen/components/MasterDataManager";
 import { CompanySettingsCard } from "@/features/instellingen/components/CompanySettingsCard";
 import { InspectionTemplatesManager } from "@/features/instellingen/components/InspectionTemplatesManager";
+import { MobilePageScaffold } from "@/features/mobile/MobilePageScaffold";
 
 type SettingsTab = "organisatie" | "masterdata";
 
+/**
+ * Instellingen gebruikt `MobilePageScaffold` + `mobile-kpi-*`; verticale rhythm komt uit de scaffold-wrapper (`.mobile-unified-body`).
+ */
 export function InstellingenPage() {
   const navigate = useNavigate();
   const [tab, setTab] = useState<SettingsTab>("masterdata");
@@ -55,123 +58,115 @@ export function InstellingenPage() {
   };
 
   return (
-    <div className="page-stack settings-page" data-settings-page>
-      <section className="section-banner settings-hero">
-        <div className="section-banner-copy">
-          <h1>Settings</h1>
+    <MobilePageScaffold
+      title="Instellingen"
+      subtitle="Masterdata, organisatie en templates"
+      rightSlot={
+        <button type="button" className="mobile-icon-button" onClick={refreshAll} aria-label="Gegevens vernieuwen">
+          <RefreshCcw size={18} />
+        </button>
+      }
+    >
+      <div className="settings-page" data-settings-page>
+        {message ? <InlineMessage tone="success">{message}</InlineMessage> : null}
+
+        <div className="mobile-kpi-grid">
+          <button
+            type="button"
+            aria-pressed={tab === "masterdata"}
+            className={`mobile-kpi-card mobile-kpi-card-primary ${tab === "masterdata" ? "mobile-kpi-tile-active" : ""}`}
+            onClick={() => setTab("masterdata")}
+          >
+            <div className="mobile-kpi-top">
+              <DatabaseZap size={18} aria-hidden />
+              <span>Masterdata</span>
+            </div>
+            <strong>{masterDataCount}</strong>
+            <small style={{ color: "rgba(255,255,255,0.82)" }}>WPS, materialen, lassers en inspectietemplates</small>
+          </button>
+
+          <button
+            type="button"
+            aria-pressed={tab === "organisatie"}
+            className={`mobile-kpi-card mobile-kpi-card-secondary ${tab === "organisatie" ? "mobile-kpi-tile-active" : ""}`}
+            onClick={() => setTab("organisatie")}
+          >
+            <div className="mobile-kpi-top">
+              <Settings2 size={18} aria-hidden />
+              <span>Organisatie</span>
+            </div>
+            <strong style={{ fontSize: "clamp(1rem, 3vw, 1.35rem)", wordBreak: "break-word" }}>{user?.tenant || "—"}</strong>
+            <small style={{ color: "rgba(255,255,255,0.82)" }}>Bedrijfsinstellingen en branding</small>
+          </button>
         </div>
 
-        <div className="section-banner-actions">
-          <Button variant="secondary" onClick={refreshAll}>
-            <RefreshCcw size={16} /> Refresh
-          </Button>
-        </div>
-      </section>
+        {tab === "organisatie" ? (
+          <div className="content-grid-2 settings-sections">
+            <CompanySettingsCard />
 
-      {message ? <InlineMessage tone="success">{message}</InlineMessage> : null}
+            <Card className="settings-card">
+              <div className="section-title-row">
+                <h3>Tenant</h3>
+              </div>
 
-      <div className="section-nav-grid cols-2 settings-grid">
-        <button
-          type="button"
-          className={`section-nav-tile ${tab === "masterdata" ? "is-active" : ""}`}
-          onClick={() => setTab("masterdata")}
-        >
-          <div className="section-nav-tile-top">
-            <DatabaseZap size={18} />
-            <span>Masterdata</span>
+              <div className="detail-grid">
+                <div>
+                  <span>Gebruiker</span>
+                  <strong>{user?.email || "—"}</strong>
+                </div>
+
+                <div>
+                  <span>Tenant</span>
+                  <strong>{user?.tenant || "—"}</strong>
+                </div>
+
+                <div>
+                  <span>Rol</span>
+                  <strong>{user?.role || "—"}</strong>
+                </div>
+              </div>
+            </Card>
           </div>
+        ) : null}
 
-          <div className="section-nav-tile-value">{masterDataCount}</div>
+        {tab === "masterdata" ? (
+          <div className="settings-sections">
+            <div className="mobile-kpi-grid">
+              <button
+                type="button"
+                className="mobile-kpi-card mobile-kpi-card-secondary mobile-kpi-card-action"
+                onClick={() => navigate("/instellingen/templates")}
+              >
+                <div className="mobile-kpi-top">
+                  <DatabaseZap size={18} aria-hidden />
+                  <span>Inspectietemplates</span>
+                </div>
+                <strong>{(inspectionTemplates.data?.items || []).length}</strong>
+                <small style={{ color: "rgba(255,255,255,0.82)" }}>Templatebeheer openen</small>
+              </button>
 
-          <strong>WPS, materialen, lassers en inspectietemplates</strong>
-        </button>
+              <button
+                type="button"
+                className="mobile-kpi-card mobile-kpi-card-secondary mobile-kpi-card-action"
+                onClick={() => navigate("/instellingen/normeringen")}
+              >
+                <div className="mobile-kpi-top">
+                  <BookMarked size={18} aria-hidden />
+                  <span>Normeringen</span>
+                </div>
+                <strong>NEN</strong>
+                <small style={{ color: "rgba(255,255,255,0.82)" }}>Normprofielen en normenbibliotheek</small>
+              </button>
+            </div>
 
-        <button
-          type="button"
-          className={`section-nav-tile ${tab === "organisatie" ? "is-active" : ""}`}
-          onClick={() => setTab("organisatie")}
-        >
-          <div className="section-nav-tile-top">
-            <Settings2 size={18} />
-            <span>Organisatie</span>
+            <MasterDataManager title="WPS" type="wps" rows={wps.data?.items || []} isLoading={wps.isLoading} isError={wps.isError} refetch={wps.refetch} />
+            <MasterDataManager title="Materialen" type="materials" rows={materials.data?.items || []} isLoading={materials.isLoading} isError={materials.isError} refetch={materials.refetch} />
+            <MasterDataManager title="Lassers" type="welders" rows={welders.data?.items || []} isLoading={welders.isLoading} isError={welders.isError} refetch={welders.refetch} />
+            <MasterDataManager title="Lascoördinatoren" type="weld-coordinators" rows={weldCoordinators.data?.items || []} isLoading={weldCoordinators.isLoading} isError={weldCoordinators.isError} refetch={weldCoordinators.refetch} />
+            <InspectionTemplatesManager />
           </div>
-
-          <div className="section-nav-tile-value">{user?.tenant || "Tenant"}</div>
-
-          <strong>Bedrijfsinstellingen en branding</strong>
-        </button>
+        ) : null}
       </div>
-
-      {tab === "organisatie" ? (
-        <div className="content-grid-2 settings-sections">
-          <CompanySettingsCard />
-
-          <Card className="settings-card">
-            <div className="section-title-row">
-              <h3>Tenant</h3>
-            </div>
-
-            <div className="detail-grid">
-              <div>
-                <span>Gebruiker</span>
-                <strong>{user?.email || "—"}</strong>
-              </div>
-
-              <div>
-                <span>Tenant</span>
-                <strong>{user?.tenant || "—"}</strong>
-              </div>
-
-              <div>
-                <span>Rol</span>
-                <strong>{user?.role || "—"}</strong>
-              </div>
-            </div>
-          </Card>
-        </div>
-      ) : null}
-
-      {tab === "masterdata" ? (
-        <div className="page-stack settings-sections">
-          <div className="section-nav-grid cols-2 settings-grid">
-            <button
-              type="button"
-              className="section-nav-tile"
-              onClick={() => navigate('/instellingen/templates')}
-            >
-              <div className="section-nav-tile-top">
-                <DatabaseZap size={18} />
-                <span>Inspectietemplates</span>
-              </div>
-
-              <div className="section-nav-tile-value">{(inspectionTemplates.data?.items || []).length}</div>
-
-              <strong>Templatebeheer</strong>
-            </button>
-
-            <button
-              type="button"
-              className="section-nav-tile"
-              onClick={() => navigate('/instellingen/normeringen')}
-            >
-              <div className="section-nav-tile-top">
-                <DatabaseZap size={18} />
-                <span>Normeringen</span>
-              </div>
-
-              <div className="section-nav-tile-value">NEN</div>
-
-              <strong>Normprofielen en normenbibliotheek</strong>
-            </button>
-          </div>
-
-          <MasterDataManager title="WPS" type="wps" rows={wps.data?.items || []} isLoading={wps.isLoading} isError={wps.isError} refetch={wps.refetch} />
-          <MasterDataManager title="Materialen" type="materials" rows={materials.data?.items || []} isLoading={materials.isLoading} isError={materials.isError} refetch={materials.refetch} />
-          <MasterDataManager title="Lassers" type="welders" rows={welders.data?.items || []} isLoading={welders.isLoading} isError={welders.isError} refetch={welders.refetch} />
-          <MasterDataManager title="Lascoördinatoren" type="weld-coordinators" rows={weldCoordinators.data?.items || []} isLoading={weldCoordinators.isLoading} isError={weldCoordinators.isError} refetch={weldCoordinators.refetch} />
-          <InspectionTemplatesManager />
-        </div>
-      ) : null}
-    </div>
+    </MobilePageScaffold>
   );
 }

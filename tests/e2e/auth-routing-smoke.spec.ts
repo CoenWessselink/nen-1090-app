@@ -8,7 +8,8 @@ test.describe('auth + routing smoke', () => {
   });
 
   test('beschermde route gaat naar login indien niet ingelogd', async ({ page }) => {
-    await page.goto('/dashboard', { waitUntil: 'networkidle' });
+    await page.goto('/dashboard', { waitUntil: 'domcontentloaded' });
+    await page.waitForURL(/\/login(?:$|[?#])/, { timeout: 15_000 });
     await expect(page).toHaveURL(/\/login(?:$|[?#])/);
     await expect(page.locator('body')).toBeVisible();
   });

@@ -5,6 +5,9 @@ import { useSession } from '@/app/session/SessionContext';
 
 function isLocalPreviewBypassEnabled() {
   if (typeof window === 'undefined') return false;
+  // Playwright (and local strict runs) use 127.0.0.1 / localhost as baseURL; bypass would skip
+  // login redirect and break auth-routing-smoke. Opt in to bypass only when this is unset.
+  if (import.meta.env.VITE_STRICT_AUTH_LOCAL === 'true') return false;
   const host = window.location.hostname;
   return host === '127.0.0.1' || host === 'localhost';
 }
@@ -19,11 +22,11 @@ export function ProtectedRoute({ children }: PropsWithChildren) {
     return <>{children}</>;
   }
 
-  if (session.isBootstrapping) {
-    return hasPersistedSession || session.isAuthenticated ? <>{children}</> : null;
-  }
+  const mayAccess = session.isAuthenticated || hasPersistedSession;
 
-  if (!session.isAuthenticated && !hasPersistedSession) {
+  // Never render null while bootstrapping: without a session gate we redirect to login
+  // immediately so URL and DOM match (e2e + avoids blank flash on /dashboard).
+  if (!mayAccess) {
     const from = `${location.pathname}${location.search}${location.hash}`;
     return (
       <Navigate
@@ -34,5 +37,6 @@ export function ProtectedRoute({ children }: PropsWithChildren) {
     );
   }
 
+  // Session or persisted credentials present: allow shell while bootstrap validates / refreshes.
   return <>{children}</>;
 }

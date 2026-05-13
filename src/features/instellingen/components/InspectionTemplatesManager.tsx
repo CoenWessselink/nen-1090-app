@@ -245,14 +245,38 @@ export function InspectionTemplatesManager() {
   }
 
   return (
-    <div className="page-stack">
+    <div className="mobile-list-stack">
       {message ? <InlineMessage tone="neutral">{message}</InlineMessage> : null}
 
-      <div className="project-tab-kpi-grid">
-        <Card><strong>Templates totaal</strong><div style={{ fontSize: 28, fontWeight: 800, marginTop: 8 }}>{summary.total}</div></Card>
-        <Card><strong>Standaardtemplates</strong><div style={{ fontSize: 28, fontWeight: 800, marginTop: 8 }}>{summary.defaults}</div></Card>
-        <Card><strong>Controlepunten totaal</strong><div style={{ fontSize: 28, fontWeight: 800, marginTop: 8 }}>{summary.checks}</div></Card>
-        <Card><strong>EXC verdeling</strong><div style={{ marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap' }}>{Object.entries(summary.byExc).map(([key, value]) => <Badge key={key}>{`${key}: ${value}`}</Badge>)}</div></Card>
+      <div className="mobile-kpi-grid">
+        <div className="mobile-kpi-card mobile-kpi-card-primary">
+          <div className="mobile-kpi-top">
+            <span>Templates totaal</span>
+          </div>
+          <strong>{summary.total}</strong>
+        </div>
+        <div className="mobile-kpi-card mobile-kpi-card-success">
+          <div className="mobile-kpi-top">
+            <span>Standaardtemplates</span>
+          </div>
+          <strong>{summary.defaults}</strong>
+        </div>
+        <div className="mobile-kpi-card mobile-kpi-card-warning">
+          <div className="mobile-kpi-top">
+            <span>Controlepunten</span>
+          </div>
+          <strong>{summary.checks}</strong>
+        </div>
+        <div className="mobile-kpi-card mobile-kpi-card-secondary">
+          <div className="mobile-kpi-top">
+            <span>EXC-verdeling</span>
+          </div>
+          <div style={{ marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {Object.entries(summary.byExc).map(([key, val]) => (
+              <Badge key={key}>{`${key}: ${val}`}</Badge>
+            ))}
+          </div>
+        </div>
       </div>
 
       <Card>
@@ -320,7 +344,7 @@ export function InspectionTemplatesManager() {
       </div>
 
       <Modal open={editorOpen} onClose={() => setEditorOpen(false)} title={draft.id ? 'Inspectietemplate wijzigen' : 'Nieuwe inspectietemplate'} size="fullscreen">
-        <div className="page-stack">
+        <div className="mobile-unified-body">
           <Card>
             <div className="section-title-row">
               <div>

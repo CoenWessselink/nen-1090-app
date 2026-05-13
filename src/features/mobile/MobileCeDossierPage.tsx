@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Download, RefreshCcw, Save } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { createPdfExport } from '@/api/ce';
-import { fetchProjectMaterialsAggregate } from '@/api/materialsAggregate';
+import { composeProjectMaterialsAggregate, fetchProjectMaterialsAggregate } from '@/api/materialsAggregate';
 import { createProjectDocument } from '@/api/documents';
 import { fetchCeAggregate } from '@/api/ceAggregateApi';
 import {
@@ -84,6 +84,25 @@ function toOptionValue(item: Record<string, unknown>) {
   return String(item.id || item.code || item.value || item.name || '');
 }
 
+function normalizeExcToken(value: string) {
+  return String(value || '').replace(/\s+/g, '').toUpperCase();
+}
+
+function templateMatchesExecutionClass(item: Option, executionClass: string) {
+  const target = normalizeExcToken(executionClass) || 'EXC2';
+  const raw = [
+    item.exc_class,
+    item.execution_class,
+    item.default_execution_class,
+    (item as Record<string, unknown>).exc,
+    (item as Record<string, unknown>).default_exc,
+    (item as Record<string, unknown>).execution_class_code,
+  ];
+  const candidates = raw.map((v) => normalizeExcToken(String(v || ''))).filter(Boolean);
+  if (candidates.length === 0) return true;
+  return candidates.some((c) => c === target || c.includes(target) || target.includes(c));
+}
+
 function sectionHelper(section: CeRowSection) {
   if (section === 'project') return 'Werk projectbasis, opdrachtgever en EXC-klasse direct bij.';
   if (section === 'documents') return 'Voeg direct ontbrekende documenten toe en sla op.';
@@ -113,22 +132,14 @@ export function MobileCeDossierPage() {
   const [editState, setEditState] = useState<DossierEditState>(initialEditState);
 
   async function loadDossier() {
-    const [
-      aggregate,
-      projectRecord,
-      materialsAggregate,
-      coordinatorList,
-      templateList,
-      selectedWps,
-      selectedWelders,
-    ] = await Promise.all([
+    const [aggregate, projectRecord, materialsAggregate, coordinatorList, templateList, selectedWps, selectedWelders] = await Promise.all([
       fetchCeAggregate(projectId),
-      getProject(projectId),
-      fetchProjectMaterialsAggregate(projectId),
-      getWeldCoordinators(),
-      getInspectionTemplates(),
-      getProjectSelectedWps(projectId),
-      getProjectSelectedWelders(projectId),
+      getProject(projectId).catch(() => null),
+      fetchProjectMaterialsAggregate(projectId).catch(() => composeProjectMaterialsAggregate(projectId)),
+      getWeldCoordinators().catch(() => ({ items: [] as Option[] })),
+      getInspectionTemplates().catch(() => ({ items: [] as Option[] })),
+      getProjectSelectedWps(projectId).catch(() => []),
+      getProjectSelectedWelders(projectId).catch(() => []),
     ]);
 
     setPayload(dossierPayloadFromAggregate(aggregate));
@@ -297,10 +308,7 @@ export function MobileCeDossierPage() {
     if (!selectedRow) return null;
     const showProject = selectedRow.section === 'project';
     const showDocuments = selectedRow.section === 'documents';
-    const templateOptions = templateRows.filter((item) => {
-      const rowExc = String(item.exc_class || item.execution_class || '').toUpperCase();
-      return !rowExc || rowExc === String(editState.execution_class || '').toUpperCase();
-    });
+    const templateOptions = templateRows.filter((item) => templateMatchesExecutionClass(item, editState.execution_class));
 
     return (
       <div className="ce-edit-form">

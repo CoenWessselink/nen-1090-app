@@ -1,14 +1,16 @@
-import { PageHeader } from '@/components/layout/PageHeader';
 import { InspectionTemplatesManager } from '@/features/instellingen/components/InspectionTemplatesManager';
+import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
 
 export function InspectionTemplatesPage() {
   return (
-    <div className="page-stack">
-      <PageHeader
-        title="Inspectietemplates"
-        description="Beheer EXC1 t/m EXC4 templates, wijzig checklistitems en stel projectdefaults in voor nieuwe lassen."
-      />
-      <InspectionTemplatesManager />
-    </div>
+    <MobilePageScaffold
+      title="Inspectietemplates"
+      subtitle="EXC1–EXC4, checklistitems en projectdefaults"
+      backTo="/settings-v2"
+    >
+      <div className="settings-page" data-settings-templates-page>
+        <InspectionTemplatesManager />
+      </div>
+    </MobilePageScaffold>
   );
 }
