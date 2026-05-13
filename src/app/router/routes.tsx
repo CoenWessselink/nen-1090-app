@@ -30,6 +30,12 @@ import { LogoutPage } from '@/features/auth/LogoutPage';
 import { ChangePasswordPage } from '@/features/auth/ChangePasswordPage';
 import { ActivateAccountPage } from '@/features/auth/ActivateAccountPage';
 
+function CeDossierRedirect() {
+  const { projectId } = useParams<{ projectId: string }>();
+  return <Navigate to={`/projecten/${projectId}/ce-v2`} replace />;
+}
+
+
 const ROLES = ['SUPERADMIN','SUPER_ADMIN','ADMIN','PLATFORM_ADMIN','PLATFORMADMIN','platform_admin','superadmin'];
 export const appRouteMeta = [
   { path:'/dashboard', label:'Dashboard', icon:LayoutDashboard, description:'Dashboard', showInSidebar:true, keywords:['dashboard','home'] },
