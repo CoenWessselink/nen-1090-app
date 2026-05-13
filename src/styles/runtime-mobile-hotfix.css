@@ -51,6 +51,7 @@ body.modal-dragging {
 
 .page-stack,
 .settings-page,
+.superadmin-v2-page,
 .settings-layout,
 .settings-sections,
 .mobile-page,
@@ -71,7 +72,9 @@ body.modal-dragging {
 }
 
 .settings-page,
+.superadmin-v2-page,
 .settings-page *,
+.superadmin-v2-page *,
 .overlay-backdrop,
 .overlay-backdrop *,
 .modal-panel,
@@ -147,11 +150,25 @@ body.modal-dragging {
 }
 
 .settings-page,
-.billing-page {
+.billing-page,
+.superadmin-v2-page {
   width: 100% !important;
   max-width: 1180px !important;
   margin: 0 auto !important;
   padding: 0 16px 48px !important;
+}
+
+/* Unified shell body under MobilePageScaffold (settings / billing / superadmin) */
+.mobile-unified-body {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+  width: 100% !important;
+}
+
+.mobile-kpi-tile-active {
+  box-shadow: 0 0 0 3px rgba(79, 124, 255, 0.45) !important;
+  outline: 1px solid rgba(147, 197, 253, 0.9) !important;
 }
 
 .settings-page .section-banner {
@@ -201,8 +218,11 @@ body.modal-dragging {
   .settings-sections,
   .settings-page .section-nav-grid,
   .settings-page .dashboard-kpi-grid,
+  .settings-page .mobile-kpi-grid,
   .settings-page .content-grid-2,
   .billing-page .dashboard-kpi-grid,
+  .billing-page .mobile-kpi-grid,
+  .superadmin-v2-page .mobile-kpi-grid,
   .detail-grid,
   .two-column-grid {
     display: grid !important;
@@ -211,6 +231,8 @@ body.modal-dragging {
   }
 
   .settings-page,
+  .billing-page,
+  .superadmin-v2-page,
   .settings-card,
   .settings-panel,
   .settings-page .card,

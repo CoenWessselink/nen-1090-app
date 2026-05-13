@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { createTenantBillingCheckout } from '@/api/billing';
 import { trackEvent, getPricingExperiment, getTrialStatus } from '@/api/analytics';
-import { PageHeader } from '@/components/layout/PageHeader';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { InlineMessage } from '@/components/feedback/InlineMessage';
+import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
 
 function euro(cents: number) {
   return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(cents / 100);
@@ -51,79 +51,87 @@ export default function BillingPage() {
   }
 
   return (
-    <div className="page-stack billing-page">
-      <PageHeader title={headline} description={subline} />
+    <MobilePageScaffold title="Facturatie" subtitle={headline}>
+      <div className="billing-page mobile-unified-body" data-page="billing">
+        {subline ? <div className="mobile-list-card-meta">{subline}</div> : null}
 
-      {trialMessage ? <InlineMessage tone="warning">{trialMessage}</InlineMessage> : null}
+        {trialMessage ? <InlineMessage tone="warning">{trialMessage}</InlineMessage> : null}
 
-      <div className="dashboard-kpi-grid">
-        <div className="card stat-card">
-          <div className="stat-label">Maandprijs</div>
-          <div className="stat-value">{euro(monthlyCents)}</div>
-          <div className="stat-meta">per maand (indicatief)</div>
-        </div>
-        <div className="card stat-card">
-          <div className="stat-label">Jaarprijs</div>
-          <div className="stat-value">{euro(yearlyCents)}</div>
-          <div className="stat-meta">per jaar (indicatief)</div>
-        </div>
-        <div className="card stat-card">
-          <div className="stat-label">Zitplaatsen</div>
-          <div className="stat-value">{seats}</div>
-          <div className="stat-meta">Aantal seats voor checkout</div>
-        </div>
-        <div className="card stat-card">
-          <div className="stat-label">Facturatiecyclus</div>
-          <div className="stat-value" style={{ fontSize: 20 }}>
-            {cycle === 'yearly' ? 'Jaar' : 'Maand'}
+        <div className="mobile-kpi-grid">
+          <div className="mobile-kpi-card mobile-kpi-card-primary">
+            <div className="mobile-kpi-top">
+              <span>Maandprijs</span>
+            </div>
+            <strong>{euro(monthlyCents)}</strong>
+            <small style={{ color: 'rgba(255,255,255,0.82)' }}>per maand (indicatief)</small>
           </div>
-          <div className="stat-meta">Kies vóór checkout</div>
+          <div className="mobile-kpi-card mobile-kpi-card-success">
+            <div className="mobile-kpi-top">
+              <span>Jaarprijs</span>
+            </div>
+            <strong>{euro(yearlyCents)}</strong>
+            <small style={{ color: 'rgba(255,255,255,0.82)' }}>per jaar (indicatief)</small>
+          </div>
+          <div className="mobile-kpi-card mobile-kpi-card-warning">
+            <div className="mobile-kpi-top">
+              <span>Zitplaatsen</span>
+            </div>
+            <strong>{seats}</strong>
+            <small style={{ color: 'rgba(255,255,255,0.82)' }}>Aantal seats voor checkout</small>
+          </div>
+          <div className="mobile-kpi-card mobile-kpi-card-secondary">
+            <div className="mobile-kpi-top">
+              <span>Facturatiecyclus</span>
+            </div>
+            <strong style={{ fontSize: 22 }}>{cycle === 'yearly' ? 'Jaar' : 'Maand'}</strong>
+            <small style={{ color: 'rgba(255,255,255,0.82)' }}>Kies vóór checkout</small>
+          </div>
         </div>
+
+        <Card>
+          <div className="section-title-row">
+            <h3>Professional</h3>
+          </div>
+          <div className="detail-grid">
+            <div>
+              <span>Seats</span>
+              <input
+                type="number"
+                min={1}
+                max={500}
+                value={seats}
+                onChange={(e) => setSeats(Number(e.target.value) || 1)}
+                className="input"
+                aria-label="Aantal seats"
+              />
+            </div>
+            <div>
+              <span>Periode</span>
+              <select
+                value={cycle}
+                onChange={(e) => setCycle(e.target.value as 'monthly' | 'yearly')}
+                className="input"
+                aria-label="Facturatieperiode"
+              >
+                <option value="yearly">Jaarlijks</option>
+                <option value="monthly">Maandelijks</option>
+              </select>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="dashboard-action-bar">
+          <div className="dashboard-action-bar-copy">
+            <strong>Checkout</strong>
+            <div className="list-subtle">Je wordt doorgestuurd naar de betaalpagina zodra je bevestigt.</div>
+          </div>
+          <div className="dashboard-action-bar-actions">
+            <Button type="button" onClick={checkout}>
+              {cta}
+            </Button>
+          </div>
+        </Card>
       </div>
-
-      <Card>
-        <div className="section-title-row">
-          <h3>Professional</h3>
-        </div>
-        <div className="detail-grid">
-          <div>
-            <span>Seats</span>
-            <input
-              type="number"
-              min={1}
-              max={500}
-              value={seats}
-              onChange={(e) => setSeats(Number(e.target.value) || 1)}
-              className="input"
-              aria-label="Aantal seats"
-            />
-          </div>
-          <div>
-            <span>Periode</span>
-            <select
-              value={cycle}
-              onChange={(e) => setCycle(e.target.value as 'monthly' | 'yearly')}
-              className="input"
-              aria-label="Facturatieperiode"
-            >
-              <option value="yearly">Jaarlijks</option>
-              <option value="monthly">Maandelijks</option>
-            </select>
-          </div>
-        </div>
-      </Card>
-
-      <Card className="dashboard-action-bar">
-        <div className="dashboard-action-bar-copy">
-          <strong>Checkout</strong>
-          <div className="list-subtle">Je wordt doorgestuurd naar de betaalpagina zodra je bevestigt.</div>
-        </div>
-        <div className="dashboard-action-bar-actions">
-          <Button type="button" onClick={checkout}>
-            {cta}
-          </Button>
-        </div>
-      </Card>
-    </div>
+    </MobilePageScaffold>
   );
 }

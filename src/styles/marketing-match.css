@@ -35,6 +35,7 @@ body {
 .mobile-page-body,
 .page-stack,
 .superadmin-page,
+.superadmin-v2-page,
 .settings-page,
 .tenant-profile-page,
 [data-page='billing'] {
