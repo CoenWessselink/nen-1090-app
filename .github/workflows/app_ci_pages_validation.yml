@@ -46,6 +46,8 @@ jobs:
       - name: Build Pages release
         env:
           VITE_MARKETING_BASE_URL: https://nen1090-marketing.pages.dev
+          VITE_COMMIT_SHA: ${{ github.sha }}
+          VITE_DEPLOYMENT_ENV: ci
         run: npm run build:pages
 
       - name: Verify release output

@@ -9,7 +9,9 @@ import '@/styles/ui-polish.css';
 import '@/styles/mobile-overhaul-fixes.css';
 import '@/styles/runtime-mobile-hotfix.css';
 import { installFrontendEnglish } from '@/lib/frontend-english';
+import { initSentry } from '@/lib/sentry';
 
+void initSentry();
 installFrontendEnglish();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

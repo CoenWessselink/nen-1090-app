@@ -17,9 +17,10 @@ Meetbare doelen voor releases. Review elk kwartaal en pas drempels aan op basis 
 - **CI groen:** `typecheck`, `lint`, `build` (+ bundle-budget) op elke PR die `src/**` raakt.
 - **API-drift:** wijzigingen aan de productie-API horen in **NEN10900-api** `main` te landen; lokale `backend/` in deze repo is alleen een **clone**, niet de bron van waarheid.
 
-## Observability (volgende stap)
+## Observability
 
 - Correlatie: frontend stuurt **`X-Request-Id`** (zie `src/api/client.ts`). Backend kan dezelfde id in logs echoën wanneer middleware wordt toegevoegd.
+- **Sentry (optioneel):** zet `VITE_SENTRY_DSN` in Pages/CI-secrets; zonder DSN laadt de SDK niet. Release-labels: `VITE_APP_VERSION` en/of `VITE_COMMIT_SHA` (CI zet `VITE_COMMIT_SHA` automatisch op build).
 
 ## Tests
 
