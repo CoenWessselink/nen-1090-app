@@ -11,6 +11,7 @@ on:
       - 'tsconfig*.json'
       - 'vite.config.*'
       - 'scripts/**'
+      - '.gitmodules'
       - '.github/workflows/app_ci_pages_validation.yml'
       - '.github/workflows/deploy_app_to_cloudflare_pages.yml'
   workflow_dispatch:
@@ -27,6 +28,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Setup Node
         uses: actions/setup-node@v4

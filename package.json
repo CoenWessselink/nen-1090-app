@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "node scripts/use-source-entry.mjs && node ./node_modules/vite/bin/vite.js",
-    "build": "node scripts/use-source-entry.mjs && tsc -b && node ./node_modules/vite/bin/vite.js build",
+    "build": "node scripts/submodules-init.mjs && node scripts/use-source-entry.mjs && tsc -b && node ./node_modules/vite/bin/vite.js build",
     "build:pages": "npm run build && node scripts/prepare-release.mjs",
     "preview": "node ./node_modules/vite/bin/vite.js preview",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
