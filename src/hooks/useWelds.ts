@@ -4,6 +4,7 @@ import { normalizeListResponse } from '@/utils/api';
 import type { ListParams } from '@/types/api';
 import type { WeldFormValues } from '@/types/forms';
 import { useAuthStore } from '@/app/store/auth-store';
+import { invalidateProjectCeCompliance } from '@/utils/queryInvalidation';
 
 function ensureWeldId(value: string | number | undefined, action: string) {
   if (value === undefined || value === null || value === '') {
@@ -88,9 +89,10 @@ export function useCreateWeld() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (payload: WeldFormValues) => await createWeld(payload),
-    onSuccess: async () => {
+    onSuccess: async (_data, variables) => {
       await qc.invalidateQueries({ queryKey: ['welds'] });
       await qc.invalidateQueries({ queryKey: ['project-welds'] });
+      invalidateProjectCeCompliance(qc, variables.project_id);
     },
   });
 }
@@ -104,6 +106,7 @@ export function useCopyWeld(projectId: string | number) {
       await qc.invalidateQueries({ queryKey: ['welds'] });
       await qc.invalidateQueries({ queryKey: ['project-welds', projectId] });
       await qc.invalidateQueries({ queryKey: ['weld', projectId, v.weldId] });
+      invalidateProjectCeCompliance(qc, projectId);
     },
   });
 }
@@ -117,6 +120,7 @@ export function useUpdateWeld(projectId: string | number) {
       await qc.invalidateQueries({ queryKey: ['welds'] });
       await qc.invalidateQueries({ queryKey: ['project-welds', projectId] });
       await qc.invalidateQueries({ queryKey: ['weld', projectId, v.weldId] });
+      invalidateProjectCeCompliance(qc, projectId);
     },
   });
 }
@@ -128,6 +132,7 @@ export function useDeleteWeld(projectId: string | number) {
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ['welds'] });
       await qc.invalidateQueries({ queryKey: ['project-welds', projectId] });
+      invalidateProjectCeCompliance(qc, projectId);
     },
   });
 }
@@ -139,6 +144,7 @@ export function useResetWeldToNorm(projectId: string | number) {
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ['welds'] });
       await qc.invalidateQueries({ queryKey: ['project-welds', projectId] });
+      invalidateProjectCeCompliance(qc, projectId);
     },
   });
 }
@@ -150,6 +156,7 @@ export function useConformWeld(projectId: string | number) {
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ['welds'] });
       await qc.invalidateQueries({ queryKey: ['project-welds', projectId] });
+      invalidateProjectCeCompliance(qc, projectId);
     },
   });
 }
@@ -160,6 +167,7 @@ export function useUploadWeldAttachment(projectId: string | number, weldId: stri
     mutationFn: async (payload: FormData) => await uploadWeldAttachment(projectId, ensureWeldId(weldId, 'upload'), payload),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ['weld-attachments', projectId, weldId] });
+      invalidateProjectCeCompliance(qc, projectId);
     },
   });
 }
@@ -169,10 +177,11 @@ export function useBulkApproveWelds() {
   return useMutation({
     mutationFn: async ({ projectId, weldIds }: { projectId: string | number; weldIds: Array<string | number> }) =>
       await bulkApproveWelds(projectId, weldIds),
-    onSuccess: async () => {
+    onSuccess: async (_data, variables) => {
       await qc.invalidateQueries({ queryKey: ['welds'] });
       await qc.invalidateQueries({ queryKey: ['project-welds'] });
       await qc.invalidateQueries({ queryKey: ['inspections'] });
+      invalidateProjectCeCompliance(qc, variables.projectId);
     },
   });
 }
@@ -188,6 +197,7 @@ export function usePatchWeldStatus(projectId: string | number) {
       await qc.invalidateQueries({ queryKey: ['weld', projectId, v.weldId] });
       await qc.invalidateQueries({ queryKey: ['weld-inspections', projectId, v.weldId] });
       await qc.invalidateQueries({ queryKey: ['inspections'] });
+      invalidateProjectCeCompliance(qc, projectId);
     },
   });
 }

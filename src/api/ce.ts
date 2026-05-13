@@ -1,4 +1,4 @@
-import { apiRequest, downloadRequest, listRequest, optionalRequest } from '@/api/client';
+import { apiRequest, downloadRequest, listRequest } from '@/api/client';
 import type { ListParams } from '@/types/api';
 import type { ComplianceOverview, ExportJob } from '@/types/domain';
 
@@ -35,59 +35,28 @@ function safeParams(params?: ListParams): ListParams | undefined {
   };
 }
 
-async function safeCeRuntimeRequest<T>(path: string, fallback: T): Promise<T> {
-  try {
-    return await apiRequest<T>(path);
-  } catch {
-    return fallback;
-  }
-}
-
 export function getComplianceOverview(projectId: string | number) {
-  return safeCeRuntimeRequest<ComplianceOverview>(
-    `/projects/${projectId}/ce-export-runtime`,
-    {} as ComplianceOverview,
-  );
+  return apiRequest<ComplianceOverview>(`/projects/${projectId}/ce-export-runtime`);
 }
 
 export function getComplianceMissingItems(projectId: string | number) {
-  return safeCeRuntimeRequest<Record<string, unknown>>(
-    `/projects/${projectId}/ce-dossier`,
-    {},
-  );
+  return apiRequest<Record<string, unknown>>(`/projects/${projectId}/ce-dossier`);
 }
 
 export function getComplianceChecklist(projectId: string | number) {
-  return safeCeRuntimeRequest<Record<string, unknown>>(
-    `/projects/${projectId}/ce-dossier`,
-    {},
-  );
+  return apiRequest<Record<string, unknown>>(`/projects/${projectId}/ce-dossier`);
 }
 
 export function getCeDossier(projectId: string | number) {
-  return safeCeRuntimeRequest<Record<string, unknown>>(
-    `/projects/${projectId}/ce-dossier`,
-    {},
-  );
+  return apiRequest<Record<string, unknown>>(`/projects/${projectId}/ce-dossier`);
 }
 
 export function getCeDocuments(params?: ListParams) {
-  return optionalRequest<Record<string, unknown>>([
-    `/documents`,
-    `/attachments`,
-  ]).catch(() => ({
-    items: [],
-    total: 0,
-    page: Number(params?.page || 1),
-    limit: Number(params?.limit || 25),
-  }));
+  return listRequest<Record<string, unknown>>('/documents', safeParams(params));
 }
 
 export function uploadDocument(formData: FormData) {
-  return optionalRequest<Record<string, unknown>>([
-    `/documents/upload`,
-    `/attachments/upload`,
-  ], {
+  return apiRequest<Record<string, unknown>>('/documents/upload', {
     method: 'POST',
     body: formData,
   });
@@ -103,10 +72,7 @@ export async function getProjectExports(projectId: string | number, params?: Lis
 }
 
 export function getProjectExportPreview(projectId: string | number) {
-  return safeCeRuntimeRequest<Record<string, unknown>>(
-    `/projects/${projectId}/ce-export-runtime`,
-    {},
-  );
+  return apiRequest<Record<string, unknown>>(`/projects/${projectId}/ce-export-runtime`);
 }
 
 export function getProjectExportManifest(projectId: string | number, exportId?: string | number) {
@@ -131,16 +97,18 @@ export async function createPdfExport(projectId: string | number) {
 
   const premiumPdfPath = `/projects/${projectId}/exports/compliance/pdf?download=true&force=true`;
   const premiumViewerPath = `/projects/${projectId}/exports/compliance/pdf?download=false&force=true`;
+  const downloadUrl = typeof result.download_url === 'string' ? result.download_url : premiumPdfPath;
+  const viewerUrl = typeof result.viewer_url === 'string' ? result.viewer_url : premiumViewerPath;
 
   return {
-    ...(result || {}),
+    ...result,
     type: 'pdf',
     export_type: 'pdf',
     project_id: String(projectId),
     title: 'CE-dossier PDF',
     label: 'CE-dossier downloaden',
-    download_url: (result as any)?.download_url || premiumPdfPath,
-    viewer_url: (result as any)?.viewer_url || premiumViewerPath,
+    download_url: downloadUrl,
+    viewer_url: viewerUrl,
     fallback_download_url: premiumPdfPath,
     fallback_viewer_url: premiumViewerPath,
   };

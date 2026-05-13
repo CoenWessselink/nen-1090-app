@@ -17,6 +17,7 @@ export function resolveProjectContextTab(pathname: string) {
   if (pathname.endsWith('/assemblies') || pathname.includes('/assemblies/')) return 'assemblies';
   if (pathname.endsWith('/lassen') || pathname.includes('/lassen/')) return 'lassen';
   if (pathname.endsWith('/documenten')) return 'documenten';
+  if (pathname.endsWith('/ce-v2') || pathname.includes('/ce-v2')) return 'ce-dossier';
   if (pathname.endsWith('/ce-dossier')) return 'ce-dossier';
   if (pathname.endsWith('/historie')) return 'historie';
   if (pathname.endsWith('/overzicht')) return 'overzicht';
@@ -49,7 +50,14 @@ export function ProjectContextTabs({
         </div>
         {searchSlot ? <div className="project-context-tabs-search">{searchSlot}</div> : null}
       </div>
-      <Tabs tabs={projectContextTabs} value={value} onChange={(next) => navigate(`/projecten/${projectId}/${next}`)} />
+      <Tabs
+        tabs={projectContextTabs}
+        value={value}
+        onChange={(next) => {
+          const segment = next === 'ce-dossier' ? 'ce-v2' : next;
+          navigate(`/projecten/${projectId}/${segment}`);
+        }}
+      />
     </Card>
   );
 }

@@ -24,6 +24,7 @@ import {
   updateProject,
 } from '@/api/projects';
 import { createWeld, uploadWeldAttachment } from '@/api/welds';
+import { invalidateProjectCeCompliance } from '@/utils/queryInvalidation';
 import type { ListParams } from '@/types/api';
 import type { ProjectFormValues } from '@/types/forms';
 import { normalizeListResponse } from '@/utils/api';
@@ -244,6 +245,7 @@ export function useCreateProject() {
       queryClient.invalidateQueries({ queryKey: ['project-welds', project.id] });
       queryClient.invalidateQueries({ queryKey: ['welds'] });
       queryClient.invalidateQueries({ queryKey: ['project-materials-aggregate', project.id] });
+      invalidateProjectCeCompliance(queryClient, project.id);
     },
   });
 }
@@ -256,10 +258,7 @@ export function useUpdateProject() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       queryClient.invalidateQueries({ queryKey: ['project', variables.id] });
-      queryClient.invalidateQueries({ queryKey: ['compliance-overview', variables.id] });
-      queryClient.invalidateQueries({ queryKey: ['compliance-missing', variables.id] });
-      queryClient.invalidateQueries({ queryKey: ['compliance-checklist', variables.id] });
-      queryClient.invalidateQueries({ queryKey: ['ce-dossier', variables.id] });
+      invalidateProjectCeCompliance(queryClient, variables.id);
       queryClient.invalidateQueries({ queryKey: ['project-materials-aggregate', variables.id] });
     },
   });
@@ -300,7 +299,7 @@ export function useProjectBulkMutation() {
 
       return { count: projectIds.length, action, approvedWelds, projectsMarkedReady };
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       queryClient.invalidateQueries({ queryKey: ['project'] });
       queryClient.invalidateQueries({ queryKey: ['project-welds'] });
@@ -308,6 +307,9 @@ export function useProjectBulkMutation() {
       queryClient.invalidateQueries({ queryKey: ['project-materials-aggregate'] });
       queryClient.invalidateQueries({ queryKey: ['project-wps'] });
       queryClient.invalidateQueries({ queryKey: ['project-welders'] });
+      for (const projectId of variables.projectIds) {
+        invalidateProjectCeCompliance(queryClient, projectId);
+      }
     },
   });
 }
@@ -333,6 +335,7 @@ export function useProjectSelectionMutation() {
       queryClient.invalidateQueries({ queryKey: ['project-wps', variables.projectId] });
       queryClient.invalidateQueries({ queryKey: ['project-welders', variables.projectId] });
       queryClient.invalidateQueries({ queryKey: ['settings'] });
+      invalidateProjectCeCompliance(queryClient, variables.projectId);
     },
   });
 }

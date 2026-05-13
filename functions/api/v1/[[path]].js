@@ -1,4 +1,12 @@
-const API_ORIGIN = 'https://nen1090-api-prod-f5ddagedbrftb4ew.westeurope-01.azurewebsites.net';
+// Cloudflare Pages — thin proxy for /api/v1/* (same origin resolution as functions/api/[[path]].js)
+
+function getAzureOrigin(env) {
+  const origin = (env && (env.AZURE_API_ORIGIN || env.BACKEND_API_BASE)) || '';
+  if (!origin) {
+    throw new Error('AZURE_API_ORIGIN omgevingsvariabele is niet ingesteld.');
+  }
+  return origin.replace(/\/+$/, '');
+}
 
 function copyHeaders(request) {
   const headers = new Headers();
@@ -13,10 +21,21 @@ function copyHeaders(request) {
 }
 
 export async function onRequest(context) {
-  const { request, params } = context;
+  const { request, env, params } = context;
   const url = new URL(request.url);
+
+  let azureOrigin;
+  try {
+    azureOrigin = getAzureOrigin(env);
+  } catch {
+    return new Response(
+      JSON.stringify({ error: 'Backend niet geconfigureerd. Stel AZURE_API_ORIGIN in.' }),
+      { status: 503, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+
   const path = Array.isArray(params.path) ? params.path.join('/') : String(params.path || '');
-  const target = new URL(`${API_ORIGIN}/api/v1/${path}`);
+  const target = new URL(`${azureOrigin}/api/v1/${path}`);
   target.search = url.search;
 
   if (request.method === 'OPTIONS') {
