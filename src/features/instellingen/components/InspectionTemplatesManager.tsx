@@ -245,7 +245,7 @@ export function InspectionTemplatesManager() {
   }
 
   return (
-    <div className="mobile-unified-body">
+    <div className="mobile-list-stack">
       {message ? <InlineMessage tone="neutral">{message}</InlineMessage> : null}
 
       <div className="mobile-kpi-grid">

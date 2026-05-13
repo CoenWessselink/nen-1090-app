@@ -36,7 +36,7 @@ export default function SuperadminBillingPage() {
 
   return (
     <MobilePageScaffold title="Superadmin billing" subtitle="MRR, ARR, omzet en mislukte betalingen">
-      <div className="superadmin-page mobile-unified-body">
+      <div className="superadmin-page">
         {error ? (
           <Card>
             <strong>Billing dashboard niet geladen</strong>

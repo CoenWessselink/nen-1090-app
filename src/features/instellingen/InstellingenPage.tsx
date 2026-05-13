@@ -14,8 +14,7 @@ import { MobilePageScaffold } from "@/features/mobile/MobilePageScaffold";
 type SettingsTab = "organisatie" | "masterdata";
 
 /**
- * Settings uses the same in-canvas shell as the dashboard (`MobilePageScaffold` + `mobile-kpi-*`)
- * so masterdata tables (`MasterDataManager`) sit in `mobile-page-body` below the KPI tiles, unchanged.
+ * Instellingen gebruikt `MobilePageScaffold` + `mobile-kpi-*`; verticale rhythm komt uit de scaffold-wrapper (`.mobile-unified-body`).
  */
 export function InstellingenPage() {
   const navigate = useNavigate();
@@ -68,7 +67,7 @@ export function InstellingenPage() {
         </button>
       }
     >
-      <div className="settings-page mobile-unified-body" data-settings-page>
+      <div className="settings-page" data-settings-page>
         {message ? <InlineMessage tone="success">{message}</InlineMessage> : null}
 
         <div className="mobile-kpi-grid">
@@ -131,7 +130,7 @@ export function InstellingenPage() {
         ) : null}
 
         {tab === "masterdata" ? (
-          <div className="settings-sections mobile-unified-body">
+          <div className="settings-sections">
             <div className="mobile-kpi-grid">
               <button
                 type="button"

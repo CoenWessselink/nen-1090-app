@@ -456,7 +456,7 @@ export function SuperadminPage() {
         </div>
       }
     >
-      <div className="superadmin-page mobile-unified-body">
+      <div className="superadmin-page">
 
       <div className="mobile-kpi-grid">
         <div className="mobile-kpi-card mobile-kpi-card-primary">

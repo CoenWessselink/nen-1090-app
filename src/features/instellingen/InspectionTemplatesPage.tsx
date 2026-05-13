@@ -8,7 +8,7 @@ export function InspectionTemplatesPage() {
       subtitle="EXC1–EXC4, checklistitems en projectdefaults"
       backTo="/settings-v2"
     >
-      <div className="settings-page mobile-unified-body" data-settings-templates-page>
+      <div className="settings-page" data-settings-templates-page>
         <InspectionTemplatesManager />
       </div>
     </MobilePageScaffold>

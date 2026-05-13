@@ -209,7 +209,7 @@ export default function TenantProfilePage() {
       subtitle="Tenant 360 · profiel, billing, audit"
       backTo="/superadmin"
     >
-      <div className="tenant-profile-page mobile-unified-body" style={{ display: 'grid', gap: 20 }}>
+      <div className="tenant-profile-page" style={{ display: 'grid', gap: 20 }}>
       {message ? <InlineMessage tone={message.toLowerCase().includes('mislukt') ? 'danger' : 'success'}>{message}</InlineMessage> : null}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 12 }}>

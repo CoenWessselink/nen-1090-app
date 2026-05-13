@@ -72,10 +72,10 @@ export function MobileDashboardPage() {
   );
 
   return (
-    <MobilePageScaffold title="Dashboard" subtitle="Mobile overview">
-      {loading ? <div className="mobile-state-card">Loading dashboard…</div> : null}
+    <MobilePageScaffold title="Dashboard" subtitle="Overzicht">
+      {loading ? <div className="mobile-state-card">Dashboard laden…</div> : null}
       {error ? <div className="mobile-state-card mobile-state-card-error">{error}</div> : null}
-      {refreshing && !loading ? <div className="mobile-list-card-meta" style={{ marginBottom: 8 }}>Updating dashboard…</div> : null}
+      {refreshing && !loading ? <div className="mobile-list-card-meta" style={{ marginBottom: 8 }}>Dashboard vernieuwen…</div> : null}
       {!loading && !error && showExampleHint ? (
         <button
           type="button"

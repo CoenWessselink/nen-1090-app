@@ -49,7 +49,7 @@ export default function BillingSuccessPage() {
 
   return (
     <MobilePageScaffold title="Betaling" subtitle="Mollie checkout">
-      <main className="billing-success-page mobile-unified-body">
+      <main className="billing-success-page">
         <section className="billing-success-card">
           <span className="billing-eyebrow">Mollie checkout</span>
           <h1>Betaling verwerken</h1>

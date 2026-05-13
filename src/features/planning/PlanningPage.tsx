@@ -46,7 +46,7 @@ export function PlanningPage() {
         </button>
       }
     >
-      <div className="mobile-unified-body">
+      <div className="planning-page">
         <Card>
           <DataTableToolbar
             left={<Input value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Zoek op taak, project of medewerker" />}

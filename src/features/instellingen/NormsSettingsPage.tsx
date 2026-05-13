@@ -84,7 +84,7 @@ export function NormsSettingsPage() {
         </button>
       }
     >
-      <div className="norms-settings-page mobile-unified-body">
+      <div className="norms-settings-page">
         <div className="mobile-kpi-grid">
           {tabs.map((item) => {
             const Icon = item.icon;

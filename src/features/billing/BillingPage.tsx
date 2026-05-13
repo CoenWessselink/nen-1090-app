@@ -52,7 +52,7 @@ export default function BillingPage() {
 
   return (
     <MobilePageScaffold title="Facturatie" subtitle={headline}>
-      <div className="billing-page mobile-unified-body" data-page="billing">
+      <div className="billing-page" data-page="billing">
         {subline ? <div className="mobile-list-card-meta">{subline}</div> : null}
 
         {trialMessage ? <InlineMessage tone="warning">{trialMessage}</InlineMessage> : null}
