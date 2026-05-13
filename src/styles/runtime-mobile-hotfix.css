@@ -191,7 +191,7 @@ body.modal-dragging {
 .mobile-unified-body {
   display: flex !important;
   flex-direction: column !important;
-  gap: 16px !important;
+  gap: 20px !important;
   width: 100% !important;
 }
 

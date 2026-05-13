@@ -25,6 +25,21 @@ body {
     linear-gradient(180deg, #f8fbff 0%, #f3f7fb 100%);
 }
 
+/* Single wrapper inside MobilePageScaffold — rhythm matches .page-stack / dashboard */
+.settings-page,
+.norms-settings-page,
+.billing-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.settings-sections:not(.content-grid-2) {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
 button,
 .btn,
 .mobile-primary-button,
@@ -378,8 +393,19 @@ table th {
   .mobile-page-body,
   .page-stack,
   .settings-page,
+  .norms-settings-page,
+  .settings-sections,
   .superadmin-page,
+  .superadmin-v2-page,
   [data-page='billing'] {
+    gap: 20px;
+  }
+}
+
+/* Wide scaffold: same KPI strip density as dashboard / billing / superadmin */
+@media (min-width: 1025px) {
+  .mobile-page .mobile-kpi-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 20px;
   }
 }
@@ -388,7 +414,9 @@ table th {
   .mobile-page-body,
   .page-stack,
   .settings-page,
+  .norms-settings-page,
   .superadmin-page,
+  .superadmin-v2-page,
   [data-page='billing'] {
     padding-left: 12px;
     padding-right: 12px;
