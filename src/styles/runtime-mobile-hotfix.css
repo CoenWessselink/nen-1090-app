@@ -146,7 +146,8 @@ body.modal-dragging {
   -webkit-overflow-scrolling: touch !important;
 }
 
-.settings-page {
+.settings-page,
+.billing-page {
   width: 100% !important;
   max-width: 1180px !important;
   margin: 0 auto !important;
@@ -199,7 +200,9 @@ body.modal-dragging {
   .settings-cards,
   .settings-sections,
   .settings-page .section-nav-grid,
+  .settings-page .dashboard-kpi-grid,
   .settings-page .content-grid-2,
+  .billing-page .dashboard-kpi-grid,
   .detail-grid,
   .two-column-grid {
     display: grid !important;

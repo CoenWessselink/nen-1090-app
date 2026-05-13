@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CreditCard, Building2, AlertTriangle, TrendingUp } from 'lucide-react';
 import { apiRequest } from '@/api/client';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 
@@ -35,21 +36,51 @@ export default function SuperadminBillingPage() {
 
   return (
     <div className="page-stack superadmin-page">
-      <section className="section-banner">
-        <div className="section-banner-copy">
-          <span className="section-banner-kicker">Revenue control</span>
-          <h1>Superadmin billing</h1>
-          <p>MRR, ARR, betalingen, facturen en tenant-statussen vanuit één platformoverzicht.</p>
+      <PageHeader
+        title="Superadmin billing"
+        description="MRR, ARR, omzet laatste 30 dagen, mislukte betalingen en tenant-facturatie — zelfde KPI-tegels als het dashboard."
+      />
+
+      {error ? (
+        <Card>
+          <strong>Billing dashboard niet geladen</strong>
+          <p>{error}</p>
+        </Card>
+      ) : null}
+
+      <div className="dashboard-kpi-grid">
+        <div className="card stat-card">
+          <div className="stat-label" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <TrendingUp size={16} aria-hidden />
+            MRR
+          </div>
+          <div className="stat-value">{euro(kpis.mrr_cents)}</div>
+          <div className="stat-meta">Monthly recurring revenue</div>
         </div>
-      </section>
-
-      {error ? <Card><strong>Billing dashboard niet geladen</strong><p>{error}</p></Card> : null}
-
-      <div className="section-nav-grid">
-        <div className="section-nav-tile is-active"><div className="section-nav-tile-top"><TrendingUp size={18} /><span>MRR</span></div><div className="section-nav-tile-value">{euro(kpis.mrr_cents)}</div><strong>Monthly recurring revenue</strong><small>Herleid uit actieve subscriptions.</small></div>
-        <div className="section-nav-tile is-active"><div className="section-nav-tile-top"><TrendingUp size={18} /><span>ARR</span></div><div className="section-nav-tile-value">{euro(kpis.arr_cents)}</div><strong>Annual recurring revenue</strong><small>Genormaliseerd naar jaarwaarde.</small></div>
-        <div className="section-nav-tile is-active"><div className="section-nav-tile-top"><CreditCard size={18} /><span>30 dagen</span></div><div className="section-nav-tile-value">{euro(kpis.revenue_30d_cents)}</div><strong>Omzet laatste 30 dagen</strong><small>Betaalde Mollie/manual payments.</small></div>
-        <div className="section-nav-tile is-active"><div className="section-nav-tile-top"><AlertTriangle size={18} /><span>Failed</span></div><div className="section-nav-tile-value">{String(kpis.failed_payments ?? failedPayments.length)}</div><strong>Mislukte betalingen</strong><small>Actie nodig via retry/dunning.</small></div>
+        <div className="card stat-card">
+          <div className="stat-label" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <TrendingUp size={16} aria-hidden />
+            ARR
+          </div>
+          <div className="stat-value">{euro(kpis.arr_cents)}</div>
+          <div className="stat-meta">Annual recurring revenue</div>
+        </div>
+        <div className="card stat-card">
+          <div className="stat-label" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <CreditCard size={16} aria-hidden />
+            30 dagen
+          </div>
+          <div className="stat-value">{euro(kpis.revenue_30d_cents)}</div>
+          <div className="stat-meta">Omzet laatste 30 dagen</div>
+        </div>
+        <div className="card stat-card">
+          <div className="stat-label" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <AlertTriangle size={16} aria-hidden />
+            Failed
+          </div>
+          <div className="stat-value">{String(kpis.failed_payments ?? failedPayments.length)}</div>
+          <div className="stat-meta">Mislukte betalingen</div>
+        </div>
       </div>
 
       <div className="content-grid-2">

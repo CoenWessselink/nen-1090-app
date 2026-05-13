@@ -1,6 +1,7 @@
-import { DatabaseZap, RefreshCcw, Settings2 } from "lucide-react";
+import { BookMarked, DatabaseZap, RefreshCcw, Settings2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { InlineMessage } from "@/components/feedback/InlineMessage";
@@ -56,49 +57,44 @@ export function InstellingenPage() {
 
   return (
     <div className="page-stack settings-page" data-settings-page>
-      <section className="section-banner settings-hero">
-        <div className="section-banner-copy">
-          <h1>Settings</h1>
-        </div>
-
-        <div className="section-banner-actions">
-          <Button variant="secondary" onClick={refreshAll}>
-            <RefreshCcw size={16} /> Refresh
-          </Button>
-        </div>
-      </section>
+      <PageHeader
+        title="Instellingen"
+        description="Masterdata en organisatie-instellingen; zelfde overzichtsstructuur als het dashboard."
+      >
+        <Button variant="secondary" onClick={refreshAll}>
+          <RefreshCcw size={16} /> Vernieuwen
+        </Button>
+      </PageHeader>
 
       {message ? <InlineMessage tone="success">{message}</InlineMessage> : null}
 
-      <div className="section-nav-grid cols-2 settings-grid">
+      <div className="content-grid-2 settings-grid">
         <button
           type="button"
-          className={`section-nav-tile ${tab === "masterdata" ? "is-active" : ""}`}
+          aria-pressed={tab === "masterdata"}
+          className={`card stat-card card-button${tab === "masterdata" ? " settings-kpi-active" : ""}`}
           onClick={() => setTab("masterdata")}
         >
-          <div className="section-nav-tile-top">
-            <DatabaseZap size={18} />
-            <span>Masterdata</span>
+          <div className="stat-label" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <DatabaseZap size={16} aria-hidden />
+            Masterdata
           </div>
-
-          <div className="section-nav-tile-value">{masterDataCount}</div>
-
-          <strong>WPS, materialen, lassers en inspectietemplates</strong>
+          <div className="stat-value">{masterDataCount}</div>
+          <div className="stat-meta">WPS, materialen, lassers en inspectietemplates</div>
         </button>
 
         <button
           type="button"
-          className={`section-nav-tile ${tab === "organisatie" ? "is-active" : ""}`}
+          aria-pressed={tab === "organisatie"}
+          className={`card stat-card card-button${tab === "organisatie" ? " settings-kpi-active" : ""}`}
           onClick={() => setTab("organisatie")}
         >
-          <div className="section-nav-tile-top">
-            <Settings2 size={18} />
-            <span>Organisatie</span>
+          <div className="stat-label" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Settings2 size={16} aria-hidden />
+            Organisatie
           </div>
-
-          <div className="section-nav-tile-value">{user?.tenant || "Tenant"}</div>
-
-          <strong>Bedrijfsinstellingen en branding</strong>
+          <div className="stat-value">{user?.tenant || "—"}</div>
+          <div className="stat-meta">Bedrijfsinstellingen en branding</div>
         </button>
       </div>
 
@@ -133,35 +129,31 @@ export function InstellingenPage() {
 
       {tab === "masterdata" ? (
         <div className="page-stack settings-sections">
-          <div className="section-nav-grid cols-2 settings-grid">
+          <div className="content-grid-2 settings-grid">
             <button
               type="button"
-              className="section-nav-tile"
-              onClick={() => navigate('/instellingen/templates')}
+              className="card stat-card card-button"
+              onClick={() => navigate("/instellingen/templates")}
             >
-              <div className="section-nav-tile-top">
-                <DatabaseZap size={18} />
-                <span>Inspectietemplates</span>
+              <div className="stat-label" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <DatabaseZap size={16} aria-hidden />
+                Inspectietemplates
               </div>
-
-              <div className="section-nav-tile-value">{(inspectionTemplates.data?.items || []).length}</div>
-
-              <strong>Templatebeheer</strong>
+              <div className="stat-value">{(inspectionTemplates.data?.items || []).length}</div>
+              <div className="stat-meta">Templatebeheer openen</div>
             </button>
 
             <button
               type="button"
-              className="section-nav-tile"
-              onClick={() => navigate('/instellingen/normeringen')}
+              className="card stat-card card-button"
+              onClick={() => navigate("/instellingen/normeringen")}
             >
-              <div className="section-nav-tile-top">
-                <DatabaseZap size={18} />
-                <span>Normeringen</span>
+              <div className="stat-label" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <BookMarked size={16} aria-hidden />
+                Normeringen
               </div>
-
-              <div className="section-nav-tile-value">NEN</div>
-
-              <strong>Normprofielen en normenbibliotheek</strong>
+              <div className="stat-value">NEN</div>
+              <div className="stat-meta">Normprofielen en normenbibliotheek</div>
             </button>
           </div>
 

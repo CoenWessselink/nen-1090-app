@@ -30,6 +30,7 @@ import { LoadingState } from '@/components/feedback/LoadingState';
 import { InlineMessage } from '@/components/feedback/InlineMessage';
 import { ConfirmActionDialog } from '@/components/dialogs/ConfirmActionDialog';
 import { StatCard } from '@/components/ui/StatCard';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { useSession } from '@/app/session/SessionContext';
 import { useAuthStore } from '@/app/store/auth-store';
 import { useUiStore } from '@/app/store/ui-store';
@@ -442,36 +443,66 @@ export function SuperadminPage() {
 
   return (
     <div className="page-stack superadmin-page">
-      <section className="section-banner">
-        <div className="section-banner-copy">
-          <span className="section-banner-kicker">Platformcontrole</span>
-          <h1>Superadmin</h1>
-          <p>Tenantbeheer, tenant 360, gebruikersbeheer, billingcontrole en platformstatus met dezelfde header- en tegeltaal als Project 360.</p>
-        </div>
-        <div className="section-banner-actions">
-          <Button variant="secondary" onClick={handleExportCsv} disabled={tenantActions.exportCsv.isPending}><Download size={16} /> Export CSV</Button>
-          <Button onClick={() => setCreateTenantOpen(true)}><Plus size={16} /> Nieuwe tenant</Button>
-        </div>
-      </section>
+      <PageHeader
+        title="Superadmin"
+        description="Tenantbeheer, tenant 360, gebruikers, billing en platformstatus — zelfde kop- en KPI-tegels als het dashboard."
+      >
+        <Button variant="secondary" onClick={handleExportCsv} disabled={tenantActions.exportCsv.isPending}>
+          <Download size={16} /> Export CSV
+        </Button>
+        <Button onClick={() => setCreateTenantOpen(true)}>
+          <Plus size={16} /> Nieuwe tenant
+        </Button>
+      </PageHeader>
 
-      <div className="section-nav-grid">
-        <div className="section-nav-tile is-active"><div className="section-nav-tile-top"><Building2 size={18} /><span>Tenants</span></div><div className="section-nav-tile-value">{String(summary.total_tenants || 0)}</div><strong>Alle tenants in platform</strong><small>Overzicht van alle omgevingen en tenants.</small></div>
-        <div className="section-nav-tile is-active"><div className="section-nav-tile-top"><BadgeCheck size={18} /><span>Actief</span></div><div className="section-nav-tile-value">{String(summary.active_tenants || 0)}</div><strong>Direct inzetbaar</strong><small>Tenants met actieve status.</small></div>
-        <div className="section-nav-tile is-active"><div className="section-nav-tile-top"><Users size={18} /><span>Gebruikers</span></div><div className="section-nav-tile-value">{String(summary.total_users || 0)}</div><strong>Gekoppelde tenant-users</strong><small>Gebruikers verspreid over alle tenants.</small></div>
-        <div className="section-nav-tile is-active"><div className="section-nav-tile-top"><Activity size={18} /><span>Platform</span></div><div className="section-nav-tile-value">{health.isError ? 'Check' : 'Online'}</div><strong>Health en contracten</strong><small>Health-check en billingcontracten.</small></div>
+      <div className="dashboard-kpi-grid">
+        <div className="card stat-card">
+          <div className="stat-label" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Building2 size={16} aria-hidden />
+            Tenants
+          </div>
+          <div className="stat-value">{String(summary.total_tenants || 0)}</div>
+          <div className="stat-meta">Alle tenants in platform</div>
+        </div>
+        <div className="card stat-card">
+          <div className="stat-label" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <BadgeCheck size={16} aria-hidden />
+            Actief
+          </div>
+          <div className="stat-value">{String(summary.active_tenants || 0)}</div>
+          <div className="stat-meta">Direct inzetbare tenants</div>
+        </div>
+        <div className="card stat-card">
+          <div className="stat-label" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Users size={16} aria-hidden />
+            Gebruikers
+          </div>
+          <div className="stat-value">{String(summary.total_users || 0)}</div>
+          <div className="stat-meta">Gekoppelde tenant-users</div>
+        </div>
+        <div className="card stat-card">
+          <div className="stat-label" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Activity size={16} aria-hidden />
+            Platform
+          </div>
+          <div className="stat-value">{health.isError ? '—' : 'OK'}</div>
+          <div className="stat-meta">{health.isError ? 'Health-check mislukt' : 'Health en contracten'}</div>
+        </div>
       </div>
 
-      <div className="section-nav-grid cols-5">
+      <div className="tabs" role="tablist" aria-label="Tenant detail weergave">
         {detailTabs.map((tabItem) => {
-          const icon = tabItem.value === 'samenvatting' ? Building2 : tabItem.value === 'gebruikers' ? Users : tabItem.value === 'rechten' ? ShieldCheck : tabItem.value === 'security' ? ShieldCheck : tabItem.value === 'groei' ? LineChart : tabItem.value === 'audit' ? Activity : tabItem.value === 'billing' ? CreditCard : ShieldCheck;
-          const Icon = icon;
           const active = detailTab === tabItem.value;
           return (
-            <button key={tabItem.value} type="button" className={`section-nav-tile ${active ? 'is-active' : ''}`} onClick={() => setDetailTab(tabItem.value)}>
-              <div className="section-nav-tile-top"><Icon size={18} /><span>{tabItem.label}</span></div>
-              <div className="section-nav-tile-value">{tabItem.value === 'samenvatting' ? filteredRows.length : tabItem.value === 'gebruikers' ? userRows.length : tabItem.value === 'rechten' ? Number((permissionSummary.role_counts as Record<string, number> | undefined)?.tenant_admin || 0) : tabItem.value === 'security' ? '🔒' : tabItem.value === 'groei' ? String(growthSummary.active_tenant_count || 0) : tabItem.value === 'audit' ? auditRows.length : tabItem.value === 'billing' ? '€' : selectedTenant ? 'Beheer' : 'Kies'}</div>
-              <strong>{tabItem.label}</strong>
-              <small>{tabItem.value === 'samenvatting' ? 'Zoek, filter en open tenants vanuit één overzicht.' : tabItem.value === 'gebruikers' ? 'Gebruikers per tenant beheren.' : tabItem.value === 'rechten' ? 'RBAC, rolverdeling en toegangsmodi per tenant.' : tabItem.value === 'security' ? 'Tenant write-locks, access runtime en platform-security samenvatting.' : tabItem.value === 'groei' ? 'Analytics, integraties en reporting-insights voor groei.' : tabItem.value === 'audit' ? 'Auditregels en gebeurtenissen bekijken.' : tabItem.value === 'billing' ? 'Seats, betalingen en abonnement per tenant.' : 'Activeren, suspenden en tenantstatus beheren.'}</small>
+            <button
+              key={tabItem.value}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              className={`tab-button${active ? ' tab-button-active' : ''}`}
+              onClick={() => setDetailTab(tabItem.value)}
+            >
+              {tabItem.label}
             </button>
           );
         })}
