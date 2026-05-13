@@ -36,11 +36,19 @@ export default function BillingPage() {
   const yearlyCents = Number(cfg.yearly_cents || 49000);
   const cta = String(cfg.cta || 'Upgrade');
 
-  const promptLevel = trial?.prompt_level as string | undefined;
-  const trialMessage =
-    promptLevel && promptLevel !== 'none' && Array.isArray(trial?.messages)
-      ? (trial!.messages as Record<string, string>)[promptLevel]
-      : null;
+  const promptLevel = typeof trial?.prompt_level === 'string' ? trial.prompt_level : undefined;
+  const rawMessages = trial?.messages;
+  let trialMessage: string | null = null;
+  if (
+    promptLevel &&
+    promptLevel !== 'none' &&
+    rawMessages &&
+    typeof rawMessages === 'object' &&
+    !Array.isArray(rawMessages)
+  ) {
+    const entry = (rawMessages as Record<string, unknown>)[promptLevel];
+    trialMessage = typeof entry === 'string' ? entry : null;
+  }
 
   return (
     <div className="page-stack billing-page">
