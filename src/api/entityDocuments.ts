@@ -1,4 +1,7 @@
-import client, { buildListPath, downloadRequest } from '@/api/client';
+import client, { downloadRequest } from '@/api/client';
+import { listMasterDataAttachments, uploadMasterDataAttachment } from '@/api/masterdata-attachments';
+import { listWelderCertificates, uploadWelderCertificate } from '@/api/welders';
+import { listWeldCoordinatorCertificates, uploadWeldCoordinatorCertificate } from '@/api/weldCoordinatorAttachments';
 
 export type EntityDocumentScope = 'welder' | 'wps' | 'weld-coordinator';
 
@@ -39,36 +42,56 @@ function syntheticDocumentFromFile(scopeType: EntityDocumentScope, entityId: str
   };
 }
 
-export const listEntityDocuments = async (scopeType: EntityDocumentScope, entityId: string, kind?: string) => {
-  const payload = await client.get<EntityDocumentListResponse>(buildListPath(`/masterdata-documents/${scopeType}/${entityId}`, { kind }));
-  return normalizeDocuments(payload);
+export const listEntityDocuments = async (scopeType: EntityDocumentScope, entityId: string, _kind?: string) => {
+  if (scopeType === 'welder') {
+    const payload = await listWelderCertificates(entityId);
+    return normalizeDocuments(payload as EntityDocumentListResponse);
+  }
+  if (scopeType === 'wps') {
+    const payload = await listMasterDataAttachments('wps', entityId);
+    return normalizeDocuments(payload as EntityDocumentListResponse);
+  }
+  if (scopeType === 'weld-coordinator') {
+    const payload = await listWeldCoordinatorCertificates(entityId);
+    return normalizeDocuments(payload as EntityDocumentListResponse);
+  }
+  return [];
 };
 
 export const uploadEntityDocuments = async (
   scopeType: EntityDocumentScope,
   entityId: string,
   files: File[] | FileList,
-  kind = 'document',
+  _kind = 'document',
 ) => {
   const fileList = Array.from(files);
-  const formData = new FormData();
-  fileList.forEach((file) => formData.append('files', file));
-  formData.append('kind', kind);
-
   try {
-    const payload = await client.post<EntityDocumentListResponse>(`/masterdata-documents/${scopeType}/${entityId}`, formData);
-    const normalized = normalizeDocuments(payload);
-    return normalized.length ? normalized : fileList.map((file) => syntheticDocumentFromFile(scopeType, entityId, file, kind));
+    if (scopeType === 'welder') {
+      for (const file of fileList) {
+        await uploadWelderCertificate(entityId, file);
+      }
+      return normalizeDocuments((await listWelderCertificates(entityId)) as EntityDocumentListResponse);
+    }
+    if (scopeType === 'wps') {
+      for (const file of fileList) {
+        await uploadMasterDataAttachment('wps', entityId, file);
+      }
+      return normalizeDocuments((await listMasterDataAttachments('wps', entityId)) as EntityDocumentListResponse);
+    }
+    if (scopeType === 'weld-coordinator') {
+      for (const file of fileList) {
+        await uploadWeldCoordinatorCertificate(entityId, file);
+      }
+      return normalizeDocuments((await listWeldCoordinatorCertificates(entityId)) as EntityDocumentListResponse);
+    }
+    return [];
   } catch (error) {
     throw error instanceof Error ? error : new Error('Upload mislukt.');
   }
 };
 
 export const deleteEntityDocument = (documentId: string) =>
-  // Use /attachments/{id} — the masterdata-documents endpoint requires scope+entityId
-  // but we only have the attachment ID at delete time
   client.delete(`/attachments/${documentId}`);
 
 export const downloadEntityDocument = (documentId: string) =>
-  // Use /attachments/{id}/download — the /masterdata-documents/file/{id} route does not exist
   downloadRequest(`/attachments/${documentId}/download`);

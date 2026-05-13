@@ -122,13 +122,17 @@ export function RapportagePage() {
   }
 
   async function downloadPdf(row: ReportRow) {
-    const pdfUrl = resolvePdfUrl(row, true);
-    if (pdfUrl) {
-      await openDownloadUrl(pdfUrl, reportFilename(row));
-      return;
-    }
-    if (row.project_id) {
-      navigate(`/projecten/${row.project_id}/pdf-viewer`);
+    try {
+      const pdfUrl = resolvePdfUrl(row, true);
+      if (pdfUrl) {
+        await openDownloadUrl(pdfUrl, reportFilename(row));
+        return;
+      }
+      if (row.project_id) {
+        navigate(`/projecten/${row.project_id}/pdf-viewer`);
+      }
+    } catch (error) {
+      setPreviewMessage(error instanceof Error ? error.message : 'PDF download mislukt.');
     }
   }
 
