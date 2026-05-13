@@ -13,6 +13,8 @@
     "jsx": "react-jsx",
     "strict": false,
     "noImplicitAny": false,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"]
