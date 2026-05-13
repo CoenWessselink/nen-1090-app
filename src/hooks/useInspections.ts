@@ -3,6 +3,7 @@ import { approveInspection, createInspection, createInspectionResult, deleteInsp
 import { normalizeListResponse } from '@/utils/api';
 import type { ListParams } from '@/types/api';
 import { useAuthStore } from '@/app/store/auth-store';
+import { invalidateProjectCeCompliance } from '@/utils/queryInvalidation';
 
 const REALTIME_STALE_TIME = 1000 * 60 * 10;
 const WELD_INSPECTION_STALE_TIME = 1000 * 5;
@@ -73,6 +74,7 @@ export function useUpsertWeldInspection(projectId: string | number, weldId: stri
       await qc.refetchQueries({ queryKey: ['weld-inspection', projectId, weldId], type: 'active' });
       await qc.invalidateQueries({ queryKey: ['project-welds', projectId] });
       await qc.refetchQueries({ queryKey: ['project-welds', projectId], type: 'active' });
+      invalidateProjectCeCompliance(qc, projectId);
     },
   });
 }

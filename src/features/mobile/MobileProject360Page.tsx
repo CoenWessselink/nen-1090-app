@@ -48,7 +48,7 @@ export function MobileProject360Page() {
     { label: 'Nieuwe assembly', color: 'primary', icon: PanelsTopLeft, onClick: () => navigate(`/projecten/${projectId}/assemblies/nieuw`) },
     { label: 'Lassen', color: 'success', icon: Wrench, onClick: () => navigate(`/projecten/${projectId}/lassen`) },
     { label: 'Documenten', color: 'danger', icon: FolderOpen, onClick: () => navigate(`/projecten/${projectId}/documenten`) },
-    { label: 'CE-dossier', color: 'warning', icon: FileText, onClick: () => navigate(`/projecten/${projectId}/ce-dossier`) },
+    { label: 'CE-dossier', color: 'warning', icon: FileText, onClick: () => navigate(`/projecten/${projectId}/ce-v2`) },
     { label: creatingPdf ? 'Bezig met genereren…' : 'Genereer CE PDF', color: 'primary', icon: creatingPdf ? RefreshCw : FileText, onClick: () => void createPdf() },
     { label: 'Historie', color: 'neutral', icon: History, onClick: () => navigate(`/projecten/${projectId}/historie`) },
     { label: 'Inspecties', color: 'neutral', icon: ListChecks, onClick: () => navigate(`/projecten/${projectId}/lassen`) },

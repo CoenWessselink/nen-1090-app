@@ -17,7 +17,9 @@ function normalizeProjectId(value: string | undefined) {
 
 function inferTarget(pathname: string, projectId: string) {
   if (pathname.endsWith('/welds') || pathname.includes('/lascontrole')) return `/projecten/${projectId}/lassen`;
-  if (pathname.endsWith('/ce-dossier') || pathname.includes('/documents') || pathname.includes('/exports')) return `/projecten/${projectId}/ce-dossier`;
+  if (pathname.endsWith('/ce-dossier') || pathname.endsWith('/ce-v2') || pathname.includes('/documents') || pathname.includes('/exports')) {
+    return `/projecten/${projectId}/ce-v2`;
+  }
   return `/projecten/${projectId}/overzicht`;
 }
 

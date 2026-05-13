@@ -11,7 +11,7 @@ import { useProjectContext } from '@/context/ProjectContext';
 import type { Project } from '@/types/domain';
 
 function targetPathForSelection(pathname: string, projectId: string) {
-  if (pathname.includes('/ce-dossier')) return `/projecten/${projectId}/ce-dossier`;
+  if (pathname.includes('/ce-dossier') || pathname.includes('/ce-v2')) return `/projecten/${projectId}/ce-v2`;
   if (pathname.includes('/welds') || pathname.includes('/lascontrole')) return `/projecten/${projectId}/lassen`;
   if (pathname.includes('/projecten/')) return `/projecten/${projectId}/overzicht`;
   if (pathname.includes('/projecten')) return `/projecten/${projectId}/overzicht`;

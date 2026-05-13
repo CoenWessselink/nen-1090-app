@@ -16,7 +16,6 @@ type Primitive = string | number | boolean;
 type QueryValue = Primitive | null | undefined;
 export type QueryParams = Record<string, QueryValue>;
 
-const LEGACY_COMPAT_PATTERNS = ['/legacy', '/compat', '/fallback', '/v1'];
 const OPTIONAL_REQUEST_HARD_LIMIT = 2;
 const API_REQUEST_TIMEOUT = 30_000;
 
@@ -53,19 +52,18 @@ function buildHeaders(init?: RequestInit): Headers {
 }
 
 function classifyCompatPattern(path: string): void {
-  const matchedPattern = LEGACY_COMPAT_PATTERNS.find((pattern) => path.includes(pattern));
+  const segments = path.split('/').map((s) => s.toLowerCase());
+  const legacySegments = new Set(['legacy', 'compat', 'fallback']);
+  const matchedSegment = segments.find((s) => legacySegments.has(s));
 
-  if (!matchedPattern) {
-    runtimeTrace('COMPAT_CLASS_A_CANONICAL', {
-      path,
-    });
-
+  if (!matchedSegment) {
+    runtimeTrace('COMPAT_CLASS_A_CANONICAL', { path });
     return;
   }
 
   runtimeTrace('COMPAT_CLASS_B_LOW_TRAFFIC', {
     path,
-    matchedPattern,
+    matchedPattern: matchedSegment,
   });
 }
 
