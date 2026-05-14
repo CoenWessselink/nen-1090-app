@@ -23,7 +23,7 @@ export function getMarketingOrigin(): string {
     return window.location.origin;
   }
 
-  return 'https://nen-1090-app.pages.dev';
+  return 'https://weldinspectpro.com';
 }
 
 const targetPathMap: Record<MarketingAuthTarget, string> = {

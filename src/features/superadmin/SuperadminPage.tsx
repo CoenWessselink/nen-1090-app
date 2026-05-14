@@ -39,6 +39,7 @@ import { usePlatformGrowthOverview, usePlatformIntegrationsCatalog, usePlatformR
 import { useSystemHealth } from '@/hooks/useSystemHealth';
 import { usePlatformBillingPlans, useTenantBillingActions, useTenantBillingDetail, useTenantInvoiceDetail, useTenantInvoices, useTenantPayments } from '@/hooks/usePlatformBilling';
 import type { AuditSummary, BillingPayment, PlatformSummary, Tenant, TenantCreateInput, TenantPatchInput, TenantUser, TenantUserCreateInput, TenantUserPatchInput } from '@/types/domain';
+import type { ManualPaymentPayload } from '@/api/enterpriseTypes';
 import { formatDatetime, toneFromStatus } from '@/utils/format';
 
 const detailTabs = [
@@ -1032,7 +1033,7 @@ export function SuperadminPage() {
         <form className="mobile-unified-body" onSubmit={async (event) => {
           event.preventDefault();
           if (!selectedTenant) return;
-          const response = await tenantBillingActions.createInvoice.mutateAsync(invoiceForm as unknown as Record<string, unknown>);
+          const response = await tenantBillingActions.createInvoice.mutateAsync(invoiceForm);
           applyBillingFeedback(response, 'Factuur aangemaakt.');
           setCreateInvoiceOpen(false);
         }}>
@@ -1048,7 +1049,7 @@ export function SuperadminPage() {
         <form className="mobile-unified-body" onSubmit={async (event) => {
           event.preventDefault();
           if (!selectedTenant) return;
-          const payload: Record<string, unknown> = {
+          const payload: ManualPaymentPayload = {
             amount_cents: manualPaymentForm.amount_cents,
             type: manualPaymentForm.type,
             provider: manualPaymentForm.provider,
@@ -1072,7 +1073,7 @@ export function SuperadminPage() {
         <form className="mobile-unified-body" onSubmit={async (event) => {
           event.preventDefault();
           if (!selectedTenant) return;
-          const response = await tenantBillingActions.changePlan.mutateAsync(planForm as unknown as Record<string, unknown>);
+          const response = await tenantBillingActions.changePlan.mutateAsync(planForm);
           applyBillingFeedback(response, 'Abonnement bijgewerkt.');
           setChangePlanOpen(false);
         }}>
@@ -1087,7 +1088,7 @@ export function SuperadminPage() {
         <form className="mobile-unified-body" onSubmit={async (event) => {
           event.preventDefault();
           if (!selectedTenant) return;
-          const response = await tenantBillingActions.overrideAccessMode.mutateAsync(accessOverrideForm as unknown as Record<string, unknown>);
+          const response = await tenantBillingActions.overrideAccessMode.mutateAsync(accessOverrideForm);
           applyBillingFeedback(response, 'Access mode bijgewerkt.');
           setAccessOverrideOpen(false);
         }}>
