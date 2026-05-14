@@ -38,7 +38,13 @@ import { useExitImpersonation, useImpersonateTenant, usePlatformSummary, useTena
 import { usePlatformGrowthOverview, usePlatformIntegrationsCatalog, usePlatformReportingInsights, usePlatformSecurityOverview, useTenantAccessHistory, useTenantAudit, useTenantBillingEvents, useTenantBillingPanel, useTenantDetail, useTenantPermissionsSummary, useTenantSecurityOverview, useTenantUserActions, useTenantUsers } from '@/hooks/useTenantAdmin';
 import { useSystemHealth } from '@/hooks/useSystemHealth';
 import { usePlatformBillingPlans, useTenantBillingActions, useTenantBillingDetail, useTenantInvoiceDetail, useTenantInvoices, useTenantPayments } from '@/hooks/usePlatformBilling';
-import type { AuditSummary, BillingPayment, PlatformSummary, Tenant, TenantCreateInput, TenantPatchInput, TenantUser, TenantUserCreateInput, TenantUserPatchInput } from '@/types/domain';
+import type { AuditSummary, BillingPayment, BillingPlan, PlatformSummary, Tenant, TenantCreateInput, TenantPatchInput, TenantPermissionsSummary, TenantUser, TenantUserCreateInput, TenantUserPatchInput } from '@/types/domain';
+import type {
+  BillingInvoice,
+  BillingInvoiceLine,
+  EnterpriseActionResponse,
+  ManualPaymentPayload,
+} from '@/api/enterpriseTypes';
 import { formatDatetime, toneFromStatus } from '@/utils/format';
 
 const detailTabs = [
@@ -93,6 +99,12 @@ function metaToString(meta: unknown): string {
   }
 }
 
+function badgeTone(value: unknown): 'neutral' | 'success' | 'warning' | 'danger' | 'info' {
+  const tone = String(value || 'neutral').toLowerCase();
+  if (tone === 'success' || tone === 'warning' || tone === 'danger' || tone === 'info') return tone;
+  return 'neutral';
+}
+
 export function SuperadminPage() {
   const session = useSession();
   const health = useSystemHealth();
@@ -123,7 +135,7 @@ export function SuperadminPage() {
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
   const [creditInvoiceId, setCreditInvoiceId] = useState<string | null>(null);
   const [cancelSubscriptionOpen, setCancelSubscriptionOpen] = useState(false);
-  const [lastBillingFeedback, setLastBillingFeedback] = useState<Record<string, unknown> | null>(null);
+  const [lastBillingFeedback, setLastBillingFeedback] = useState<EnterpriseActionResponse | null>(null);
   const [pendingAction, setPendingAction] = useState<{ type: 'activate' | 'deactivate' | 'suspend' | 'reactivate' | 'trial' | 'force-logout'; tenant: Tenant } | null>(null);
 
   const [tenantForm, setTenantForm] = useState<TenantCreateInput>({
@@ -249,19 +261,19 @@ export function SuperadminPage() {
   const auditRows = tenantAudit.data?.items || [];
   const accessHistoryRows = tenantAccessHistory.data?.items || [];
   const billingEventRows = tenantBillingEvents.data?.items || [];
-  const billingPayload = { ...(tenantBilling.data || {}), ...(tenantBillingDetail.data || {}) } as Record<string, unknown>;
-  const permissionSummary = (tenantPermissionsSummary.data || {}) as Record<string, unknown>;
-  const securitySummary = (tenantSecurityOverview.data || {}) as Record<string, unknown>;
-  const globalSecuritySummary = (platformSecurityOverview.data || {}) as Record<string, unknown>;
-  const growthSummary = (platformGrowthOverview.data || {}) as Record<string, unknown>;
-  const reportingInsights = (platformReportingInsights.data || {}) as Record<string, unknown>;
-  const integrationsCatalog = Array.isArray((platformIntegrationsCatalog.data as any)?.items) ? ((platformIntegrationsCatalog.data as any)?.items as Record<string, unknown>[]) : [];
-  const platformPlans = Array.isArray((billingPlans.data as any)?.items) ? (billingPlans.data as any).items : Array.isArray(billingPlans.data) ? billingPlans.data : [];
+  const billingPayload = { ...(tenantBilling.data || {}), ...(tenantBillingDetail.data || {}) };
+  const permissionSummary: Partial<TenantPermissionsSummary> = tenantPermissionsSummary.data || {};
+  const securitySummary = tenantSecurityOverview.data || {};
+  const globalSecuritySummary = platformSecurityOverview.data || {};
+  const growthSummary = platformGrowthOverview.data || {};
+  const reportingInsights = platformReportingInsights.data || {};
+  const integrationsCatalog = platformIntegrationsCatalog.data?.items || platformIntegrationsCatalog.data?.integrations || [];
+  const platformPlans = billingPlans.data?.items || [];
   const paymentRows = tenantPayments.data?.items || [];
   const invoiceRows = tenantInvoices.data?.items || [];
 
-  const applyBillingFeedback = (response: Record<string, unknown> | null | undefined, fallback: string) => {
-    setLastBillingFeedback(response ? response as Record<string, unknown> : null);
+  const applyBillingFeedback = (response: EnterpriseActionResponse | null | undefined, fallback: string) => {
+    setLastBillingFeedback(response || null);
     refreshMessage(String(response?.message || response?.number || fallback));
   };
 
@@ -289,7 +301,7 @@ export function SuperadminPage() {
   const handleCreateTenant = async (event: FormEvent) => {
     event.preventDefault();
     try {
-      const response = await tenantActions.createTenant.mutateAsync(tenantForm) as Record<string, unknown>;
+      const response = await tenantActions.createTenant.mutateAsync(tenantForm);
       setCreateTenantOpen(false);
       setTenantForm({
         name: '',
@@ -311,7 +323,7 @@ export function SuperadminPage() {
     event.preventDefault();
     if (!selectedTenant) return;
     try {
-      const response = await tenantUserActions.createUser.mutateAsync(tenantUserForm) as Record<string, unknown>;
+      const response = await tenantUserActions.createUser.mutateAsync(tenantUserForm);
       setCreateUserOpen(false);
       setTenantUserForm({ email: '', password: '', role: 'viewer', is_active: true });
       refreshMessage(String(response?.reset_url ? `Gebruiker aangemaakt. Activatielink: ${response.reset_url}` : response?.delivery_outbox_path ? `Gebruiker aangemaakt. Previewmail: ${response.delivery_outbox_path}` : `Gebruiker toegevoegd aan ${selectedTenant.name || selectedTenant.id}.`));
@@ -434,7 +446,7 @@ export function SuperadminPage() {
             {status === 'inactive' ? <Button variant="ghost" onClick={() => setPendingAction({ type: 'activate', tenant })}>Activeer</Button> : null}
             {status === 'suspended' ? <Button variant="ghost" onClick={() => setPendingAction({ type: 'reactivate', tenant })}>Heractiveer</Button> : null}
             {status === 'trial' ? <Button variant="ghost" onClick={() => setPendingAction({ type: 'activate', tenant })}>Activeer</Button> : null}
-            <Button variant="ghost" onClick={async () => { const response = await tenantActions.toggleDemoMode.mutateAsync({ tenantId: tenant.id, isDemo: !(tenant as any).is_demo }); refreshMessage(String((response as any)?.message || `Demo mode ${!(tenant as any).is_demo ? 'ingeschakeld' : 'uitgeschakeld'}.`)); }}>Demo</Button>
+            <Button variant="ghost" onClick={async () => { const response = await tenantActions.toggleDemoMode.mutateAsync({ tenantId: tenant.id, isDemo: !tenant.is_demo }); refreshMessage(String(response.message || `Demo mode ${!tenant.is_demo ? 'ingeschakeld' : 'uitgeschakeld'}.`)); }}>Demo</Button>
           </div>
         );
       },
@@ -578,10 +590,10 @@ export function SuperadminPage() {
           {health.isError ? <ErrorState title="Health niet bereikbaar" description="De backend-healthcheck reageert niet via de ingestelde URL." /> : null}
           {!health.isLoading && !health.isError && health.data ? (
             <div className="detail-grid">
-              <div><span>Omgeving</span><strong>{text((health.data as Record<string, unknown>).env)}</strong></div>
-              <div><span>App URL</span><strong>{text((health.data as Record<string, unknown>).app_url)}</strong></div>
-              <div><span>Marketing URL</span><strong>{text((health.data as Record<string, unknown>).marketing_url)}</strong></div>
-              <div><span>CORS credentials</span><strong>{String((health.data as Record<string, unknown>).cors_allow_credentials)}</strong></div>
+              <div><span>Omgeving</span><strong>{text(health.data.env)}</strong></div>
+              <div><span>App URL</span><strong>{text(health.data.app_url)}</strong></div>
+              <div><span>Marketing URL</span><strong>{text(health.data.marketing_url)}</strong></div>
+              <div><span>CORS credentials</span><strong>{String(health.data.cors_allow_credentials)}</strong></div>
             </div>
           ) : null}
         </Card>
@@ -696,9 +708,9 @@ export function SuperadminPage() {
                     <div className="toolbar-cluster">
                       <Button variant="ghost" onClick={() => openUserEditor(row)}>Bewerk</Button>
                       <Button variant="ghost" onClick={() => tenantUserActions.patchUser.mutate({ userId: row.user_id, payload: { role: row.role === 'tenant_admin' ? 'viewer' : 'tenant_admin' } })}>Rol wisselen</Button>
-                      <Button variant="ghost" onClick={async () => { const response = row.is_active ? await tenantUserActions.deactivateUser.mutateAsync(row.user_id) : await tenantUserActions.reactivateUser.mutateAsync(row.user_id); refreshMessage(String((response as any)?.message || (row.is_active ? 'Gebruiker gedeactiveerd.' : 'Gebruiker geactiveerd.'))); }}>{row.is_active ? 'Deactiveer' : 'Activeer'}</Button>
-                      <Button variant="ghost" onClick={async () => { const response = await tenantUserActions.resendInvite.mutateAsync(row.user_id) as Record<string, unknown>; refreshMessage(String(response?.reset_url || response?.delivery_outbox_path || response?.message || 'Uitnodiging verstuurd.')); }}>Uitnodigen</Button>
-                      <Button variant="ghost" onClick={async () => { const response = await tenantUserActions.resetPassword.mutateAsync(row.user_id) as Record<string, unknown>; refreshMessage(String(response?.reset_url || response?.delivery_outbox_path || response?.message || 'Resetlink aangemaakt.')); }}>Reset</Button>
+                      <Button variant="ghost" onClick={async () => { const response = row.is_active ? await tenantUserActions.deactivateUser.mutateAsync(row.user_id) : await tenantUserActions.reactivateUser.mutateAsync(row.user_id); refreshMessage(String(response.message || (row.is_active ? 'Gebruiker gedeactiveerd.' : 'Gebruiker geactiveerd.'))); }}>{row.is_active ? 'Deactiveer' : 'Activeer'}</Button>
+                      <Button variant="ghost" onClick={async () => { const response = await tenantUserActions.resendInvite.mutateAsync(row.user_id); refreshMessage(String(response.reset_url || response.delivery_outbox_path || response.message || 'Uitnodiging verstuurd.')); }}>Uitnodigen</Button>
+                      <Button variant="ghost" onClick={async () => { const response = await tenantUserActions.resetPassword.mutateAsync(row.user_id); refreshMessage(String(response.reset_url || response.delivery_outbox_path || response.message || 'Resetlink aangemaakt.')); }}>Reset</Button>
                       <Button variant="ghost" onClick={async () => { await tenantUserActions.deleteUser.mutateAsync(row.user_id); refreshMessage(`Gebruiker ${row.email} verwijderd.`); }}>Verwijder</Button>
                     </div>
                   </div>
@@ -743,7 +755,7 @@ export function SuperadminPage() {
                 <div style={{ marginTop: 16 }}><Card>
                   <div className="section-title-row"><h3>Recente access history</h3></div>
                   <div className="timeline-list">
-                    {((permissionSummary.recent_access as Array<Record<string, unknown>> | undefined) || []).map((entry, index) => (
+                    {(permissionSummary.recent_access || []).map((entry, index) => (
                       <div className="timeline-item" key={String(entry.id || index)}>
                         <div className="timeline-dot" />
                         <div>
@@ -776,10 +788,10 @@ export function SuperadminPage() {
                   <Card>
                     <div className="section-title-row"><h3><BarChart3 size={18} /> Growth signals</h3></div>
                     <div className="list-grid">
-                      {Array.isArray(growthSummary.top_growth_signals) && growthSummary.top_growth_signals.length ? (growthSummary.top_growth_signals as Record<string, unknown>[]).map((item, index) => (
+                      {growthSummary.top_growth_signals?.length ? growthSummary.top_growth_signals.map((item, index) => (
                         <div className="list-row" key={`${String(item.label)}-${index}`}>
                           <div><strong>{text(item.label)}</strong><div className="list-subtle">Platformsignaal voor acquisitie of retentie</div></div>
-                          <Badge tone={String(item.tone || 'neutral') as any}>{text(item.value)}</Badge>
+                          <Badge tone={badgeTone(item.tone)}>{text(item.value)}</Badge>
                         </div>
                       )) : <EmptyState title="Geen growth-signals" description="Nog geen analytics beschikbaar." />}
                     </div>
@@ -866,7 +878,7 @@ export function SuperadminPage() {
                   <div><span>Access totals platform</span><strong>{metaToString(globalSecuritySummary.access_mode_totals)}</strong></div>
                   <div><span>Provider totals</span><strong>{metaToString(globalSecuritySummary.billing_provider_totals)}</strong></div>
                 </div>
-                {securitySummary.latest_access_snapshot ? <InlineMessage tone="neutral">{`Laatste snapshot: ${text((securitySummary.latest_access_snapshot as Record<string, unknown>).access_mode)} · ${formatDatetime(text((securitySummary.latest_access_snapshot as Record<string, unknown>).created_at, '')) || '—'}`}</InlineMessage> : null}
+                {securitySummary.latest_access_snapshot ? <InlineMessage tone="neutral">{`Laatste snapshot: ${text(securitySummary.latest_access_snapshot.access_mode)} · ${formatDatetime(text(securitySummary.latest_access_snapshot.created_at, '')) || '—'}`}</InlineMessage> : null}
               </>
             ) : null}
           </Card>
@@ -918,7 +930,7 @@ export function SuperadminPage() {
                 {lastBillingFeedback ? (
                   <InlineMessage tone="neutral">{`${String(lastBillingFeedback.message || lastBillingFeedback.number || 'Actie verwerkt.')}${lastBillingFeedback.email_preview_subject ? ` · Mail: ${String(lastBillingFeedback.email_preview_subject)}` : ''}${lastBillingFeedback.delivery_mode ? ` · Delivery: ${String(lastBillingFeedback.delivery_mode)}` : ''}${lastBillingFeedback.delivery_outbox_path ? ` · Outbox: ${String(lastBillingFeedback.delivery_outbox_path)}` : ''}${lastBillingFeedback.pdf_url ? ` · PDF: ${String(lastBillingFeedback.pdf_url)}` : ''}`}</InlineMessage>
                 ) : null}
-                {billingEventRows.length ? <InlineMessage tone="neutral">{`Laatste billing event: ${text((billingEventRows[0] as any).event_type)} · ${formatDatetime(text((billingEventRows[0] as any).created_at, '')) || '—'}`}</InlineMessage> : null}
+                {billingEventRows.length ? <InlineMessage tone="neutral">{`Laatste billing event: ${text(billingEventRows[0].event_type || billingEventRows[0].event)} · ${formatDatetime(text(billingEventRows[0].created_at, '')) || '—'}`}</InlineMessage> : null}
                 <div className="divider" />
                 {tenantInvoices.isLoading ? <LoadingState label="Facturen laden..." /> : null}
                 {tenantInvoices.isError ? <ErrorState title="Facturen niet geladen" description="Controleer of /platform/tenants/{id}/invoices bereikbaar is." /> : null}
@@ -926,14 +938,14 @@ export function SuperadminPage() {
                 {!tenantInvoices.isLoading && !tenantInvoices.isError && invoiceRows.length > 0 ? (
                   <DataTable
                     columns={[
-                      { key: 'number', header: 'Factuur', cell: (row: Record<string, unknown>) => text(row.number) },
-                      { key: 'status', header: 'Status', cell: (row: Record<string, unknown>) => <Badge tone={toneFromStatus(text(row.status, 'neutral'))}>{text(row.status)}</Badge> },
-                      { key: 'total', header: 'Totaal', cell: (row: Record<string, unknown>) => formatCents(row.total_cents) },
-                      { key: 'balance', header: 'Openstaand', cell: (row: Record<string, unknown>) => formatCents(row.balance_due_cents) },
-                      { key: 'actions', header: 'Acties', cell: (row: Record<string, unknown>) => <Button variant="secondary" onClick={() => setSelectedInvoiceId(String(row.id))}><FileText size={14} /> Detail</Button> },
+                      { key: 'number', header: 'Factuur', cell: (row: BillingInvoice) => text(row.number || row.invoice_number) },
+                      { key: 'status', header: 'Status', cell: (row: BillingInvoice) => <Badge tone={toneFromStatus(text(row.status, 'neutral'))}>{text(row.status)}</Badge> },
+                      { key: 'total', header: 'Totaal', cell: (row: BillingInvoice) => formatCents(row.total_cents || row.totaal_cents) },
+                      { key: 'balance', header: 'Openstaand', cell: (row: BillingInvoice) => formatCents(row.balance_due_cents) },
+                      { key: 'actions', header: 'Acties', cell: (row: BillingInvoice) => <Button variant="secondary" onClick={() => setSelectedInvoiceId(String(row.id))}><FileText size={14} /> Detail</Button> },
                     ]}
                     rows={invoiceRows}
-                    rowKey={(row: Record<string, unknown>) => String(row.id)}
+                    rowKey={(row: BillingInvoice) => String(row.id)}
                   />
                 ) : null}
                 <div className="divider" />
@@ -969,12 +981,12 @@ export function SuperadminPage() {
               <Button variant="secondary" onClick={() => selectedTenant && setPendingAction({ type: 'deactivate', tenant: selectedTenant })}>Deactiveer</Button>
               <Button variant="secondary" onClick={() => selectedTenant && setPendingAction({ type: 'suspend', tenant: selectedTenant })}>Suspend</Button>
               <Button variant="secondary" onClick={() => selectedTenant && setPendingAction({ type: 'trial', tenant: selectedTenant })}>Start trial</Button>
-              <Button variant="secondary" onClick={async () => { if (!selectedTenant) return; const demoOn = !!(detailTenant as any)?.is_demo; const response = await tenantActions.toggleDemoMode.mutateAsync({ tenantId: selectedTenant.id, isDemo: !demoOn }); refreshMessage(String((response as any)?.message || `Demo mode ${!demoOn ? 'ingeschakeld' : 'uitgeschakeld'}.`)); }}>Demo mode</Button>
+              <Button variant="secondary" onClick={async () => { if (!selectedTenant) return; const demoOn = !!detailTenant?.is_demo; const response = await tenantActions.toggleDemoMode.mutateAsync({ tenantId: selectedTenant.id, isDemo: !demoOn }); refreshMessage(String(response.message || `Demo mode ${!demoOn ? 'ingeschakeld' : 'uitgeschakeld'}.`)); }}>Demo mode</Button>
               <Button variant="ghost" onClick={() => setEditTenantOpen(true)}>Tenant bewerken</Button>
             </div>
             <div className="detail-grid" style={{ marginTop: 16 }}>
-              <div><span>Demo mode</span><strong>{(detailTenant as any)?.is_demo ? 'Aan' : 'Uit'}</strong></div>
-              <div><span>Access history</span><strong>{String(accessHistoryRows.length)}</strong><small>{accessHistoryRows[0] ? text((accessHistoryRows[0] as any).access_mode) : 'Geen snapshots'}</small></div>
+              <div><span>Demo mode</span><strong>{detailTenant?.is_demo ? 'Aan' : 'Uit'}</strong></div>
+              <div><span>Access history</span><strong>{String(accessHistoryRows.length)}</strong><small>{accessHistoryRows[0] ? text(accessHistoryRows[0].access_mode) : 'Geen snapshots'}</small></div>
             </div>
             <div className="checklist-grid" style={{ marginTop: 16 }}>
               <div className="checklist-item"><strong>Statusmapping</strong><span>Trial, actief, inactief en gesuspendeerd worden expliciet getoond.</span></div>
@@ -1017,9 +1029,9 @@ export function SuperadminPage() {
           <label><span>Rol</span><Select value={String(tenantUserEditForm.role || 'viewer')} onChange={(event) => setTenantUserEditForm((current) => ({ ...current, role: event.target.value }))}><option value="viewer">viewer</option><option value="tenant_user">tenant_user</option><option value="tenant_admin">tenant_admin</option></Select></label>
           <label><span>Actief</span><Select value={tenantUserEditForm.is_active === false ? 'false' : 'true'} onChange={(event) => setTenantUserEditForm((current) => ({ ...current, is_active: event.target.value === 'true' }))}><option value="true">Ja</option><option value="false">Nee</option></Select></label>
           <div className="toolbar-cluster">
-            <Button type="button" variant="secondary" onClick={async () => { if (!editingUser) return; const response = await tenantUserActions.resendInvite.mutateAsync(editingUser.user_id) as Record<string, unknown>; refreshMessage(String(response?.reset_url || response?.delivery_outbox_path || response?.message || 'Uitnodiging verstuurd.')); }}>Uitnodiging opnieuw sturen</Button>
-            <Button type="button" variant="secondary" onClick={async () => { if (!editingUser) return; const response = await tenantUserActions.resetPassword.mutateAsync(editingUser.user_id) as Record<string, unknown>; refreshMessage(String(response?.reset_url || response?.delivery_outbox_path || response?.message || 'Resetlink aangemaakt.')); }}>Reset wachtwoord</Button>
-            <Button type="button" variant="secondary" onClick={async () => { if (!editingUser) return; const response = editingUser.is_active ? await tenantUserActions.deactivateUser.mutateAsync(editingUser.user_id) : await tenantUserActions.reactivateUser.mutateAsync(editingUser.user_id); refreshMessage(String((response as any)?.message || (editingUser.is_active ? 'Gebruiker gedeactiveerd.' : 'Gebruiker geactiveerd.'))); setEditingUser((current) => current ? { ...current, is_active: !current.is_active } : current); }}>
+            <Button type="button" variant="secondary" onClick={async () => { if (!editingUser) return; const response = await tenantUserActions.resendInvite.mutateAsync(editingUser.user_id); refreshMessage(String(response.reset_url || response.delivery_outbox_path || response.message || 'Uitnodiging verstuurd.')); }}>Uitnodiging opnieuw sturen</Button>
+            <Button type="button" variant="secondary" onClick={async () => { if (!editingUser) return; const response = await tenantUserActions.resetPassword.mutateAsync(editingUser.user_id); refreshMessage(String(response.reset_url || response.delivery_outbox_path || response.message || 'Resetlink aangemaakt.')); }}>Reset wachtwoord</Button>
+            <Button type="button" variant="secondary" onClick={async () => { if (!editingUser) return; const response = editingUser.is_active ? await tenantUserActions.deactivateUser.mutateAsync(editingUser.user_id) : await tenantUserActions.reactivateUser.mutateAsync(editingUser.user_id); refreshMessage(String(response.message || (editingUser.is_active ? 'Gebruiker gedeactiveerd.' : 'Gebruiker geactiveerd.'))); setEditingUser((current) => current ? { ...current, is_active: !current.is_active } : current); }}>
               {editingUser?.is_active ? 'Deactiveer gebruiker' : 'Heractiveer gebruiker'}
             </Button>
             <Button type="button" variant="ghost" onClick={async () => { if (!editingUser) return; await tenantUserActions.deleteUser.mutateAsync(editingUser.user_id); refreshMessage(`Gebruiker ${editingUser.email} verwijderd.`); setEditingUser(null); }}>Verwijder</Button>
@@ -1032,7 +1044,7 @@ export function SuperadminPage() {
         <form className="mobile-unified-body" onSubmit={async (event) => {
           event.preventDefault();
           if (!selectedTenant) return;
-          const response = await tenantBillingActions.createInvoice.mutateAsync(invoiceForm as unknown as Record<string, unknown>);
+          const response = await tenantBillingActions.createInvoice.mutateAsync(invoiceForm);
           applyBillingFeedback(response, 'Factuur aangemaakt.');
           setCreateInvoiceOpen(false);
         }}>
@@ -1048,7 +1060,7 @@ export function SuperadminPage() {
         <form className="mobile-unified-body" onSubmit={async (event) => {
           event.preventDefault();
           if (!selectedTenant) return;
-          const payload: Record<string, unknown> = {
+          const payload: ManualPaymentPayload = {
             amount_cents: manualPaymentForm.amount_cents,
             type: manualPaymentForm.type,
             provider: manualPaymentForm.provider,
@@ -1072,11 +1084,11 @@ export function SuperadminPage() {
         <form className="mobile-unified-body" onSubmit={async (event) => {
           event.preventDefault();
           if (!selectedTenant) return;
-          const response = await tenantBillingActions.changePlan.mutateAsync(planForm as unknown as Record<string, unknown>);
+          const response = await tenantBillingActions.changePlan.mutateAsync(planForm);
           applyBillingFeedback(response, 'Abonnement bijgewerkt.');
           setChangePlanOpen(false);
         }}>
-          <label><span>Plan code</span><Select value={planForm.plan_code} onChange={(event) => setPlanForm((current) => ({ ...current, plan_code: event.target.value }))}>{platformPlans.length ? platformPlans.map((plan: any) => <option key={String(plan.code)} value={String(plan.code)}>{String(plan.name || plan.code)} · {formatCents(plan.price_cents || plan.price_per_seat_cents)}</option>) : <option value="professional">professional</option>}</Select></label>
+          <label><span>Plan code</span><Select value={planForm.plan_code} onChange={(event) => setPlanForm((current) => ({ ...current, plan_code: event.target.value }))}>{platformPlans.length ? platformPlans.map((plan: BillingPlan) => <option key={String(plan.code)} value={String(plan.code)}>{String(plan.name || plan.code)} · {formatCents(plan.price_cents || plan.price_per_seat_cents)}</option>) : <option value="professional">professional</option>}</Select></label>
           <label><span>Seats</span><Input type="number" value={planForm.seats} onChange={(event) => setPlanForm((current) => ({ ...current, seats: Number(event.target.value || 1) }))} min={1} required /></label>
           <label><span>Status</span><Select value={planForm.status} onChange={(event) => setPlanForm((current) => ({ ...current, status: event.target.value }))}><option value="active">active</option><option value="trialing">trialing</option><option value="past_due">past_due</option><option value="suspended">suspended</option><option value="cancelled">cancelled</option><option value="expired">expired</option></Select></label>
           <div className="form-actions"><Button type="submit">Opslaan</Button></div>
@@ -1087,7 +1099,7 @@ export function SuperadminPage() {
         <form className="mobile-unified-body" onSubmit={async (event) => {
           event.preventDefault();
           if (!selectedTenant) return;
-          const response = await tenantBillingActions.overrideAccessMode.mutateAsync(accessOverrideForm as unknown as Record<string, unknown>);
+          const response = await tenantBillingActions.overrideAccessMode.mutateAsync(accessOverrideForm);
           applyBillingFeedback(response, 'Access mode bijgewerkt.');
           setAccessOverrideOpen(false);
         }}>
@@ -1111,13 +1123,13 @@ export function SuperadminPage() {
             </div>
             <DataTable
               columns={[
-                { key: 'description', header: 'Omschrijving', cell: (row: Record<string, unknown>) => text(row.description) },
-                { key: 'quantity', header: 'Aantal', cell: (row: Record<string, unknown>) => text(row.quantity) },
-                { key: 'unit_amount_cents', header: 'Prijs', cell: (row: Record<string, unknown>) => formatCents(row.unit_amount_cents) },
-                { key: 'line_total_cents', header: 'Regel', cell: (row: Record<string, unknown>) => formatCents(row.line_total_cents) },
+                { key: 'description', header: 'Omschrijving', cell: (row: BillingInvoiceLine) => text(row.description || row.omschrijving) },
+                { key: 'quantity', header: 'Aantal', cell: (row: BillingInvoiceLine) => text(row.quantity || row.aantal) },
+                { key: 'unit_amount_cents', header: 'Prijs', cell: (row: BillingInvoiceLine) => formatCents(row.unit_amount_cents || row.stukprijs_cents) },
+                { key: 'line_total_cents', header: 'Regel', cell: (row: BillingInvoiceLine) => formatCents(row.line_total_cents || row.total_cents || row.totaal_cents) },
               ]}
-              rows={Array.isArray(selectedInvoiceDetail.data.lines) ? selectedInvoiceDetail.data.lines as Record<string, unknown>[] : []}
-              rowKey={(row: Record<string, unknown>) => String(row.id || row.description || '')}
+              rows={Array.isArray(selectedInvoiceDetail.data.lines) ? selectedInvoiceDetail.data.lines : []}
+              rowKey={(row: BillingInvoiceLine) => String(row.id || row.description || row.omschrijving || '')}
             />
             <div className="toolbar-cluster">
               <Button variant="secondary" onClick={async () => {

@@ -1,5 +1,15 @@
 import { optionalRequest } from '@/api/client';
 import { runtimeTrace } from '@/utils/runtimeTracing';
+import type {
+  BillingInvoicesResponse,
+  BillingPaymentsResponse,
+  BillingPaymentStatusResponse,
+  BillingPlansResponse,
+  BillingPreviewResponse,
+  EnterpriseActionResponse,
+  TeamUsersResponse,
+  TenantInviteResponse,
+} from '@/api/enterpriseTypes';
 import type { BillingStatus } from '@/types/domain';
 
 const CANONICAL_BILLING_STATUS_ENDPOINT = '/billing/current';
@@ -92,41 +102,41 @@ function normalizePreviewPayload(payload?: BillingPreviewRequest): Record<string
 }
 
 export function getTenantBillingStatus() {
-  return optionalRequest<BillingStatus | Record<string, unknown>>([
+  return optionalRequest<BillingStatus>([
     CANONICAL_BILLING_STATUS_ENDPOINT,
     ...BILLING_STATUS_FALLBACK_ENDPOINTS,
   ]);
 }
 
 export function getBillingPaymentStatus(paymentId: string) {
-  return optionalRequest<Record<string, unknown>>([
+  return optionalRequest<BillingPaymentStatusResponse>([
     `/billing/payment-status/${encodeURIComponent(paymentId)}`,
   ]);
 }
 
 export function getTenantBillingInvoices() {
-  return optionalRequest<Record<string, unknown>>([
+  return optionalRequest<BillingInvoicesResponse>([
     CANONICAL_BILLING_INVOICES_ENDPOINT,
     ...BILLING_INVOICES_FALLBACK_ENDPOINTS,
   ]);
 }
 
 export function getTenantBillingPayments() {
-  return optionalRequest<Record<string, unknown>>([
+  return optionalRequest<BillingPaymentsResponse>([
     '/billing/payments',
     '/tenant/billing/payments',
   ]);
 }
 
 export function getBillingPlans() {
-  return optionalRequest<Record<string, unknown>>([
+  return optionalRequest<BillingPlansResponse>([
     '/billing/plans',
     '/tenant/billing/plans',
   ]);
 }
 
 export function getTenantBillingPreview(payload?: BillingPreviewRequest) {
-  return optionalRequest<Record<string, unknown>>([
+  return optionalRequest<BillingPreviewResponse>([
     CANONICAL_BILLING_PREVIEW_ENDPOINT,
     ...BILLING_PREVIEW_FALLBACK_ENDPOINTS,
   ], {
@@ -145,7 +155,7 @@ export function createTenantBillingCheckout(payload: BillingCheckoutRequest) {
   });
 }
 
-export function changeTenantSeats(payload: BillingCheckoutRequest | Record<string, unknown>) {
+export function changeTenantSeats(payload: BillingCheckoutRequest) {
   runtimeTrace('BILLING_MUTATION_CANONICALIZED', {
     canonicalEndpoint: CANONICAL_BILLING_CHANGE_ENDPOINT,
     retiredFallbacks: [
@@ -159,11 +169,11 @@ export function changeTenantSeats(payload: BillingCheckoutRequest | Record<strin
     CANONICAL_BILLING_CHANGE_ENDPOINT,
   ], {
     method: 'POST',
-    body: JSON.stringify(normalizeCheckoutPayload(payload as BillingCheckoutRequest)),
+    body: JSON.stringify(normalizeCheckoutPayload(payload)),
   });
 }
 
-export function changeTenantPlan(payload: BillingCheckoutRequest | Record<string, unknown>) {
+export function changeTenantPlan(payload: BillingCheckoutRequest) {
   return changeTenantSeats(payload);
 }
 
@@ -178,7 +188,7 @@ export function retryTenantPayment() {
 }
 
 export function cancelTenantSubscriptionSelfService() {
-  return optionalRequest<Record<string, unknown>>([
+  return optionalRequest<EnterpriseActionResponse>([
     CANONICAL_BILLING_CANCEL_ENDPOINT,
     ...BILLING_CANCEL_FALLBACK_ENDPOINTS,
   ], {
@@ -188,14 +198,14 @@ export function cancelTenantSubscriptionSelfService() {
 }
 
 export function getTeamUsers() {
-  return optionalRequest<Record<string, unknown>>([
+  return optionalRequest<TeamUsersResponse>([
     '/team/users',
     '/tenant/users',
   ]);
 }
 
 export function inviteTeamUser(payload: { email: string; role: string }) {
-  return optionalRequest<Record<string, unknown>>([
+  return optionalRequest<TenantInviteResponse>([
     '/team/invite',
     '/tenant/users/invite',
   ], {
