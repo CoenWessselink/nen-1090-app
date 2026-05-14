@@ -155,7 +155,7 @@ export function createTenantBillingCheckout(payload: BillingCheckoutRequest) {
   });
 }
 
-export function changeTenantSeats(payload: BillingCheckoutRequest | Record<string, unknown>) {
+export function changeTenantSeats(payload: BillingCheckoutRequest) {
   runtimeTrace('BILLING_MUTATION_CANONICALIZED', {
     canonicalEndpoint: CANONICAL_BILLING_CHANGE_ENDPOINT,
     retiredFallbacks: [
@@ -169,11 +169,11 @@ export function changeTenantSeats(payload: BillingCheckoutRequest | Record<strin
     CANONICAL_BILLING_CHANGE_ENDPOINT,
   ], {
     method: 'POST',
-    body: JSON.stringify(normalizeCheckoutPayload(payload as BillingCheckoutRequest)),
+    body: JSON.stringify(normalizeCheckoutPayload(payload)),
   });
 }
 
-export function changeTenantPlan(payload: BillingCheckoutRequest | Record<string, unknown>) {
+export function changeTenantPlan(payload: BillingCheckoutRequest) {
   return changeTenantSeats(payload);
 }
 

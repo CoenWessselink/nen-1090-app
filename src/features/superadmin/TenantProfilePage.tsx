@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import client from '@/api/client';
+import { getPlatformMailStatus, sendPlatformMailTest } from '@/api/platform';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { InlineMessage } from '@/components/feedback/InlineMessage';
@@ -17,6 +17,7 @@ import {
 } from '@/hooks/useTenantAdmin';
 import { useTenantBillingActions, useTenantInvoices } from '@/hooks/usePlatformBilling';
 import type { TenantProfile } from '@/types/domain';
+import type { PlatformMailTestResponse } from '@/api/enterpriseTypes';
 
 const EMPTY_PROFILE: TenantProfile = {
   tenant_id: '',
@@ -98,17 +99,17 @@ export default function TenantProfilePage() {
 
   const mailStatus = useQuery({
     queryKey: ['platform-mail-status'],
-    queryFn: () => client.get<Record<string, unknown>>('/platform/mail/status'),
+    queryFn: getPlatformMailStatus,
   });
 
   const mailTest = useMutation({
-    mutationFn: (to: string) => client.post<Record<string, unknown>>('/platform/mail/test', { to }),
+    mutationFn: (to: string) => sendPlatformMailTest(to),
   });
 
   const [form, setForm] = useState<TenantProfile>(EMPTY_PROFILE);
   const [message, setMessage] = useState<string | null>(null);
   const [mailTestTo, setMailTestTo] = useState('');
-  const [mailTestResult, setMailTestResult] = useState<Record<string, unknown> | null>(null);
+  const [mailTestResult, setMailTestResult] = useState<PlatformMailTestResponse | null>(null);
 
   useEffect(() => {
     if (tenantProfile.data) {
@@ -121,11 +122,11 @@ export default function TenantProfilePage() {
     if (email && !mailTestTo) setMailTestTo(email);
   }, [form.company_email, form.billing_email, form.administration_email, mailTestTo]);
 
-  const users = Array.isArray(tenantUsers.data) ? tenantUsers.data : [];
-  const auditItems = Array.isArray(tenantAudit.data) ? tenantAudit.data : [];
-  const invoices = Array.isArray(tenantInvoices.data?.items) ? tenantInvoices.data.items : Array.isArray(tenantInvoices.data) ? tenantInvoices.data : [];
-  const billing = useMemo(() => (tenantBilling.data || {}) as Record<string, unknown>, [tenantBilling.data]);
-  const security = useMemo(() => (tenantSecurity.data || {}) as Record<string, unknown>, [tenantSecurity.data]);
+  const users = tenantUsers.data?.items || [];
+  const auditItems = tenantAudit.data?.items || [];
+  const invoices = tenantInvoices.data?.items || [];
+  const billing = useMemo(() => tenantBilling.data || {}, [tenantBilling.data]);
+  const security = useMemo(() => tenantSecurity.data || {}, [tenantSecurity.data]);
   const mailConfigured = Boolean(mailStatus.data?.configured);
 
   function setField<K extends keyof TenantProfile>(key: K, newValue: string) {
@@ -205,7 +206,7 @@ export default function TenantProfilePage() {
 
   return (
     <MobilePageScaffold
-      title={value((tenantDetail.data as any)?.name, tenantId)}
+      title={value(tenantDetail.data?.name, tenantId)}
       subtitle="Tenant 360 · profiel, billing, audit"
       backTo="/superadmin"
     >
@@ -213,7 +214,7 @@ export default function TenantProfilePage() {
       {message ? <InlineMessage tone={message.toLowerCase().includes('mislukt') ? 'danger' : 'success'}>{message}</InlineMessage> : null}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 12 }}>
-        <Card><strong>Status</strong><div>{value((tenantDetail.data as any)?.status || billing.subscription_status)}</div></Card>
+        <Card><strong>Status</strong><div>{value(tenantDetail.data?.status || billing.subscription_status)}</div></Card>
         <Card><strong>Access</strong><div>{value(security.access_mode || billing.access_mode)}</div></Card>
         <Card><strong>Users</strong><div>{users.length}</div></Card>
         <Card><strong>Openstaand</strong><div>{moneyFromCents(billing.balance_due_cents || billing.outstanding_cents)}</div></Card>
@@ -306,7 +307,7 @@ export default function TenantProfilePage() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
         <Section title="Gebruikers">
           <div style={{ display: 'grid', gap: 10 }}>
-            {users.length ? users.map((user: any) => (
+            {users.length ? users.map((user) => (
               <div key={String(user.user_id || user.id)} style={{ border: '1px solid #e3e8ef', borderRadius: 10, padding: 12 }}>
                 <div><strong>{value(user.email)}</strong></div>
                 <div>Rol: {value(user.role)}</div>
@@ -318,7 +319,7 @@ export default function TenantProfilePage() {
 
         <Section title="Audit & historie">
           <div style={{ display: 'grid', gap: 10 }}>
-            {auditItems.length ? auditItems.slice(0, 10).map((item: any, index: number) => (
+            {auditItems.length ? auditItems.slice(0, 10).map((item, index) => (
               <div key={String(item.id || index)} style={{ border: '1px solid #e3e8ef', borderRadius: 10, padding: 12 }}>
                 <div><strong>{value(item.action)}</strong></div>
                 <div>Entity: {value(item.entity)}</div>
@@ -331,7 +332,7 @@ export default function TenantProfilePage() {
 
       <Section title="Facturen">
         <div style={{ display: 'grid', gap: 10 }}>
-          {invoices.length ? invoices.map((invoice: any) => (
+          {invoices.length ? invoices.map((invoice) => (
             <div key={String(invoice.id)} style={{ border: '1px solid #e3e8ef', borderRadius: 10, padding: 12, display: 'grid', gap: 8 }}>
               <div><strong>{value(invoice.number || invoice.invoice_number, invoice.id)}</strong></div>
               <div>Status: {value(invoice.status)}</div>

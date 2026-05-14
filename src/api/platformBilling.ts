@@ -10,12 +10,17 @@ import type {
   EnterpriseActionResponse,
   EnterpriseListResponse,
   ManualPaymentPayload,
+  PlatformBillingOverview,
   TenantBillingPanel,
 } from '@/api/enterpriseTypes';
 import type { BillingPayment, BillingPlan } from '@/types/domain';
 
 export function getTenantBillingDetail(tenantId: string | number) {
   return apiRequest<TenantBillingPanel>(`/platform/tenants/${tenantId}/billing`);
+}
+
+export function getPlatformBillingOverview() {
+  return apiRequest<PlatformBillingOverview>('/platform/billing/overview');
 }
 
 export function getTenantPayments(tenantId: string | number, params?: ListParams) {

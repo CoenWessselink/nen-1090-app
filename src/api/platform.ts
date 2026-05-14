@@ -4,10 +4,14 @@ import type {
   EnterpriseListResponse,
   PlatformGrowthOverview,
   PlatformIntegrationsCatalog,
+  PlatformMailStatus,
+  PlatformMailTestResponse,
   PlatformReportingInsights,
   TenantAccessHistoryEntry,
   TenantBillingEvent,
   TenantBillingPanel,
+  TenantCreateResponse,
+  TenantUserCreateResponse,
 } from '@/api/enterpriseTypes';
 import type {
   AuditSummary,
@@ -42,7 +46,7 @@ export function patchTenantProfile(tenantId: string | number, payload: Partial<T
 }
 
 export function createTenant(payload: TenantCreateInput) {
-  return client.post<Tenant>('/platform/tenants', payload);
+  return client.post<TenantCreateResponse>('/platform/tenants', payload);
 }
 
 export function patchTenant(tenantId: string | number, payload: TenantPatchInput) {
@@ -99,7 +103,7 @@ export function getTenantUsers(tenantId: string | number) {
 }
 
 export function createTenantUser(tenantId: string | number, payload: TenantUserCreateInput) {
-  return client.post<TenantUser>(`/platform/tenants/${tenantId}/users`, payload);
+  return client.post<TenantUserCreateResponse>(`/platform/tenants/${tenantId}/users`, payload);
 }
 
 export function patchTenantUser(tenantId: string | number, userId: string, payload: TenantUserPatchInput) {
@@ -191,4 +195,12 @@ export function getPlatformIntegrationsCatalog() {
 
 export function getPlatformReportingInsights() {
   return apiRequest<PlatformReportingInsights>('/platform/reporting/insights');
+}
+
+export function getPlatformMailStatus() {
+  return client.get<PlatformMailStatus>('/platform/mail/status');
+}
+
+export function sendPlatformMailTest(to: string) {
+  return client.post<PlatformMailTestResponse>('/platform/mail/test', { to });
 }

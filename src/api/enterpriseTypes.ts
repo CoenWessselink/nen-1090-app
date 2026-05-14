@@ -22,6 +22,13 @@ export type EnterpriseActionResponse = Record<string, unknown> & {
   detail?: string;
   error?: string;
   request_id?: string;
+  reset_url?: string;
+  delivery_outbox_path?: string;
+  email_preview_subject?: string;
+  email_preview_text?: string;
+  delivery_mode?: string;
+  pdf_url?: string;
+  number?: string;
 };
 
 export type TenantBillingPanel = BillingStatus & {
@@ -43,6 +50,7 @@ export type TenantAccessHistoryEntry = EntityBase & {
   user_email?: string;
   role?: string;
   action?: string;
+  access_mode?: string;
   ip?: string;
   user_agent?: string;
   accessed_at?: string;
@@ -52,6 +60,7 @@ export type TenantAccessHistoryEntry = EntityBase & {
 export type TenantBillingEvent = EntityBase & {
   tenant_id?: string;
   type?: string;
+  event_type?: string;
   event?: string;
   status?: string;
   amount_cents?: number;
@@ -62,6 +71,12 @@ export type TenantBillingEvent = EntityBase & {
 
 export type PlatformGrowthOverview = Record<string, unknown> & {
   tenant_growth?: Array<Record<string, unknown>>;
+  top_growth_signals?: Array<{
+    label?: string;
+    value?: string | number;
+    tone?: string;
+    [key: string]: unknown;
+  }>;
   active_tenants?: number;
   trial_tenants?: number;
   churned_tenants?: number;
@@ -99,6 +114,7 @@ export type BillingInvoiceLine = EntityBase & {
   stukprijs_cents?: number;
   total_cents?: number;
   totaal_cents?: number;
+  line_total_cents?: number;
   vat_cents?: number;
   btw_cents?: number;
 };
@@ -187,6 +203,14 @@ export type AccessModeOverridePayload = Record<string, unknown> & {
   expires_at?: string;
 };
 
+export type TenantCreateResponse = Tenant & EnterpriseActionResponse & {
+  tenant?: Tenant;
+};
+
+export type TenantUserCreateResponse = TenantUser & EnterpriseActionResponse & {
+  user?: TenantUser;
+};
+
 export type BillingPreviewResponse = Record<string, unknown> & {
   seats?: number;
   target_seats?: number;
@@ -229,11 +253,23 @@ export type PlatformMailStatus = Record<string, unknown> & {
   configured?: boolean;
   provider?: string;
   from_address?: string;
+  sender?: string;
+  smtp_host?: string;
+  mode_description?: string;
 };
 
 export type PlatformMailTestResponse = EnterpriseActionResponse & {
   delivered?: boolean;
+  mode?: string;
+  outbox_path?: string;
   delivery_outbox_path?: string;
+};
+
+export type PlatformBillingOverview = Record<string, unknown> & {
+  kpis?: Record<string, number>;
+  tenants?: Array<TenantBillingPanel & { status?: string }>;
+  payments?: BillingPayment[];
+  invoices?: BillingInvoice[];
 };
 
 export type {

@@ -47,6 +47,7 @@ export type Tenant = EntityBase & {
   mollie_subscription_id?: string;
   mollie_subscription_status?: string;
   mollie_next_payment_date?: string;
+  is_demo?: boolean;
 };
 
 export type TenantProfile = Record<string, unknown> & {
@@ -332,7 +333,7 @@ export type TenantSecurityOverview = Record<string, unknown> & {
   role_counts?: Record<string, number>;
   active_user_count?: number;
   total_user_count?: number;
-  latest_access_snapshot?: Record<string, unknown> | null;
+  latest_access_snapshot?: ({ access_mode?: string; created_at?: string } & Record<string, unknown>) | null;
   self_service_billing_allowed?: boolean;
 };
 
