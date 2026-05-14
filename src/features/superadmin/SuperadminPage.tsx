@@ -38,7 +38,7 @@ import { useExitImpersonation, useImpersonateTenant, usePlatformSummary, useTena
 import { usePlatformGrowthOverview, usePlatformIntegrationsCatalog, usePlatformReportingInsights, usePlatformSecurityOverview, useTenantAccessHistory, useTenantAudit, useTenantBillingEvents, useTenantBillingPanel, useTenantDetail, useTenantPermissionsSummary, useTenantSecurityOverview, useTenantUserActions, useTenantUsers } from '@/hooks/useTenantAdmin';
 import { useSystemHealth } from '@/hooks/useSystemHealth';
 import { usePlatformBillingPlans, useTenantBillingActions, useTenantBillingDetail, useTenantInvoiceDetail, useTenantInvoices, useTenantPayments } from '@/hooks/usePlatformBilling';
-import type { AuditSummary, BillingPayment, BillingPlan, PlatformSummary, Tenant, TenantCreateInput, TenantPatchInput, TenantUser, TenantUserCreateInput, TenantUserPatchInput } from '@/types/domain';
+import type { AuditSummary, BillingPayment, BillingPlan, PlatformSummary, Tenant, TenantCreateInput, TenantPatchInput, TenantPermissionsSummary, TenantUser, TenantUserCreateInput, TenantUserPatchInput } from '@/types/domain';
 import type {
   BillingInvoice,
   BillingInvoiceLine,
@@ -262,7 +262,7 @@ export function SuperadminPage() {
   const accessHistoryRows = tenantAccessHistory.data?.items || [];
   const billingEventRows = tenantBillingEvents.data?.items || [];
   const billingPayload = { ...(tenantBilling.data || {}), ...(tenantBillingDetail.data || {}) };
-  const permissionSummary = tenantPermissionsSummary.data || {};
+  const permissionSummary: Partial<TenantPermissionsSummary> = tenantPermissionsSummary.data || {};
   const securitySummary = tenantSecurityOverview.data || {};
   const globalSecuritySummary = platformSecurityOverview.data || {};
   const growthSummary = platformGrowthOverview.data || {};

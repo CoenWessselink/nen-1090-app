@@ -334,7 +334,7 @@ export default function TenantProfilePage() {
         <div style={{ display: 'grid', gap: 10 }}>
           {invoices.length ? invoices.map((invoice) => (
             <div key={String(invoice.id)} style={{ border: '1px solid #e3e8ef', borderRadius: 10, padding: 12, display: 'grid', gap: 8 }}>
-              <div><strong>{value(invoice.number || invoice.invoice_number, invoice.id)}</strong></div>
+              <div><strong>{value(invoice.number || invoice.invoice_number, String(invoice.id))}</strong></div>
               <div>Status: {value(invoice.status)}</div>
               <div>Totaal: {moneyFromCents(invoice.total_cents)}</div>
               <div>PDF: {value(invoice.pdf_url)}</div>
