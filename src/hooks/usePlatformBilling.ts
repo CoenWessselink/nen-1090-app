@@ -15,6 +15,14 @@ import {
 } from '@/api/platformBilling';
 import { normalizeListResponse } from '@/utils/api';
 import type { ListParams } from '@/types/api';
+import type {
+  AccessModeOverridePayload,
+  CancelTenantSubscriptionPayload,
+  ChangeTenantPlatformPlanPayload,
+  CreateTenantInvoicePayload,
+  CreditTenantInvoicePayload,
+  ManualPaymentPayload,
+} from '@/api/enterpriseTypes';
 
 export function useTenantBillingDetail(tenantId?: string | number) {
   return useQuery({
@@ -68,12 +76,12 @@ export function useTenantBillingActions(tenantId?: string | number) {
   };
 
   return {
-    manualPayment: useMutation({ mutationFn: (payload: Record<string, unknown>) => createTenantManualPayment(String(tenantId), payload), onSuccess: refresh }),
-    cancelSubscription: useMutation({ mutationFn: (payload?: Record<string, unknown>) => cancelTenantSubscription(String(tenantId), payload || {}), onSuccess: refresh }),
-    changePlan: useMutation({ mutationFn: (payload: Record<string, unknown>) => changeTenantPlatformPlan(String(tenantId), payload), onSuccess: refresh }),
-    createInvoice: useMutation({ mutationFn: (payload: Record<string, unknown>) => createTenantInvoice(String(tenantId), payload), onSuccess: refresh }),
+    manualPayment: useMutation({ mutationFn: (payload: ManualPaymentPayload) => createTenantManualPayment(String(tenantId), payload), onSuccess: refresh }),
+    cancelSubscription: useMutation({ mutationFn: (payload?: CancelTenantSubscriptionPayload) => cancelTenantSubscription(String(tenantId), payload || {}), onSuccess: refresh }),
+    changePlan: useMutation({ mutationFn: (payload: ChangeTenantPlatformPlanPayload) => changeTenantPlatformPlan(String(tenantId), payload), onSuccess: refresh }),
+    createInvoice: useMutation({ mutationFn: (payload: CreateTenantInvoicePayload) => createTenantInvoice(String(tenantId), payload), onSuccess: refresh }),
     sendInvoice: useMutation({ mutationFn: (invoiceId: string) => sendTenantInvoice(String(tenantId), invoiceId), onSuccess: refresh }),
-    creditInvoice: useMutation({ mutationFn: ({ invoiceId, payload }: { invoiceId: string; payload: Record<string, unknown> }) => creditTenantInvoice(String(tenantId), invoiceId, payload), onSuccess: refresh }),
-    overrideAccessMode: useMutation({ mutationFn: (payload: Record<string, unknown>) => overrideTenantAccessMode(String(tenantId), payload), onSuccess: refresh }),
+    creditInvoice: useMutation({ mutationFn: ({ invoiceId, payload }: { invoiceId: string; payload: CreditTenantInvoicePayload }) => creditTenantInvoice(String(tenantId), invoiceId, payload), onSuccess: refresh }),
+    overrideAccessMode: useMutation({ mutationFn: (payload: AccessModeOverridePayload) => overrideTenantAccessMode(String(tenantId), payload), onSuccess: refresh }),
   };
 }

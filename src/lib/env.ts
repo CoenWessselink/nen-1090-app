@@ -5,7 +5,7 @@ function trimTrailingSlash(value: string) {
 function resolveMarketingBaseUrl(): string {
   const explicit = trimTrailingSlash(import.meta.env.VITE_MARKETING_BASE_URL || '');
   if (explicit) return explicit;
-  return 'https://nen1090-marketing.pages.dev';
+  return 'https://weldinspectpro.com';
 }
 
 function resolveApiBaseUrl(): string {

@@ -1,28 +1,22 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CreditCard, Building2, AlertTriangle, TrendingUp } from 'lucide-react';
-import { apiRequest } from '@/api/client';
+import { getPlatformBillingOverview } from '@/api/platformBilling';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
+import type { PlatformBillingOverview } from '@/api/enterpriseTypes';
 
 function euro(cents: unknown) {
   const amount = Number(cents || 0);
   return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(amount / 100);
 }
 
-type Overview = {
-  kpis?: Record<string, number>;
-  tenants?: Array<Record<string, unknown>>;
-  payments?: Array<Record<string, unknown>>;
-  invoices?: Array<Record<string, unknown>>;
-};
-
 export default function SuperadminBillingPage() {
-  const [data, setData] = useState<Overview>({});
+  const [data, setData] = useState<PlatformBillingOverview>({});
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    apiRequest<Overview>('/platform/billing/overview')
+    getPlatformBillingOverview()
       .then(setData)
       .catch((err) => setError(err instanceof Error ? err.message : 'Billing overview niet beschikbaar'));
   }, []);

@@ -5,6 +5,7 @@ import {
   getTenantBillingPreview,
   getTenantBillingStatus,
 } from '@/api/billing';
+import type { BillingCheckoutRequest, BillingPreviewRequest } from '@/api/billing';
 
 export function useBillingStatus(enabled = true) {
   return useQuery({
@@ -14,7 +15,7 @@ export function useBillingStatus(enabled = true) {
   });
 }
 
-export function useBillingPreview(payload?: { target_seats?: number; plan_code?: string }, enabled = true) {
+export function useBillingPreview(payload?: BillingPreviewRequest, enabled = true) {
   return useQuery({
     queryKey: ['billing-preview', payload],
     queryFn: () => getTenantBillingPreview(payload),
@@ -25,7 +26,7 @@ export function useBillingPreview(payload?: { target_seats?: number; plan_code?:
 export function useChangePlan() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (payload: Record<string, unknown>) => changeTenantPlan(payload),
+    mutationFn: (payload: BillingCheckoutRequest) => changeTenantPlan(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['billing-status'] });
       queryClient.invalidateQueries({ queryKey: ['billing-preview'] });

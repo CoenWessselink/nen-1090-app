@@ -1,11 +1,28 @@
 import client, { apiRequest, downloadUrlAsObjectUrl, listRequest, optionalRequest } from '@/api/client';
 import type {
+  EnterpriseActionResponse,
+  EnterpriseListResponse,
+  PlatformGrowthOverview,
+  PlatformIntegrationsCatalog,
+  PlatformMailStatus,
+  PlatformMailTestResponse,
+  PlatformReportingInsights,
+  TenantAccessHistoryEntry,
+  TenantBillingEvent,
+  TenantBillingPanel,
+  TenantCreateResponse,
+  TenantUserCreateResponse,
+} from '@/api/enterpriseTypes';
+import type {
   AuditSummary,
+  PlatformSecurityOverview,
   PlatformSummary,
   Tenant,
   TenantCreateInput,
   TenantPatchInput,
+  TenantPermissionsSummary,
   TenantProfile,
+  TenantSecurityOverview,
   TenantUser,
   TenantUserCreateInput,
   TenantUserPatchInput,
@@ -13,7 +30,7 @@ import type {
 import type { LoginResponse, ListParams } from '@/types/api';
 
 export function getTenants(params?: ListParams) {
-  return listRequest<Tenant[] | { items?: Tenant[] }>('/platform/tenants', params);
+  return listRequest<EnterpriseListResponse<Tenant>>('/platform/tenants', params);
 }
 
 export function getTenant(tenantId: string | number) {
@@ -29,7 +46,7 @@ export function patchTenantProfile(tenantId: string | number, payload: Partial<T
 }
 
 export function createTenant(payload: TenantCreateInput) {
-  return client.post<Tenant>('/platform/tenants', payload);
+  return client.post<TenantCreateResponse>('/platform/tenants', payload);
 }
 
 export function patchTenant(tenantId: string | number, payload: TenantPatchInput) {
@@ -82,11 +99,11 @@ export async function searchTenants(query: string) {
 }
 
 export function getTenantUsers(tenantId: string | number) {
-  return apiRequest<TenantUser[] | { items?: TenantUser[] }>(`/platform/tenants/${tenantId}/users`);
+  return apiRequest<EnterpriseListResponse<TenantUser>>(`/platform/tenants/${tenantId}/users`);
 }
 
 export function createTenantUser(tenantId: string | number, payload: TenantUserCreateInput) {
-  return client.post<TenantUser>(`/platform/tenants/${tenantId}/users`, payload);
+  return client.post<TenantUserCreateResponse>(`/platform/tenants/${tenantId}/users`, payload);
 }
 
 export function patchTenantUser(tenantId: string | number, userId: string, payload: TenantUserPatchInput) {
@@ -94,23 +111,23 @@ export function patchTenantUser(tenantId: string | number, userId: string, paylo
 }
 
 export function getTenantAudit(tenantId: string | number) {
-  return apiRequest<AuditSummary[] | { items?: AuditSummary[] }>(`/platform/tenants/${tenantId}/audit`);
+  return apiRequest<EnterpriseListResponse<AuditSummary>>(`/platform/tenants/${tenantId}/audit`);
 }
 
 export function getTenantBilling(tenantId: string | number) {
-  return apiRequest<Record<string, unknown>>(`/platform/tenants/${tenantId}/billing`);
+  return apiRequest<TenantBillingPanel>(`/platform/tenants/${tenantId}/billing`);
 }
 
 export function getTenantSecurityOverview(tenantId: string | number) {
-  return apiRequest<Record<string, unknown>>(`/platform/tenants/${tenantId}/security-overview`);
+  return apiRequest<TenantSecurityOverview>(`/platform/tenants/${tenantId}/security-overview`);
 }
 
 export function getPlatformSecurityOverview() {
-  return apiRequest<Record<string, unknown>>('/platform/security/overview');
+  return apiRequest<PlatformSecurityOverview>('/platform/security/overview');
 }
 
 export function forceLogoutTenant(tenantId: string | number) {
-  return optionalRequest<Record<string, unknown>>([`/platform/tenants/${tenantId}/force-logout`, `/platform/tenants/${tenantId}/force_logout`], { method: 'POST', body: JSON.stringify({}) });
+  return optionalRequest<EnterpriseActionResponse>([`/platform/tenants/${tenantId}/force-logout`, `/platform/tenants/${tenantId}/force_logout`], { method: 'POST', body: JSON.stringify({}) });
 }
 
 export function exportTenantsCsv() {
@@ -127,55 +144,63 @@ export function impersonateTenant(tenantId: string | number) {
 }
 
 export function exitImpersonation() {
-  return optionalRequest<Record<string, unknown>>(['/platform/impersonate/exit'], { method: 'POST' });
+  return optionalRequest<EnterpriseActionResponse>(['/platform/impersonate/exit'], { method: 'POST' });
 }
 
 export function resendTenantUserInvite(tenantId: string | number, userId: string) {
-  return client.post<Record<string, unknown>>(`/platform/tenants/${tenantId}/users/${userId}/resend-invite`, {});
+  return client.post<EnterpriseActionResponse>(`/platform/tenants/${tenantId}/users/${userId}/resend-invite`, {});
 }
 
 export function resetTenantUserPassword(tenantId: string | number, userId: string) {
-  return client.post<Record<string, unknown>>(`/platform/tenants/${tenantId}/users/${userId}/reset-password`, {});
+  return client.post<EnterpriseActionResponse>(`/platform/tenants/${tenantId}/users/${userId}/reset-password`, {});
 }
 
 export function deleteTenantUser(tenantId: string | number, userId: string) {
-  return apiRequest<Record<string, unknown>>(`/platform/tenants/${tenantId}/users/${userId}`, { method: 'DELETE' });
+  return apiRequest<EnterpriseActionResponse>(`/platform/tenants/${tenantId}/users/${userId}`, { method: 'DELETE' });
 }
 
 export function getTenantAccessHistory(tenantId: string | number) {
-  return apiRequest<Record<string, unknown>[] | { items?: Record<string, unknown>[] }>(`/platform/tenants/${tenantId}/access-history`);
+  return apiRequest<EnterpriseListResponse<TenantAccessHistoryEntry>>(`/platform/tenants/${tenantId}/access-history`);
 }
 
 export function getTenantBillingEvents(tenantId: string | number) {
-  return apiRequest<Record<string, unknown>[] | { items?: Record<string, unknown>[] }>(`/platform/tenants/${tenantId}/billing-events`);
+  return apiRequest<EnterpriseListResponse<TenantBillingEvent>>(`/platform/tenants/${tenantId}/billing-events`);
 }
 
 export function toggleTenantDemoMode(tenantId: string | number, isDemo?: boolean) {
-  return client.post<Record<string, unknown>>(`/platform/tenants/${tenantId}/demo-mode`, { is_demo: isDemo });
+  return client.post<EnterpriseActionResponse>(`/platform/tenants/${tenantId}/demo-mode`, { is_demo: isDemo });
 }
 
 export function deactivatePlatformUser(userId: string, tenantId?: string | number) {
   const query = tenantId ? `?tenant_id=${encodeURIComponent(String(tenantId))}` : '';
-  return client.post<Record<string, unknown>>(`/platform/users/${userId}/deactivate${query}`, {});
+  return client.post<EnterpriseActionResponse>(`/platform/users/${userId}/deactivate${query}`, {});
 }
 
 export function reactivatePlatformUser(userId: string, tenantId?: string | number) {
   const query = tenantId ? `?tenant_id=${encodeURIComponent(String(tenantId))}` : '';
-  return client.post<Record<string, unknown>>(`/platform/users/${userId}/reactivate${query}`, {});
+  return client.post<EnterpriseActionResponse>(`/platform/users/${userId}/reactivate${query}`, {});
 }
 
 export function getTenantPermissionsSummary(tenantId: string | number) {
-  return apiRequest<Record<string, unknown>>(`/platform/tenants/${tenantId}/permissions-summary`);
+  return apiRequest<TenantPermissionsSummary>(`/platform/tenants/${tenantId}/permissions-summary`);
 }
 
 export function getPlatformGrowthOverview() {
-  return apiRequest<Record<string, unknown>>('/platform/growth/overview');
+  return apiRequest<PlatformGrowthOverview>('/platform/growth/overview');
 }
 
 export function getPlatformIntegrationsCatalog() {
-  return apiRequest<Record<string, unknown>>('/platform/integrations/catalog');
+  return apiRequest<PlatformIntegrationsCatalog>('/platform/integrations/catalog');
 }
 
 export function getPlatformReportingInsights() {
-  return apiRequest<Record<string, unknown>>('/platform/reporting/insights');
+  return apiRequest<PlatformReportingInsights>('/platform/reporting/insights');
+}
+
+export function getPlatformMailStatus() {
+  return client.get<PlatformMailStatus>('/platform/mail/status');
+}
+
+export function sendPlatformMailTest(to: string) {
+  return client.post<PlatformMailTestResponse>('/platform/mail/test', { to });
 }
