@@ -1,4 +1,4 @@
-/* ====== Site Navbar — light marketing theme (matches weldinspectpro.com) ====== */
+/* ====== Site Navbar — light variant for public/pricing pages ====== */
 
 .site-navbar {
   position: sticky;
@@ -6,7 +6,7 @@
   z-index: 200;
   background: rgba(255, 255, 255, .95);
   backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--wip-gray-200);
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .site-navbar-inner {
@@ -24,14 +24,14 @@
   align-items: center;
   gap: 10px;
   text-decoration: none;
-  color: var(--wip-gray-900);
+  color: #0f172a;
   flex-shrink: 0;
 }
 
 .site-navbar-mark {
   width: 36px;
   height: 36px;
-  background: var(--wip-blue);
+  background: #2563eb;
   color: #fff;
   border-radius: 8px;
   display: grid;
@@ -50,22 +50,21 @@
   font-size: 14px;
   font-weight: 600;
   letter-spacing: .5px;
-  color: var(--wip-gray-900);
+  color: #0f172a;
 }
 
 .site-navbar-brandtext em {
-  color: var(--wip-blue);
+  color: #2563eb;
   font-style: normal;
 }
 
 .site-navbar-brandtext small {
   font-size: 8px;
   letter-spacing: 1.5px;
-  color: var(--wip-gray-400);
+  color: #94a3b8;
   text-transform: uppercase;
 }
 
-/* Links */
 .site-navbar-links {
   display: flex;
   align-items: center;
@@ -79,7 +78,7 @@
   padding: 8px 14px;
   font-size: 14px;
   font-weight: 500;
-  color: var(--wip-gray-600);
+  color: #475569;
   border-radius: 6px;
   text-decoration: none;
   transition: color .15s, background .15s;
@@ -87,17 +86,16 @@
 }
 
 .site-navbar-link:hover {
-  color: var(--wip-gray-900);
-  background: var(--wip-gray-50);
+  color: #0f172a;
+  background: #f8fafc;
 }
 
 .site-navbar-link.is-active {
-  color: var(--wip-gray-900);
-  background: var(--wip-gray-100);
+  color: #0f172a;
+  background: #f1f5f9;
   font-weight: 600;
 }
 
-/* Action buttons */
 .site-navbar-actions {
   display: flex;
   align-items: center;
@@ -107,7 +105,7 @@
 
 .site-navbar-user {
   font-size: 12px;
-  color: var(--wip-gray-500);
+  color: #64748b;
   max-width: 180px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -132,44 +130,42 @@
 
 .site-navbar-btn-ghost {
   background: transparent;
-  color: var(--wip-blue);
+  color: #2563eb;
   padding: 10px 4px;
 }
 
 .site-navbar-btn-ghost:hover {
-  background: var(--wip-blue-light);
+  background: #eff6ff;
   padding: 10px 12px;
 }
 
 .site-navbar-btn-primary {
-  background: var(--wip-blue);
+  background: #2563eb;
   color: #fff;
 }
 
 .site-navbar-btn-primary:hover {
-  background: var(--wip-blue-dark);
+  background: #1d4ed8;
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(37, 99, 235, .3);
 }
 
-/* Mobile toggle */
 .site-navbar-mobile-toggle {
   display: none;
   background: none;
   border: none;
-  color: var(--wip-gray-700);
+  color: #334155;
   cursor: pointer;
   padding: 8px;
   margin-left: auto;
 }
 
-/* Mobile menu */
 .site-navbar-mobile {
   display: none;
   flex-direction: column;
   gap: 4px;
   padding: 12px 24px 20px;
-  border-top: 1px solid var(--wip-gray-100);
+  border-top: 1px solid #f1f5f9;
   background: rgba(255, 255, 255, .98);
 }
 
@@ -178,15 +174,15 @@
   padding: 10px 14px;
   font-size: 15px;
   font-weight: 500;
-  color: var(--wip-gray-600);
+  color: #475569;
   text-decoration: none;
   border-radius: 8px;
   transition: background .15s;
 }
 
 .site-navbar-mobile a:hover {
-  background: var(--wip-gray-50);
-  color: var(--wip-gray-900);
+  background: #f8fafc;
+  color: #0f172a;
 }
 
 @media (max-width: 860px) {

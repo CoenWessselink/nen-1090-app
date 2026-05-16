@@ -50,7 +50,7 @@ export default function BillingPage() {
 
   return (
     <MobilePageScaffold title="Facturatie" subtitle="Kies je pakket">
-      <div className="billing-page" data-page="billing">
+      <div className="billing-page pricing-light" data-page="billing">
         <div className="pricing-page-content">
 
           {/* Feature badges */}
