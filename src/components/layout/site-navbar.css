@@ -1,0 +1,206 @@
+/* ====== Site Navbar — light marketing theme (matches weldinspectpro.com) ====== */
+
+.site-navbar {
+  position: sticky;
+  top: 0;
+  z-index: 200;
+  background: rgba(255, 255, 255, .95);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--wip-gray-200);
+}
+
+.site-navbar-inner {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 24px;
+  height: 64px;
+}
+
+.site-navbar-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: var(--wip-gray-900);
+  flex-shrink: 0;
+}
+
+.site-navbar-mark {
+  width: 36px;
+  height: 36px;
+  background: var(--wip-blue);
+  color: #fff;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 16px;
+}
+
+.site-navbar-brandtext {
+  display: grid;
+  gap: 1px;
+  line-height: 1.2;
+}
+
+.site-navbar-brandtext strong {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: .5px;
+  color: var(--wip-gray-900);
+}
+
+.site-navbar-brandtext em {
+  color: var(--wip-blue);
+  font-style: normal;
+}
+
+.site-navbar-brandtext small {
+  font-size: 8px;
+  letter-spacing: 1.5px;
+  color: var(--wip-gray-400);
+  text-transform: uppercase;
+}
+
+/* Links */
+.site-navbar-links {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.site-navbar-link {
+  display: flex;
+  align-items: center;
+  padding: 8px 14px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--wip-gray-600);
+  border-radius: 6px;
+  text-decoration: none;
+  transition: color .15s, background .15s;
+  white-space: nowrap;
+}
+
+.site-navbar-link:hover {
+  color: var(--wip-gray-900);
+  background: var(--wip-gray-50);
+}
+
+.site-navbar-link.is-active {
+  color: var(--wip-gray-900);
+  background: var(--wip-gray-100);
+  font-weight: 600;
+}
+
+/* Action buttons */
+.site-navbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.site-navbar-user {
+  font-size: 12px;
+  color: var(--wip-gray-500);
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.site-navbar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all .2s;
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.site-navbar-btn-ghost {
+  background: transparent;
+  color: var(--wip-blue);
+  padding: 10px 4px;
+}
+
+.site-navbar-btn-ghost:hover {
+  background: var(--wip-blue-light);
+  padding: 10px 12px;
+}
+
+.site-navbar-btn-primary {
+  background: var(--wip-blue);
+  color: #fff;
+}
+
+.site-navbar-btn-primary:hover {
+  background: var(--wip-blue-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, .3);
+}
+
+/* Mobile toggle */
+.site-navbar-mobile-toggle {
+  display: none;
+  background: none;
+  border: none;
+  color: var(--wip-gray-700);
+  cursor: pointer;
+  padding: 8px;
+  margin-left: auto;
+}
+
+/* Mobile menu */
+.site-navbar-mobile {
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 24px 20px;
+  border-top: 1px solid var(--wip-gray-100);
+  background: rgba(255, 255, 255, .98);
+}
+
+.site-navbar-mobile a {
+  display: block;
+  padding: 10px 14px;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--wip-gray-600);
+  text-decoration: none;
+  border-radius: 8px;
+  transition: background .15s;
+}
+
+.site-navbar-mobile a:hover {
+  background: var(--wip-gray-50);
+  color: var(--wip-gray-900);
+}
+
+@media (max-width: 860px) {
+  .site-navbar-links,
+  .site-navbar-actions,
+  .site-navbar-user {
+    display: none;
+  }
+
+  .site-navbar-mobile-toggle {
+    display: flex;
+  }
+
+  .site-navbar-mobile {
+    display: flex;
+  }
+}

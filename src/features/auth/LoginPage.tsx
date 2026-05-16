@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { InlineMessage } from '@/components/feedback/InlineMessage';
+import { SiteNavbar } from '@/components/layout/SiteNavbar';
 import { getFriendlyAuthErrorMessage, normalizeAuthRedirectTarget } from '@/features/auth/auth-utils';
 import './login-premium.css';
 
@@ -56,16 +57,7 @@ export default function LoginPage() {
 
   return (
     <div className="auth-layout auth-layout-premium">
-      <header className="auth-brand-header">
-        <a className="auth-brand-lockup" href="/">
-          <span className="auth-brand-mark">W</span>
-          <span className="auth-brand-copy">
-            <strong>WeldInspect <b>Pro</b></strong>
-            <small>Lasinspectie software</small>
-          </span>
-        </a>
-        <a className="auth-back-link" href="https://weldinspectpro.com">← Terug naar website</a>
-      </header>
+      <SiteNavbar variant="public" />
 
       <main className="auth-premium-main">
         <Card className="auth-card auth-card-premium">
