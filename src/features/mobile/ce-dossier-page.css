@@ -1,0 +1,334 @@
+/* ====== CE Dossier — comprehensive project overview ====== */
+
+.ce-overview {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-bottom: 32px;
+}
+
+/* ── Project header ── */
+.ce-project-header {
+  padding: 20px;
+  border-radius: 16px;
+  border: 1px solid var(--wip-line, rgba(132, 172, 221, .18));
+  background: linear-gradient(145deg, rgba(10, 25, 43, .86), rgba(5, 15, 29, .92));
+  cursor: pointer;
+  transition: border-color .2s, box-shadow .2s;
+}
+
+.ce-project-header:hover {
+  border-color: rgba(91, 151, 242, .5);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, .2);
+}
+
+.ce-project-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.ce-project-title-row h2 {
+  flex: 1;
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -.02em;
+}
+
+.ce-chevron {
+  color: var(--wip-muted, #a8b6c9);
+  transition: transform .2s;
+}
+
+.ce-chevron.is-rotated {
+  transform: rotate(90deg);
+}
+
+.ce-project-fields {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.ce-project-fields > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ce-project-fields span {
+  font-size: 11px;
+  color: var(--wip-muted, #a8b6c9);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  font-weight: 700;
+}
+
+.ce-project-fields strong {
+  font-size: 14px;
+  color: #fff;
+  font-weight: 600;
+}
+
+/* ── Score card ── */
+.ce-score-card {
+  padding: 20px;
+  border-radius: 16px;
+  border: 1px solid var(--wip-line, rgba(132, 172, 221, .18));
+  background: linear-gradient(145deg, rgba(10, 25, 43, .86), rgba(5, 15, 29, .92));
+}
+
+.ce-score-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.ce-score-top > div:first-of-type {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ce-score-top strong {
+  font-size: 16px;
+  color: #fff;
+  font-weight: 800;
+}
+
+.ce-status-label {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ce-tone-success { color: #34d399; }
+.ce-tone-warning { color: #fbbf24; }
+.ce-tone-danger { color: #f87171; }
+
+.ce-score-value {
+  font-size: 32px;
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: -.03em;
+}
+
+.ce-progress-bar {
+  height: 8px;
+  background: rgba(255, 255, 255, .1);
+  border-radius: 99px;
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+
+.ce-progress-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, #2563eb, #38bdf8);
+  transition: width .4s ease;
+}
+
+.ce-score-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.ce-score-stats > div {
+  text-align: center;
+  padding: 8px 4px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .04);
+  border: 1px solid rgba(255, 255, 255, .06);
+}
+
+.ce-score-stats span {
+  display: block;
+  font-size: 10px;
+  color: var(--wip-muted, #a8b6c9);
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: .03em;
+  margin-bottom: 2px;
+}
+
+.ce-score-stats strong {
+  font-size: 18px;
+  color: #fff;
+  font-weight: 800;
+}
+
+/* ── Section cards grid ── */
+.ce-sections-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.ce-section-card {
+  border-radius: 14px;
+  border: 1px solid var(--wip-line, rgba(132, 172, 221, .18));
+  background: linear-gradient(145deg, rgba(10, 25, 43, .86), rgba(5, 15, 29, .92));
+  overflow: hidden;
+  transition: border-color .2s;
+}
+
+.ce-section-card:hover {
+  border-color: rgba(91, 151, 242, .4);
+}
+
+.ce-section-card.is-expanded {
+  grid-column: 1 / -1;
+  border-color: rgba(37, 99, 235, .5);
+}
+
+.ce-section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 16px;
+  background: none;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+}
+
+.ce-section-label {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.ce-section-count {
+  font-size: 18px;
+  font-weight: 900;
+  min-width: 28px;
+  text-align: center;
+}
+
+/* ── Section body (expanded) ── */
+.ce-section-body {
+  padding: 0 16px 16px;
+  border-top: 1px solid rgba(255, 255, 255, .06);
+}
+
+.ce-item-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 12px 0;
+}
+
+.ce-item-row {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .03);
+  border: 1px solid rgba(255, 255, 255, .06);
+}
+
+.ce-item-row strong {
+  display: block;
+  font-size: 13px;
+  color: #fff;
+  font-weight: 600;
+}
+
+.ce-item-row span {
+  font-size: 11px;
+  color: var(--wip-muted, #a8b6c9);
+}
+
+.ce-item-more {
+  text-align: center;
+  padding: 8px;
+  font-size: 12px;
+  color: var(--wip-muted, #a8b6c9);
+  font-weight: 600;
+}
+
+.ce-empty {
+  padding: 16px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--wip-muted, #a8b6c9);
+}
+
+.ce-section-nav-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  padding: 10px;
+  border: 1px solid rgba(37, 99, 235, .4);
+  border-radius: 10px;
+  background: rgba(37, 99, 235, .08);
+  color: #60a5fa;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background .15s;
+}
+
+.ce-section-nav-btn:hover {
+  background: rgba(37, 99, 235, .18);
+}
+
+/* ── Export card ── */
+.ce-export-card {
+  padding: 20px;
+  border-radius: 14px;
+  border: 1px solid var(--wip-line, rgba(132, 172, 221, .18));
+  background: linear-gradient(145deg, rgba(10, 25, 43, .86), rgba(5, 15, 29, .92));
+}
+
+.ce-export-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  color: #fff;
+}
+
+.ce-export-header strong {
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.ce-export-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ce-export-actions button {
+  flex: 1 1 160px;
+}
+
+/* ── Responsive ── */
+@media (max-width: 640px) {
+  .ce-sections-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ce-project-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .ce-score-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .ce-export-actions {
+    flex-direction: column;
+  }
+}
