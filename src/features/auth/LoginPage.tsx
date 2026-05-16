@@ -64,7 +64,7 @@ export default function LoginPage() {
             <small>Lasinspectie software</small>
           </span>
         </a>
-        <a className="auth-back-link" href="https://weldinspectpro.com/nl/">← Terug naar website</a>
+        <a className="auth-back-link" href="https://weldinspectpro.com">← Terug naar website</a>
       </header>
 
       <main className="auth-premium-main">
@@ -72,37 +72,37 @@ export default function LoginPage() {
           <div>
             <div className="eyebrow auth-norm-pill">Nederland · EN 1090 · ISO 3834 · CE dossier</div>
             <h1>Login</h1>
-            <p>Sign in with your email address. Your tenant is selected automatically.</p>
+            <p>Log in met je e-mailadres. Je tenant wordt automatisch geselecteerd.</p>
           </div>
 
           {error ? <InlineMessage tone="danger">{error}</InlineMessage> : null}
 
           <form className="form-grid auth-form-premium" onSubmit={handleSubmit}>
             <label className="auth-field auth-field-email">
-              <span>Email</span>
+              <span>E-mail</span>
               <Input name="email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" required />
             </label>
 
             <label className="auth-field auth-field-password">
-              <span>Password</span>
+              <span>Wachtwoord</span>
               <Input name="password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" required />
             </label>
 
             <label className="auth-field auth-field-tenant">
-              <span>Tenant (optional)</span>
-              <Input name="tenant" value={tenant} onChange={(event) => setTenant(event.target.value)} autoComplete="organization" placeholder="Leave empty for automatic selection" />
+              <span>Tenant (optioneel)</span>
+              <Input name="tenant" value={tenant} onChange={(event) => setTenant(event.target.value)} autoComplete="organization" placeholder="Leeg laten voor automatische selectie" />
             </label>
 
             <div className="auth-forgot-row">
-              <Link to="/forgot-password">Forgot password?</Link>
+              <Link to="/forgot-password">Wachtwoord vergeten?</Link>
             </div>
 
             <Button className="auth-login-button" type="submit" disabled={submitting}>
-              {submitting ? 'Signing in...' : 'Login'} <span aria-hidden="true">→</span>
+              {submitting ? 'Inloggen...' : 'Login'} <span aria-hidden="true">→</span>
             </Button>
           </form>
 
-          <div className="auth-divider"><span>or</span></div>
+          <div className="auth-divider"><span>of</span></div>
           <a className="auth-pricing-link" href="https://weldinspectpro.com/nl/prijzen.html">
             <span aria-hidden="true">↗</span>
             <span><strong>Bekijk prijzen</strong><small>Ontdek plannen en mogelijkheden</small></span>
