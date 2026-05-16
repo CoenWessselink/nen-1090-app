@@ -1,8 +1,11 @@
 import { PropsWithChildren, Suspense, useEffect } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
-import { SiteNavbar } from '@/components/layout/SiteNavbar';
+import { Sidebar } from '@/components/layout/Sidebar';
+import { Topbar } from '@/components/layout/Topbar';
+import { MobileTabbar } from '@/components/layout/MobileTabbar';
 import { NotificationCenter } from '@/components/notifications/NotificationCenter';
 import { ToastViewport } from '@/components/notifications/ToastViewport';
+import { useUiStore } from '@/app/store/ui-store';
 
 function findTenantIdFromSuperadminRow(target: EventTarget | null): string | null {
   if (!(target instanceof HTMLElement)) return null;
@@ -14,12 +17,25 @@ function findTenantIdFromSuperadminRow(target: EventTarget | null): string | nul
   const idText = row.querySelector('.superadmin-cell-stack span')?.textContent?.trim() || '';
   if (!idText) return null;
 
+  // Tenant ids are UUIDs in production. Keep this strict so unrelated rows are
+  // never intercepted by the shell-level navigation guard.
   const uuidMatch = idText.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
   return uuidMatch?.[0] || null;
 }
 
 export function AppShell({ children }: PropsWithChildren) {
+  const { sidebarOpen, setSidebarOpen } = useUiStore();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const onResize = () => {
+      if (window.innerWidth >= 1024) setSidebarOpen(true);
+      if (window.innerWidth < 1024) setSidebarOpen(false);
+    };
+    onResize();
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [setSidebarOpen]);
 
   useEffect(() => {
     const openTenant360 = (event: MouseEvent) => {
@@ -50,20 +66,24 @@ export function AppShell({ children }: PropsWithChildren) {
   }, [navigate]);
 
   return (
-    <div className="app-shell app-shell-navbar">
-      <SiteNavbar variant="app" />
-      <div className="page-canvas" data-testid="app-main">
-        {children ?? (
-          <Suspense
-            fallback={
-              <div className="route-fallback" role="status" aria-live="polite" style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>
-                Laden…
-              </div>
-            }
-          >
-            <Outlet />
-          </Suspense>
-        )}
+    <div className="app-shell">
+      <Sidebar mobileOpen={sidebarOpen} />
+      <div className="shell-main">
+        <Topbar />
+        <div className="page-canvas" data-testid="app-main">
+          {children ?? (
+            <Suspense
+              fallback={
+                <div className="route-fallback" role="status" aria-live="polite" style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>
+                  Laden…
+                </div>
+              }
+            >
+              <Outlet />
+            </Suspense>
+          )}
+        </div>
+        <MobileTabbar />
       </div>
       <NotificationCenter />
       <ToastViewport />

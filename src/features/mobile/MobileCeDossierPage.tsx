@@ -1,437 +1,233 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Download, RefreshCcw, Save } from 'lucide-react';
+import {
+  ChevronRight, ClipboardCheck, Download, FileText, FolderOpen, HardHat,
+  Layers3, RefreshCcw, ShieldCheck, Users, Wrench,
+} from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { createPdfExport } from '@/api/ce';
-import { composeProjectMaterialsAggregate, fetchProjectMaterialsAggregate } from '@/api/materialsAggregate';
-import { createProjectDocument } from '@/api/documents';
-import { fetchCeAggregate } from '@/api/ceAggregateApi';
-import {
-  addProjectMaterialLink,
-  addProjectWelderLink,
-  addProjectWpsLink,
-  getProject,
-  getProjectSelectedWelders,
-  getProjectSelectedWps,
-  removeProjectMaterialLink,
-  removeProjectWelderLink,
-  removeProjectWpsLink,
-  updateProject,
-} from '@/api/projects';
-import { getInspectionTemplates, getWeldCoordinators } from '@/api/settings';
-import { Modal } from '@/components/overlays/Modal';
+import { fetchCeAggregate, type CeAggregateResponse } from '@/api/ceAggregateApi';
+import { getProject } from '@/api/projects';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
 import { CeNormChecksPanel } from '@/features/ce-dossier/CeNormChecksPanel';
 import { openDownloadUrl } from '@/utils/download';
-import { apiProjectPdfUrl, buildCeDossierFilename, firstPdfDocument, formatValue, groupChecklist, normalizeApiError, normalizeChecklist, summarizeChecklist } from '@/features/mobile/mobile-utils';
-import { attachmentsAsCeDocuments, dossierPayloadFromAggregate } from '@/utils/ceAggregateView';
+import {
+  apiProjectPdfUrl, buildCeDossierFilename, formatValue, normalizeApiError,
+  normalizeChecklist, projectClient, projectCode, projectExecutionClass, projectTitle, summarizeChecklist,
+} from '@/features/mobile/mobile-utils';
+import { dossierPayloadFromAggregate, attachmentsAsCeDocuments } from '@/utils/ceAggregateView';
 import type { CeDocument, Project } from '@/types/domain';
+import './ce-dossier-page.css';
 
-type CeRowSection = 'project' | 'welds' | 'inspections' | 'documents' | 'settings';
-type Option = Record<string, unknown>;
+type SectionKey = 'welds' | 'inspections' | 'documents' | 'welders' | 'materials' | 'wps';
 
-type CeRowDetail = {
-  label: string;
-  status: string;
-  group?: string;
-  section: CeRowSection;
-};
-
-type DossierEditState = {
-  client_name: string;
-  execution_class: string;
-  inspection_template_id: string;
-  coordinator_id: string;
-  material_ids: string[];
-  wps_ids: string[];
-  welder_ids: string[];
-  notes: string;
-  files: File[];
-};
-
-const initialEditState: DossierEditState = {
-  client_name: '',
-  execution_class: 'EXC2',
-  inspection_template_id: '',
-  coordinator_id: '',
-  material_ids: [],
-  wps_ids: [],
-  welder_ids: [],
-  notes: '',
-  files: [],
-};
-
-function resolveRowSection(label: string, group?: string): CeRowSection {
-  const value = `${group || ''} ${label}`.toLowerCase();
-  if (value.includes('project') || value.includes('exc')) return 'project';
-  if (value.includes('template') || value.includes('materiaal') || value.includes('lasser') || value.includes('wps')) return 'settings';
-  if (value.includes('inspect')) return 'inspections';
-  if (value.includes('document') || value.includes('foto') || value.includes('export')) return 'documents';
-  return 'welds';
-}
-
-function normalizeStatusTone(status: string) {
-  const value = String(status || '').toLowerCase();
-  if (value.includes('compleet') || value.includes('conform')) return 'success';
-  if (value.includes('ontbreekt') || value.includes('niet conform')) return 'danger';
-  return 'warning';
-}
-
-function toOptionLabel(item: Record<string, unknown>) {
-  return String(item.name || item.label || item.code || item.title || item.value || item.id || 'Optie');
-}
-
-function toOptionValue(item: Record<string, unknown>) {
-  return String(item.id || item.code || item.value || item.name || '');
-}
-
-function normalizeExcToken(value: string) {
-  return String(value || '').replace(/\s+/g, '').toUpperCase();
-}
-
-function templateMatchesExecutionClass(item: Option, executionClass: string) {
-  const target = normalizeExcToken(executionClass) || 'EXC2';
-  const raw = [
-    item.exc_class,
-    item.execution_class,
-    item.default_execution_class,
-    (item as Record<string, unknown>).exc,
-    (item as Record<string, unknown>).default_exc,
-    (item as Record<string, unknown>).execution_class_code,
-  ];
-  const candidates = raw.map((v) => normalizeExcToken(String(v || ''))).filter(Boolean);
-  if (candidates.length === 0) return true;
-  return candidates.some((c) => c === target || c.includes(target) || target.includes(c));
-}
-
-function sectionHelper(section: CeRowSection) {
-  if (section === 'project') return 'Werk projectbasis, opdrachtgever en EXC-klasse direct bij.';
-  if (section === 'documents') return 'Voeg direct ontbrekende documenten toe en sla op.';
-  return 'Werk gekoppelde stamdata direct bij en sla op zonder omweg.';
+function val(v: unknown, fallback = '—') {
+  if (v === null || v === undefined || v === '') return fallback;
+  return String(v);
 }
 
 export function MobileCeDossierPage() {
   const navigate = useNavigate();
   const { projectId = '' } = useParams();
-  const [payload, setPayload] = useState<Record<string, unknown> | null>(null);
   const [project, setProject] = useState<Project | null>(null);
+  const [aggregate, setAggregate] = useState<CeAggregateResponse | null>(null);
+  const [payload, setPayload] = useState<Record<string, unknown> | null>(null);
   const [documents, setDocuments] = useState<CeDocument[]>([]);
-  const [materials, setMaterials] = useState<Option[]>([]);
-  const [wpsRows, setWpsRows] = useState<Option[]>([]);
-  const [welderRows, setWelderRows] = useState<Option[]>([]);
-  const [coordinatorRows, setCoordinatorRows] = useState<Option[]>([]);
-  const [templateRows, setTemplateRows] = useState<Option[]>([]);
-  const [linkedMaterialIds, setLinkedMaterialIds] = useState<string[]>([]);
-  const [linkedWpsIds, setLinkedWpsIds] = useState<string[]>([]);
-  const [linkedWelderIds, setLinkedWelderIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [selectedRow, setSelectedRow] = useState<CeRowDetail | null>(null);
-  const [editState, setEditState] = useState<DossierEditState>(initialEditState);
+  const [expandedSection, setExpandedSection] = useState<SectionKey | null>(null);
 
-  const loadDossier = useCallback(async () => {
-    const [aggregate, projectRecord, materialsAggregate, coordinatorList, templateList, selectedWps, selectedWelders] = await Promise.all([
+  const loadAll = useCallback(async () => {
+    const [agg, proj] = await Promise.all([
       fetchCeAggregate(projectId),
       getProject(projectId).catch(() => null),
-      fetchProjectMaterialsAggregate(projectId).catch(() => composeProjectMaterialsAggregate(projectId)),
-      getWeldCoordinators().catch(() => ({ items: [] as Option[] })),
-      getInspectionTemplates().catch(() => ({ items: [] as Option[] })),
-      getProjectSelectedWps(projectId).catch(() => []),
-      getProjectSelectedWelders(projectId).catch(() => []),
     ]);
-
-    setPayload(dossierPayloadFromAggregate(aggregate));
-    setDocuments(attachmentsAsCeDocuments((aggregate.attachments || []) as Record<string, unknown>[]));
-    setProject(projectRecord || null);
-    setMaterials(materialsAggregate.catalog.items as Option[]);
-    setWpsRows((Array.isArray(aggregate.wps) ? aggregate.wps : []) as Option[]);
-    setWelderRows((Array.isArray(aggregate.welders) ? aggregate.welders : []) as Option[]);
-    setCoordinatorRows(Array.isArray(coordinatorList) ? coordinatorList : ((coordinatorList as { items?: Option[] })?.items || []));
-    setTemplateRows(Array.isArray(templateList) ? templateList : ((templateList as { items?: Option[] })?.items || []));
-    setLinkedMaterialIds(
-      materialsAggregate.selected.map((item) =>
-        String(item.id ?? item.material_id ?? item.materialId ?? ''),
-      ).filter(Boolean),
-    );
-    setLinkedWpsIds((Array.isArray(selectedWps) ? selectedWps : []).map((item) => String((item as Record<string, unknown>).id || (item as Record<string, unknown>).wps_id || '')).filter(Boolean));
-    setLinkedWelderIds((Array.isArray(selectedWelders) ? selectedWelders : []).map((item) => String((item as Record<string, unknown>).id || (item as Record<string, unknown>).welder_id || '')).filter(Boolean));
+    setAggregate(agg);
+    setPayload(dossierPayloadFromAggregate(agg));
+    setDocuments(attachmentsAsCeDocuments((agg.attachments || []) as Record<string, unknown>[]));
+    setProject(proj || null);
   }, [projectId]);
 
   useEffect(() => {
     let active = true;
     setLoading(true);
-    loadDossier()
-      .then(() => {
-        if (!active) return;
-        setError(null);
-      })
-      .catch((err) => {
-        if (!active) return;
-        setError(normalizeApiError(err, 'CE-dossier kon niet worden geladen.'));
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [loadDossier]);
+    loadAll()
+      .then(() => { if (active) setError(null); })
+      .catch((err) => { if (active) setError(normalizeApiError(err, 'CE-dossier kon niet worden geladen.')); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [loadAll]);
 
   const checklist = useMemo(() => normalizeChecklist(payload?.checklist), [payload]);
-  const checklistGroups = useMemo(() => groupChecklist(checklist), [checklist]);
   const summary = useMemo(() => summarizeChecklist(checklist), [checklist]);
   const score = Math.max(0, Math.min(100, Number(payload?.score || (summary.total ? Math.round((summary.complete / summary.total) * 100) : 0))));
   const status = formatValue(payload?.status, score >= 80 ? 'Voldoende' : 'In behandeling');
-  const pdf = firstPdfDocument(documents);
 
-  const summaryRows = [
-    { label: 'Lassen geregistreerd', value: formatValue(payload?.welds_count || payload?.weld_count || (payload?.counts as any)?.welds, '0'), section: 'welds' as const },
-    { label: 'Inspecties aanwezig', value: formatValue(payload?.inspection_count || (payload?.counts as any)?.inspections, '0'), section: 'inspections' as const },
-    { label: 'Documenten gekoppeld', value: formatValue(payload?.attachments_count || (payload?.counts as any)?.documents || documents.length, '0'), section: 'documents' as const },
+  const welds = useMemo(() => (aggregate?.welds || []) as Record<string, unknown>[], [aggregate]);
+  const inspections = useMemo(() => (aggregate?.inspections || []) as Record<string, unknown>[], [aggregate]);
+  const materials = useMemo(() => (aggregate?.materials || []) as Record<string, unknown>[], [aggregate]);
+  const wpsRows = useMemo(() => (aggregate?.wps || []) as Record<string, unknown>[], [aggregate]);
+  const welders = useMemo(() => (aggregate?.welders || []) as Record<string, unknown>[], [aggregate]);
+
+  async function handleExportPdf() {
+    try {
+      setExporting(true); setError(null); setSuccess(null);
+      const result = await createPdfExport(projectId);
+      const url = typeof result === 'object' && result ? String((result as Record<string, unknown>).download_url || '') : '';
+      await openDownloadUrl(url || apiProjectPdfUrl(projectId), buildCeDossierFilename(payload));
+      setSuccess('PDF is aangemaakt en wordt gedownload.');
+    } catch (err) { setError(normalizeApiError(err, 'PDF kon niet worden aangemaakt.')); }
+    finally { setExporting(false); }
+  }
+
+  function toggleSection(key: SectionKey) {
+    setExpandedSection((current) => current === key ? null : key);
+  }
+
+  function navigateTo(path: string) { navigate(path); }
+
+  const sections: Array<{
+    key: SectionKey;
+    label: string;
+    icon: typeof Wrench;
+    count: number;
+    tone: string;
+    items: Record<string, unknown>[];
+    nameKey: string;
+    detailKey: string;
+    navPath: string;
+  }> = [
+    { key: 'welds', label: 'Lassen', icon: Wrench, count: welds.length, tone: welds.length ? 'success' : 'warning', items: welds, nameKey: 'weld_number|weld_no|code', detailKey: 'location|status', navPath: `/projecten/${projectId}/lassen` },
+    { key: 'inspections', label: 'Inspecties', icon: ClipboardCheck, count: inspections.length, tone: inspections.length ? 'success' : 'warning', items: inspections, nameKey: 'method|title|result', detailKey: 'status|result', navPath: `/projecten/${projectId}/lassen` },
+    { key: 'documents', label: 'Documenten', icon: FolderOpen, count: documents.length, tone: documents.length ? 'success' : 'warning', items: documents as unknown as Record<string, unknown>[], nameKey: 'filename|title|name|uploaded_filename', detailKey: 'mime_type|type|category', navPath: `/projecten/${projectId}/documenten` },
+    { key: 'welders', label: 'Lassers', icon: Users, count: welders.length, tone: welders.length ? 'success' : 'warning', items: welders, nameKey: 'name|label|code', detailKey: 'qualification|certificate_number|status', navPath: `/projecten/${projectId}/overzicht` },
+    { key: 'materials', label: 'Materialen', icon: Layers3, count: materials.length, tone: materials.length ? 'success' : 'warning', items: materials, nameKey: 'name|label|code|material_name', detailKey: 'grade|standard|certificate_number', navPath: `/projecten/${projectId}/overzicht` },
+    { key: 'wps', label: 'WPS / WPQR', icon: FileText, count: wpsRows.length, tone: wpsRows.length ? 'success' : 'warning', items: wpsRows, nameKey: 'name|label|code|wps_number', detailKey: 'process|status|welding_process', navPath: `/projecten/${projectId}/overzicht` },
   ];
 
-  function prepareEditState(_section: CeRowSection) {
-    const coordinatorId = String((project as Record<string, unknown> | null)?.coordinator_id || '');
-    const notes = String((project as Record<string, unknown> | null)?.notes || (payload?.notes as string) || '');
-    setEditState({
-      client_name: String(project?.client_name || project?.opdrachtgever || ''),
-      execution_class: String(project?.execution_class || project?.executieklasse || 'EXC2') || 'EXC2',
-      inspection_template_id: String(project?.default_template_id || project?.template_id || ''),
-      coordinator_id: coordinatorId,
-      material_ids: linkedMaterialIds,
-      wps_ids: linkedWpsIds,
-      welder_ids: linkedWelderIds,
-      notes,
-      files: [],
-    });
-  }
-
-  function openRow(label: string, statusLabel: string, group?: string) {
-    const section = resolveRowSection(label, group);
-    prepareEditState(section);
-    setSelectedRow({ label, status: statusLabel, section, group });
-  }
-
-  async function handleCreatePdf() {
-    try {
-      setExporting(true);
-      setError(null);
-      setSuccess(null);
-      const result = await createPdfExport(projectId);
-      const downloadUrl = typeof result === 'object' && result ? String((result as Record<string, unknown>).download_url || '') : '';
-      await openDownloadUrl(downloadUrl || apiProjectPdfUrl(projectId), buildCeDossierFilename(payload));
-      setSuccess('PDF is aangemaakt en wordt gedownload.');
-    } catch (err) {
-      setError(normalizeApiError(err, 'PDF kon niet worden aangemaakt.'));
-    } finally {
-      setExporting(false);
+  function resolveField(item: Record<string, unknown>, keyExpr: string) {
+    for (const k of keyExpr.split('|')) {
+      const v = item[k];
+      if (v !== null && v !== undefined && v !== '') return String(v);
     }
-  }
-
-  function toggleArrayValue(key: 'material_ids' | 'wps_ids' | 'welder_ids', value: string) {
-    setEditState((current) => ({
-      ...current,
-      [key]: current[key].includes(value) ? current[key].filter((item) => item !== value) : [...current[key], value],
-    }));
-  }
-
-  async function syncLinks(currentIds: string[], nextIds: string[], addFn: (projectId: string, id: string) => Promise<unknown>, removeFn: (projectId: string, id: string) => Promise<unknown>) {
-    const toAdd = nextIds.filter((id) => !currentIds.includes(id));
-    const toRemove = currentIds.filter((id) => !nextIds.includes(id));
-    await Promise.all([...toAdd.map((id) => addFn(projectId, id)), ...toRemove.map((id) => removeFn(projectId, id))]);
-  }
-
-  async function uploadProjectFile(file: File) {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('files', file);
-    formData.append('title', file.name);
-    formData.append('filename', file.name);
-    await createProjectDocument(projectId, formData);
-  }
-
-  async function handleSaveRow() {
-    if (!selectedRow) return;
-    try {
-      setSaving(true);
-      setError(null);
-      setSuccess(null);
-      const coordinatorName = coordinatorRows.find((item) => toOptionValue(item) === editState.coordinator_id);
-      await updateProject(projectId, {
-        client_name: editState.client_name,
-        execution_class: editState.execution_class,
-        inspection_template_id: editState.inspection_template_id || null,
-        coordinator_id: editState.coordinator_id || null,
-        coordinator_name: coordinatorName ? toOptionLabel(coordinatorName) : null,
-        notes: editState.notes,
-      } as Record<string, unknown>);
-      await syncLinks(linkedMaterialIds, editState.material_ids, addProjectMaterialLink, removeProjectMaterialLink);
-      await syncLinks(linkedWpsIds, editState.wps_ids, addProjectWpsLink, removeProjectWpsLink);
-      await syncLinks(linkedWelderIds, editState.welder_ids, addProjectWelderLink, removeProjectWelderLink);
-      if (editState.files.length) {
-        for (const file of editState.files) {
-          await uploadProjectFile(file);
-        }
-      }
-      await loadDossier();
-      setSelectedRow(null);
-      setSuccess('CE-regel opgeslagen en dossierstatus vernieuwd.');
-    } catch (err) {
-      setError(normalizeApiError(err, 'CE-regel kon niet worden opgeslagen.'));
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  function renderCheckboxList(title: string, items: Option[], key: 'material_ids' | 'wps_ids' | 'welder_ids') {
-    return (
-      <div className="ce-edit-group">
-        <span className="ce-edit-group-title">{title}</span>
-        <div className="ce-edit-check-grid">
-          {items.length ? items.map((item) => {
-            const value = toOptionValue(item);
-            return (
-              <label key={`${key}-${value}`} className="ce-edit-check-card">
-                <input type="checkbox" checked={editState[key].includes(value)} onChange={() => toggleArrayValue(key, value)} />
-                <span>{toOptionLabel(item)}</span>
-              </label>
-            );
-          }) : <div className="mobile-list-card-meta">Geen opties gevonden in Instellingen.</div>}
-        </div>
-      </div>
-    );
-  }
-
-  function renderEditContent() {
-    if (!selectedRow) return null;
-    const showProject = selectedRow.section === 'project';
-    const showDocuments = selectedRow.section === 'documents';
-    const templateOptions = templateRows.filter((item) => templateMatchesExecutionClass(item, editState.execution_class));
-
-    return (
-      <div className="ce-edit-form">
-        <div className="ce-edit-summary-card">
-          <div><span className="ce-edit-label">Regel</span><strong>{selectedRow.label}</strong></div>
-          <div><span className="ce-edit-label">Status</span><strong>{selectedRow.status}</strong></div>
-          <div><span className="ce-edit-label">Toelichting</span><strong>{sectionHelper(selectedRow.section)}</strong></div>
-        </div>
-
-        <div className="two-column-grid ce-edit-grid">
-          {showProject ? (
-            <>
-              <label className="mobile-form-field"><span>Opdrachtgever</span><input value={editState.client_name} onChange={(event) => setEditState((current) => ({ ...current, client_name: event.target.value }))} placeholder="Bijv. Pietje BV" /></label>
-              <label className="mobile-form-field mobile-select-field"><span>EXC-klasse</span><select value={editState.execution_class} onChange={(event) => setEditState((current) => ({ ...current, execution_class: event.target.value }))}><option value="EXC1">EXC1</option><option value="EXC2">EXC2</option><option value="EXC3">EXC3</option><option value="EXC4">EXC4</option></select></label>
-            </>
-          ) : null}
-
-          {selectedRow.section !== 'documents' ? (
-            <>
-              <label className="mobile-form-field mobile-select-field"><span>Inspectietemplate</span><select value={editState.inspection_template_id} onChange={(event) => setEditState((current) => ({ ...current, inspection_template_id: event.target.value }))}><option value="">Selecteer template</option>{templateOptions.map((item) => <option key={toOptionValue(item)} value={toOptionValue(item)}>{toOptionLabel(item)}</option>)}</select></label>
-              <label className="mobile-form-field mobile-select-field"><span>Lascoördinator</span><select value={editState.coordinator_id} onChange={(event) => setEditState((current) => ({ ...current, coordinator_id: event.target.value }))}><option value="">Selecteer lascoördinator</option>{coordinatorRows.map((item) => <option key={toOptionValue(item)} value={toOptionValue(item)}>{toOptionLabel(item)}</option>)}</select></label>
-            </>
-          ) : null}
-        </div>
-
-        {selectedRow.section !== 'documents' ? (
-          <>
-            {renderCheckboxList('Materialen', materials, 'material_ids')}
-            {renderCheckboxList('WPS', wpsRows, 'wps_ids')}
-            {renderCheckboxList('Lassers', welderRows, 'welder_ids')}
-          </>
-        ) : null}
-
-        {showDocuments ? (
-          <label className="mobile-upload-field ce-upload-field">
-            <span>Documenten toevoegen</span>
-            <input type="file" multiple onChange={(event) => setEditState((current) => ({ ...current, files: Array.from(event.target.files || []) }))} />
-            <small>{editState.files.length ? `${editState.files.length} bestand(en) geselecteerd.` : 'Voeg één of meerdere documenten toe en sla direct op.'}</small>
-          </label>
-        ) : null}
-
-        <label className="mobile-form-field is-textarea"><span>Toelichting / notitie</span><textarea rows={4} value={editState.notes} onChange={(event) => setEditState((current) => ({ ...current, notes: event.target.value }))} placeholder="Optionele toelichting" /></label>
-
-        <div className="mobile-inline-actions">
-          <button type="button" className="mobile-primary-button" onClick={handleSaveRow} disabled={saving}>
-            <Save size={16} /> {saving ? 'Opslaan…' : 'Opslaan'}
-          </button>
-        </div>
-      </div>
-    );
+    return '—';
   }
 
   return (
-    <>
-      <MobilePageScaffold title="CE-Dossier" subtitle="Elke regel opent direct een wijzig-popup met vervolgactie" backTo={`/projecten/${projectId}/overzicht`}>
-        {loading ? <div className="mobile-state-card">CE-dossier laden…</div> : null}
-        {error ? <div className="mobile-inline-alert is-error">{error}</div> : null}
-        {success ? <div className="mobile-inline-alert is-success">{success}</div> : null}
-        {!loading ? (
-          <div className="mobile-list-stack ce-dossier-page">
-            <div className="mobile-progress-card ce-progress-card">
-              <div className="ce-progress-topline">
-                <div><strong>Dossier progressie</strong><span className="ce-progress-subtitle">{status}</span></div>
-                <div className="mobile-progress-value">{summary.complete}/{summary.total || 0}</div>
+    <MobilePageScaffold title="CE-Dossier" subtitle="Compleet projectoverzicht" backTo={`/projecten/${projectId}/overzicht`}>
+      {loading ? <div className="mobile-state-card">CE-dossier laden…</div> : null}
+      {error ? <div className="mobile-inline-alert is-error">{error}</div> : null}
+      {success ? <div className="mobile-inline-alert is-success">{success}</div> : null}
+
+      {!loading && (
+        <div className="ce-overview">
+
+          {/* ── Project header ── */}
+          <section className="ce-project-header" onClick={() => navigateTo(`/projecten/${projectId}/bewerken`)} role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && navigateTo(`/projecten/${projectId}/bewerken`)}>
+            <div className="ce-project-meta">
+              <div className="ce-project-title-row">
+                <HardHat size={20} />
+                <h2>{project ? projectTitle(project) : 'Project'}</h2>
+                <ChevronRight size={16} className="ce-chevron" />
               </div>
-              <div className="mobile-progress-bar"><span style={{ width: `${Math.max(score, 6)}%` }} /></div>
-              <small>{score}% compleet</small>
+              <div className="ce-project-fields">
+                <div><span>Projectnummer</span><strong>{project ? projectCode(project) : '—'}</strong></div>
+                <div><span>Opdrachtgever</span><strong>{project ? projectClient(project) : '—'}</strong></div>
+                <div><span>EXC-klasse</span><strong>{project ? projectExecutionClass(project) : '—'}</strong></div>
+                <div><span>Status</span><strong>{val(project?.status)}</strong></div>
+              </div>
             </div>
+          </section>
 
-            <div className="mobile-summary-grid ce-summary-grid">
-              <div className="mobile-summary-card"><span>Compleet</span><strong>{summary.complete}</strong></div>
-              <div className="mobile-summary-card"><span>Vereist</span><strong>{summary.required}</strong></div>
-              <div className="mobile-summary-card"><span>Ontbreekt</span><strong>{summary.missing}</strong></div>
-              <div className="mobile-summary-card"><span>PDF</span><strong>{pdf ? 'Ja' : 'Nee'}</strong></div>
+          {/* ── Compliance score ── */}
+          <section className="ce-score-card">
+            <div className="ce-score-top">
+              <ShieldCheck size={20} />
+              <div>
+                <strong>CE Compliance</strong>
+                <span className={`ce-status-label ce-tone-${score >= 80 ? 'success' : score >= 50 ? 'warning' : 'danger'}`}>{status}</span>
+              </div>
+              <div className="ce-score-value">{score}%</div>
             </div>
+            <div className="ce-progress-bar"><span style={{ width: `${Math.max(score, 4)}%` }} /></div>
+            <div className="ce-score-stats">
+              <div><span>Compleet</span><strong>{summary.complete}</strong></div>
+              <div><span>Vereist</span><strong>{summary.required}</strong></div>
+              <div><span>Ontbreekt</span><strong>{summary.missing}</strong></div>
+              <div><span>Totaal</span><strong>{summary.total}</strong></div>
+            </div>
+          </section>
 
-            <CeNormChecksPanel projectId={projectId} />
-
-            <div className="mobile-detail-card ce-summary-links-card">
-              <div className="mobile-list-card-meta" style={{ marginBottom: 8 }}>Klik op elke regel om direct de gekoppelde popup te openen.</div>
-              <div className="ce-quick-grid">
-                {summaryRows.map((row) => (
-                  <button key={row.label} type="button" className="ce-quick-stat" onClick={() => openRow(row.label, row.value, row.section)}>
-                    <span>{row.label}</span>
-                    <strong>{row.value}</strong>
+          {/* ── Section cards ── */}
+          <div className="ce-sections-grid">
+            {sections.map((sec) => {
+              const Icon = sec.icon;
+              const isExpanded = expandedSection === sec.key;
+              return (
+                <section key={sec.key} className={`ce-section-card${isExpanded ? ' is-expanded' : ''}`}>
+                  <button type="button" className="ce-section-header" onClick={() => toggleSection(sec.key)}>
+                    <Icon size={18} />
+                    <span className="ce-section-label">{sec.label}</span>
+                    <span className={`ce-section-count ce-tone-${sec.tone}`}>{sec.count}</span>
+                    <ChevronRight size={16} className={`ce-chevron${isExpanded ? ' is-rotated' : ''}`} />
                   </button>
-                ))}
-              </div>
-            </div>
 
-            {checklistGroups.map((group) => (
-              <div key={group.group} className="mobile-checklist-card grouped-checklist-card ce-group-card">
-                <div className="mobile-section-kicker">{group.group}</div>
-                <div className="ce-row-stack">
-                  {group.rows.map((item) => (
-                    <button key={`${group.group}-${item.label}`} type="button" className="ce-check-row" aria-label={`Wijzig ${item.label}`} onClick={() => openRow(item.label, item.status, group.group)}>
-                      <strong>{item.label}</strong>
-                      <span className={`ce-status-pill ce-status-pill-${normalizeStatusTone(item.status)}`}>{item.status}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
-
-            <div className="mobile-inline-actions stack-on-mobile">
-              <button type="button" className="mobile-primary-button" onClick={() => navigate(pdf ? `/projecten/${projectId}/documenten/${pdf.id}/viewer` : `/projecten/${projectId}/pdf-viewer`)}>
-                Open PDF viewer
-              </button>
-              <button type="button" className="mobile-secondary-button" disabled={exporting} onClick={handleCreatePdf}>
-                <Download size={16} /> {exporting ? 'PDF maken…' : 'Maak PDF'}
-              </button>
-            </div>
-
-            <button type="button" className="mobile-link-button" onClick={() => { setLoading(true); setSuccess(null); loadDossier().finally(() => setLoading(false)); }}>
-              <RefreshCcw size={14} /> Vernieuw dossierstatus
-            </button>
+                  {isExpanded && (
+                    <div className="ce-section-body">
+                      {sec.items.length === 0 ? (
+                        <div className="ce-empty">Geen {sec.label.toLowerCase()} gevonden.</div>
+                      ) : (
+                        <div className="ce-item-list">
+                          {sec.items.slice(0, 10).map((item, idx) => (
+                            <div key={String(item.id || idx)} className="ce-item-row">
+                              <div>
+                                <strong>{resolveField(item, sec.nameKey)}</strong>
+                                <span>{resolveField(item, sec.detailKey)}</span>
+                              </div>
+                            </div>
+                          ))}
+                          {sec.items.length > 10 && (
+                            <div className="ce-item-more">+{sec.items.length - 10} meer</div>
+                          )}
+                        </div>
+                      )}
+                      <button type="button" className="ce-section-nav-btn" onClick={() => navigateTo(sec.navPath)}>
+                        Alles bekijken <ChevronRight size={14} />
+                      </button>
+                    </div>
+                  )}
+                </section>
+              );
+            })}
           </div>
-        ) : null}
-      </MobilePageScaffold>
 
-      <Modal open={Boolean(selectedRow)} onClose={() => setSelectedRow(null)} title={selectedRow?.label || 'CE-regel wijzigen'} size="large">
-        {renderEditContent()}
-      </Modal>
-    </>
+          {/* ── Normchecks ── */}
+          <CeNormChecksPanel projectId={projectId} />
+
+          {/* ── Export actions ── */}
+          <section className="ce-export-card">
+            <div className="ce-export-header">
+              <Download size={18} />
+              <strong>Export &amp; PDF</strong>
+            </div>
+            <div className="ce-export-actions">
+              <button type="button" className="mobile-primary-button" disabled={exporting} onClick={handleExportPdf}>
+                <FileText size={16} /> {exporting ? 'Bezig…' : 'CE-dossier PDF'}
+              </button>
+              <button type="button" className="mobile-secondary-button" onClick={() => navigateTo(`/projecten/${projectId}/pdf-viewer`)}>
+                <FileText size={16} /> Open PDF viewer
+              </button>
+            </div>
+          </section>
+
+          {/* ── Refresh ── */}
+          <button type="button" className="mobile-link-button" onClick={() => { setLoading(true); setSuccess(null); loadAll().finally(() => setLoading(false)); }}>
+            <RefreshCcw size={14} /> Vernieuw dossierstatus
+          </button>
+
+        </div>
+      )}
+    </MobilePageScaffold>
   );
 }
