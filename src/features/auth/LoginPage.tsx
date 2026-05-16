@@ -49,7 +49,7 @@ export default function LoginPage() {
 
       window.location.replace(normalizeAuthRedirectTarget(from));
     } catch (requestError) {
-      setError(getFriendlyAuthErrorMessage(requestError, 'Login failed.'));
+      setError(getFriendlyAuthErrorMessage(requestError, 'Inloggen mislukt.'));
     } finally {
       setSubmitting(false);
     }
