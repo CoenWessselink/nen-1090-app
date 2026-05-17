@@ -26,6 +26,7 @@ export const MobileWeldEditPage = named(() => import('@/features/mobile/MobileWe
 export const MobileDocumentsPage = named(() => import('@/features/mobile/MobileDocumentsPage'), 'MobileDocumentsPage');
 export const MobileCeDossierPage = named(() => import('@/features/mobile/MobileCeDossierPage'), 'MobileCeDossierPage');
 export const MobilePdfViewerPage = named(() => import('@/features/mobile/MobilePdfViewerPage'), 'MobilePdfViewerPage');
+export const CeReportPrintPage = named(() => import('@/features/ce-dossier/CeReportPrintPage'), 'CeReportPrintPage');
 export const MobileRapportagePage = named(() => import('@/features/mobile/MobileRapportagePage'), 'MobileRapportagePage');
 
 /** Settings */
