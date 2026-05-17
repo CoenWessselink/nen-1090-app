@@ -212,11 +212,11 @@ export function MobileCeDossierPage() {
               <strong>Export &amp; PDF</strong>
             </div>
             <div className="ce-export-actions">
-              <button type="button" className="mobile-primary-button" disabled={exporting} onClick={handleExportPdf}>
-                <FileText size={16} /> {exporting ? 'Bezig…' : 'CE-dossier PDF'}
+              <button type="button" className="mobile-primary-button" onClick={() => navigateTo(`/projecten/${projectId}/ce-report`)}>
+                <FileText size={16} /> CE-rapport openen
               </button>
-              <button type="button" className="mobile-secondary-button" onClick={() => navigateTo(`/projecten/${projectId}/pdf-viewer`)}>
-                <FileText size={16} /> Open PDF viewer
+              <button type="button" className="mobile-secondary-button" disabled={exporting} onClick={handleExportPdf}>
+                <Download size={16} /> {exporting ? 'Bezig…' : 'Download PDF (API)'}
               </button>
             </div>
           </section>
