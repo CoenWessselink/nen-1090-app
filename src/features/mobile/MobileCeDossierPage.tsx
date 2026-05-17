@@ -11,7 +11,7 @@ import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
 import { CeNormChecksPanel } from '@/features/ce-dossier/CeNormChecksPanel';
 import { openDownloadUrl } from '@/utils/download';
 import {
-  apiProjectPdfUrl, buildCeDossierFilename, formatValue, normalizeApiError,
+  buildCeDossierFilename, formatValue, normalizeApiError,
   normalizeChecklist, projectClient, projectCode, projectExecutionClass, projectTitle, summarizeChecklist,
 } from '@/features/mobile/mobile-utils';
 import { dossierPayloadFromAggregate, attachmentsAsCeDocuments } from '@/utils/ceAggregateView';
@@ -73,9 +73,9 @@ export function MobileCeDossierPage() {
   async function handleExportPdf() {
     try {
       setExporting(true); setError(null); setSuccess(null);
-      const result = await createPdfExport(projectId);
-      const url = typeof result === 'object' && result ? String((result as Record<string, unknown>).download_url || '') : '';
-      await openDownloadUrl(url || apiProjectPdfUrl(projectId), buildCeDossierFilename(payload));
+      await createPdfExport(projectId);
+      const forceUrl = `/projects/${projectId}/exports/compliance/pdf?download=true&force=true&_=${Date.now()}`;
+      await openDownloadUrl(forceUrl, buildCeDossierFilename(payload));
       setSuccess('PDF is aangemaakt en wordt gedownload.');
     } catch (err) { setError(normalizeApiError(err, 'PDF kon niet worden aangemaakt.')); }
     finally { setExporting(false); }
