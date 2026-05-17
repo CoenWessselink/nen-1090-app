@@ -3,10 +3,12 @@ import { Camera, ImagePlus } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { createWeld, uploadWeldAttachment } from '@/api/welds';
 import { getAssemblies } from '@/api/assemblies';
+import { getProject } from '@/api/projects';
 import { getInspectionTemplates, getProcesses, getWeldCoordinators, getWelders } from '@/api/settings';
 import { useMaterials } from '@/hooks/useSettings';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
 import { dispatchAppRefresh, normalizeApiError } from '@/features/mobile/mobile-utils';
+import type { Project } from '@/types/domain';
 import type { WeldFormValues } from '@/types/forms';
 
 function defaultForm(projectId: string): WeldFormValues {
@@ -47,26 +49,48 @@ export function MobileWeldCreatePage() {
   const [templates, setTemplates] = useState<Option[]>([]);
   const [assemblies, setAssemblies] = useState<Option[]>([]);
   const [coordinators, setCoordinators] = useState<Option[]>([]);
+  const [projectLoaded, setProjectLoaded] = useState(false);
 
   useEffect(() => {
     let active = true;
-    Promise.all([getProcesses().catch(() => []), getWelders().catch(() => []), getWeldCoordinators().catch(() => []), getInspectionTemplates().catch(() => []), getAssemblies(projectId).catch(() => ({ items: [] }))])
-      .then(([processRows, welderRows, coordinatorRows, templateRows, assemblyRows]) => {
+    Promise.all([
+      getProject(projectId).catch(() => null),
+      getProcesses().catch(() => []),
+      getWelders().catch(() => []),
+      getWeldCoordinators().catch(() => []),
+      getInspectionTemplates().catch(() => []),
+      getAssemblies(projectId).catch(() => ({ items: [] })),
+    ])
+      .then(([projectRecord, processRows, welderRows, coordinatorRows, templateRows, assemblyRows]) => {
         if (!active) return;
         setProcesses(asOptions(processRows));
         setWelders(asOptions(welderRows));
         setCoordinators(asOptions(coordinatorRows));
         setTemplates(asOptions(templateRows));
         setAssemblies(asOptions(assemblyRows));
+
+        if (projectRecord) {
+          const proj = projectRecord as Project;
+          const projExc = String(proj.execution_class || proj.executieklasse || proj.exc_class || '').trim();
+          const projTemplateId = String(proj.default_template_id || proj.inspection_template_id || '').trim();
+          setForm((current) => ({
+            ...current,
+            execution_class: (projExc || current.execution_class || 'EXC2') as WeldFormValues['execution_class'],
+            template_id: projTemplateId || current.template_id,
+          }));
+        }
+        setProjectLoaded(true);
       })
       .catch(() => undefined);
     return () => { active = false; };
   }, [projectId]);
 
   useEffect(() => {
+    if (!projectLoaded) return;
+    if (form.template_id) return;
     const matching = templates.find((item) => String(item.exc_class || item.execution_class || '').toUpperCase() === String(form.execution_class || '').toUpperCase());
-    if (matching?.id && !form.template_id) setForm((current) => ({ ...current, template_id: String(matching.id) }));
-  }, [templates, form.execution_class, form.template_id]);
+    if (matching?.id) setForm((current) => ({ ...current, template_id: String(matching.id) }));
+  }, [templates, form.execution_class, form.template_id, projectLoaded]);
 
   const canSave = useMemo(() => Boolean(form.weld_number.trim()), [form]);
 
