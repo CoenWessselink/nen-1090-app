@@ -3,7 +3,8 @@ import { Camera, Trash2 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getAssemblies } from '@/api/assemblies';
 import { deleteAttachment } from '@/api/documents';
-import { getWeld, getWeldAttachments, updateWeld, uploadWeldAttachment } from '@/api/welds';
+import { deleteWeld, getWeld, getWeldAttachments, updateWeld, uploadWeldAttachment } from '@/api/welds';
+import { ConfirmDialog } from '@/components/confirm-dialog/ConfirmDialog';
 import { useInspectionTemplates, useMaterials, useProcesses, useWeldCoordinators, useWelders, useWps } from '@/hooks/useSettings';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
 import { dispatchAppRefresh, normalizeApiError } from '@/features/mobile/mobile-utils';
@@ -57,6 +58,8 @@ export function MobileWeldEditPage() {
   const [newFiles, setNewFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deletingWeld, setDeletingWeld] = useState(false);
+  const [confirmDeleteWeld, setConfirmDeleteWeld] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const templateOptions = useMemo(
@@ -172,6 +175,20 @@ export function MobileWeldEditPage() {
     }
   }
 
+  async function handleDeleteWeld() {
+    setDeletingWeld(true);
+    setError(null);
+    try {
+      await deleteWeld(projectId, weldId);
+      dispatchAppRefresh({ scope: 'welds', projectId, weldId, reason: 'weld-deleted' });
+      navigate(`/projecten/${projectId}/lassen`, { replace: true });
+    } catch (err) {
+      setError(normalizeApiError(err, 'Las kon niet worden verwijderd.'));
+      setDeletingWeld(false);
+      setConfirmDeleteWeld(false);
+    }
+  }
+
   return (
     <MobilePageScaffold title="Las bewerken" subtitle="Werk lasgegevens bij" backTo={`/projecten/${projectId}/lassen`}>
       {loading ? <div className="mobile-state-card">Las laden…</div> : null}
@@ -209,8 +226,21 @@ export function MobileWeldEditPage() {
           ) : null}
           <div className="mobile-inline-actions stack-on-mobile">
             <button type="button" className="mobile-primary-button" onClick={handleSave} disabled={saving || !canSave}>{saving ? 'Opslaan…' : 'Opslaan'}</button>
-            <button type="button" className="mobile-danger-button" onClick={() => navigate(`/projecten/${projectId}/lassen`)}>Annuleren</button>
+            <button type="button" className="mobile-secondary-button" onClick={() => navigate(`/projecten/${projectId}/lassen`)}>Annuleren</button>
+            <button type="button" className="mobile-danger-button" onClick={() => setConfirmDeleteWeld(true)} disabled={deletingWeld}>
+              <Trash2 size={14} /> {deletingWeld ? 'Verwijderen…' : 'Las verwijderen'}
+            </button>
           </div>
+          <ConfirmDialog
+            open={confirmDeleteWeld}
+            title="Las verwijderen"
+            description={`Weet je zeker dat je las "${form.weld_no || weldId}" wilt verwijderen? Alle gekoppelde inspecties en foto's worden ook verwijderd. Deze actie kan niet ongedaan worden gemaakt.`}
+            confirmLabel="Ja, verwijder las"
+            cancelLabel="Annuleren"
+            danger
+            onConfirm={handleDeleteWeld}
+            onClose={() => setConfirmDeleteWeld(false)}
+          />
         </div>
       ) : null}
     </MobilePageScaffold>

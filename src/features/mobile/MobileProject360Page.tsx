@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { FileText, FolderOpen, History, ListChecks, PanelsTopLeft, Pencil, Plus, RefreshCw, Wrench } from 'lucide-react';
+import { FileText, FolderOpen, History, ListChecks, PanelsTopLeft, Pencil, Plus, RefreshCw, Trash2, Wrench } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { getProject } from '@/api/projects';
+import { deleteProject, getProject } from '@/api/projects';
+import { ConfirmDialog } from '@/components/confirm-dialog/ConfirmDialog';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
 import { normalizeApiError, projectClient, projectCode, projectExecutionClass, projectTitle } from '@/features/mobile/mobile-utils';
 import { ProjectQualityNormCard } from '@/features/projecten/ProjectQualityNormCard';
@@ -14,6 +15,8 @@ export function MobileProject360Page() {
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [creatingPdf, setCreatingPdf] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -43,6 +46,19 @@ export function MobileProject360Page() {
       setCreatingPdf(false);
     }
   }, [projectId]);
+
+  const handleDeleteProject = useCallback(async () => {
+    setDeleting(true);
+    setError(null);
+    try {
+      await deleteProject(projectId);
+      navigate('/projecten', { replace: true });
+    } catch (err) {
+      setError(normalizeApiError(err, 'Project kon niet worden verwijderd.'));
+      setDeleting(false);
+      setConfirmDelete(false);
+    }
+  }, [projectId, navigate]);
 
   const actions = useMemo(() => [
     { label: 'Nieuwe assembly', color: 'primary', icon: PanelsTopLeft, onClick: () => navigate(`/projecten/${projectId}/assemblies/nieuw`) },
@@ -79,6 +95,21 @@ export function MobileProject360Page() {
           <button type="button" className="mobile-primary-button" onClick={() => navigate(`/projecten/${projectId}/lassen/nieuw`)}><Plus size={16} /> Las toevoegen</button>
         </div>
         <div className="mobile-action-grid">{actions.map((action) => { const Icon = action.icon; return <button key={action.label} type="button" className={`mobile-action-card mobile-action-card-${action.color}`} onClick={action.onClick} disabled={creatingPdf && action.label.includes('PDF')}><Icon size={20} /><span>{action.label}</span></button>; })}</div>
+        <div className="mobile-inline-actions" style={{ marginTop: 16 }}>
+          <button type="button" className="mobile-danger-button" onClick={() => setConfirmDelete(true)} disabled={deleting}>
+            <Trash2 size={16} /> {deleting ? 'Verwijderen…' : 'Project verwijderen'}
+          </button>
+        </div>
+        <ConfirmDialog
+          open={confirmDelete}
+          title="Project verwijderen"
+          description={`Weet je zeker dat je "${project ? projectTitle(project) : 'dit project'}" wilt verwijderen? Alle gekoppelde lassen, inspecties en documenten worden ook verwijderd. Deze actie kan niet ongedaan worden gemaakt.`}
+          confirmLabel="Ja, verwijder project"
+          cancelLabel="Annuleren"
+          danger
+          onConfirm={handleDeleteProject}
+          onClose={() => setConfirmDelete(false)}
+        />
       </> : null}
     </MobilePageScaffold>
   );
