@@ -81,10 +81,6 @@ function formatWeldLocation(weld: Weld | null) {
   return location || '—';
 }
 
-function todayLabel() {
-  return new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date());
-}
-
 const s: Record<string, CSSProperties> = {
   shell: { display: 'block', maxWidth: 1040, margin: '0 auto', paddingBottom: 96 },
   breadcrumb: { display: 'flex', alignItems: 'center', gap: 10, color: '#64748b', fontSize: 14, fontWeight: 700, marginBottom: 18 },
@@ -254,7 +250,7 @@ export function WeldInspectionDetailPage() {
             {renderMetaCell(<ClipboardList size={18} />, 'Project', formatProjectName(project, projectId))}
             {renderMetaCell(<ShieldCheck size={18} />, 'Weld ID', weldDisplayName(weld, String(weldId).slice(0, 8)))}
             {renderMetaCell(<MapPin size={18} />, 'Location', formatWeldLocation(weld))}
-            {renderMetaCell(<CalendarDays size={18} />, 'Date', todayLabel())}
+            {renderMetaCell(<CalendarDays size={18} />, 'Norm / Template', run.template_name || run.norm_name || String((weld as any)?.template_id || (weld as any)?.execution_class || '—'))}
           </div>
 
           {sections.length > 1 ? (

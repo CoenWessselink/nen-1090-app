@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ChevronRight, Plus } from 'lucide-react';
+import { ChevronRight, Plus, Trash2 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getProjectWelds } from '@/api/projects';
+import { deleteWeld } from '@/api/welds';
+import { ConfirmDialog } from '@/components/confirm-dialog/ConfirmDialog';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
 import { APP_REFRESH_EVENT, latestInspectionDate, normalizeApiError, weldNumber, weldStatusLabel, weldStatusTone, weldSubtitle } from '@/features/mobile/mobile-utils';
 import type { Weld } from '@/types/domain';
@@ -13,6 +15,8 @@ export function MobileWeldsPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [weldToDelete, setWeldToDelete] = useState<Weld | null>(null);
+  const [deletingWeldId, setDeletingWeldId] = useState<string | null>(null);
 
   const loadWelds = useCallback((background = false) => {
     let active = true;
@@ -48,6 +52,21 @@ export function MobileWeldsPage() {
       window.removeEventListener(APP_REFRESH_EVENT, reload as EventListener);
     };
   }, [loadWelds]);
+
+  async function handleDeleteWeld() {
+    if (!weldToDelete) return;
+    const id = String(weldToDelete.id);
+    setDeletingWeldId(id);
+    try {
+      await deleteWeld(projectId, id);
+      setWelds((current) => current.filter((w) => String(w.id) !== id));
+      setWeldToDelete(null);
+    } catch (err) {
+      setError(normalizeApiError(err, 'Las kon niet worden verwijderd.'));
+    } finally {
+      setDeletingWeldId(null);
+    }
+  }
 
   return (
     <MobilePageScaffold
@@ -92,6 +111,14 @@ export function MobileWeldsPage() {
                   <button type="button" className="mobile-primary-button" onClick={() => navigate(`/projecten/${projectId}/lassen/${weld.id}/inspectie`)}>
                     Inspectie
                   </button>
+                  <button
+                    type="button"
+                    className="mobile-danger-button"
+                    onClick={() => setWeldToDelete(weld)}
+                    disabled={deletingWeldId === String(weld.id)}
+                  >
+                    <Trash2 size={14} /> {deletingWeldId === String(weld.id) ? 'Verwijderen…' : 'Verwijderen'}
+                  </button>
                 </div>
               </div>
             );
@@ -99,6 +126,16 @@ export function MobileWeldsPage() {
           {!welds.length ? <div className="mobile-state-card">Nog geen lassen in dit project.</div> : null}
         </div>
       ) : null}
+      <ConfirmDialog
+        open={Boolean(weldToDelete)}
+        title="Las verwijderen"
+        description={`Weet je zeker dat je las "${weldToDelete ? weldNumber(weldToDelete) : ''}" wilt verwijderen? Alle gekoppelde inspecties en foto's worden ook verwijderd. Deze actie kan niet ongedaan worden gemaakt.`}
+        confirmLabel="Ja, verwijder las"
+        cancelLabel="Annuleren"
+        danger
+        onConfirm={handleDeleteWeld}
+        onClose={() => setWeldToDelete(null)}
+      />
     </MobilePageScaffold>
   );
 }
