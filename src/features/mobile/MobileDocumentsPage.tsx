@@ -3,7 +3,7 @@ import { Download, Eye, Upload } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { createProjectDocument, downloadDocument, getProjectDocuments } from '@/api/documents';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
-import { firstPdfDocument, formatFileSize, formatValue } from '@/features/mobile/mobile-utils';
+import { formatFileSize, formatValue } from '@/features/mobile/mobile-utils';
 import type { CeDocument } from '@/types/domain';
 
 export function MobileDocumentsPage() {
@@ -13,7 +13,9 @@ export function MobileDocumentsPage() {
   const [documents, setDocuments] = useState<CeDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   const loadDocuments = useCallback(async () => {
     const response = await getProjectDocuments(projectId, { page: 1, limit: 50 });
@@ -24,40 +26,37 @@ export function MobileDocumentsPage() {
     let active = true;
     setLoading(true);
     loadDocuments()
-      .then(() => {
-        if (active) setError(null);
-      })
-      .catch((err) => {
-        if (active) setError(err instanceof Error ? err.message : 'Documenten konden niet worden geladen.');
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
+      .then(() => { if (active) setError(null); })
+      .catch((err) => { if (active) setError(err instanceof Error ? err.message : 'Documenten konden niet worden geladen.'); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
   }, [loadDocuments]);
 
   async function handleUpload(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(event.target.files || []);
+    if (!files.length) return;
     setUploading(true);
     setError(null);
+    setSuccess(null);
+    let uploaded = 0;
     try {
-      const payload = new FormData();
-      payload.append('file', file);
-      payload.append('title', file.name);
-      payload.append('filename', file.name);
-      await createProjectDocument(projectId, payload);
-      await loadDocuments();
-      const pdf = firstPdfDocument([...(documents || []), { id: 'new', filename: file.name, mime_type: file.type } as CeDocument]);
-      if (pdf && (file.type.includes('pdf') || file.name.toLowerCase().endsWith('.pdf'))) {
-        navigate(`/projecten/${projectId}/documenten`);
+      for (const file of files) {
+        setUploadProgress(`Uploaden ${uploaded + 1} / ${files.length}: ${file.name}`);
+        const payload = new FormData();
+        payload.append('file', file);
+        payload.append('files', file);
+        payload.append('title', file.name);
+        payload.append('filename', file.name);
+        await createProjectDocument(projectId, payload);
+        uploaded++;
       }
+      await loadDocuments();
+      setSuccess(`${uploaded} ${uploaded === 1 ? 'document' : 'documenten'} geüpload.`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Upload mislukt.');
+      setError(err instanceof Error ? err.message : `Upload mislukt bij bestand ${uploaded + 1}.`);
     } finally {
       setUploading(false);
+      setUploadProgress('');
       if (inputRef.current) inputRef.current.value = '';
     }
   }
@@ -75,13 +74,15 @@ export function MobileDocumentsPage() {
   }
 
   return (
-    <MobilePageScaffold title="Documents" backTo={`/projecten/${projectId}/overzicht`}>
+    <MobilePageScaffold title="Documenten" backTo={`/projecten/${projectId}/overzicht`}>
       <div className="mobile-toolbar-card">
-        <input ref={inputRef} type="file" hidden onChange={handleUpload} />
+        <input ref={inputRef} type="file" multiple hidden onChange={handleUpload} />
         <button type="button" className="mobile-primary-button" onClick={() => inputRef.current?.click()} disabled={uploading}>
-          <Upload size={16} /> {uploading ? 'Uploaden…' : 'Upload Document'}
+          <Upload size={16} /> {uploading ? uploadProgress || 'Uploaden…' : 'Documenten uploaden'}
         </button>
+        <small style={{ color: '#64748b', marginTop: 4, display: 'block' }}>Meerdere bestanden tegelijk selecteren mogelijk.</small>
       </div>
+      {success ? <div className="mobile-inline-alert is-success">{success}</div> : null}
       {loading ? <div className="mobile-state-card">Documenten laden…</div> : null}
       {error ? <div className="mobile-state-card mobile-state-card-error">{error}</div> : null}
       {!loading ? (
