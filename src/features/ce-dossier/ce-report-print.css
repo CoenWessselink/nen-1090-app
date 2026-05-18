@@ -1,4 +1,8 @@
-/* ====== CE Report — enterprise print layout (responsive + print) ====== */
+/* ====== CE Report — enterprise print layout ====== */
+
+html[data-ce-report-ready='1'] {
+  scroll-behavior: smooth;
+}
 
 .rpt-page-wrap {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -12,7 +16,7 @@
   position: fixed;
   top: 16px;
   right: 16px;
-  z-index: 100;
+  z-index: 1000;
   padding: 12px 24px;
   background: #2563eb;
   color: #fff;
@@ -21,37 +25,20 @@
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
-  font-family: inherit;
-  box-shadow: 0 4px 12px rgba(37, 99, 235, .3);
+  box-shadow: 0 4px 12px rgba(37,99,235,.3);
 }
-
-.rpt-print-btn:hover { background: #1d4ed8; }
-
-.rpt-loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 60vh;
-  font-size: 18px;
-  color: #64748b;
-}
-
-.rpt-error { color: #dc2626; }
 
 .rpt-page {
   width: 210mm;
   min-height: 297mm;
-  margin: 20px auto;
-  padding: 16mm 18mm 16mm;
+  margin: 18px auto;
+  padding: 16mm 18mm;
   background: #fff;
-  border: 1px solid #e2e8f0;
   border-radius: 12px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, .06);
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  overflow: hidden;
+  box-shadow: 0 4px 24px rgba(15,23,42,.08);
   box-sizing: border-box;
+  overflow: hidden;
+  position: relative;
   page-break-after: always;
   break-after: page;
 }
@@ -61,118 +48,113 @@
   break-after: auto;
 }
 
-.rpt-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-bottom: 12px;
-  border-bottom: 2px solid #2563eb;
-  margin-bottom: 20px;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.rpt-header-left { display: flex; align-items: center; min-width: 0; }
-
-.rpt-logo {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-
-.rpt-logo-mark {
-  width: 32px;
-  height: 32px;
-  background: #2563eb;
-  color: #fff;
-  border-radius: 7px;
-  display: grid;
-  place-items: center;
+.rpt-body h1 {
+  font-size: 32px;
   font-weight: 900;
-  font-size: 15px;
-  flex-shrink: 0;
+  margin-bottom: 24px;
 }
-
-.rpt-logo strong { display: block; font-size: 13px; font-weight: 700; color: #0f172a; white-space: nowrap; }
-.rpt-logo small { display: block; font-size: 9px; color: #64748b; letter-spacing: .5px; }
-
-.rpt-header-right strong {
-  font-size: 11px;
-  color: #475569;
-  text-transform: uppercase;
-  letter-spacing: .5px;
-}
-
-.rpt-footer {
-  margin-top: auto;
-  padding-top: 12px;
-  border-top: 1px solid #e2e8f0;
-  display: flex;
-  justify-content: space-between;
-  font-size: 8px;
-  color: #94a3b8;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.rpt-body { flex: 1; }
 
 .rpt-body h2 {
+  font-size: 22px;
+  font-weight: 800;
+  margin-bottom: 18px;
+  color: #0f172a;
+}
+
+.rpt-cover-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  gap: 16px;
+}
+
+.rpt-cover-grid > div,
+.rpt-attachment-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 14px;
+  background: #fff;
+}
+
+.rpt-cover-grid span {
+  display: block;
+  font-size: 10px;
+  text-transform: uppercase;
+  color: #94a3b8;
+  margin-bottom: 6px;
+}
+
+.rpt-cover-grid strong {
   font-size: 18px;
   font-weight: 800;
-  color: #0f172a;
-  margin: 0 0 14px;
-  letter-spacing: -.02em;
+}
+
+.rpt-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 18px;
+}
+
+.rpt-table td,
+.rpt-table th {
+  border-bottom: 1px solid #e2e8f0;
+  padding: 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.rpt-table th {
+  background: #f8fafc;
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.rpt-toc {
+  list-style: decimal;
+  padding-left: 24px;
+}
+
+.rpt-toc li {
+  margin-bottom: 14px;
+  font-size: 15px;
+  font-weight: 700;
 }
 
 .rpt-toc a {
-  color: #0f172a;
   text-decoration: none;
-  display: block;
-  width: 100%;
+  color: #0f172a;
 }
 
 .rpt-toc a:hover {
   color: #2563eb;
 }
 
+.rpt-attachment-card {
+  margin-bottom: 18px;
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
 .rpt-attachment-image {
   width: 100%;
-  max-height: 220mm;
+  min-height: 320px;
+  max-height: 680px;
   object-fit: contain;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  margin-top: 12px;
-  background: #fff;
-}
-
-.rpt-attachment-card {
-  break-inside: avoid;
-  page-break-inside: avoid;
-  border: 1px solid #e2e8f0;
   border-radius: 10px;
-  padding: 12px;
-  margin-bottom: 14px;
+  background: #fff;
+  border: 1px solid #cbd5e1;
 }
 
-@media (max-width: 600px) {
-  .rpt-page-wrap { padding: 8px; }
+iframe.rpt-attachment-image {
+  height: 680px;
+}
 
-  .rpt-page {
-    width: 100%;
-    min-height: auto;
-    padding: 20px 16px 16px;
-    margin: 10px auto;
-    border-radius: 10px;
-  }
-
-  .rpt-print-btn {
-    top: 8px;
-    right: 8px;
-    padding: 10px 16px;
-    font-size: 12px;
-  }
+.rpt-loading {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
 }
 
 @page {
@@ -185,10 +167,10 @@
   body {
     width: 210mm !important;
     min-height: 297mm !important;
-    background: #ffffff !important;
-    overflow: visible !important;
     margin: 0 !important;
     padding: 0 !important;
+    background: #fff !important;
+    overflow: visible !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
@@ -205,22 +187,20 @@
   .rpt-page-wrap {
     position: absolute;
     inset: 0;
-    width: 100%;
-    background: #fff !important;
     padding: 0 !important;
     margin: 0 !important;
+    background: #fff !important;
   }
 
   .rpt-page {
     width: 210mm !important;
     min-height: 297mm !important;
     margin: 0 !important;
-    border: none !important;
-    box-shadow: none !important;
     border-radius: 0 !important;
-    overflow: visible !important;
+    box-shadow: none !important;
     page-break-after: always !important;
     break-after: page !important;
+    overflow: hidden !important;
   }
 
   .rpt-page:last-child {
@@ -228,14 +208,25 @@
     break-after: auto !important;
   }
 
+  table,
+  tr,
+  td,
+  th,
+  .rpt-attachment-card,
+  img,
+  iframe {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
   .rpt-print-btn,
+  nav,
+  aside,
+  header,
   .sidebar,
-  .topbar-shell,
   .mobile-tabbar,
   .mobile-page-header,
-  .app-shell header,
-  nav,
-  aside {
+  .topbar-shell {
     display: none !important;
   }
 }
