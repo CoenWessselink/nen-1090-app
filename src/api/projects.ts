@@ -37,6 +37,39 @@ function normalizeProjectRecord(payload: Record<string, unknown>): Project {
   } as Project;
 }
 
+function profileCodeForExc(exc?: string | null) {
+  const value = String(exc || '').toUpperCase();
+  if (value === 'EXC1') return 'EU_EXC1_BASIC';
+  if (value === 'EXC3') return 'EU_EXC3_ADVANCED';
+  if (value === 'EXC4') return 'EU_EXC4_CRITICAL';
+  return 'EU_EXC2_STANDARD';
+}
+
+async function applyProjectNormSelection(projectId: string | number, executionClass?: string | null, normProfileId?: unknown) {
+  const exc = String(executionClass || 'EXC2').toUpperCase();
+  const profile = String(normProfileId || profileCodeForExc(exc));
+  try {
+    await apiRequest<Record<string, unknown>>(`/projects/${projectId}/norm-selection`, {
+      method: 'POST',
+      body: JSON.stringify({
+        profile_code: profile,
+        norm_profile_id: profile,
+        exc_class: exc,
+      }),
+    });
+    traceProjectRuntime('PROJECT_NORM_SELECTION_APPLIED', { projectId, exc, profile });
+  } catch (error) {
+    runtimeTrace('PROJECT_NORM_SELECTION_FAILED', {
+      domain: 'projects',
+      projectId,
+      exc,
+      profile,
+      message: error instanceof Error ? error.message : 'unknown',
+      status: error instanceof ApiError ? error.status : undefined,
+    });
+  }
+}
+
 function normalizePagedList<T>(response: PagedResponse<T>, fallbackLimit = 25) {
   if (Array.isArray(response)) {
     traceProjectRuntime('PROJECT_PAGED_RESPONSE_NORMALIZED', {
@@ -88,7 +121,7 @@ function mapProjectPayload(
     default_template_id: payload.inspection_template_id || null,
     inspection_template_id: payload.inspection_template_id || null,
     norm_system_id: (payload as any).norm_system_id || null,
-    norm_profile_id: (payload as any).norm_profile_id || null,
+    norm_profile_id: (payload as any).norm_profile_id || profileCodeForExc(payload.execution_class),
     iso3834_level: (payload as any).iso3834_level || null,
     iso5817_level: (payload as any).iso5817_level || null,
     status: payload.status,
@@ -109,6 +142,7 @@ function mapProjectPatch(payload: Partial<ProjectFormValues> & Record<string, un
   if (payload.execution_class !== undefined && payload.execution_class !== '') {
     body.execution_class = payload.execution_class;
     body.default_execution_class = payload.execution_class;
+    body.norm_profile_id = (payload as any).norm_profile_id || profileCodeForExc(String(payload.execution_class));
   }
   if (payload.inspection_template_id !== undefined) {
     set('default_template_id', payload.inspection_template_id || null);
@@ -279,6 +313,7 @@ export async function createProject(payload: ProjectFormValues) {
   });
   const createdId = response?.id || response?.project_id;
   if (!createdId) throw new Error('Project aangemaakt, maar backend gaf geen geldig project-object terug.');
+  await applyProjectNormSelection(createdId as string | number, payload.execution_class, (payload as any).norm_profile_id);
   return normalizeProjectRecord(response);
 }
 
@@ -289,34 +324,26 @@ export async function updateProjectRecord(id: string | number, payload: Partial<
       method: 'PATCH',
       body: JSON.stringify(body),
     });
+    if (payload.execution_class !== undefined || (payload as any).norm_profile_id !== undefined) {
+      await applyProjectNormSelection(id, payload.execution_class || response.execution_class as string, (payload as any).norm_profile_id || body.norm_profile_id);
+    }
     return normalizeProjectRecord(response);
   } catch (error) {
     if (error instanceof ApiError && error.status === 422) {
-      traceProjectRuntime('PROJECT_PATCH_COMPAT_FALLBACK', {
-        projectId: id,
-      });
-
+      traceProjectRuntime('PROJECT_PATCH_COMPAT_FALLBACK', { projectId: id });
       const fallback: Record<string, unknown> = {};
       if (body.status) fallback.status = body.status;
       if (body.name) fallback.name = body.name;
       if (!Object.keys(fallback).length) fallback.status = 'gereed';
-      const response = await apiRequest<Record<string, unknown>>(`/projects/${id}`, {
-        method: 'PATCH',
-        body: JSON.stringify(fallback),
-      });
+      const response = await apiRequest<Record<string, unknown>>(`/projects/${id}`, { method: 'PATCH', body: JSON.stringify(fallback) });
       return normalizeProjectRecord(response);
     }
-
     if (!(error instanceof ApiError) || error.status !== 405) throw error;
-
-    traceProjectRuntime('PROJECT_PATCH_METHOD_FALLBACK', {
-      projectId: id,
-    });
-
-    const response = await apiRequest<Record<string, unknown>>(`/projects/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(body),
-    });
+    traceProjectRuntime('PROJECT_PATCH_METHOD_FALLBACK', { projectId: id });
+    const response = await apiRequest<Record<string, unknown>>(`/projects/${id}`, { method: 'PUT', body: JSON.stringify(body) });
+    if (payload.execution_class !== undefined || (payload as any).norm_profile_id !== undefined) {
+      await applyProjectNormSelection(id, payload.execution_class || response.execution_class as string, (payload as any).norm_profile_id || body.norm_profile_id);
+    }
     return normalizeProjectRecord(response);
   }
 }
@@ -324,60 +351,36 @@ export async function updateProjectRecord(id: string | number, payload: Partial<
 export const updateProject = updateProjectRecord;
 
 export async function deleteProject(id: string | number) {
-  return await apiRequest<void>(`/projects/${id}`, {
-    method: 'DELETE',
-  });
+  return await apiRequest<void>(`/projects/${id}`, { method: 'DELETE' });
 }
 
 export async function createProjectAssembly(projectId: string | number, payload: ProjectAssemblyDraft) {
   return await apiRequest<Record<string, unknown>>(`/projects/${projectId}/assemblies`, {
     method: 'POST',
-    body: JSON.stringify({
-      code: payload.code,
-      name: payload.name,
-      drawing_no: payload.drawing_no || null,
-      revision: payload.revision || null,
-      status: payload.status || 'open',
-      notes: payload.notes || null,
-    }),
+    body: JSON.stringify({ code: payload.code, name: payload.name, drawing_no: payload.drawing_no || null, revision: payload.revision || null, status: payload.status || 'open', notes: payload.notes || null }),
   });
 }
 
 export async function addProjectMaterialLink(projectId: string | number, materialId: string | number) {
-  return await apiRequest<Record<string, unknown>>(`/projects/${projectId}/selected/materials`, {
-    method: 'POST',
-    body: JSON.stringify({ material_id: materialId }),
-  });
+  return await apiRequest<Record<string, unknown>>(`/projects/${projectId}/selected/materials`, { method: 'POST', body: JSON.stringify({ material_id: materialId }) });
 }
 
 export async function removeProjectMaterialLink(projectId: string | number, materialId: string | number) {
-  return await apiRequest<Record<string, unknown>>(`/projects/${projectId}/selected/materials/${materialId}`, {
-    method: 'DELETE',
-  });
+  return await apiRequest<Record<string, unknown>>(`/projects/${projectId}/selected/materials/${materialId}`, { method: 'DELETE' });
 }
 
 export async function addProjectWpsLink(projectId: string | number, wpsId: string | number) {
-  return await apiRequest<Record<string, unknown>>(`/projects/${projectId}/selected/wps`, {
-    method: 'POST',
-    body: JSON.stringify({ wps_id: wpsId }),
-  });
+  return await apiRequest<Record<string, unknown>>(`/projects/${projectId}/selected/wps`, { method: 'POST', body: JSON.stringify({ wps_id: wpsId }) });
 }
 
 export async function removeProjectWpsLink(projectId: string | number, wpsId: string | number) {
-  return await apiRequest<Record<string, unknown>>(`/projects/${projectId}/selected/wps/${wpsId}`, {
-    method: 'DELETE',
-  });
+  return await apiRequest<Record<string, unknown>>(`/projects/${projectId}/selected/wps/${wpsId}`, { method: 'DELETE' });
 }
 
 export async function addProjectWelderLink(projectId: string | number, welderId: string | number) {
-  return await apiRequest<Record<string, unknown>>(`/projects/${projectId}/selected/welders`, {
-    method: 'POST',
-    body: JSON.stringify({ welder_id: welderId }),
-  });
+  return await apiRequest<Record<string, unknown>>(`/projects/${projectId}/selected/welders`, { method: 'POST', body: JSON.stringify({ welder_id: welderId }) });
 }
 
 export async function removeProjectWelderLink(projectId: string | number, welderId: string | number) {
-  return await apiRequest<Record<string, unknown>>(`/projects/${projectId}/selected/welders/${welderId}`, {
-    method: 'DELETE',
-  });
+  return await apiRequest<Record<string, unknown>>(`/projects/${projectId}/selected/welders/${welderId}`, { method: 'DELETE' });
 }
