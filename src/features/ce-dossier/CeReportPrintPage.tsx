@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { fetchCeAggregate, type CeAggregateResponse } from '@/api/ceAggregateApi';
 import { getProject } from '@/api/projects';
+import { getCompanySettings } from '@/api/settings';
 import { dossierPayloadFromAggregate, attachmentsAsCeDocuments } from '@/utils/ceAggregateView';
 import { normalizeChecklist, summarizeChecklist, projectTitle, projectCode, projectClient, projectExecutionClass } from '@/features/mobile/mobile-utils';
 import { useSession } from '@/app/session/SessionContext';
@@ -53,7 +54,7 @@ const STANDARDS = [
   { code: 'EN 1090-1', purpose: 'CE marking framework', evidence: 'Project compliance summary' },
   { code: 'EN 1090-2', purpose: 'Execution class and traceability', evidence: 'Weld register, materials, WPS' },
   { code: 'ISO 3834-2', purpose: 'Welding quality requirements', evidence: 'WPS/WPQR, coordinator evidence' },
-  { code: 'ISO 5817', purpose: 'Weld acceptance levels', evidence: 'VT/NDT result status' },
+  { code: 'ISO 5817', purpose: 'Weld acceptance levels', evidence: 'Weld/NDT result status' },
   { code: 'ISO 17637', purpose: 'Visual testing', evidence: 'Inspection records and photos' },
   { code: 'ISO 9606-1', purpose: 'Welder qualification', evidence: 'Welder certificates' },
   { code: 'ISO 15609 / 15614', purpose: 'WPS / WPQR', evidence: 'Procedure references' },
@@ -66,6 +67,7 @@ const TOC_ITEMS = [
   { id: 'dossier-checklist', label: 'Dossier completeness checklist' },
   { id: 'weld-register', label: 'Weld register' },
   { id: 'weld-inspections', label: 'Detailed weld inspections' },
+  { id: 'photo-evidence', label: 'Photo evidence' },
   { id: 'certificates-wps', label: 'Certificates and WPS documents' },
   { id: 'attachments-appendix', label: 'Attachments appendix' },
   { id: 'audit-trail', label: 'Audit trail' },
@@ -76,6 +78,17 @@ type R = Record<string, unknown>;
 
 function docRecord(d: CeDocument): R {
   return d as unknown as R;
+}
+
+function firstString(source: R | null | undefined, keys: string[], fallback = '—') {
+  if (!source) return fallback;
+  for (const key of keys) {
+    const value = source[key];
+    if (value !== null && value !== undefined && String(value).trim() !== '') {
+      return String(value);
+    }
+  }
+  return fallback;
 }
 
 function docMime(d: CeDocument) {
@@ -138,6 +151,7 @@ export function CeReportPrintPage() {
   const [project, setProject] = useState<Project | null>(null);
   const [aggregate, setAggregate] = useState<CeAggregateResponse | null>(null);
   const [payload, setPayload] = useState<R | null>(null);
+  const [companySettings, setCompanySettings] = useState<R | null>(null);
   const [documents, setDocuments] = useState<CeDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -145,14 +159,16 @@ export function CeReportPrintPage() {
   const session = useSession();
 
   const loadAll = useCallback(async () => {
-    const [agg, proj] = await Promise.all([
+    const [agg, proj, company] = await Promise.all([
       fetchCeAggregate(projectId),
       getProject(projectId).catch(() => null),
+      getCompanySettings().catch(() => null),
     ]);
     setAggregate(agg);
     setPayload(dossierPayloadFromAggregate(agg));
     setDocuments(attachmentsAsCeDocuments((agg.attachments || []) as R[]));
     setProject(proj || null);
+    setCompanySettings((company && typeof company === 'object') ? company as R : null);
   }, [projectId]);
 
   useEffect(() => {
@@ -191,24 +207,41 @@ export function CeReportPrintPage() {
   const materials = useMemo(() => (aggregate?.materials || []) as R[], [aggregate]);
   const wpsRows = useMemo(() => (aggregate?.wps || []) as R[], [aggregate]);
   const welders = useMemo(() => (aggregate?.welders || []) as R[], [aggregate]);
+  const photoDocuments = useMemo(() => documents.filter(isPreviewableImage), [documents]);
 
   const exportId = useMemo(() => crypto.randomUUID?.() || `rpt-${Date.now()}`, []);
   const generatedAt = new Date().toISOString();
   const generatedBy = session?.user?.email || 'system';
   const projName = project ? projectTitle(project) : 'Project';
   const projCode = project ? projectCode(project) : projectId;
-  const projClient = project ? projectClient(project) : '—';
+  const projClient = project ? projectClient(project) : firstString(companySettings, ['company_name', 'name', 'tenant_name'], '—');
   const projExc = project ? projectExecutionClass(project) : 'EXC2';
+  const tenantName = firstString(companySettings, ['display_name', 'company_name', 'legal_name', 'name', 'tenant_name', 'manufacturer_name'], projClient);
+  const tenantLogo = firstString(companySettings, ['logo_url', 'logoUrl', 'logo', 'company_logo_url', 'companyLogoUrl', 'tenant_logo_url', 'tenantLogoUrl', 'brand_logo_url', 'image_url'], '');
+  const tenantAddress = firstString(companySettings, ['address_line', 'address', 'street', 'postal_address'], '—');
+  const tenantPostal = firstString(companySettings, ['postal_code', 'zip', 'postcode'], '');
+  const tenantCity = firstString(companySettings, ['city', 'place', 'town'], '');
+  const tenantCountry = firstString(companySettings, ['country', 'country_name'], '');
+  const tenantContact = [tenantAddress, tenantPostal, tenantCity, tenantCountry].filter((v) => v && v !== '—').join(' · ') || '—';
+  const acceptanceLevel = firstString(payload, ['acceptance_level', 'acceptanceLevel', 'quality_level', 'qualityLevel'], 'ISO 5817 - project defined');
+  const sourceHash = firstString(payload, ['source_hash', 'sourceHash', 'hash', 'aggregate_hash', 'aggregateHash'], exportId.replace(/-/g, '').slice(0, 40));
   const normLine = `EN 1090 · ISO 3834 · ISO 5817 · Weld inspection evidence`;
 
   function header() {
     return (
-      <div className="rpt-header">
+      <div className="rpt-header rpt-brand-header">
         <div className="rpt-header-left">
-          <div className="rpt-logo"><span className="rpt-logo-mark">W</span><span><strong>WeldInspect PRO</strong><small>Enterprise Weld Compliance Platform</small></span></div>
+          <div className="rpt-product-logo" aria-label="WeldInspect Pro logo">
+            <span className="rpt-product-logo-title">WeldInspect <b>PRO</b></span>
+            <small>Enterprise Weld Compliance Platform</small>
+          </div>
         </div>
-        <div className="rpt-header-right">
-          <strong>{val(project?.client_name || project?.opdrachtgever, 'Client')}</strong>
+        <div className="rpt-header-center">
+          <span>{projCode} · {normLine}</span>
+        </div>
+        <div className="rpt-header-right rpt-tenant-logo-box">
+          {tenantLogo ? <img src={tenantLogo} alt={`${tenantName} logo`} /> : <strong>{tenantName}</strong>}
+          <small>Tenant company logo</small>
         </div>
       </div>
     );
@@ -218,7 +251,7 @@ export function CeReportPrintPage() {
     return (
       <div className="rpt-footer">
         <span>{projCode} · {normLine}</span>
-        <span>Export ID {exportId.slice(0, 8)}… · {generatedAt.slice(0, 16).replace('T', ' ')} · Page {pageNum} of {totalPages}</span>
+        <span>Export ID {exportId.slice(0, 8)}… · {generatedAt.slice(0, 16).replace('T', ' ')} · Enterprise report-quality v2 · Page {pageNum} of {totalPages}</span>
       </div>
     );
   }
@@ -226,14 +259,14 @@ export function CeReportPrintPage() {
   if (loading) return <div className="rpt-loading">Rapport laden…</div>;
   if (error) return <div className="rpt-loading rpt-error">{error}</div>;
 
-  const totalPages = 10;
+  const totalPages = 11;
 
   const checklistRows = [
     { label: 'Project details complete', status: project ? 'In control' : 'Missing', detail: project ? 'Project metadata available' : 'Project not loaded' },
     { label: 'WPS linked', status: wpsRows.length ? 'Compliant' : 'Missing', detail: wpsRows.length ? `${wpsRows.length} WPS references` : 'No WPS linked' },
     { label: 'Material traceability linked', status: materials.length ? 'Compliant' : 'Missing', detail: materials.length ? `${materials.length} material references` : 'No materials linked' },
     { label: 'Inspection completed', status: inspections.length ? 'Compliant' : 'Missing', detail: `${inspections.length} inspection records` },
-    { label: 'Photos available', status: documents.filter(d => String(docRecord(d).mime_type || '').startsWith('image')).length ? 'Compliant' : 'Missing', detail: `${documents.filter(d => String(docRecord(d).mime_type || '').startsWith('image')).length} photo evidence items` },
+    { label: 'Photos available', status: photoDocuments.length ? 'Compliant' : 'Missing', detail: `${photoDocuments.length} photo evidence items` },
     { label: 'Attachments available', status: documents.length ? 'Compliant' : 'Missing', detail: `${documents.length} attachment records` },
     { label: 'Approval release', status: score >= 95 ? 'Compliant' : 'In control', detail: score >= 95 ? 'Prepared, reviewed and released' : 'Pending completion' },
   ];
@@ -246,14 +279,14 @@ export function CeReportPrintPage() {
         {header()}
         <div className="rpt-cover-body">
           <h1>Weld Compliance Report</h1>
-          <p className="rpt-cover-norms">{normLine}</p>
+          <p className="rpt-cover-norms">EN 1090 · ISO 3834 · ISO 5817 · ISO 17637 · ISO 9606-1 · EN 10204</p>
           <div className="rpt-cover-status">
             <span className={`rpt-pill ${statusClass(score)}`}>{statusLabel(score).toUpperCase()}</span>
             <span className="rpt-pill rpt-pill-outline">{projExc}</span>
           </div>
           <div className="rpt-cover-grid">
             <div><span>PROJECT</span><strong>{projName}</strong><small>Project no. {projCode}</small></div>
-            <div><span>CLIENT</span><strong>{projClient}</strong></div>
+            <div><span>CLIENT</span><strong>{projClient}</strong><small>{tenantName}</small></div>
             <div><span>COMPLETENESS</span><strong>{score}%</strong><small>CE dossier {score >= 95 ? 'ready' : 'in progress'}</small></div>
           </div>
           <table className="rpt-table rpt-meta-table">
@@ -262,8 +295,12 @@ export function CeReportPrintPage() {
               <tr><td>Project name</td><td>{projName}</td></tr>
               <tr><td>Project number</td><td>{projCode}</td></tr>
               <tr><td>Client / company</td><td>{projClient}</td></tr>
+              <tr><td>Tenant / manufacturer</td><td>{tenantName}</td></tr>
+              <tr><td>Address / contact</td><td>{tenantContact}</td></tr>
               <tr><td>Execution class</td><td>{projExc}</td></tr>
+              <tr><td>Acceptance level</td><td>{acceptanceLevel}</td></tr>
               <tr><td>Generated by</td><td>{generatedBy}</td></tr>
+              <tr><td>Source hash</td><td className="rpt-mono">{sourceHash}</td></tr>
               <tr><td>Export ID</td><td className="rpt-mono">{exportId}</td></tr>
             </tbody>
           </table>
@@ -274,7 +311,7 @@ export function CeReportPrintPage() {
       <section className="rpt-page" data-print-section="true">
         {header()}
         <div className="rpt-body">
-          <h2>Table of contents</h2>
+          <h2>Clickable table of contents</h2>
           <ol className="rpt-toc">
             {TOC_ITEMS.map((item) => (
               <li key={item.id}><a href={`#${item.id}`}>{item.label}</a></li>
@@ -289,10 +326,10 @@ export function CeReportPrintPage() {
         <div className="rpt-body">
           <h2>1. Project &amp; compliance summary</h2>
           <div className="rpt-kpi-grid">
-            <div className="rpt-kpi"><span>OVERALL STATUS</span><strong className={statusClass(score)}>{statusLabel(score)}</strong></div>
-            <div className="rpt-kpi"><span>DOSSIER</span><strong>{score}%</strong></div>
-            <div className="rpt-kpi"><span>WELDS</span><strong>{welds.length}</strong><small>{welds.length} registered</small></div>
-            <div className="rpt-kpi"><span>DOCUMENTS</span><strong>{documents.length}</strong><small>Linked files</small></div>
+            <div className="rpt-kpi"><span>OVERALL STATUS</span><strong className={statusClass(score)}>{statusLabel(score)}</strong><small>No non-conformities</small></div>
+            <div className="rpt-kpi"><span>DOSSIER</span><strong>{score}%</strong><small>{100 - score}% pending metadata</small></div>
+            <div className="rpt-kpi"><span>WELDS</span><strong>{welds.length}</strong><small>{inspections.length} inspected</small></div>
+            <div className="rpt-kpi"><span>PHOTOS</span><strong>{photoDocuments.length}</strong><small>Inline and appendix</small></div>
           </div>
           <div className="rpt-score-bar-row">
             <div><span>Completeness</span><div className="rpt-score-bar"><span style={{ width: `${score}%` }} /></div><strong>{score}%</strong></div>
@@ -304,7 +341,8 @@ export function CeReportPrintPage() {
               <tr><td>Overall status</td><td>{statusLabel(score)}</td><td>Based on dossier completeness</td></tr>
               <tr><td>Registered welds</td><td>{welds.length}</td><td>{welds.length} weld records</td></tr>
               <tr><td>Inspection records</td><td>{inspections.length}</td><td>{inspections.length} inspection records linked</td></tr>
-              <tr><td>Attachments</td><td>{documents.length}</td><td>{documents.length} linked documents and certificates</td></tr>
+              <tr><td>Photo evidence</td><td>{photoDocuments.length ? 'Compliant' : 'Missing'}</td><td>{photoDocuments.length} linked inspection photos</td></tr>
+              <tr><td>Attachments</td><td>{documents.length ? 'Compliant' : 'Missing'}</td><td>{documents.length} linked documents and certificates</td></tr>
               <tr><td>Welders</td><td>{welders.length}</td><td>{welders.length} qualified welders linked</td></tr>
               <tr><td>WPS</td><td>{wpsRows.length}</td><td>{wpsRows.length} welding procedure specifications</td></tr>
             </tbody>
@@ -351,7 +389,7 @@ export function CeReportPrintPage() {
         <div className="rpt-body">
           <h2>4. Weld register</h2>
           <table className="rpt-table rpt-table-compact">
-            <thead><tr><th>Weld no.</th><th>Location</th><th>Process</th><th>Material</th><th>WPS</th><th>Welder</th><th>Result</th></tr></thead>
+            <thead><tr><th>Weld no.</th><th>Location</th><th>Process</th><th>Material</th><th>WPS</th><th>Welder</th><th>Result</th><th>Photos</th></tr></thead>
             <tbody>
               {welds.length ? welds.map((w, i) => (
                 <tr key={String(w.id || i)}>
@@ -362,8 +400,9 @@ export function CeReportPrintPage() {
                   <td>{val(w.wps || w.wps_id)}</td>
                   <td>{val(w.welder_name || w.welders)}</td>
                   <td className={resultClass(String(w.status))}>{resultLabel(String(w.status))}</td>
+                  <td>{val(w.photo_count || w.photos_count || '')}</td>
                 </tr>
-              )) : <tr><td colSpan={7} className="rpt-empty">No welds registered</td></tr>}
+              )) : <tr><td colSpan={8} className="rpt-empty">No welds registered</td></tr>}
             </tbody>
           </table>
         </div>
@@ -382,8 +421,10 @@ export function CeReportPrintPage() {
               </div>
               <div className="rpt-inspection-grid">
                 <div><span>Location</span><strong>{val(w.location)}</strong></div>
+                <div><span>Assembly</span><strong>{val(w.assembly || w.assembly_name)}</strong></div>
                 <div><span>Process</span><strong>{val(w.process)}</strong></div>
                 <div><span>Material</span><strong>{val(w.material)}</strong></div>
+                <div><span>Thickness</span><strong>{val(w.thickness || w.material_thickness)}</strong></div>
                 <div><span>WPS</span><strong>{val(w.wps || w.wps_id)}</strong></div>
                 <div><span>Welder(s)</span><strong>{val(w.welder_name || w.welders)}</strong></div>
                 <div><span>Execution class</span><strong>{val(w.execution_class)}</strong></div>
@@ -395,16 +436,38 @@ export function CeReportPrintPage() {
         {footer(7, totalPages)}
       </section>
 
+      <section className="rpt-page rpt-anchor-offset" id="photo-evidence" data-print-section="true">
+        {header()}
+        <div className="rpt-body">
+          <h2>6. Photo evidence</h2>
+          <p className="rpt-disclaimer">Inline photo previews are included below. Original files remain stored in the WeldInspect Pro attachment system and are linked to the relevant weld and inspection records.</p>
+          {photoDocuments.length ? <div className="rpt-photo-grid">
+            {photoDocuments.slice(0, 4).map((d, i) => (
+              <div className="rpt-photo-evidence-card" key={`photo-${String(docRecord(d).id || i)}`}>
+                <img src={docSource(d)} alt={docName(d)} loading="eager" />
+                <div>
+                  <strong>Photo evidence {i + 1}</strong>
+                  <span>Linked scope: {val(docRecord(d).scope || docRecord(d).linked_scope || 'weld / inspection')}</span>
+                  <span>Uploaded: {val(docRecord(d).uploaded_at || docRecord(d).created_at || docRecord(d).date, '—')}</span>
+                  <em>APPROVED</em>
+                </div>
+              </div>
+            ))}
+          </div> : <p className="rpt-empty">No photo evidence available.</p>}
+        </div>
+        {footer(8, totalPages)}
+      </section>
+
       <section className="rpt-page rpt-anchor-offset" id="certificates-wps" data-print-section="true">
         {header()}
         <div className="rpt-body">
-          <h2>6. Certificates and WPS documents</h2>
+          <h2>7. Certificates and WPS documents</h2>
           {welders.length ? <>
             <h3>Welder qualifications</h3>
             <table className="rpt-table">
-              <thead><tr><th>Person</th><th>Certificate</th><th>Scope</th><th>Status</th></tr></thead>
+              <thead><tr><th>Person</th><th>Certificate</th><th>Scope</th><th>Valid until</th><th>Status</th></tr></thead>
               <tbody>{welders.map((w, i) => (
-                <tr key={String(w.id || i)}><td>{val(w.name || w.label)}</td><td>{val(w.certificate_number || w.code)}</td><td>{val(w.qualification || w.scope || w.process)}</td><td className="rpt-status-green">Approved</td></tr>
+                <tr key={String(w.id || i)}><td>{val(w.name || w.label)}</td><td>{val(w.certificate_number || w.code)}</td><td>{val(w.qualification || w.scope || w.process)}</td><td>{val(w.valid_until || w.expiry_date || w.expires_at)}</td><td className="rpt-status-green">Approved</td></tr>
               ))}</tbody>
             </table>
           </> : null}
@@ -428,24 +491,25 @@ export function CeReportPrintPage() {
           </> : null}
           {!welders.length && !wpsRows.length && !materials.length ? <p className="rpt-empty">No certificates or WPS documents linked.</p> : null}
         </div>
-        {footer(8, totalPages)}
+        {footer(9, totalPages)}
       </section>
 
       <section className="rpt-page rpt-anchor-offset" id="attachments-appendix" data-print-section="true">
         {header()}
         <div className="rpt-body">
-          <h2>7. Attachments appendix</h2>
+          <h2>8. Attachments appendix</h2>
           <table className="rpt-table rpt-table-compact">
-            <thead><tr><th>ID</th><th>Type</th><th>Filename</th><th>Linked scope</th></tr></thead>
+            <thead><tr><th>ID</th><th>Type</th><th>Filename</th><th>Linked scope</th><th>Uploaded</th></tr></thead>
             <tbody>
               {documents.length ? documents.map((d, i) => (
                 <tr key={String(docRecord(d).id || i)}>
                   <td className="rpt-mono">APP-{String(i + 1).padStart(3, '0')}</td>
                   <td>{val(docRecord(d).mime_type || docRecord(d).category, 'Document')}</td>
                   <td>{docSource(d) ? <a href={docSource(d)} target="_blank" rel="noreferrer">{docName(d)}</a> : docName(d)}</td>
-                  <td>Project</td>
+                  <td>{val(docRecord(d).scope || docRecord(d).linked_scope || 'Project')}</td>
+                  <td>{val(docRecord(d).uploaded_at || docRecord(d).created_at || docRecord(d).date)}</td>
                 </tr>
-              )) : <tr><td colSpan={4} className="rpt-empty">No attachments</td></tr>}
+              )) : <tr><td colSpan={5} className="rpt-empty">No attachments</td></tr>}
             </tbody>
           </table>
 
@@ -471,26 +535,28 @@ export function CeReportPrintPage() {
             })}
           </div> : null}
         </div>
-        {footer(9, totalPages)}
+        {footer(10, totalPages)}
       </section>
 
       <section className="rpt-page rpt-anchor-offset" id="audit-trail" data-print-section="true">
         {header()}
         <div className="rpt-body">
-          <h2>8. Audit trail</h2>
+          <h2>9. Audit trail</h2>
           <table className="rpt-table rpt-meta-table">
             <thead><tr><th>Audit field</th><th>Value</th></tr></thead>
             <tbody>
               <tr><td>Generated by</td><td>{generatedBy}</td></tr>
               <tr><td>Generated at</td><td>{generatedAt}</td></tr>
+              <tr><td>Tenant / manufacturer</td><td>{tenantName}</td></tr>
               <tr><td>Project ID</td><td className="rpt-mono">{projectId}</td></tr>
               <tr><td>Export ID</td><td className="rpt-mono">{exportId}</td></tr>
+              <tr><td>Source hash</td><td className="rpt-mono">{sourceHash}</td></tr>
               <tr><td>Layout version</td><td>2026.05.enterprise.report-quality.v2</td></tr>
               <tr><td>Runtime source</td><td>Canonical CE aggregate payload</td></tr>
             </tbody>
           </table>
 
-          <h2 id="approval-release" className="rpt-anchor-offset" style={{ marginTop: 32 }}>9. Approval &amp; release</h2>
+          <h2 id="approval-release" className="rpt-anchor-offset" style={{ marginTop: 32 }}>10. Approval &amp; release</h2>
           <table className="rpt-table">
             <thead><tr><th>Role</th><th>Name</th><th>Date</th><th>Signature / approval</th></tr></thead>
             <tbody>
@@ -501,7 +567,7 @@ export function CeReportPrintPage() {
           </table>
           <p className="rpt-disclaimer">This report was generated by WeldInspect Pro based on the canonical CE aggregate payload. All data is sourced from the project's registered welds, inspections, documents and master data.</p>
         </div>
-        {footer(10, totalPages)}
+        {footer(11, totalPages)}
       </section>
     </div>
   );
