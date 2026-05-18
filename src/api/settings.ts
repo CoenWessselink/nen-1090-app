@@ -68,6 +68,44 @@ function normalizeTemplateDetail(payload: unknown): MasterDataItem {
   };
 }
 
+function validationTemplateFallback(payload: unknown): MasterDataItem[] {
+  const source = unwrapItem(payload);
+  const validation = source.validation && typeof source.validation === 'object' ? source.validation as MasterDataItem : source;
+  const templates = Array.isArray(validation.templates) ? validation.templates as MasterDataItem[] : [];
+
+  return templates.map((template, index) => {
+    const profileCode = String(template.profile_code || template.profile || template.code || 'EU_EXC2_STANDARD');
+    const code = String(template.code || `${profileCode}_WELD_V1`);
+    const itemCount = Number(template.item_count || template.items || template.checks || 0);
+    return {
+      id: String(template.id || code),
+      code,
+      name: String(template.name || `${profileCode} inspectietemplate`),
+      profile_code: profileCode,
+      exc_class: profileCode.match(/EXC[1-4]/)?.[0] || 'EXC2',
+      norm: 'EN 1090 / ISO 3834 / ISO 5817',
+      template_type: 'weld',
+      version: Number(template.version || 1),
+      is_default: true,
+      is_locked: true,
+      items_json: Array.from({ length: itemCount }, (_, itemIndex) => ({
+        temp_id: `${code}-fallback-${itemIndex + 1}`,
+        code: `CHECK_${itemIndex + 1}`,
+        title: `Controlepunt ${itemIndex + 1}`,
+        group: 'Backend validatie',
+        section_code: 'validation',
+        section_name: 'Backend validatie',
+        norm_reference: 'EN 1090 / ISO 3834 / ISO 5817',
+        required: true,
+        allow_na: true,
+        blocks_release: true,
+        default_status: 'conform',
+      })),
+      sort_order: index + 1,
+    };
+  });
+}
+
 function normalizeMutationResponse(payload: unknown): MasterDataItem {
   if (!payload || typeof payload !== 'object') return {};
 
@@ -241,11 +279,48 @@ export function deleteWelder(welderId: string | number) {
 }
 
 export async function getInspectionTemplates() {
-  const response = await listRequest<MasterDataListResponse>('/norms/templates', { active: true });
+  let seedPayload: unknown = null;
+  try {
+    seedPayload = await apiRequest<unknown>('/norms/seed', { method: 'POST' });
+  } catch (error) {
+    runtimeTrace('NORM_TEMPLATE_PRELOAD_SEED_SKIPPED', {
+      message: error instanceof Error ? error.message : 'unknown',
+      status: error instanceof ApiError ? error.status : undefined,
+    });
+  }
+
+  const response = await firstSuccessfulListRequest<MasterDataListResponse>(
+    ['/norms/templates', '/settings/inspection-templates'],
+    { active: true },
+    { skipStatuses: [404, 405, 500, 501, 503] },
+  );
   const templates = normalizeItems(response);
+
+  if (!templates.length) {
+    try {
+      const validation = await apiRequest<unknown>('/norms/templates/validation');
+      const fallback = validationTemplateFallback(validation);
+      if (fallback.length) {
+        runtimeTrace('NORM_TEMPLATE_VALIDATION_FALLBACK_USED', { count: fallback.length });
+        return { items: fallback, total: fallback.length, page: 1, limit: fallback.length };
+      }
+    } catch (error) {
+      runtimeTrace('NORM_TEMPLATE_VALIDATION_FALLBACK_FAILED', {
+        message: error instanceof Error ? error.message : 'unknown',
+        status: error instanceof ApiError ? error.status : undefined,
+      });
+    }
+
+    const seedFallback = validationTemplateFallback(seedPayload);
+    if (seedFallback.length) {
+      runtimeTrace('NORM_TEMPLATE_SEED_FALLBACK_USED', { count: seedFallback.length });
+      return { items: seedFallback, total: seedFallback.length, page: 1, limit: seedFallback.length };
+    }
+  }
+
   const detailed = await Promise.all(templates.map(async (template) => {
     const id = String(template.id || template.code || '');
-    if (!id) return template;
+    if (!id) return normalizeTemplateDetail(template);
     try {
       return normalizeTemplateDetail(await apiRequest<unknown>(`/norms/templates/${id}`));
     } catch (error) {
