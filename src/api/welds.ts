@@ -6,27 +6,20 @@ import type { ListParams } from '@/types/api';
 function withQuery(path: string, params?: ListParams): string {
   if (!params) return path;
   const sp = new URLSearchParams();
-
   Object.entries(params as Record<string, unknown>).forEach(([key, value]) => {
     if (value === undefined || value === null || value === '') return;
     sp.set(key, String(value));
   });
-
   const qs = sp.toString();
   return qs ? `${path}?${qs}` : path;
 }
 
 function trace(event: string, payload?: Record<string, unknown>) {
-  runtimeTrace(event, {
-    domain: 'welds',
-    ...(payload || {}),
-  });
+  runtimeTrace(event, { domain: 'welds', ...(payload || {}) });
 }
 
 function resolveCreateInput(projectIdOrPayload: unknown, payload?: unknown) {
-  if (payload !== undefined) {
-    return { projectId: String(projectIdOrPayload), payload };
-  }
+  if (payload !== undefined) return { projectId: String(projectIdOrPayload), payload };
   const source = (projectIdOrPayload || {}) as Record<string, unknown>;
   return { projectId: String(source.project_id || source.projectId || ''), payload: projectIdOrPayload };
 }
@@ -36,18 +29,22 @@ function resolveWeldId(payload: unknown) {
   return String(record.id || record.weld_id || record.weldId || '');
 }
 
+async function firstWorking(paths: string[], init?: RequestInit) {
+  let lastError: unknown;
+  for (const path of paths) {
+    try { return await apiRequest(path, init); }
+    catch (error) { lastError = error; }
+  }
+  throw lastError;
+}
+
 async function createInspectionRunFromTemplate(projectId: string, weldId: string) {
   if (!projectId || !weldId) return;
   try {
-    await apiRequest(`/projects/${projectId}/welds/${weldId}/inspection`);
+    await firstWorking([`/projects/${projectId}/welds/${weldId}/inspection`, `/welds/${weldId}/inspection`]);
     trace('WELD_INSPECTION_RUN_CREATED_FROM_TEMPLATE', { projectId, weldId });
   } catch (error) {
-    runtimeTrace('WELD_INSPECTION_RUN_CREATE_FALLBACK', {
-      domain: 'welds',
-      projectId,
-      weldId,
-      message: error instanceof Error ? error.message : 'unknown',
-    });
+    runtimeTrace('WELD_INSPECTION_RUN_CREATE_FALLBACK', { domain: 'welds', projectId, weldId, message: error instanceof Error ? error.message : 'unknown' });
   }
 }
 
@@ -67,10 +64,7 @@ export function getWeld(projectId: string | number, weldId: string | number) {
 export async function createWeld(projectIdOrPayload: unknown, payload?: unknown) {
   const resolved = resolveCreateInput(projectIdOrPayload, payload);
   trace('WELD_CREATE_REQUEST', { projectId: resolved.projectId });
-  const created = await apiRequest(`/projects/${resolved.projectId}/welds`, {
-    method: 'POST',
-    body: JSON.stringify(resolved.payload),
-  });
+  const created = await apiRequest(`/projects/${resolved.projectId}/welds`, { method: 'POST', body: JSON.stringify(resolved.payload) });
   await createInspectionRunFromTemplate(resolved.projectId, resolveWeldId(created));
   return created;
 }
@@ -90,7 +84,7 @@ export function patchWeldStatus(projectId: string | number, weldId: string | num
 
 export function getWeldInspection(projectId: string | number, weldId: string | number) {
   trace('CANONICAL_WELD_INSPECTION_ENDPOINT_USED', { projectId, weldId });
-  return apiRequest(`/projects/${projectId}/welds/${weldId}/inspection`);
+  return firstWorking([`/projects/${projectId}/welds/${weldId}/inspection`, `/welds/${weldId}/inspection`]);
 }
 
 export async function getWeldInspections(projectId: string | number, weldId: string | number) {
@@ -99,7 +93,7 @@ export async function getWeldInspections(projectId: string | number, weldId: str
 }
 
 export function createWeldInspection(projectId: string | number, weldId: string | number, payload: unknown) {
-  return apiRequest(`/projects/${projectId}/welds/${weldId}/inspection`, { method: 'POST', body: JSON.stringify(payload) });
+  return firstWorking([`/projects/${projectId}/welds/${weldId}/inspection`, `/welds/${weldId}/inspection`], { method: 'POST', body: JSON.stringify(payload) });
 }
 
 export const updateWeldInspection = createWeldInspection;
