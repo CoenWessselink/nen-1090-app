@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Plus, Search, SlidersHorizontal, Trash2 } from 'lucide-react';
+import { Pencil, Plus, Search, SlidersHorizontal, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { deleteProject, getProjects } from '@/api/projects';
 import { ConfirmDialog } from '@/components/confirm-dialog/ConfirmDialog';
@@ -75,13 +75,19 @@ export function MobileProjectsPage() {
   return (
     <MobilePageScaffold
       title="Projecten"
-      subtitle="Project 360"
+      subtitle="Project overzicht"
       rightSlot={
         <button className="mobile-icon-button" type="button" aria-label="Nieuw project" onClick={() => navigate('/projecten/nieuw')}>
           <Plus size={18} />
         </button>
       }
     >
+      <div className="mobile-inline-actions" style={{ marginBottom: 16 }}>
+        <button type="button" className="mobile-primary-button" onClick={() => navigate('/projecten/nieuw')}>
+          <Plus size={16} /> Project aanmaken
+        </button>
+      </div>
+
       <div className="mobile-toolbar-card compact-project-toolbar">
         <label className="mobile-search-shell">
           <Search size={16} />
@@ -129,16 +135,27 @@ export function MobileProjectsPage() {
                 >
                   {projectExecutionClass(project)}
                 </span>
-                <button
-                  type="button"
-                  className="mobile-icon-ghost-button"
-                  style={{ color: '#dc2626', padding: '6px 10px', borderRadius: 8, fontSize: 12, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}
-                  onClick={(e) => { e.stopPropagation(); setProjectToDelete(project); }}
-                  disabled={deletingId === String(project.id)}
-                  aria-label={`Verwijder ${projectTitle(project)}`}
-                >
-                  <Trash2 size={14} /> Verwijderen
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <button
+                    type="button"
+                    className="mobile-icon-ghost-button"
+                    style={{ color: '#1d4ed8', padding: '6px 10px', borderRadius: 8, fontSize: 12, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                    onClick={(e) => { e.stopPropagation(); navigate(`/projecten/${project.id}/bewerken`); }}
+                    aria-label={`Bewerk ${projectTitle(project)}`}
+                  >
+                    <Pencil size={14} /> Bewerken
+                  </button>
+                  <button
+                    type="button"
+                    className="mobile-icon-ghost-button"
+                    style={{ color: '#dc2626', padding: '6px 10px', borderRadius: 8, fontSize: 12, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                    onClick={(e) => { e.stopPropagation(); setProjectToDelete(project); }}
+                    disabled={deletingId === String(project.id)}
+                    aria-label={`Verwijder ${projectTitle(project)}`}
+                  >
+                    <Trash2 size={14} /> Verwijderen
+                  </button>
+                </div>
               </div>
             </div>
           ))}
