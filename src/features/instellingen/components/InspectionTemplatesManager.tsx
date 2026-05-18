@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Copy, Lock, Pencil, Plus, Save, ShieldCheck, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
+import { Badge, type BadgeTone } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
 import { EmptyState } from '@/components/feedback/EmptyState';
 import { ErrorState } from '@/components/feedback/ErrorState';
@@ -136,9 +136,9 @@ function createDraft(row?: TemplateRow): TemplateDraft {
   };
 }
 
-function statusTone(status: string) {
+function statusTone(status: string): BadgeTone {
   const value = status.toLowerCase();
-  if (value.includes('defect') || value.includes('non')) return 'error';
+  if (value.includes('defect') || value.includes('non')) return 'danger';
   if (value.includes('review') || value.includes('controle') || value.includes('checked')) return 'warning';
   return 'success';
 }
@@ -358,8 +358,8 @@ export function InspectionTemplatesManager() {
                         {item.required ? <Badge tone="warning">verplicht</Badge> : null}
                         {item.requires_photo ? <Badge tone="neutral">foto</Badge> : null}
                         {item.requires_document ? <Badge tone="neutral">document</Badge> : null}
-                        {item.blocks_release ? <Badge tone="error"><ShieldCheck size={12} /> CE blocker</Badge> : null}
-                        <Badge tone={statusTone(item.default_status) as any}>{item.default_status}</Badge>
+                        {item.blocks_release ? <Badge tone="danger"><ShieldCheck size={12} /> CE blocker</Badge> : null}
+                        <Badge tone={statusTone(item.default_status)}>{item.default_status}</Badge>
                       </div>
                     </div>
                     <div className="list-subtle">{item.code} · {item.group} · {item.norm_reference} · {item.severity_on_fail}</div>
