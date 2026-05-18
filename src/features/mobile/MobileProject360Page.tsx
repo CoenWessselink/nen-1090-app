@@ -5,7 +5,6 @@ import { deleteProject, getProject } from '@/api/projects';
 import { ConfirmDialog } from '@/components/confirm-dialog/ConfirmDialog';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
 import { normalizeApiError, projectClient, projectCode, projectExecutionClass, projectTitle } from '@/features/mobile/mobile-utils';
-import { ProjectQualityNormCard } from '@/features/projecten/ProjectQualityNormCard';
 import type { Project } from '@/types/domain';
 
 export function MobileProject360Page() {
@@ -57,7 +56,7 @@ export function MobileProject360Page() {
   return (
     <MobilePageScaffold
       title="Project overzicht"
-      subtitle="Beheer assemblies, lassen, documenten, normstatus en CE-dossier."
+      subtitle="Beheer assemblies, lassen, documenten en CE-dossier."
       backTo="/projecten"
       rightSlot={<div className="mobile-header-actions"><button className="mobile-icon-button" type="button" aria-label="Project bewerken" onClick={() => navigate(`/projecten/${projectId}/bewerken`)}><Pencil size={18} /></button><button className="mobile-icon-button" type="button" aria-label="Las toevoegen" onClick={() => navigate(`/projecten/${projectId}/lassen/nieuw`)}><Plus size={18} /></button></div>}
     >
@@ -70,7 +69,6 @@ export function MobileProject360Page() {
           <div className="mobile-field-row"><span>Opdrachtgever</span><strong>{projectClient(project)}</strong></div>
           <div className="mobile-field-row"><span>Execution Class (EXC)</span><strong>{projectExecutionClass(project)}</strong></div>
         </div>
-        <ProjectQualityNormCard projectId={projectId} onOpen={() => navigate(`/projecten/${projectId}/lassen`)} />
         <div className="mobile-inline-actions mobile-project-quick-actions">
           <button type="button" className="mobile-secondary-button" onClick={() => navigate(`/projecten/${projectId}/assemblies/nieuw`)}><PanelsTopLeft size={16} /> Nieuwe assembly</button>
           <button type="button" className="mobile-secondary-button" onClick={() => navigate(`/projecten/${projectId}/bewerken`)}><Pencil size={16} /> Project bewerken</button>
