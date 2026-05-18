@@ -35,6 +35,39 @@ function normalizeItems(payload: MasterDataListResponse | null | undefined): Mas
   return [];
 }
 
+function unwrapItem(payload: unknown): MasterDataItem {
+  if (!payload || typeof payload !== 'object') return {};
+  const record = payload as Record<string, unknown>;
+  if (record.item && typeof record.item === 'object') return record.item as MasterDataItem;
+  if (record.data && typeof record.data === 'object') return record.data as MasterDataItem;
+  return record;
+}
+
+function normalizeTemplateDetail(payload: unknown): MasterDataItem {
+  const template = unwrapItem(payload);
+  const sections = Array.isArray(template.sections) ? template.sections as MasterDataItem[] : [];
+  const items = sections.flatMap((section) => {
+    const sectionItems = Array.isArray(section.items) ? section.items as MasterDataItem[] : [];
+    return sectionItems.map((item) => ({
+      ...item,
+      temp_id: String(item.id || item.code || `${section.code || 'section'}-${item.code || 'item'}`),
+      title: String(item.label || item.title || item.code || 'Controlepunt'),
+      group: String(section.name || item.category || section.code || 'Algemeen'),
+      section_code: String(section.code || ''),
+      section_name: String(section.name || section.code || ''),
+      default_status: String(item.default_value || item.result || 'conform'),
+      blocks_release: Boolean((item.acceptance_rule_json as Record<string, unknown> | undefined)?.blocks_ce_release ?? item.blocks_release ?? false),
+    }));
+  });
+  return {
+    ...template,
+    exc_class: String(template.exc_class || template.execution_class || template.profile_code || '').match(/EXC\d/)?.[0] || template.exc_class || '',
+    norm: String(template.norm || template.profile_code || 'EN 1090 / ISO 3834 / ISO 5817'),
+    items,
+    items_json: items,
+  };
+}
+
 function normalizeMutationResponse(payload: unknown): MasterDataItem {
   if (!payload || typeof payload !== 'object') return {};
 
@@ -94,7 +127,7 @@ export async function getSettings() {
     listRequest<MasterDataListResponse>('/settings/wps'),
     getMaterials(),
     listRequest<MasterDataListResponse>('/settings/welders'),
-    listRequest<MasterDataListResponse>('/settings/inspection-templates'),
+    getInspectionTemplates(),
   ]);
 
   const take = (result: PromiseSettledResult<MasterDataListResponse>, key: string): MasterDataListResponse => {
@@ -207,8 +240,24 @@ export function deleteWelder(welderId: string | number) {
   });
 }
 
-export function getInspectionTemplates() {
-  return listRequest<MasterDataListResponse>('/settings/inspection-templates');
+export async function getInspectionTemplates() {
+  const response = await listRequest<MasterDataListResponse>('/norms/templates', { active: true });
+  const templates = normalizeItems(response);
+  const detailed = await Promise.all(templates.map(async (template) => {
+    const id = String(template.id || template.code || '');
+    if (!id) return template;
+    try {
+      return normalizeTemplateDetail(await apiRequest<unknown>(`/norms/templates/${id}`));
+    } catch (error) {
+      runtimeTrace('NORM_TEMPLATE_DETAIL_FALLBACK', {
+        templateId: id,
+        message: error instanceof Error ? error.message : 'unknown',
+        status: error instanceof ApiError ? error.status : undefined,
+      });
+      return normalizeTemplateDetail(template);
+    }
+  }));
+  return { items: detailed, total: detailed.length, page: 1, limit: detailed.length || 25 };
 }
 
 export function createInspectionTemplate(payload: Record<string, unknown>) {
