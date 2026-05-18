@@ -1,4 +1,5 @@
 import { ApiError, apiRequest, firstSuccessfulListRequest, listRequest } from '@/api/client';
+import { getNormRuntime, normRuntimeTemplatesAsList } from '@/api/normRuntime';
 import { runtimeTrace } from '@/utils/runtimeTracing';
 import type { Tenant } from '@/types/domain';
 
@@ -13,6 +14,9 @@ type MasterDataListResponse =
       total?: number;
       page?: number;
       limit?: number;
+      counts?: Record<string, number>;
+      runtime_mode?: string;
+      degraded?: boolean;
     };
 
 type TenantListResponse =
@@ -35,149 +39,24 @@ function normalizeItems(payload: MasterDataListResponse | null | undefined): Mas
   return [];
 }
 
-function unwrapItem(payload: unknown): MasterDataItem {
-  if (!payload || typeof payload !== 'object') return {};
-  const record = payload as Record<string, unknown>;
-  if (record.item && typeof record.item === 'object') return record.item as MasterDataItem;
-  if (record.data && typeof record.data === 'object') return record.data as MasterDataItem;
-  return record;
-}
-
-function normalizeTemplateItem(item: MasterDataItem, index: number, section?: MasterDataItem): MasterDataItem {
-  const rule = item.acceptance_rule_json && typeof item.acceptance_rule_json === 'object'
-    ? item.acceptance_rule_json as Record<string, unknown>
-    : {};
-  return {
-    ...item,
-    temp_id: String(item.temp_id || item.id || item.code || `${section?.code || 'section'}-${item.code || index + 1}`),
-    title: String(item.title || item.label || item.code || `Controlepunt ${index + 1}`),
-    group: String(item.group || section?.name || item.category || section?.code || 'Algemeen'),
-    section_code: String(item.section_code || section?.code || ''),
-    section_name: String(item.section_name || section?.name || section?.code || ''),
-    default_status: String(item.default_status || item.default_value || item.result || 'conform'),
-    blocks_release: Boolean(rule.blocks_ce_release ?? item.blocks_release ?? item.required ?? false),
-  };
-}
-
-function normalizeTemplateDetail(payload: unknown): MasterDataItem {
-  const template = unwrapItem(payload);
-
-  const directItems = Array.isArray(template.items_json)
-    ? template.items_json as MasterDataItem[]
-    : Array.isArray(template.items)
-      ? template.items as MasterDataItem[]
-      : [];
-
-  const sectionItems = Array.isArray(template.sections)
-    ? (template.sections as MasterDataItem[]).flatMap((section) => {
-        const items = Array.isArray(section.items) ? section.items as MasterDataItem[] : [];
-        return items.map((item, index) => normalizeTemplateItem(item, index, section));
-      })
-    : [];
-
-  const items = (directItems.length ? directItems : sectionItems).map((item, index) => normalizeTemplateItem(item, index));
-
-  return {
-    ...template,
-    exc_class: String(template.exc_class || template.execution_class || template.profile_code || template.code || '').match(/EXC\d/)?.[0] || template.exc_class || '',
-    norm: String(template.norm || template.profile_code || 'EN 1090 / ISO 3834 / ISO 5817'),
-    items,
-    items_json: items,
-    item_count: Number(template.item_count || items.length || 0),
-  };
-}
-
-function validationTemplateFallback(payload: unknown): MasterDataItem[] {
-  const source = unwrapItem(payload);
-  const validation = source.validation && typeof source.validation === 'object' ? source.validation as MasterDataItem : source;
-  const templates = Array.isArray(validation.templates) ? validation.templates as MasterDataItem[] : [];
-
-  return templates.map((template, index) => {
-    const profileCode = String(template.profile_code || template.profile || template.code || 'EU_EXC2_STANDARD');
-    const code = String(template.code || `${profileCode}_WELD_V1`);
-    const itemCount = Number(template.item_count || template.items || template.checks || 0);
-    const items = Array.from({ length: itemCount }, (_, itemIndex) => ({
-      temp_id: `${code}-fallback-${itemIndex + 1}`,
-      code: `CHECK_${itemIndex + 1}`,
-      title: `Controlepunt ${itemIndex + 1}`,
-      label: `Controlepunt ${itemIndex + 1}`,
-      group: 'Backend validatie',
-      section_code: 'validation',
-      section_name: 'Backend validatie',
-      norm_reference: 'EN 1090 / ISO 3834 / ISO 5817',
-      required: true,
-      allow_na: true,
-      requires_photo: false,
-      requires_document: false,
-      blocks_release: true,
-      default_status: 'conform',
-      severity_on_fail: 'major',
-    }));
-    return {
-      id: String(template.id || code),
-      code,
-      name: String(template.name || `${profileCode} inspectietemplate`),
-      profile_code: profileCode,
-      exc_class: profileCode.match(/EXC[1-4]/)?.[0] || 'EXC2',
-      norm: 'EN 1090 / ISO 3834 / ISO 5817',
-      template_type: 'weld',
-      version: Number(template.version || 1),
-      is_default: true,
-      is_locked: true,
-      item_count: itemCount,
-      items,
-      items_json: items,
-      sort_order: index + 1,
-    };
-  });
-}
-
 function normalizeMutationResponse(payload: unknown): MasterDataItem {
   if (!payload || typeof payload !== 'object') return {};
-
   const record = payload as Record<string, unknown>;
-
-  if (record.data && typeof record.data === 'object') {
-    return record.data as MasterDataItem;
-  }
-
-  if (record.item && typeof record.item === 'object') {
-    return record.item as MasterDataItem;
-  }
-
+  if (record.data && typeof record.data === 'object') return record.data as MasterDataItem;
+  if (record.item && typeof record.item === 'object') return record.item as MasterDataItem;
   return record;
 }
 
-async function mutationRequest(
-  path: string,
-  method: 'POST' | 'PATCH' | 'PUT',
-  payload?: Record<string, unknown>,
-) {
+async function mutationRequest(path: string, method: 'POST' | 'PATCH' | 'PUT', payload?: Record<string, unknown>) {
   const body = payload === undefined ? undefined : JSON.stringify(payload);
-
   try {
-    const response = await apiRequest<unknown>(path, {
-      method,
-      body,
-    });
-
+    const response = await apiRequest<unknown>(path, { method, body });
     return normalizeMutationResponse(response);
   } catch (error) {
-    if (!(error instanceof ApiError) || error.status !== 405) {
-      throw error;
-    }
-
-    if (method === 'POST') {
-      throw error;
-    }
-
+    if (!(error instanceof ApiError) || error.status !== 405) throw error;
+    if (method === 'POST') throw error;
     const alternate: 'PATCH' | 'PUT' = method === 'PATCH' ? 'PUT' : 'PATCH';
-
-    const fallback = await apiRequest<unknown>(path, {
-      method: alternate,
-      body,
-    });
-
+    const fallback = await apiRequest<unknown>(path, { method: alternate, body });
     return normalizeMutationResponse(fallback);
   }
 }
@@ -195,9 +74,7 @@ export async function getSettings() {
   ]);
 
   const take = (result: PromiseSettledResult<MasterDataListResponse>, key: string): MasterDataListResponse => {
-    if (result.status === 'fulfilled') {
-      return result.value;
-    }
+    if (result.status === 'fulfilled') return result.value;
     runtimeTrace('SETTINGS_SECTION_FAILED', {
       key,
       message: result.reason instanceof Error ? result.reason.message : 'unknown',
@@ -227,29 +104,14 @@ export function updateWps(wpsId: string | number, payload: Record<string, unknow
 }
 
 export function deleteWps(wpsId: string | number) {
-  return apiRequest<void>(`/settings/wps/${wpsId}`, {
-    method: 'DELETE',
-  });
+  return apiRequest<void>(`/settings/wps/${wpsId}`, { method: 'DELETE' });
 }
 
 const defaultListParams = { page: 1, limit: 200 } as const;
 
 export async function getClients() {
-  const payload = await firstSuccessfulListRequest<MasterDataListResponse>(
-    ['/settings/clients', '/clients', '/customers'],
-    defaultListParams,
-  );
-
-  if (payload) {
-    return payload;
-  }
-
-  return {
-    items: [],
-    total: 0,
-    page: 1,
-    limit: 25,
-  };
+  const payload = await firstSuccessfulListRequest<MasterDataListResponse>(['/settings/clients', '/clients', '/customers'], defaultListParams);
+  return payload ?? { items: [], total: 0, page: 1, limit: 25 };
 }
 
 export function getProcesses() {
@@ -258,10 +120,7 @@ export function getProcesses() {
 
 export async function getMaterials() {
   try {
-    const payload = await firstSuccessfulListRequest<MasterDataListResponse>(
-      ['/settings/materials', '/materials'],
-      defaultListParams,
-    );
+    const payload = await firstSuccessfulListRequest<MasterDataListResponse>(['/settings/materials', '/materials'], defaultListParams);
     return payload ?? [];
   } catch (error) {
     runtimeTrace('SETTINGS_MATERIALS_UNAVAILABLE', {
@@ -281,9 +140,7 @@ export function updateMaterial(materialId: string | number, payload: Record<stri
 }
 
 export function deleteMaterial(materialId: string | number) {
-  return apiRequest<void>(`/settings/materials/${materialId}`, {
-    method: 'DELETE',
-  });
+  return apiRequest<void>(`/settings/materials/${materialId}`, { method: 'DELETE' });
 }
 
 export function getWelders() {
@@ -299,52 +156,20 @@ export function updateWelder(welderId: string | number, payload: Record<string, 
 }
 
 export function deleteWelder(welderId: string | number) {
-  return apiRequest<void>(`/settings/welders/${welderId}`, {
-    method: 'DELETE',
-  });
+  return apiRequest<void>(`/settings/welders/${welderId}`, { method: 'DELETE' });
 }
 
 export async function getInspectionTemplates() {
-  let seedPayload: unknown = null;
-  try {
-    seedPayload = await apiRequest<unknown>('/norms/seed', { method: 'POST' });
-  } catch (error) {
-    runtimeTrace('NORM_TEMPLATE_PRELOAD_SEED_SKIPPED', {
-      message: error instanceof Error ? error.message : 'unknown',
-      status: error instanceof ApiError ? error.status : undefined,
-    });
-  }
+  const runtime = await getNormRuntime();
+  const runtimeList = normRuntimeTemplatesAsList(runtime);
+  if (runtimeList.items.length || runtime.success) return runtimeList;
 
   const response = await firstSuccessfulListRequest<MasterDataListResponse>(
-    ['/norms/templates', '/settings/inspection-templates'],
+    ['/settings/inspection-templates', '/norms/templates'],
     { active: true },
     { skipStatuses: [404, 405, 500, 501, 503] },
   );
-  const templates = normalizeItems(response).map((template) => normalizeTemplateDetail(template));
-
-  if (!templates.length) {
-    try {
-      const validation = await apiRequest<unknown>('/norms/templates/validation');
-      const fallback = validationTemplateFallback(validation);
-      if (fallback.length) {
-        runtimeTrace('NORM_TEMPLATE_VALIDATION_FALLBACK_USED', { count: fallback.length });
-        return { items: fallback, total: fallback.length, page: 1, limit: fallback.length };
-      }
-    } catch (error) {
-      runtimeTrace('NORM_TEMPLATE_VALIDATION_FALLBACK_FAILED', {
-        message: error instanceof Error ? error.message : 'unknown',
-        status: error instanceof ApiError ? error.status : undefined,
-      });
-    }
-
-    const seedFallback = validationTemplateFallback(seedPayload);
-    if (seedFallback.length) {
-      runtimeTrace('NORM_TEMPLATE_SEED_FALLBACK_USED', { count: seedFallback.length });
-      return { items: seedFallback, total: seedFallback.length, page: 1, limit: seedFallback.length };
-    }
-  }
-
-  return { items: templates, total: templates.length, page: 1, limit: templates.length || 25 };
+  return response ?? { items: [], total: 0, page: 1, limit: 25 };
 }
 
 export function createInspectionTemplate(payload: Record<string, unknown>) {
@@ -356,15 +181,11 @@ export function updateInspectionTemplate(templateId: string | number, payload: R
 }
 
 export function deleteInspectionTemplate(templateId: string | number) {
-  return apiRequest<void>(`/settings/inspection-templates/${templateId}`, {
-    method: 'DELETE',
-  });
+  return apiRequest<void>(`/settings/inspection-templates/${templateId}`, { method: 'DELETE' });
 }
 
 export function duplicateInspectionTemplate(templateId: string | number) {
-  return apiRequest(`/settings/inspection-templates/${templateId}/duplicate`, {
-    method: 'POST',
-  });
+  return apiRequest(`/settings/inspection-templates/${templateId}/duplicate`, { method: 'POST' });
 }
 
 export function getWeldCoordinators() {
@@ -380,9 +201,7 @@ export function updateWeldCoordinator(coordinatorId: string | number, payload: R
 }
 
 export function deleteWeldCoordinator(coordinatorId: string | number) {
-  return apiRequest<void>(`/settings/weld-coordinators/${coordinatorId}`, {
-    method: 'DELETE',
-  });
+  return apiRequest<void>(`/settings/weld-coordinators/${coordinatorId}`, { method: 'DELETE' });
 }
 
 export function getCompanySettings() {
@@ -396,9 +215,5 @@ export function updateCompanySettings(payload: Record<string, unknown>) {
 export function uploadCompanyLogo(file: File) {
   const formData = new FormData();
   formData.append('file', file);
-
-  return apiRequest<MasterDataItem>('/settings/company/logo', {
-    method: 'POST',
-    body: formData,
-  });
+  return apiRequest<MasterDataItem>('/settings/company/logo', { method: 'POST', body: formData });
 }
