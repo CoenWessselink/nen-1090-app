@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Copy, Pencil, Plus, Save, Trash2 } from 'lucide-react';
+import { Copy, Lock, Pencil, Plus, Save, ShieldCheck, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
@@ -23,9 +23,17 @@ type TemplateItemDraft = {
   code: string;
   title: string;
   group: string;
+  section_code: string;
   norm_reference: string;
   required: boolean;
+  allow_na: boolean;
+  requires_photo: boolean;
+  requires_document: boolean;
+  blocks_release: boolean;
   default_status: string;
+  severity_on_fail: string;
+  input_type: string;
+  result_type: string;
   sort_order: number;
   description: string;
 };
@@ -38,29 +46,8 @@ type TemplateDraft = {
   norm: string;
   version: number;
   is_default: boolean;
+  is_locked: boolean;
   items: TemplateItemDraft[];
-};
-
-const presetItems: Record<string, TemplateItemDraft[]> = {
-  EXC1: [
-    { temp_id: 'exc1-1', code: 'EXC1_VISUAL', title: 'Visuele controle lasnaad', group: 'Visueel', norm_reference: 'NEN-EN 1090-2', required: true, default_status: 'conform', sort_order: 1, description: 'Controle op zichtbare onvolkomenheden.' },
-    { temp_id: 'exc1-2', code: 'EXC1_DIM', title: 'Maatvoering en positie controleren', group: 'Maatvoering', norm_reference: 'Werktekening', required: true, default_status: 'conform', sort_order: 2, description: 'Controleer ligging, maatvoering en aansluiting.' },
-  ],
-  EXC2: [
-    { temp_id: 'exc2-1', code: 'EXC2_WPS', title: 'Juiste WPS toegepast', group: 'Documenten', norm_reference: 'ISO 3834', required: true, default_status: 'conform', sort_order: 1, description: 'WPS moet aantoonbaar gekoppeld zijn.' },
-    { temp_id: 'exc2-2', code: 'EXC2_VISUAL', title: 'Visuele inspectie uitgevoerd', group: 'Visueel', norm_reference: 'ISO 5817', required: true, default_status: 'conform', sort_order: 2, description: 'Visuele vrijgave volgens gekozen acceptatieniveau.' },
-    { temp_id: 'exc2-3', code: 'EXC2_TRACE', title: 'Materiaal- en lassertraceerbaarheid', group: 'Traceability', norm_reference: 'NEN-EN 1090-2', required: true, default_status: 'conform', sort_order: 3, description: 'Koppeling met materiaal, WPS en lasser aanwezig.' },
-  ],
-  EXC3: [
-    { temp_id: 'exc3-1', code: 'EXC3_DOC', title: 'Volledige documentcontrole', group: 'Documenten', norm_reference: 'ISO 3834', required: true, default_status: 'conform', sort_order: 1, description: 'Controle op WPS, WPQR en kwalificaties.' },
-    { temp_id: 'exc3-2', code: 'EXC3_NDT', title: 'Aanvullende NDO/NDT-controle', group: 'NDT', norm_reference: 'Projectspecifiek / ISO 17635', required: true, default_status: 'conform', sort_order: 2, description: 'Aanvullende onderzoeksmethode volgens projecteis.' },
-    { temp_id: 'exc3-3', code: 'EXC3_ACCEPT', title: 'Acceptatie volgens ISO 5817', group: 'Acceptatie', norm_reference: 'ISO 5817', required: true, default_status: 'conform', sort_order: 3, description: 'Vrijgave op basis van acceptatieniveau.' },
-  ],
-  EXC4: [
-    { temp_id: 'exc4-1', code: 'EXC4_CRITICAL', title: 'Kritische visuele vrijgave', group: 'Visueel', norm_reference: 'NEN-EN 1090-2', required: true, default_status: 'conform', sort_order: 1, description: 'Verzwaarde eindcontrole en vrijgave.' },
-    { temp_id: 'exc4-2', code: 'EXC4_DOC_REVIEW', title: 'Volledige documentreview', group: 'Documenten', norm_reference: 'ISO 3834', required: true, default_status: 'conform', sort_order: 2, description: 'Verifieer complete documentdekking.' },
-    { temp_id: 'exc4-3', code: 'EXC4_NDT', title: 'Verplichte aanvullende NDT', group: 'NDT', norm_reference: 'Projectspecifiek / ISO 17635', required: true, default_status: 'conform', sort_order: 3, description: 'Aanvullende NDT-verificatie en vastlegging.' },
-  ],
 };
 
 const editorGrid: React.CSSProperties = {
@@ -69,20 +56,45 @@ const editorGrid: React.CSSProperties = {
   gap: 12,
 };
 
+function excFromRow(row?: TemplateRow) {
+  const raw = String(row?.exc_class || row?.execution_class || row?.profile_code || row?.code || '').toUpperCase();
+  return raw.match(/EXC[1-4]/)?.[0] || 'EXC2';
+}
+
+function asBool(value: unknown, fallback = false) {
+  if (value === undefined || value === null || value === '') return fallback;
+  return Boolean(value);
+}
+
+function acceptanceRule(record: Record<string, unknown>) {
+  const rule = record.acceptance_rule_json;
+  if (rule && typeof rule === 'object') return rule as Record<string, unknown>;
+  return {};
+}
+
 function normalizeItems(source: unknown): TemplateItemDraft[] {
   const items = Array.isArray(source) ? source : [];
   return items.map((item, index) => {
     const record = item && typeof item === 'object' ? (item as Record<string, unknown>) : {};
+    const rule = acceptanceRule(record);
     return {
       temp_id: String(record.temp_id || record.id || record.code || `item-${index + 1}`),
-      code: String(record.code || `ITEM_${index + 1}`),
+      code: String(record.code || record.item_code || `ITEM_${index + 1}`),
       title: String(record.title || record.label || `Controlepunt ${index + 1}`),
-      group: String(record.group || record.category || 'Algemeen'),
-      norm_reference: String(record.norm_reference || record.norm || 'NEN-EN 1090 / ISO 3834 / ISO 5817'),
-      required: Boolean(record.required ?? true),
-      default_status: String(record.default_status || record.status || 'conform'),
+      group: String(record.group || record.section_name || record.category || 'Algemeen'),
+      section_code: String(record.section_code || ''),
+      norm_reference: String(record.norm_reference || record.norm || record.norm_code || 'EN 1090 / ISO 3834 / ISO 5817'),
+      required: asBool(record.required, true),
+      allow_na: asBool(record.allow_na, true),
+      requires_photo: asBool(record.requires_photo || rule.requires_photo, false),
+      requires_document: asBool(record.requires_document || rule.requires_document, false),
+      blocks_release: asBool(record.blocks_release ?? rule.blocks_ce_release, true),
+      default_status: String(record.default_status || record.default_value || record.status || 'conform'),
+      severity_on_fail: String(record.severity_on_fail || record.severity || 'major'),
+      input_type: String(record.input_type || 'status'),
+      result_type: String(record.result_type || 'conformity'),
       sort_order: Number(record.sort_order || index + 1),
-      description: String(record.description || record.comment || record.toelichting || ''),
+      description: String(record.description || record.help_text || record.comment || record.toelichting || ''),
     };
   });
 }
@@ -93,33 +105,65 @@ function createItem(index = 1): TemplateItemDraft {
     code: `ITEM_${index}`,
     title: '',
     group: 'Algemeen',
-    norm_reference: 'NEN-EN 1090 / ISO 3834 / ISO 5817',
+    section_code: 'custom',
+    norm_reference: 'EN 1090 / ISO 3834 / ISO 5817',
     required: true,
+    allow_na: true,
+    requires_photo: false,
+    requires_document: false,
+    blocks_release: true,
     default_status: 'conform',
+    severity_on_fail: 'major',
+    input_type: 'status',
+    result_type: 'conformity',
     sort_order: index,
     description: '',
   };
 }
 
 function createDraft(row?: TemplateRow): TemplateDraft {
-  const excClass = String(row?.exc_class || row?.execution_class || 'EXC2');
+  const excClass = excFromRow(row);
   return {
     id: row?.id ? String(row.id) : undefined,
     name: String(row?.name || `${excClass} inspectietemplate`),
-    code: String(row?.code || `${excClass}-TPL`),
+    code: String(row?.code || `${excClass}-CUSTOM-TPL`),
     exc_class: excClass,
-    norm: String(row?.norm || 'NEN-EN 1090 / ISO 3834 / ISO 5817'),
+    norm: String(row?.norm || row?.profile_code || 'EN 1090 / ISO 3834 / ISO 5817'),
     version: Number(row?.version || 1),
-    is_default: Boolean(row?.is_default ?? true),
-    items: normalizeItems(row?.items_json || row?.items || presetItems[excClass] || presetItems.EXC2),
+    is_default: Boolean(row?.is_default ?? false),
+    is_locked: Boolean(row?.is_locked ?? false),
+    items: normalizeItems(row?.items_json || row?.items || []),
   };
 }
 
 function statusTone(status: string) {
   const value = status.toLowerCase();
   if (value.includes('defect') || value.includes('non')) return 'error';
-  if (value.includes('review') || value.includes('controle')) return 'warning';
+  if (value.includes('review') || value.includes('controle') || value.includes('checked')) return 'warning';
   return 'success';
+}
+
+function itemPayload(item: TemplateItemDraft, index: number) {
+  return {
+    code: item.code,
+    title: item.title,
+    label: item.title,
+    group: item.group,
+    section_name: item.group,
+    section_code: item.section_code,
+    norm_reference: item.norm_reference,
+    required: item.required,
+    allow_na: item.allow_na,
+    requires_photo: item.requires_photo,
+    requires_document: item.requires_document,
+    blocks_release: item.blocks_release,
+    default_status: item.default_status,
+    severity_on_fail: item.severity_on_fail,
+    input_type: item.input_type,
+    result_type: item.result_type,
+    sort_order: Number(item.sort_order || index + 1),
+    description: item.description,
+  };
 }
 
 export function InspectionTemplatesManager() {
@@ -143,14 +187,16 @@ export function InspectionTemplatesManager() {
 
   const summary = useMemo(() => {
     const byExc = rows.reduce<Record<string, number>>((acc, row) => {
-      const key = String(row.exc_class || row.execution_class || 'Overig').toUpperCase();
+      const key = excFromRow(row);
       acc[key] = (acc[key] || 0) + 1;
       return acc;
     }, {});
     return {
       total: rows.length,
-      defaults: rows.filter((row) => Boolean(row.is_default)).length,
+      standards: rows.filter((row) => Boolean(row.is_locked || row.is_default)).length,
+      tenantCopies: rows.filter((row) => !row.is_locked).length,
       checks: rows.reduce((sum, row) => sum + normalizeItems(row.items_json || row.items).length, 0),
+      blockers: rows.reduce((sum, row) => sum + normalizeItems(row.items_json || row.items).filter((item) => item.blocks_release).length, 0),
       byExc,
     };
   }, [rows]);
@@ -161,6 +207,10 @@ export function InspectionTemplatesManager() {
   }
 
   function openEdit(row: TemplateRow) {
+    if (row.is_locked) {
+      setMessage('Standaardtemplates zijn vergrendeld. Dupliceer eerst om een tenant-copy te bewerken.');
+      return;
+    }
     setDraft(createDraft(row));
     setEditorOpen(true);
   }
@@ -180,14 +230,15 @@ export function InspectionTemplatesManager() {
       const items = [...current.items];
       const [item] = items.splice(index, 1);
       items.splice(nextIndex, 0, item);
-      return {
-        ...current,
-        items: items.map((row, idx) => ({ ...row, sort_order: idx + 1 })),
-      };
+      return { ...current, items: items.map((row, idx) => ({ ...row, sort_order: idx + 1 })) };
     });
   }
 
   async function saveDraft() {
+    if (draft.is_locked) {
+      setMessage('Deze standaardtemplate is vergrendeld. Dupliceer eerst om te bewerken.');
+      return;
+    }
     try {
       const payload = {
         name: draft.name,
@@ -195,18 +246,12 @@ export function InspectionTemplatesManager() {
         exc_class: draft.exc_class,
         execution_class: draft.exc_class,
         norm: draft.norm,
+        description: draft.norm,
+        template_type: 'weld',
         version: Number(draft.version || 1),
         is_default: draft.is_default,
-        items_json: draft.items.map((item, index) => ({
-          code: item.code,
-          title: item.title,
-          group: item.group,
-          norm_reference: item.norm_reference,
-          required: item.required,
-          default_status: item.default_status,
-          sort_order: Number(item.sort_order || index + 1),
-          description: item.description,
-        })),
+        is_locked: false,
+        items_json: draft.items.map(itemPayload),
       };
       if (draft.id) {
         await updateMutation.mutateAsync({ type: 'inspection-templates', id: draft.id, payload });
@@ -223,12 +268,16 @@ export function InspectionTemplatesManager() {
     }
   }
 
-  async function removeTemplate(id: string) {
+  async function removeTemplate(row: TemplateRow) {
+    if (row.is_locked) {
+      setMessage('Standaardtemplates kunnen niet worden verwijderd. Dupliceer eerst om een tenant-copy te beheren.');
+      return;
+    }
     try {
-      await deleteMutation.mutateAsync({ type: 'inspection-templates', id });
+      await deleteMutation.mutateAsync({ type: 'inspection-templates', id: String(row.id) });
       setMessage('Inspectietemplate verwijderd.');
       await templates.refetch();
-      if (draft.id === id) setDraft(createDraft());
+      if (draft.id === row.id) setDraft(createDraft());
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Verwijderen mislukt.');
     }
@@ -237,7 +286,7 @@ export function InspectionTemplatesManager() {
   async function duplicateTemplate(id: string) {
     try {
       await duplicateMutation.mutateAsync(id);
-      setMessage('Inspectietemplate gedupliceerd.');
+      setMessage('Tenant-copy aangemaakt. Deze kopie kan worden bewerkt zonder de standaardtemplate te wijzigen.');
       await templates.refetch();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Dupliceren mislukt.');
@@ -249,64 +298,37 @@ export function InspectionTemplatesManager() {
       {message ? <InlineMessage tone="neutral">{message}</InlineMessage> : null}
 
       <div className="mobile-kpi-grid">
-        <div className="mobile-kpi-card mobile-kpi-card-primary">
-          <div className="mobile-kpi-top">
-            <span>Templates totaal</span>
-          </div>
-          <strong>{summary.total}</strong>
-        </div>
-        <div className="mobile-kpi-card mobile-kpi-card-success">
-          <div className="mobile-kpi-top">
-            <span>Standaardtemplates</span>
-          </div>
-          <strong>{summary.defaults}</strong>
-        </div>
-        <div className="mobile-kpi-card mobile-kpi-card-warning">
-          <div className="mobile-kpi-top">
-            <span>Controlepunten</span>
-          </div>
-          <strong>{summary.checks}</strong>
-        </div>
-        <div className="mobile-kpi-card mobile-kpi-card-secondary">
-          <div className="mobile-kpi-top">
-            <span>EXC-verdeling</span>
-          </div>
-          <div style={{ marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {Object.entries(summary.byExc).map(([key, val]) => (
-              <Badge key={key}>{`${key}: ${val}`}</Badge>
-            ))}
-          </div>
-        </div>
+        <div className="mobile-kpi-card mobile-kpi-card-primary"><div className="mobile-kpi-top"><span>Templates totaal</span></div><strong>{summary.total}</strong></div>
+        <div className="mobile-kpi-card mobile-kpi-card-success"><div className="mobile-kpi-top"><span>Backend standaard</span></div><strong>{summary.standards}</strong></div>
+        <div className="mobile-kpi-card mobile-kpi-card-warning"><div className="mobile-kpi-top"><span>Controlepunten</span></div><strong>{summary.checks}</strong></div>
+        <div className="mobile-kpi-card mobile-kpi-card-secondary"><div className="mobile-kpi-top"><span>CE blockers</span></div><strong>{summary.blockers}</strong></div>
       </div>
 
       <Card>
         <div className="section-title-row">
           <div>
             <h3>Inspectietemplates</h3>
-            <p className="list-subtle" style={{ marginTop: 6 }}>Gebruik dezelfde enterprise-editor als bij projectgegevens: duidelijke velden, nette controlepuntregels en geen JSON-hoofdflow.</p>
+            <p className="list-subtle" style={{ marginTop: 6 }}>Backend norm-engine is de bron. Standaardtemplates zijn read-only; dupliceren maakt een tenant-copy voor maatwerk.</p>
+            <div style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {Object.entries(summary.byExc).map(([key, val]) => <Badge key={key}>{`${key}: ${val}`}</Badge>)}
+            </div>
           </div>
           <div className="toolbar-cluster">
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Zoek op template, code, norm of controlepunt"
-              style={{ minWidth: 280, padding: '10px 12px', borderRadius: 12, border: '1px solid #cbd5e1' }}
-            />
-            <Button onClick={openCreate}><Plus size={16} /> Nieuwe template</Button>
+            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Zoek op template, EXC, norm, controlepunt" style={{ minWidth: 280, padding: '10px 12px', borderRadius: 12, border: '1px solid #cbd5e1' }} />
+            <Button onClick={openCreate}><Plus size={16} /> Tenant-template</Button>
           </div>
         </div>
       </Card>
 
       {templates.isLoading ? <LoadingState label="Inspectietemplates laden..." /> : null}
-      {templates.isError ? <ErrorState title="Templates niet geladen" description="Controleer de instellingen-endpoints voor inspectietemplates." /> : null}
-      {!templates.isLoading && !templates.isError && !filteredRows.length ? (
-        <EmptyState title="Geen templates gevonden" description="Pas de zoekterm aan of maak direct een nieuwe inspectietemplate aan." />
-      ) : null}
+      {templates.isError ? <ErrorState title="Templates niet geladen" description="Controleer /norms/templates en /norms/templates/{id}." /> : null}
+      {!templates.isLoading && !templates.isError && !filteredRows.length ? <EmptyState title="Geen templates gevonden" description="Seed de backend normtemplates of pas de zoekterm aan." /> : null}
 
       <div style={{ display: 'grid', gap: 16 }}>
         {filteredRows.map((row) => {
-          const exc = String(row.exc_class || row.execution_class || 'EXC?');
+          const exc = excFromRow(row);
           const items = normalizeItems(row.items_json || row.items);
+          const locked = Boolean(row.is_locked);
           return (
             <Card key={String(row.id)}>
               <div className="section-title-row" style={{ alignItems: 'flex-start' }}>
@@ -315,86 +337,80 @@ export function InspectionTemplatesManager() {
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     <Badge>{exc}</Badge>
                     <Badge tone="neutral">{String(row.code || 'Geen code')}</Badge>
-                    <Badge tone={row.is_default ? 'success' : 'neutral'}>{row.is_default ? 'Standaard' : 'Optioneel'}</Badge>
+                    <Badge tone={locked ? 'warning' : 'success'}>{locked ? 'Read-only standaard' : 'Tenant-copy'}</Badge>
                     <Badge tone="neutral">v{String(row.version || 1)}</Badge>
+                    <Badge tone="neutral">{items.length} checks</Badge>
                   </div>
-                  <div className="list-subtle" style={{ marginTop: 10 }}>{String(row.norm || 'NEN-EN 1090 / ISO 3834 / ISO 5817')}</div>
+                  <div className="list-subtle" style={{ marginTop: 10 }}>{String(row.norm || row.profile_code || 'EN 1090 / ISO 3834 / ISO 5817')}</div>
                 </div>
                 <div className="toolbar-cluster">
                   <Button variant="secondary" onClick={() => duplicateTemplate(String(row.id))}><Copy size={16} /> Dupliceren</Button>
-                  <Button variant="secondary" onClick={() => openEdit(row)}><Pencil size={16} /> Wijzigen</Button>
-                  <Button variant="ghost" onClick={() => removeTemplate(String(row.id))}><Trash2 size={16} /> Verwijderen</Button>
+                  <Button variant="secondary" onClick={() => openEdit(row)} disabled={locked}>{locked ? <Lock size={16} /> : <Pencil size={16} />} Bewerken</Button>
+                  <Button variant="ghost" onClick={() => removeTemplate(row)} disabled={locked}><Trash2 size={16} /> Verwijderen</Button>
                 </div>
               </div>
               <div style={{ marginTop: 16, display: 'grid', gap: 10 }}>
-                {items.slice(0, 4).map((item) => (
+                {items.slice(0, 5).map((item) => (
                   <div key={item.temp_id} className="list-row" style={{ display: 'grid', gap: 6 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
                       <strong>{item.title}</strong>
-                      <Badge tone={statusTone(item.default_status) as any}>{item.default_status}</Badge>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                        {item.required ? <Badge tone="warning">verplicht</Badge> : null}
+                        {item.requires_photo ? <Badge tone="neutral">foto</Badge> : null}
+                        {item.requires_document ? <Badge tone="neutral">document</Badge> : null}
+                        {item.blocks_release ? <Badge tone="error"><ShieldCheck size={12} /> CE blocker</Badge> : null}
+                        <Badge tone={statusTone(item.default_status) as any}>{item.default_status}</Badge>
+                      </div>
                     </div>
-                    <div className="list-subtle">{item.code} · {item.group} · {item.norm_reference}</div>
+                    <div className="list-subtle">{item.code} · {item.group} · {item.norm_reference} · {item.severity_on_fail}</div>
                   </div>
                 ))}
-                {items.length > 4 ? <div className="list-subtle">+ {items.length - 4} extra controlepunt(en)</div> : null}
+                {items.length > 5 ? <div className="list-subtle">+ {items.length - 5} extra controlepunt(en)</div> : null}
               </div>
             </Card>
           );
         })}
       </div>
 
-      <Modal open={editorOpen} onClose={() => setEditorOpen(false)} title={draft.id ? 'Inspectietemplate wijzigen' : 'Nieuwe inspectietemplate'} size="fullscreen">
+      <Modal open={editorOpen} onClose={() => setEditorOpen(false)} title={draft.id ? 'Tenant-template wijzigen' : 'Nieuwe tenant-template'} size="fullscreen">
         <div className="mobile-unified-body">
           <Card>
             <div className="section-title-row">
-              <div>
-                <h3>{draft.id ? 'Template-editor' : 'Nieuwe template'}</h3>
-                <p className="list-subtle" style={{ marginTop: 6 }}>Bewerk alle templatevelden en controlepunten in één duidelijke beheerflow.</p>
-              </div>
-              <div className="toolbar-cluster">
-                <Button variant="secondary" onClick={() => setEditorOpen(false)}>Annuleren</Button>
-                <Button onClick={() => void saveDraft()} disabled={createMutation.isPending || updateMutation.isPending}><Save size={16} /> Opslaan</Button>
-              </div>
+              <div><h3>{draft.id ? 'Tenant-template editor' : 'Nieuwe tenant-template'}</h3><p className="list-subtle" style={{ marginTop: 6 }}>Standaardtemplates blijven vergrendeld. Deze editor beheert alleen tenant-copies.</p></div>
+              <div className="toolbar-cluster"><Button variant="secondary" onClick={() => setEditorOpen(false)}>Annuleren</Button><Button onClick={() => void saveDraft()} disabled={createMutation.isPending || updateMutation.isPending}><Save size={16} /> Opslaan</Button></div>
             </div>
           </Card>
 
           <div style={editorGrid}>
             <Card><label><strong>Naam</strong><input value={draft.name} onChange={(e) => setDraft((current) => ({ ...current, name: e.target.value }))} style={{ width: '100%', marginTop: 8, padding: '10px 12px', borderRadius: 12, border: '1px solid #cbd5e1' }} /></label></Card>
             <Card><label><strong>Code</strong><input value={draft.code} onChange={(e) => setDraft((current) => ({ ...current, code: e.target.value }))} style={{ width: '100%', marginTop: 8, padding: '10px 12px', borderRadius: 12, border: '1px solid #cbd5e1' }} /></label></Card>
-            <Card><label><strong>Executieklasse</strong><select value={draft.exc_class} onChange={(e) => setDraft((current) => ({ ...current, exc_class: e.target.value, items: current.id ? current.items : normalizeItems(presetItems[e.target.value] || presetItems.EXC2) }))} style={{ width: '100%', marginTop: 8, padding: '10px 12px', borderRadius: 12, border: '1px solid #cbd5e1' }}><option value="EXC1">EXC1</option><option value="EXC2">EXC2</option><option value="EXC3">EXC3</option><option value="EXC4">EXC4</option></select></label></Card>
+            <Card><label><strong>Executieklasse</strong><select value={draft.exc_class} onChange={(e) => setDraft((current) => ({ ...current, exc_class: e.target.value }))} style={{ width: '100%', marginTop: 8, padding: '10px 12px', borderRadius: 12, border: '1px solid #cbd5e1' }}><option value="EXC1">EXC1</option><option value="EXC2">EXC2</option><option value="EXC3">EXC3</option><option value="EXC4">EXC4</option></select></label></Card>
             <Card><label><strong>Normkader</strong><input value={draft.norm} onChange={(e) => setDraft((current) => ({ ...current, norm: e.target.value }))} style={{ width: '100%', marginTop: 8, padding: '10px 12px', borderRadius: 12, border: '1px solid #cbd5e1' }} /></label></Card>
             <Card><label><strong>Versie</strong><input type="number" min={1} value={draft.version} onChange={(e) => setDraft((current) => ({ ...current, version: Number(e.target.value || 1) }))} style={{ width: '100%', marginTop: 8, padding: '10px 12px', borderRadius: 12, border: '1px solid #cbd5e1' }} /></label></Card>
-            <Card><label style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 16 }}><input type="checkbox" checked={draft.is_default} onChange={(e) => setDraft((current) => ({ ...current, is_default: e.target.checked }))} /> <strong>Standaardtemplate voor nieuwe projecten/lassen</strong></label></Card>
+            <Card><label style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 16 }}><input type="checkbox" checked={draft.is_default} onChange={(e) => setDraft((current) => ({ ...current, is_default: e.target.checked }))} /> <strong>Default tenant-template</strong></label></Card>
           </div>
 
           <Card>
-            <div className="section-title-row">
-              <div>
-                <h3>Controlepunten</h3>
-                <p className="list-subtle" style={{ marginTop: 6 }}>Volgorde, normverwijzingen en standaardstatus direct beheren per controlepunt.</p>
-              </div>
-              <Button variant="secondary" onClick={() => setDraft((current) => ({ ...current, items: [...current.items, createItem(current.items.length + 1)] }))}><Plus size={16} /> Controlepunt toevoegen</Button>
-            </div>
+            <div className="section-title-row"><div><h3>Controlepunten</h3><p className="list-subtle" style={{ marginTop: 6 }}>Metadata stuurt bewijs, verplichte velden en CE-release blokkades.</p></div><Button variant="secondary" onClick={() => setDraft((current) => ({ ...current, items: [...current.items, createItem(current.items.length + 1)] }))}><Plus size={16} /> Controlepunt toevoegen</Button></div>
             <div style={{ display: 'grid', gap: 14, marginTop: 16 }}>
               {draft.items.map((item, index) => (
                 <div key={item.temp_id} className="list-row" style={{ display: 'grid', gap: 12 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                    <strong>{`Controlepunt ${index + 1}`}</strong>
-                    <div className="toolbar-cluster">
-                      <Button variant="secondary" onClick={() => moveItem(item.temp_id, -1)} disabled={index === 0}>Omhoog</Button>
-                      <Button variant="secondary" onClick={() => moveItem(item.temp_id, 1)} disabled={index === draft.items.length - 1}>Omlaag</Button>
-                      <Button variant="ghost" onClick={() => setDraft((current) => ({ ...current, items: current.items.filter((entry) => entry.temp_id !== item.temp_id).map((entry, idx) => ({ ...entry, sort_order: idx + 1 })) }))}><Trash2 size={16} /></Button>
-                    </div>
-                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}><strong>{`Controlepunt ${index + 1}`}</strong><div className="toolbar-cluster"><Button variant="secondary" onClick={() => moveItem(item.temp_id, -1)} disabled={index === 0}>Omhoog</Button><Button variant="secondary" onClick={() => moveItem(item.temp_id, 1)} disabled={index === draft.items.length - 1}>Omlaag</Button><Button variant="ghost" onClick={() => setDraft((current) => ({ ...current, items: current.items.filter((entry) => entry.temp_id !== item.temp_id).map((entry, idx) => ({ ...entry, sort_order: idx + 1 })) }))}><Trash2 size={16} /></Button></div></div>
                   <div style={editorGrid}>
                     <label><strong>Code</strong><input value={item.code} onChange={(e) => updateItem(item.temp_id, { code: e.target.value })} style={{ width: '100%', marginTop: 8, padding: '10px 12px', borderRadius: 12, border: '1px solid #cbd5e1' }} /></label>
                     <label><strong>Titel</strong><input value={item.title} onChange={(e) => updateItem(item.temp_id, { title: e.target.value })} style={{ width: '100%', marginTop: 8, padding: '10px 12px', borderRadius: 12, border: '1px solid #cbd5e1' }} /></label>
-                    <label><strong>Groep / categorie</strong><input value={item.group} onChange={(e) => updateItem(item.temp_id, { group: e.target.value })} style={{ width: '100%', marginTop: 8, padding: '10px 12px', borderRadius: 12, border: '1px solid #cbd5e1' }} /></label>
+                    <label><strong>Sectie / groep</strong><input value={item.group} onChange={(e) => updateItem(item.temp_id, { group: e.target.value })} style={{ width: '100%', marginTop: 8, padding: '10px 12px', borderRadius: 12, border: '1px solid #cbd5e1' }} /></label>
                     <label><strong>Normreferentie</strong><input value={item.norm_reference} onChange={(e) => updateItem(item.temp_id, { norm_reference: e.target.value })} style={{ width: '100%', marginTop: 8, padding: '10px 12px', borderRadius: 12, border: '1px solid #cbd5e1' }} /></label>
-                    <label><strong>Standaardstatus</strong><select value={item.default_status} onChange={(e) => updateItem(item.temp_id, { default_status: e.target.value })} style={{ width: '100%', marginTop: 8, padding: '10px 12px', borderRadius: 12, border: '1px solid #cbd5e1' }}><option value="conform">Conform</option><option value="in_review">In controle</option><option value="non_conform">Niet conform</option></select></label>
-                    <label><strong>Sortering</strong><input type="number" min={1} value={item.sort_order} onChange={(e) => updateItem(item.temp_id, { sort_order: Number(e.target.value || index + 1) })} style={{ width: '100%', marginTop: 8, padding: '10px 12px', borderRadius: 12, border: '1px solid #cbd5e1' }} /></label>
+                    <label><strong>Input type</strong><input value={item.input_type} onChange={(e) => updateItem(item.temp_id, { input_type: e.target.value })} style={{ width: '100%', marginTop: 8, padding: '10px 12px', borderRadius: 12, border: '1px solid #cbd5e1' }} /></label>
+                    <label><strong>Severity</strong><select value={item.severity_on_fail} onChange={(e) => updateItem(item.temp_id, { severity_on_fail: e.target.value })} style={{ width: '100%', marginTop: 8, padding: '10px 12px', borderRadius: 12, border: '1px solid #cbd5e1' }}><option value="minor">minor</option><option value="major">major</option><option value="critical">critical</option></select></label>
                   </div>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 10 }}><input type="checkbox" checked={item.required} onChange={(e) => updateItem(item.temp_id, { required: e.target.checked })} /> Verplicht controlepunt</label>
+                  <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                    <label><input type="checkbox" checked={item.required} onChange={(e) => updateItem(item.temp_id, { required: e.target.checked })} /> Verplicht</label>
+                    <label><input type="checkbox" checked={item.allow_na} onChange={(e) => updateItem(item.temp_id, { allow_na: e.target.checked })} /> N.v.t. toegestaan</label>
+                    <label><input type="checkbox" checked={item.requires_photo} onChange={(e) => updateItem(item.temp_id, { requires_photo: e.target.checked })} /> Foto vereist</label>
+                    <label><input type="checkbox" checked={item.requires_document} onChange={(e) => updateItem(item.temp_id, { requires_document: e.target.checked })} /> Document vereist</label>
+                    <label><input type="checkbox" checked={item.blocks_release} onChange={(e) => updateItem(item.temp_id, { blocks_release: e.target.checked })} /> Blokkeert CE-release</label>
+                  </div>
                   <label><strong>Toelichting</strong><textarea value={item.description} onChange={(e) => updateItem(item.temp_id, { description: e.target.value })} rows={3} style={{ width: '100%', marginTop: 8, padding: '10px 12px', borderRadius: 12, border: '1px solid #cbd5e1' }} /></label>
                 </div>
               ))}
