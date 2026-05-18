@@ -2,38 +2,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { fetchCeAggregate, type CeAggregateResponse } from '@/api/ceAggregateApi';
 import { getProject } from '@/api/projects';
-import { dossierPayloadFromAggregate, attachmentsAsCeDocuments } from '@/utils/ceAggregateView';
+import { attachmentsAsCeDocuments } from '@/utils/ceAggregateView';
 import { normalizeChecklist, summarizeChecklist, projectTitle, projectCode, projectClient, projectExecutionClass } from '@/features/mobile/mobile-utils';
 import { useSession } from '@/app/session/SessionContext';
-import type { CeDocument, Project } from '@/types/domain';
+import type { Project } from '@/types/domain';
 import './ce-report-print.css';
-
-function val(v: unknown, fallback = '—') {
-  if (v === null || v === undefined || v === '') return fallback;
-  return String(v);
-}
-
-function fmtDate(v?: string | null) {
-  if (!v) return new Date().toISOString().slice(0, 10);
-  return String(v).slice(0, 10);
-}
-
-function pct(n: number, total: number) {
-  if (!total) return 0;
-  return Math.round((n / total) * 100);
-}
-
-function statusLabel(score: number) {
-  if (score >= 95) return 'Compliant';
-  if (score >= 80) return 'In control';
-  return 'In progress';
-}
-
-function statusClass(score: number) {
-  if (score >= 95) return 'rpt-status-green';
-  if (score >= 80) return 'rpt-status-blue';
-  return 'rpt-status-orange';
-}
 
 const tocSections = [
   { id: 'project-summary', label: 'Project & compliance summary' },
@@ -46,14 +19,25 @@ const tocSections = [
   { id: 'audit-release', label: 'Audit trail and approval' },
 ];
 
+function val(v: unknown, fallback = '—') {
+  if (v === null || v === undefined || v === '') return fallback;
+  return String(v);
+}
+
+function pct(n: number, total: number) {
+  if (!total) return 0;
+  return Math.round((n / total) * 100);
+}
+
 export function CeReportPrintPage() {
   const { projectId = '' } = useParams();
+
+  const session = useSession();
+
   const [project, setProject] = useState<Project | null>(null);
   const [aggregate, setAggregate] = useState<CeAggregateResponse | null>(null);
   const [documents, setDocuments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-
-  const session = useSession();
 
   const loadAll = useCallback(async () => {
     const [agg, proj] = await Promise.all([
@@ -62,10 +46,10 @@ export function CeReportPrintPage() {
     ]);
 
     setAggregate(agg);
-    setDocuments(attachmentsAsCeDocuments((agg.attachments || []) as Record<string, unknown>[]));
     setProject(proj || null);
+    setDocuments(attachmentsAsCeDocuments((agg.attachments || []) as Record<string, unknown>[]));
 
-    await new Promise((resolve) => setTimeout(resolve, 900));
+    await new Promise((resolve) => setTimeout(resolve, 1200));
   }, [projectId]);
 
   useEffect(() => {
@@ -73,12 +57,11 @@ export function CeReportPrintPage() {
 
     setLoading(true);
 
-    loadAll()
-      .finally(() => {
-        if (active) {
-          setLoading(false);
-        }
-      });
+    loadAll().finally(() => {
+      if (active) {
+        setLoading(false);
+      }
+    });
 
     return () => {
       active = false;
@@ -90,14 +73,16 @@ export function CeReportPrintPage() {
       const images = Array.from(document.images);
 
       Promise.all(images.map((img) => {
-        if (img.complete) return Promise.resolve();
+        if (img.complete) {
+          return Promise.resolve();
+        }
 
         return new Promise((resolve) => {
           img.onload = resolve;
           img.onerror = resolve;
         });
       })).finally(() => {
-        document.body.setAttribute('data-ce-report-ready', '1');
+        document.documentElement.setAttribute('data-ce-report-ready', '1');
       });
     }
   }, [loading]);
@@ -107,16 +92,16 @@ export function CeReportPrintPage() {
 
   const score = Math.max(0, Math.min(100, Number(summary.total ? pct(summary.complete, summary.total) : 83)));
 
-  const generatedBy = session?.user?.email || 'system';
-  const generatedAt = new Date().toISOString();
-
   const projName = project ? projectTitle(project) : 'Project';
   const projCode = project ? projectCode(project) : projectId;
   const projClient = project ? projectClient(project) : '—';
   const projExc = project ? projectExecutionClass(project) : 'EXC2';
 
+  const generatedAt = new Date().toISOString();
+  const generatedBy = session?.user?.email || 'system';
+
   if (loading) {
-    return <div className="rpt-loading">Loading CE report...</div>;
+    return <div className="rpt-loading">Loading enterprise CE report...</div>;
   }
 
   return (
@@ -126,7 +111,9 @@ export function CeReportPrintPage() {
         className="rpt-print-btn"
         onClick={() => {
           requestAnimationFrame(() => {
-            setTimeout(() => window.print(), 350);
+            setTimeout(() => {
+              window.print();
+            }, 500);
           });
         }}
       >
@@ -136,6 +123,7 @@ export function CeReportPrintPage() {
       <section className="rpt-page rpt-cover">
         <div className="rpt-body">
           <h1>Weld Compliance Report</h1>
+
           <div className="rpt-cover-grid">
             <div><span>PROJECT</span><strong>{projName}</strong></div>
             <div><span>CLIENT</span><strong>{projClient}</strong></div>
@@ -159,70 +147,41 @@ export function CeReportPrintPage() {
         </div>
       </section>
 
-      <section className="rpt-page" id="project-summary">
-        <div className="rpt-body">
-          <h2>1. Project & compliance summary</h2>
-          <table className="rpt-table">
-            <tbody>
-              <tr><td>Project</td><td>{projName}</td></tr>
-              <tr><td>Project number</td><td>{projCode}</td></tr>
-              <tr><td>Generated by</td><td>{generatedBy}</td></tr>
-              <tr><td>Generated at</td><td>{generatedAt}</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
+      {tocSections.map((section, index) => (
+        <section key={section.id} className="rpt-page" id={section.id}>
+          <div className="rpt-body">
+            <h2>{index + 1}. {section.label}</h2>
 
-      <section className="rpt-page" id="applicable-standards">
-        <div className="rpt-body">
-          <h2>2. Applicable standards</h2>
-          <p>EN 1090 · ISO 3834 · ISO 5817</p>
-        </div>
-      </section>
-
-      <section className="rpt-page" id="dossier-checklist">
-        <div className="rpt-body">
-          <h2>3. Dossier completeness checklist</h2>
-          <p>Current dossier completeness: {score}%</p>
-        </div>
-      </section>
-
-      <section className="rpt-page" id="weld-register">
-        <div className="rpt-body">
-          <h2>4. Weld register</h2>
-          <p>Canonical weld register included in CE aggregate runtime.</p>
-        </div>
-      </section>
-
-      <section className="rpt-page" id="weld-inspections">
-        <div className="rpt-body">
-          <h2>5. Detailed weld inspections</h2>
-          <p>Inspection evidence and weld quality records.</p>
-        </div>
-      </section>
-
-      <section className="rpt-page" id="wps-certificates">
-        <div className="rpt-body">
-          <h2>6. Certificates and WPS documents</h2>
-          <p>WPS, WPQR and qualification evidence linked.</p>
-        </div>
-      </section>
+            <table className="rpt-table">
+              <tbody>
+                <tr><td>Project</td><td>{projName}</td></tr>
+                <tr><td>Project number</td><td>{projCode}</td></tr>
+                <tr><td>Generated by</td><td>{generatedBy}</td></tr>
+                <tr><td>Generated at</td><td>{generatedAt}</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      ))}
 
       <section className="rpt-page" id="attachments-appendix">
         <div className="rpt-body">
-          <h2>7. Attachments appendix</h2>
+          <h2>Attachments appendix</h2>
 
           {documents.length ? documents.map((doc, index) => {
-            const isImage = String(doc.mime_type || '').startsWith('image');
+            const mime = String(doc.mime_type || '').toLowerCase();
             const src = doc.url || doc.download_url || doc.file_url;
 
+            const isImage = mime.startsWith('image');
+            const isPdf = mime.includes('pdf');
+
             return (
-              <div key={String(doc.id || index)} className="rpt-attachment-card">
+              <div className="rpt-attachment-card" key={String(doc.id || index)}>
                 <table className="rpt-table rpt-table-compact">
                   <tbody>
                     <tr><td>ID</td><td>APP-{String(index + 1).padStart(3, '0')}</td></tr>
-                    <tr><td>Filename</td><td>{val(doc.file_name || doc.name || doc.title)}</td></tr>
-                    <tr><td>Type</td><td>{val(doc.mime_type || doc.category)}</td></tr>
+                    <tr><td>Name</td><td>{val(doc.file_name || doc.name || doc.title)}</td></tr>
+                    <tr><td>Type</td><td>{val(mime)}</td></tr>
                   </tbody>
                 </table>
 
@@ -233,25 +192,19 @@ export function CeReportPrintPage() {
                     alt={String(doc.file_name || doc.name || 'Attachment')}
                   />
                 ) : null}
+
+                {isPdf && src ? (
+                  <iframe
+                    title={String(doc.file_name || doc.name || `pdf-${index}`)}
+                    src={String(src)}
+                    className="rpt-attachment-image"
+                  />
+                ) : null}
               </div>
             );
           }) : (
-            <p>No attachments linked.</p>
+            <p>No linked attachments available.</p>
           )}
-        </div>
-      </section>
-
-      <section className="rpt-page" id="audit-release">
-        <div className="rpt-body">
-          <h2>8. Audit trail and approval</h2>
-
-          <table className="rpt-table">
-            <tbody>
-              <tr><td>Generated by</td><td>{generatedBy}</td></tr>
-              <tr><td>Generated at</td><td>{generatedAt}</td></tr>
-              <tr><td>Runtime source</td><td>Canonical CE aggregate payload</td></tr>
-            </tbody>
-          </table>
         </div>
       </section>
     </div>
