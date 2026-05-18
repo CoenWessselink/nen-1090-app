@@ -52,6 +52,8 @@ export function useSettings(enabled = true) {
     queryKey: ['settings', tenantId, token],
     queryFn: () => getSettings(),
     enabled,
+    refetchOnMount: 'always',
+    staleTime: 0,
   });
 }
 
@@ -63,6 +65,8 @@ function useMasterDataQuery(queryKey: string, queryFn: () => Promise<MasterDataR
     queryKey: [queryKey, tenantId, token],
     queryFn: async () => normalizeListResponse(await queryFn()),
     enabled,
+    refetchOnMount: 'always',
+    staleTime: 0,
   });
 }
 
@@ -87,7 +91,7 @@ export function useWelders(enabled = true) {
 }
 
 export function useInspectionTemplates(enabled = true) {
-  return useMasterDataQuery('settings-inspection-templates', getInspectionTemplates, enabled);
+  return useMasterDataQuery('settings-inspection-templates-norm-engine-v2', getInspectionTemplates, enabled);
 }
 
 export function useWeldCoordinators(enabled = true) {
@@ -102,6 +106,8 @@ export function useCompanySettings(enabled = true) {
     queryKey: ['settings-company', tenantId, token],
     queryFn: () => getCompanySettings(),
     enabled,
+    refetchOnMount: 'always',
+    staleTime: 0,
   });
 }
 
@@ -135,6 +141,9 @@ export function useCreateMasterData() {
     mutationFn: ({ type, payload }: { type: MasterDataType; payload: MasterDataRecord }) => createHandlers[type](payload),
     onSuccess: (_, variables) => {
       void queryClient.invalidateQueries({ queryKey: [`settings-${variables.type}`] });
+      if (variables.type === 'inspection-templates') {
+        void queryClient.invalidateQueries({ queryKey: ['settings-inspection-templates-norm-engine-v2'] });
+      }
       void queryClient.invalidateQueries({ queryKey: ['settings'] });
       if (variables.type === 'materials') {
         void queryClient.invalidateQueries({ queryKey: ['project-materials-aggregate'] });
@@ -149,6 +158,9 @@ export function useUpdateMasterData() {
     mutationFn: ({ type, id, payload }: { type: MasterDataType; id: string | number; payload: MasterDataRecord }) => updateHandlers[type](id, payload),
     onSuccess: (_, variables) => {
       void queryClient.invalidateQueries({ queryKey: [`settings-${variables.type}`] });
+      if (variables.type === 'inspection-templates') {
+        void queryClient.invalidateQueries({ queryKey: ['settings-inspection-templates-norm-engine-v2'] });
+      }
       void queryClient.invalidateQueries({ queryKey: ['settings'] });
       if (variables.type === 'materials') {
         void queryClient.invalidateQueries({ queryKey: ['project-materials-aggregate'] });
@@ -163,6 +175,9 @@ export function useDeleteMasterData() {
     mutationFn: ({ type, id }: { type: MasterDataType; id: string | number }) => deleteHandlers[type](id),
     onSuccess: (_, variables) => {
       void queryClient.invalidateQueries({ queryKey: [`settings-${variables.type}`] });
+      if (variables.type === 'inspection-templates') {
+        void queryClient.invalidateQueries({ queryKey: ['settings-inspection-templates-norm-engine-v2'] });
+      }
       void queryClient.invalidateQueries({ queryKey: ['settings'] });
       if (variables.type === 'materials') {
         void queryClient.invalidateQueries({ queryKey: ['project-materials-aggregate'] });
@@ -175,10 +190,13 @@ export function useDuplicateInspectionTemplate() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string | number) => duplicateInspectionTemplate(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['settings-inspection-templates'] }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['settings-inspection-templates'] });
+      void queryClient.invalidateQueries({ queryKey: ['settings-inspection-templates-norm-engine-v2'] });
+      void queryClient.invalidateQueries({ queryKey: ['settings'] });
+    },
   });
 }
-
 
 export function useUpdateCompanySettings() {
   const queryClient = useQueryClient();
