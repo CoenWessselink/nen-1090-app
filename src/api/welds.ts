@@ -24,11 +24,6 @@ function resolveCreateInput(projectIdOrPayload: unknown, payload?: unknown) {
   return { projectId: String(source.project_id || source.projectId || ''), payload: projectIdOrPayload };
 }
 
-function resolveWeldId(payload: unknown) {
-  const record = (payload || {}) as Record<string, unknown>;
-  return String(record.id || record.weld_id || record.weldId || '');
-}
-
 async function firstWorking(paths: string[], init?: RequestInit) {
   let lastError: unknown;
   for (const path of paths) {
@@ -36,16 +31,6 @@ async function firstWorking(paths: string[], init?: RequestInit) {
     catch (error) { lastError = error; }
   }
   throw lastError;
-}
-
-async function createInspectionRunFromTemplate(projectId: string, weldId: string) {
-  if (!projectId || !weldId) return;
-  try {
-    await firstWorking([`/projects/${projectId}/welds/${weldId}/inspection`, `/welds/${weldId}/inspection`]);
-    trace('WELD_INSPECTION_RUN_CREATED_FROM_TEMPLATE', { projectId, weldId });
-  } catch (error) {
-    runtimeTrace('WELD_INSPECTION_RUN_CREATE_FALLBACK', { domain: 'welds', projectId, weldId, message: error instanceof Error ? error.message : 'unknown' });
-  }
 }
 
 export function getWelds(projectId?: string | number | ListParams) {
@@ -64,9 +49,7 @@ export function getWeld(projectId: string | number, weldId: string | number) {
 export async function createWeld(projectIdOrPayload: unknown, payload?: unknown) {
   const resolved = resolveCreateInput(projectIdOrPayload, payload);
   trace('WELD_CREATE_REQUEST', { projectId: resolved.projectId });
-  const created = await apiRequest(`/projects/${resolved.projectId}/welds`, { method: 'POST', body: JSON.stringify(resolved.payload) });
-  await createInspectionRunFromTemplate(resolved.projectId, resolveWeldId(created));
-  return created;
+  return apiRequest(`/projects/${resolved.projectId}/welds`, { method: 'POST', body: JSON.stringify(resolved.payload) });
 }
 
 export function updateWeld(projectId: string | number, weldId: string | number, payload: unknown) {
