@@ -43,28 +43,47 @@ function unwrapItem(payload: unknown): MasterDataItem {
   return record;
 }
 
+function normalizeTemplateItem(item: MasterDataItem, index: number, section?: MasterDataItem): MasterDataItem {
+  const rule = item.acceptance_rule_json && typeof item.acceptance_rule_json === 'object'
+    ? item.acceptance_rule_json as Record<string, unknown>
+    : {};
+  return {
+    ...item,
+    temp_id: String(item.temp_id || item.id || item.code || `${section?.code || 'section'}-${item.code || index + 1}`),
+    title: String(item.title || item.label || item.code || `Controlepunt ${index + 1}`),
+    group: String(item.group || section?.name || item.category || section?.code || 'Algemeen'),
+    section_code: String(item.section_code || section?.code || ''),
+    section_name: String(item.section_name || section?.name || section?.code || ''),
+    default_status: String(item.default_status || item.default_value || item.result || 'conform'),
+    blocks_release: Boolean(rule.blocks_ce_release ?? item.blocks_release ?? item.required ?? false),
+  };
+}
+
 function normalizeTemplateDetail(payload: unknown): MasterDataItem {
   const template = unwrapItem(payload);
-  const sections = Array.isArray(template.sections) ? template.sections as MasterDataItem[] : [];
-  const items = sections.flatMap((section) => {
-    const sectionItems = Array.isArray(section.items) ? section.items as MasterDataItem[] : [];
-    return sectionItems.map((item) => ({
-      ...item,
-      temp_id: String(item.id || item.code || `${section.code || 'section'}-${item.code || 'item'}`),
-      title: String(item.label || item.title || item.code || 'Controlepunt'),
-      group: String(section.name || item.category || section.code || 'Algemeen'),
-      section_code: String(section.code || ''),
-      section_name: String(section.name || section.code || ''),
-      default_status: String(item.default_value || item.result || 'conform'),
-      blocks_release: Boolean((item.acceptance_rule_json as Record<string, unknown> | undefined)?.blocks_ce_release ?? item.blocks_release ?? false),
-    }));
-  });
+
+  const directItems = Array.isArray(template.items_json)
+    ? template.items_json as MasterDataItem[]
+    : Array.isArray(template.items)
+      ? template.items as MasterDataItem[]
+      : [];
+
+  const sectionItems = Array.isArray(template.sections)
+    ? (template.sections as MasterDataItem[]).flatMap((section) => {
+        const items = Array.isArray(section.items) ? section.items as MasterDataItem[] : [];
+        return items.map((item, index) => normalizeTemplateItem(item, index, section));
+      })
+    : [];
+
+  const items = (directItems.length ? directItems : sectionItems).map((item, index) => normalizeTemplateItem(item, index));
+
   return {
     ...template,
-    exc_class: String(template.exc_class || template.execution_class || template.profile_code || '').match(/EXC\d/)?.[0] || template.exc_class || '',
+    exc_class: String(template.exc_class || template.execution_class || template.profile_code || template.code || '').match(/EXC\d/)?.[0] || template.exc_class || '',
     norm: String(template.norm || template.profile_code || 'EN 1090 / ISO 3834 / ISO 5817'),
     items,
     items_json: items,
+    item_count: Number(template.item_count || items.length || 0),
   };
 }
 
@@ -77,6 +96,23 @@ function validationTemplateFallback(payload: unknown): MasterDataItem[] {
     const profileCode = String(template.profile_code || template.profile || template.code || 'EU_EXC2_STANDARD');
     const code = String(template.code || `${profileCode}_WELD_V1`);
     const itemCount = Number(template.item_count || template.items || template.checks || 0);
+    const items = Array.from({ length: itemCount }, (_, itemIndex) => ({
+      temp_id: `${code}-fallback-${itemIndex + 1}`,
+      code: `CHECK_${itemIndex + 1}`,
+      title: `Controlepunt ${itemIndex + 1}`,
+      label: `Controlepunt ${itemIndex + 1}`,
+      group: 'Backend validatie',
+      section_code: 'validation',
+      section_name: 'Backend validatie',
+      norm_reference: 'EN 1090 / ISO 3834 / ISO 5817',
+      required: true,
+      allow_na: true,
+      requires_photo: false,
+      requires_document: false,
+      blocks_release: true,
+      default_status: 'conform',
+      severity_on_fail: 'major',
+    }));
     return {
       id: String(template.id || code),
       code,
@@ -88,19 +124,9 @@ function validationTemplateFallback(payload: unknown): MasterDataItem[] {
       version: Number(template.version || 1),
       is_default: true,
       is_locked: true,
-      items_json: Array.from({ length: itemCount }, (_, itemIndex) => ({
-        temp_id: `${code}-fallback-${itemIndex + 1}`,
-        code: `CHECK_${itemIndex + 1}`,
-        title: `Controlepunt ${itemIndex + 1}`,
-        group: 'Backend validatie',
-        section_code: 'validation',
-        section_name: 'Backend validatie',
-        norm_reference: 'EN 1090 / ISO 3834 / ISO 5817',
-        required: true,
-        allow_na: true,
-        blocks_release: true,
-        default_status: 'conform',
-      })),
+      item_count: itemCount,
+      items,
+      items_json: items,
       sort_order: index + 1,
     };
   });
@@ -294,7 +320,7 @@ export async function getInspectionTemplates() {
     { active: true },
     { skipStatuses: [404, 405, 500, 501, 503] },
   );
-  const templates = normalizeItems(response);
+  const templates = normalizeItems(response).map((template) => normalizeTemplateDetail(template));
 
   if (!templates.length) {
     try {
@@ -318,21 +344,7 @@ export async function getInspectionTemplates() {
     }
   }
 
-  const detailed = await Promise.all(templates.map(async (template) => {
-    const id = String(template.id || template.code || '');
-    if (!id) return normalizeTemplateDetail(template);
-    try {
-      return normalizeTemplateDetail(await apiRequest<unknown>(`/norms/templates/${id}`));
-    } catch (error) {
-      runtimeTrace('NORM_TEMPLATE_DETAIL_FALLBACK', {
-        templateId: id,
-        message: error instanceof Error ? error.message : 'unknown',
-        status: error instanceof ApiError ? error.status : undefined,
-      });
-      return normalizeTemplateDetail(template);
-    }
-  }));
-  return { items: detailed, total: detailed.length, page: 1, limit: detailed.length || 25 };
+  return { items: templates, total: templates.length, page: 1, limit: templates.length || 25 };
 }
 
 export function createInspectionTemplate(payload: Record<string, unknown>) {
