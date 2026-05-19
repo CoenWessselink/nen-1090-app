@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type CSSProperties } from 'react';
 import { ChevronDown, ChevronUp, Copy, Pencil, Plus, Save, ShieldCheck, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge, type BadgeTone } from '@/components/ui/Badge';
@@ -55,8 +55,23 @@ type TemplateDraft = {
   items: TemplateItemDraft[];
 };
 
-const fieldStyle = { width: '100%', marginTop: 8, padding: '10px 12px', borderRadius: 12, border: '1px solid #cbd5e1' };
-const editorGridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 };
+type TemplateSummary = {
+  total: number;
+  standards: number;
+  tenantCopies: number;
+  checks: number;
+  blockers: number;
+  byExc: Record<string, number>;
+};
+
+const fieldStyle: CSSProperties = { width: '100%', marginTop: 8, padding: '10px 12px', borderRadius: 12, border: '1px solid #cbd5e1' };
+const editorGridStyle: CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 };
+const cardListStyle: CSSProperties = { display: 'grid', gap: 16 };
+const badgeRowStyle: CSSProperties = { display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 };
+const itemHeaderStyle: CSSProperties = { display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', flexWrap: 'wrap' };
+const itemBadgeStyle: CSSProperties = { display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' };
+const itemCardStyle: CSSProperties = { display: 'grid', gap: 12 };
+const checkboxRowStyle: CSSProperties = { display: 'flex', gap: 16, flexWrap: 'wrap' };
 
 function rowsFromPayload(payload: unknown): TemplateRow[] {
   if (Array.isArray(payload)) return payload as TemplateRow[];
@@ -68,38 +83,37 @@ function rowsFromPayload(payload: unknown): TemplateRow[] {
   return [];
 }
 
-function asBool(value: unknown, fallback = false) {
+function asBool(value: unknown, fallback = false): boolean {
   if (value === undefined || value === null || value === '') return fallback;
   if (typeof value === 'string') return ['1', 'true', 'yes', 'ja', 'on'].includes(value.toLowerCase());
   return Boolean(value);
 }
 
-function asNumber(value: unknown, fallback = 0) {
+function asNumber(value: unknown, fallback = 0): number {
   const number = Number(value);
   return Number.isFinite(number) ? number : fallback;
 }
 
-function asString(value: unknown, fallback = '') {
-  const raw = value === undefined || value === null ? fallback : String(value);
-  return raw;
+function asString(value: unknown, fallback = ''): string {
+  return value === undefined || value === null ? fallback : String(value);
 }
 
-function acceptanceRule(record: Record<string, unknown>) {
+function acceptanceRule(record: Record<string, unknown>): Record<string, unknown> {
   const rule = record.acceptance_rule_json;
   return rule && typeof rule === 'object' ? (rule as Record<string, unknown>) : {};
 }
 
-function excFromRow(row?: TemplateRow) {
+function excFromRow(row?: TemplateRow): string {
   const raw = asString(row?.exc_class || row?.execution_class || row?.profile_code || row?.code || '').toUpperCase();
   return raw.match(/EXC[1-4]/)?.[0] || 'EXC2';
 }
 
-function codeFromTitle(title: string, index: number) {
+function codeFromTitle(title: string, index: number): string {
   const clean = title.trim().toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 42);
   return clean || `ITEM_${index}`;
 }
 
-function sectionCodeFromGroup(group: string) {
+function sectionCodeFromGroup(group: string): string {
   return group.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'algemeen';
 }
 
@@ -161,7 +175,6 @@ function createItem(index = 1): TemplateItemDraft {
 
 function draftFromRow(row?: TemplateRow): TemplateDraft {
   const exc = excFromRow(row);
-  const items = normalizeItems(row?.items_json || row?.items || []);
   return {
     id: row?.id ? asString(row.id) : undefined,
     name: asString(row?.name || `${exc} inspectietemplate`),
@@ -173,7 +186,7 @@ function draftFromRow(row?: TemplateRow): TemplateDraft {
     version: asNumber(row?.version, 1),
     is_default: asBool(row?.is_default, false),
     is_locked: asBool(row?.is_locked, false),
-    items,
+    items: normalizeItems(row?.items_json || row?.items || []),
   };
 }
 
@@ -222,6 +235,21 @@ function statusTone(status: string): BadgeTone {
   return 'success';
 }
 
+function makeSummary(rows: TemplateRow[]): TemplateSummary {
+  const summary: TemplateSummary = { total: 0, standards: 0, tenantCopies: 0, checks: 0, blockers: 0, byExc: {} };
+  for (const row of rows) {
+    const items = normalizeItems(row.items_json || row.items);
+    summary.total = summary.total + 1;
+    if (asBool(row.is_locked, false) || asBool(row.is_default, false)) summary.standards = summary.standards + 1;
+    if (!asBool(row.is_locked, false)) summary.tenantCopies = summary.tenantCopies + 1;
+    summary.checks = summary.checks + items.length;
+    summary.blockers = summary.blockers + items.filter((item) => item.blocks_release).length;
+    const exc = excFromRow(row);
+    summary.byExc[exc] = (summary.byExc[exc] || 0) + 1;
+  }
+  return summary;
+}
+
 export function InspectionTemplatesManager() {
   const templates = useInspectionTemplates();
   const createMutation = useCreateMasterData();
@@ -240,21 +268,7 @@ export function InspectionTemplatesManager() {
     if (!q) return rows;
     return rows.filter((row) => JSON.stringify(row).toLowerCase().includes(q));
   }, [rows, search]);
-
-  const summary = useMemo(() => rows.reduce(
-    (acc, row) => {
-      const items = normalizeItems(row.items_json || row.items);
-      acc.total += 1;
-      if (row.is_locked || row.is_default) acc.standards += 1;
-      if (!row.is_locked) acc.tenantCopies += 1;
-      acc.checks += items.length;
-      acc.blockers += items.filter((item) => item.blocks_release).length;
-      const exc = excFromRow(row);
-      acc.byExc[exc] = (acc.byExc[exc] || 0) + 1;
-      return acc;
-    },
-    { total: 0, standards: 0, tenantCopies: 0, checks: 0, blockers: 0, byExc: {} as Record<string, number> },
-  ), [rows]);
+  const summary = useMemo<TemplateSummary>(() => makeSummary(rows), [rows]);
 
   function openCreate() {
     setDraft(draftFromRow());
@@ -262,7 +276,7 @@ export function InspectionTemplatesManager() {
   }
 
   function openEdit(row: TemplateRow) {
-    if (row.is_locked) {
+    if (asBool(row.is_locked, false)) {
       setMessage('Standaardtemplates zijn read-only. Gebruik Dupliceer & bewerk om een tenant-copy te maken.');
       return;
     }
@@ -353,7 +367,7 @@ export function InspectionTemplatesManager() {
   }
 
   async function removeTemplate(row: TemplateRow) {
-    if (row.is_locked) {
+    if (asBool(row.is_locked, false)) {
       setMessage('Standaardtemplates kunnen niet worden verwijderd.');
       return;
     }
@@ -384,7 +398,7 @@ export function InspectionTemplatesManager() {
           <div>
             <h3>Inspectietemplates</h3>
             <p className="list-subtle" style={{ marginTop: 6 }}>Backend norm-engine is de bron. Standaardtemplates zijn read-only; Dupliceer & bewerk maakt een tenant-copy voor maatwerk.</p>
-            <div style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <div style={badgeRowStyle}>
               {Object.entries(summary.byExc).map(([key, value]) => <Badge key={key}>{`${key}: ${value}`}</Badge>)}
             </div>
           </div>
@@ -399,7 +413,7 @@ export function InspectionTemplatesManager() {
       {templates.isError ? <ErrorState title="Templates niet geladen" description="Controleer de backend norm-engine en settings endpoints." /> : null}
       {!templates.isLoading && !templates.isError && !filteredRows.length ? <EmptyState title="Geen templates gevonden" description="Geen templates gevonden voor deze zoekterm." /> : null}
 
-      <div style={{ display: 'grid', gap: 16 }}>
+      <div style={cardListStyle}>
         {filteredRows.map((row) => {
           const locked = asBool(row.is_locked, false);
           const items = normalizeItems(row.items_json || row.items);
@@ -408,7 +422,7 @@ export function InspectionTemplatesManager() {
               <div className="section-title-row" style={{ alignItems: 'flex-start' }}>
                 <div>
                   <h3>{asString(row.name || row.code || 'Inspectietemplate')}</h3>
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+                  <div style={badgeRowStyle}>
                     <Badge>{excFromRow(row)}</Badge>
                     <Badge tone="neutral">{asString(row.code || 'Geen code')}</Badge>
                     <Badge tone={locked ? 'warning' : 'success'}>{locked ? 'Read-only standaard' : 'Tenant-copy'}</Badge>
@@ -427,9 +441,9 @@ export function InspectionTemplatesManager() {
               <div style={{ display: 'grid', gap: 10, marginTop: 16 }}>
                 {items.slice(0, 5).map((item) => (
                   <div key={item.temp_id} className="list-row" style={{ display: 'grid', gap: 6 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div style={itemHeaderStyle}>
                       <strong>{item.title}</strong>
-                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                      <div style={itemBadgeStyle}>
                         {item.required ? <Badge tone="warning">verplicht</Badge> : null}
                         {item.requires_photo ? <Badge tone="neutral">foto</Badge> : null}
                         {item.requires_document ? <Badge tone="neutral">document</Badge> : null}
@@ -471,7 +485,7 @@ export function InspectionTemplatesManager() {
             <div className="section-title-row"><div><h3>Controlepunten</h3><p className="list-subtle" style={{ marginTop: 6 }}>Metadata stuurt bewijs, verplichte velden en CE-release blokkades.</p></div><Button variant="secondary" onClick={() => setDraft((current) => ({ ...current, items: [...current.items, createItem(current.items.length + 1)] }))}><Plus size={16} /> Controlepunt toevoegen</Button></div>
             <div style={{ display: 'grid', gap: 14, marginTop: 16 }}>
               {draft.items.map((item, index) => (
-                <div key={item.temp_id} className="list-row" style={{ display: 'grid', gap: 12 }}>
+                <div key={item.temp_id} className="list-row" style={itemCardStyle}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                     <strong>{`Controlepunt ${index + 1}`}</strong>
                     <div className="toolbar-cluster"><Button variant="secondary" onClick={() => moveItem(item.temp_id, -1)} disabled={index === 0}><ChevronUp size={16} /> Omhoog</Button><Button variant="secondary" onClick={() => moveItem(item.temp_id, 1)} disabled={index === draft.items.length - 1}><ChevronDown size={16} /> Omlaag</Button><Button variant="ghost" onClick={() => setDraft((current) => ({ ...current, items: current.items.filter((entry) => entry.temp_id !== item.temp_id).map((entry, idx) => ({ ...entry, sort_order: idx + 1 })) }))}><Trash2 size={16} /> Verwijderen</Button></div>
@@ -488,7 +502,7 @@ export function InspectionTemplatesManager() {
                     <label><strong>Default status</strong><select value={item.default_status} onChange={(event) => patchItem(item.temp_id, { default_status: event.target.value })} style={fieldStyle}><option value="conform">conform</option><option value="in_control">in_control</option><option value="not_conform">not_conform</option><option value="not_applicable">not_applicable</option></select></label>
                     <label><strong>Severity bij afkeur</strong><select value={item.severity_on_fail} onChange={(event) => patchItem(item.temp_id, { severity_on_fail: event.target.value })} style={fieldStyle}><option value="minor">minor</option><option value="major">major</option><option value="critical">critical</option></select></label>
                   </div>
-                  <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                  <div style={checkboxRowStyle}>
                     <label><input type="checkbox" checked={item.required} onChange={(event) => patchItem(item.temp_id, { required: event.target.checked })} /> Verplicht</label>
                     <label><input type="checkbox" checked={item.allow_na} onChange={(event) => patchItem(item.temp_id, { allow_na: event.target.checked })} /> N.v.t. toegestaan</label>
                     <label><input type="checkbox" checked={item.requires_photo} onChange={(event) => patchItem(item.temp_id, { requires_photo: event.target.checked })} /> Foto vereist</label>
