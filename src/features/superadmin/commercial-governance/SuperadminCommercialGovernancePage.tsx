@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { CreditCard, Flag, Key, RefreshCcw, Shield, Sliders } from 'lucide-react';
+import { apiRequest } from '@/api/client';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
 import {
-  getCommercialOverview, getPlans, getTenantSubscription, getTenantLimits, getTenantFeatureFlags, getGovernanceAuditLog,
-  type CommercialOverview, type PlanDefinition, type TenantSubscription, type TenantLimitSummary, type TenantFeatureFlag, type GovernanceAuditEvent,
+  getTenantSubscription, getTenantLimits, getTenantFeatureFlags, getGovernanceAuditLog,
+  type TenantSubscription, type TenantLimitSummary, type TenantFeatureFlag, type GovernanceAuditEvent,
 } from '@/api/superadminCommercialGovernance';
-import { getSuperadminTenants as getTenantsFromCC } from '@/api/superadminControlCenter';
 import { TenantSubscriptionPanel } from './TenantSubscriptionPanel';
 import { TenantLimitsPanel } from './TenantLimitsPanel';
 import { TenantFeatureFlagsPanel } from './TenantFeatureFlagsPanel';
@@ -13,14 +13,12 @@ import { GovernanceAuditLog } from './GovernanceAuditLog';
 import './commercial-governance.css';
 
 type Tab = 'overview' | 'subscription' | 'limits' | 'features' | 'audit';
-type SuperadminTenantSummary2 = { tenant_id: string; tenant_name: string; status: string; plan: string };
+type TenantRow = { id: string; name: string; display_name: string; status: string; plan: string; seats: number; is_active: boolean; created_at: string };
 
-function statusTone(s: string) { if (s === 'active') return 'success'; if (s.includes('suspend') || s.includes('cancel') || s === 'past_due') return 'danger'; if (s === 'trial' || s === 'trialing') return 'warning'; return 'neutral'; }
+function statusTone(s: string) { if (s === 'active') return 'success'; if (s.includes('suspend') || s.includes('cancel') || s === 'past_due' || s === 'deleted') return 'danger'; if (s === 'trial' || s === 'trialing') return 'warning'; return 'neutral'; }
 
 export function SuperadminCommercialGovernancePage() {
-  const [overview, setOverview] = useState<CommercialOverview | null>(null);
-  const [plans, setPlans] = useState<PlanDefinition[]>([]);
-  const [tenants, setTenants] = useState<SuperadminTenantSummary2[]>([]);
+  const [tenants, setTenants] = useState<TenantRow[]>([]);
   const [selectedTenantId, setSelectedTenantId] = useState<string | null>(null);
   const [subscription, setSubscription] = useState<TenantSubscription | null>(null);
   const [limits, setLimits] = useState<TenantLimitSummary | null>(null);
@@ -32,22 +30,17 @@ export function SuperadminCommercialGovernancePage() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
 
-  const loadAll = useCallback(async () => {
+  const loadTenants = useCallback(async () => {
     setLoading(true); setError(null);
     try {
-      const [ov, pl, te] = await Promise.all([
-        getCommercialOverview().catch(() => null),
-        getPlans().catch(() => []),
-        getTenantsFromCC().catch(() => []),
-      ]);
-      setOverview(ov);
-      setPlans(pl);
-      setTenants(te.map((t) => ({ tenant_id: t.tenant_id, tenant_name: t.tenant_name, status: t.status, plan: t.plan })));
+      const data = await apiRequest<{ tenants?: TenantRow[]; items?: TenantRow[] }>('/superadmin/tenants?limit=250');
+      const rows = (data.tenants || data.items || []) as TenantRow[];
+      setTenants(rows);
     } catch (err) { setError(err instanceof Error ? err.message : 'Laden mislukt.'); }
     finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { void loadAll(); }, [loadAll]);
+  useEffect(() => { void loadTenants(); }, [loadTenants]);
 
   async function selectTenant(tenantId: string) {
     if (!tenantId) return;
@@ -64,8 +57,15 @@ export function SuperadminCommercialGovernancePage() {
     finally { setDetailLoading(false); }
   }
 
-  const filteredTenants = tenants.filter((t) => { const q = search.trim().toLowerCase(); return !q || `${t.tenant_name} ${t.tenant_id} ${t.status} ${t.plan}`.toLowerCase().includes(q); });
-  const selectedTenantName = tenants.find((t) => t.tenant_id === selectedTenantId)?.tenant_name || '';
+  const filteredTenants = tenants.filter((t) => {
+    const q = search.trim().toLowerCase();
+    return !q || `${t.display_name} ${t.name} ${t.id} ${t.status} ${t.plan}`.toLowerCase().includes(q);
+  });
+
+  const selectedTenant = tenants.find((t) => t.id === selectedTenantId);
+  const activeTenants = tenants.filter((t) => t.status === 'active' || (t.is_active && t.status !== 'trial')).length;
+  const trialTenants = tenants.filter((t) => t.status === 'trial' || t.status === 'trialing').length;
+  const suspendedTenants = tenants.filter((t) => t.status === 'suspended' || t.status === 'deleted').length;
 
   const tabs: Array<{ key: Tab; label: string; icon: typeof CreditCard }> = [
     { key: 'overview', label: 'Overzicht', icon: Shield },
@@ -76,40 +76,37 @@ export function SuperadminCommercialGovernancePage() {
   ];
 
   return (
-    <MobilePageScaffold title="Commercial & Governance" subtitle="Billing, limieten, features en support" rightSlot={<button type="button" className="mobile-icon-button" onClick={loadAll} disabled={loading}><RefreshCcw size={18} /></button>}>
+    <MobilePageScaffold title="Commercial & Governance" subtitle="Billing, limieten, features en support" rightSlot={<button type="button" className="mobile-icon-button" onClick={loadTenants} disabled={loading}><RefreshCcw size={18} /></button>}>
       <div className="cg-page">
         {error ? <div className="cg-alert cg-alert-danger">{error}</div> : null}
 
-        {/* Overview cards */}
-        {overview && (
-          <div className="cg-kpi-grid">
-            <div className="cg-kpi"><span>Active</span><strong>{overview.active_tenants}</strong></div>
-            <div className="cg-kpi"><span>Trial</span><strong>{overview.trial_tenants}</strong></div>
-            <div className="cg-kpi"><span>Suspended</span><strong>{overview.suspended_tenants}</strong></div>
-            <div className="cg-kpi"><span>Past due</span><strong>{overview.past_due_tenants}</strong></div>
-          </div>
-        )}
+        <div className="cg-kpi-grid">
+          <div className="cg-kpi"><span>Active</span><strong>{activeTenants}</strong></div>
+          <div className="cg-kpi"><span>Trial</span><strong>{trialTenants}</strong></div>
+          <div className="cg-kpi"><span>Suspended</span><strong>{suspendedTenants}</strong></div>
+          <div className="cg-kpi"><span>Totaal</span><strong>{tenants.length}</strong></div>
+        </div>
 
-        {/* Tenant selector */}
         <div className="cg-tenant-selector">
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Zoek tenant…" className="cg-search" />
           <div className="cg-tenant-list">
+            {loading ? <div className="cg-empty">Tenants laden…</div> : null}
             {filteredTenants.map((t) => (
-              <button key={t.tenant_id} type="button" className={`cg-tenant-row${selectedTenantId === t.tenant_id ? ' is-active' : ''}`} onClick={() => selectTenant(t.tenant_id)}>
-                <strong>{t.tenant_name || t.tenant_id}</strong>
+              <button key={t.id} type="button" className={`cg-tenant-row${selectedTenantId === t.id ? ' is-active' : ''}`} onClick={() => selectTenant(t.id)}>
+                <strong>{t.display_name || t.name}</strong>
                 <span className={`cg-badge cg-badge-${statusTone(t.status)}`}>{t.status}</span>
-                <small>{t.plan}</small>
+                <small>{t.plan || '—'} · {t.seats || 1} seats</small>
               </button>
             ))}
-            {!filteredTenants.length && <div className="cg-empty">Geen tenants gevonden.</div>}
+            {!loading && !filteredTenants.length && <div className="cg-empty">Geen tenants gevonden.</div>}
           </div>
         </div>
 
-        {/* Detail tabs */}
-        {selectedTenantId && (
+        {selectedTenantId && selectedTenant && (
           <>
             <div className="cg-detail-header">
-              <strong>{selectedTenantName || selectedTenantId}</strong>
+              <strong>{selectedTenant.display_name || selectedTenant.name}</strong>
+              <span className={`cg-badge cg-badge-${statusTone(selectedTenant.status)}`}>{selectedTenant.status}</span>
             </div>
             <div className="cg-tabs">
               {tabs.map((t) => { const Icon = t.icon; return (
@@ -119,14 +116,18 @@ export function SuperadminCommercialGovernancePage() {
 
             {detailLoading ? <div className="cg-state">Laden…</div> : (
               <>
-                {tab === 'overview' && overview && (
+                {tab === 'overview' && (
                   <div className="cg-section">
-                    <h3>Plan definities</h3>
-                    <table className="cg-table">
-                      <thead><tr><th>Plan</th><th>Maand</th><th>Jaar</th><th>Status</th></tr></thead>
-                      <tbody>{plans.map((p) => (
-                        <tr key={p.code}><td><strong>{p.name}</strong><small>{p.code}</small></td><td>€{(p.price_monthly_cents / 100).toFixed(2)}</td><td>€{(p.price_yearly_cents / 100).toFixed(2)}</td><td><span className={`cg-badge cg-badge-${p.is_active ? 'success' : 'neutral'}`}>{p.is_active ? 'Actief' : 'Inactief'}</span></td></tr>
-                      ))}</tbody>
+                    <h3>Tenant overzicht</h3>
+                    <table className="cg-table cg-table-kv">
+                      <tbody>
+                        <tr><td>Naam</td><td><strong>{selectedTenant.display_name || selectedTenant.name}</strong></td></tr>
+                        <tr><td>ID</td><td><strong style={{ fontSize: 11, fontFamily: 'monospace' }}>{selectedTenant.id}</strong></td></tr>
+                        <tr><td>Status</td><td><strong>{selectedTenant.status}</strong></td></tr>
+                        <tr><td>Plan</td><td><strong>{selectedTenant.plan || '—'}</strong></td></tr>
+                        <tr><td>Seats</td><td><strong>{selectedTenant.seats || 1}</strong></td></tr>
+                        <tr><td>Aangemaakt</td><td><strong>{selectedTenant.created_at ? new Date(selectedTenant.created_at).toLocaleDateString('nl-NL') : '—'}</strong></td></tr>
+                      </tbody>
                     </table>
                   </div>
                 )}
@@ -138,6 +139,8 @@ export function SuperadminCommercialGovernancePage() {
             )}
           </>
         )}
+
+        {!selectedTenantId && !loading && <div className="cg-state">Selecteer een tenant om details te bekijken.</div>}
       </div>
     </MobilePageScaffold>
   );
