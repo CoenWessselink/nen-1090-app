@@ -16,12 +16,15 @@ type WeldFormState = {
   inspected_at: string;
   process: string;
   material: string;
+  material_id: string;
   welders: string;
+  welder_id: string;
   location: string;
   execution_class: string;
   template_id: string;
   status: string;
   wps: string;
+  wps_id: string;
   coordinator_id: string;
 };
 
@@ -36,6 +39,16 @@ type RuntimeTemplate = Record<string, unknown>;
 function normalizeExc(value: unknown): string {
   const raw = String(value || '').trim().toUpperCase().replace(/\s+/g, '');
   return raw.match(/EXC[1-4]/)?.[0] || 'EXC2';
+}
+
+function optionName(item: Record<string, unknown> | undefined) {
+  if (!item) return '';
+  return String(item.name || item.title || item.label || item.code || item.value || item.id || '').trim();
+}
+
+function optionCode(item: Record<string, unknown> | undefined) {
+  if (!item) return '';
+  return String(item.code || item.value || item.name || item.title || item.id || '').trim();
 }
 
 function templateMatchesExc(item: RuntimeTemplate, exc: string): boolean {
@@ -87,12 +100,15 @@ export function MobileWeldEditPage() {
     inspected_at: '',
     process: '135',
     material: '',
+    material_id: '',
     welders: '',
+    welder_id: '',
     location: '',
     execution_class: 'EXC2',
     template_id: '',
     status: 'conform',
     wps: '',
+    wps_id: '',
     coordinator_id: '',
   });
   const [attachments, setAttachments] = useState<AttachmentRow[]>([]);
@@ -105,6 +121,9 @@ export function MobileWeldEditPage() {
   const [error, setError] = useState<string | null>(null);
 
   const allTemplates = useMemo(() => ((inspectionTemplates.data?.items || []) as RuntimeTemplate[]), [inspectionTemplates.data?.items]);
+  const materialItems = useMemo(() => ((materials.data?.items || []) as Array<Record<string, unknown>>), [materials.data?.items]);
+  const welderItems = useMemo(() => ((welders.data?.items || []) as Array<Record<string, unknown>>), [welders.data?.items]);
+  const wpsItems = useMemo(() => ((wps.data?.items || []) as Array<Record<string, unknown>>), [wps.data?.items]);
 
   const templateOptions = useMemo(
     () => allTemplates.filter((item) => templateMatchesExc(item, form.execution_class)),
@@ -127,18 +146,24 @@ export function MobileWeldEditPage() {
         setProjectNormSelection(normSelection);
         const record = (result || {}) as Record<string, unknown>;
         const existingExc = excFromSelection(normSelection, String(record.execution_class || record.exc_class || 'EXC2'));
+        const wpsId = String(record.wps_id || '').trim();
+        const materialId = String(record.material_id || '').trim();
+        const welderId = String(record.welder_id || '').trim();
         setForm({
           assembly_id: String(record.assembly_id || record.assemblyId || ''),
           weld_no: String(record.weld_no || record.weld_number || ''),
           inspected_at: String(record.inspected_at || record.inspection_date || '').slice(0, 10),
           process: String(record.process || '135'),
           material: String(record.material || ''),
+          material_id: materialId,
           welders: String(record.welders || record.welder_name || ''),
+          welder_id: welderId,
           location: String(record.location || ''),
           execution_class: existingExc,
           template_id: templateIdFromRecord(record),
           status: String(record.status || 'conform'),
-          wps: String(record.wps || record.wps_id || ''),
+          wps: String(record.wps || ''),
+          wps_id: wpsId,
           coordinator_id: coordinatorIdFromRecord(record),
         });
         const assemblyRows = Array.isArray(assembliesResult) ? assembliesResult : Array.isArray((assembliesResult as Record<string, unknown>)?.items) ? ((assembliesResult as Record<string, unknown>).items as Array<Record<string, unknown>>) : [];
@@ -192,21 +217,29 @@ export function MobileWeldEditPage() {
     setSaving(true);
     setError(null);
     try {
+      const selectedWps = wpsItems.find((item) => String(item.id || '') === String(form.wps_id || ''));
+      const selectedMaterial = materialItems.find((item) => String(item.id || '') === String(form.material_id || ''));
+      const selectedWelder = welderItems.find((item) => String(item.id || '') === String(form.welder_id || ''));
+      const welderLabel = optionName(selectedWelder) || form.welders || null;
+
       await updateWeld(projectId, weldId, {
         assembly_id: form.assembly_id || null,
         weld_number: form.weld_no,
         weld_no: form.weld_no,
         inspected_at: form.inspected_at || null,
         process: form.process,
-        material: form.material,
+        material_id: form.material_id || null,
+        material: optionCode(selectedMaterial) || form.material || null,
         location: form.location,
-        welder_name: form.welders,
-        welders: form.welders,
+        welder_id: form.welder_id || null,
+        welder_name: welderLabel,
+        welders: welderLabel,
         execution_class: form.execution_class,
         template_id: form.template_id || null,
         inspection_template_id: form.template_id || null,
         status: form.status,
-        wps: form.wps || null,
+        wps_id: form.wps_id || null,
+        wps: optionCode(selectedWps) || form.wps || null,
         coordinator_id: form.coordinator_id || null,
         welding_coordinator_id: form.coordinator_id || null,
         weld_coordinator_id: form.coordinator_id || null,
@@ -252,9 +285,9 @@ export function MobileWeldEditPage() {
           <label className="mobile-form-field"><span>Lasdatum</span><input type="date" value={form.inspected_at} onChange={(event) => setForm((current) => ({ ...current, inspected_at: event.target.value }))} /></label>
           <label className="mobile-form-field mobile-select-field"><span>Executieklasse</span><select value={form.execution_class} onChange={(event) => setForm((current) => ({ ...current, execution_class: event.target.value }))}>{['EXC1','EXC2','EXC3','EXC4'].map((exc) => <option key={exc} value={exc}>{exc}</option>)}</select></label>
           <label className="mobile-form-field mobile-select-field"><span>Lasmethode</span><select value={form.process} onChange={(event) => setForm((current) => ({ ...current, process: event.target.value }))}>{((processes.data?.items || []) as Array<Record<string, unknown>>).map((item) => { const value = String(item.code || item.name || item.title || ''); return <option key={String(item.id || value)} value={value}>{String(item.name || item.title || value)}</option>; })}<option value="135">135 (MAG)</option><option value="111">111 (BMBE)</option><option value="141">141 (TIG)</option></select></label>
-          <label className="mobile-form-field mobile-select-field"><span>WPS</span><select value={form.wps} onChange={(event) => setForm((current) => ({ ...current, wps: event.target.value }))}><option value="">Selecteer WPS</option>{((wps.data?.items || []) as Array<Record<string, unknown>>).map((item) => <option key={String(item.id)} value={String(item.code || item.id)}>{String(item.code || item.title || item.id)}</option>)}</select></label>
-          <label className="mobile-form-field mobile-select-field"><span>Materiaal</span><select value={form.material} onChange={(event) => setForm((current) => ({ ...current, material: event.target.value }))}><option value="">Selecteer materiaal</option>{((materials.data?.items || []) as Array<Record<string, unknown>>).map((item) => <option key={String(item.id)} value={String(item.code || item.title || item.id)}>{String(item.code || item.title || item.id)}</option>)}</select></label>
-          <label className="mobile-form-field mobile-select-field"><span>Lasser</span><select value={form.welders} onChange={(event) => setForm((current) => ({ ...current, welders: event.target.value }))}><option value="">Selecteer lasser</option>{((welders.data?.items || []) as Array<Record<string, unknown>>).map((item) => { const value = String(item.name || item.code || item.id || ''); return <option key={String(item.id || value)} value={value}>{value}</option>; })}</select></label>
+          <label className="mobile-form-field mobile-select-field"><span>WPS</span><select value={form.wps_id} onChange={(event) => { const next = event.target.value; const selected = wpsItems.find((item) => String(item.id || '') === next); setForm((current) => ({ ...current, wps_id: next, wps: optionCode(selected) })); }}><option value="">Selecteer WPS</option>{wpsItems.map((item) => <option key={String(item.id)} value={String(item.id || '')}>{String(item.code || item.title || item.name || item.id)}</option>)}</select></label>
+          <label className="mobile-form-field mobile-select-field"><span>Materiaal</span><select value={form.material_id} onChange={(event) => { const next = event.target.value; const selected = materialItems.find((item) => String(item.id || '') === next); setForm((current) => ({ ...current, material_id: next, material: optionCode(selected) })); }}><option value="">Selecteer materiaal</option>{materialItems.map((item) => <option key={String(item.id)} value={String(item.id || '')}>{String(item.code || item.title || item.name || item.id)}</option>)}</select></label>
+          <label className="mobile-form-field mobile-select-field"><span>Lasser</span><select value={form.welder_id} onChange={(event) => { const next = event.target.value; const selected = welderItems.find((item) => String(item.id || '') === next); setForm((current) => ({ ...current, welder_id: next, welders: optionName(selected) })); }}><option value="">Selecteer lasser</option>{welderItems.map((item) => <option key={String(item.id)} value={String(item.id || '')}>{String(item.name || item.code || item.title || item.id || '')}</option>)}</select></label>
           <label className="mobile-form-field mobile-select-field"><span>Lascoördinator</span><select value={form.coordinator_id} onChange={(event) => setForm((current) => ({ ...current, coordinator_id: event.target.value }))}><option value="">Selecteer lascoördinator</option>{((coordinators.data?.items || []) as Array<Record<string, unknown>>).map((item) => <option key={String(item.id || item.code || '')} value={String(item.id || '')}>{String(item.name || item.code || item.id || '')}</option>)}</select></label>
           <label className="mobile-form-field"><span>Locatie</span><input value={form.location} onChange={(event) => setForm((current) => ({ ...current, location: event.target.value }))} placeholder="Locatie" /></label>
           <label className="mobile-form-field mobile-select-field"><span>Inspectietemplate</span><select value={form.template_id} onChange={(event) => setForm((current) => ({ ...current, template_id: event.target.value }))}><option value="">Automatisch via EXC</option>{templateOptions.map((item) => <option key={String(item.id)} value={String(item.id)}>{[String(item.name || item.title || item.id), String(item.norm || '').trim(), item.version ? `v${String(item.version)}` : ''].filter(Boolean).join(' · ')}</option>)}</select></label>
