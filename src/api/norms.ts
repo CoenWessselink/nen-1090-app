@@ -7,7 +7,7 @@ export type InspectionTemplateItem = { id?: string; code: string; label: string;
 export type InspectionTemplateSection = { id?: string; code: string; name: string; phase?: string; sort_order?: number; items?: InspectionTemplateItem[] };
 export type InspectionTemplate = { id: string; code: string; name: string; description?: string; template_type?: string; version?: number; sections?: InspectionTemplateSection[]; items?: InspectionTemplateItem[]; items_json?: InspectionTemplateItem[]; item_count?: number; profile_code?: string; exc_class?: string; norm?: string; is_default?: boolean; is_locked?: boolean };
 export type ProjectNormSelection = { id?: string; project_id?: string; norm_system_id?: string; norm_profile_id?: string; norm_profile?: NormProfile; profile?: NormProfile; exc_class?: string; iso3834_level?: string; iso5817_level?: string; snapshots?: Array<Record<string, unknown>> };
-export type WeldInspectionRun = { id?: string; project_id?: string; weld_id?: string; template_id?: string; template_name?: string; norm_name?: string; status?: string; overall_result?: string; notes?: string; sections?: InspectionTemplateSection[]; results?: InspectionTemplateItem[]; history?: Array<Record<string, unknown>>; attachments?: Array<Record<string, unknown>> };
+export type WeldInspectionRun = { id?: string; project_id?: string; weld_id?: string; template_id?: string; template_name?: string; template_code?: string; template_version?: string | number; norm_name?: string; status?: string; overall_result?: string; notes?: string; sections?: InspectionTemplateSection[]; results?: InspectionTemplateItem[]; history?: Array<Record<string, unknown>>; attachments?: Array<Record<string, unknown>> };
 export type CeNormCheck = { id: string; code: string; label: string; norm_code?: string; norm_reference?: string; required?: boolean; status?: string; comment?: string; document_id?: string; ok?: boolean; completed?: boolean };
 export type QualityDashboard = { success?: boolean; project_id?: string; norm_profile?: { code?: string; name?: string }; welds?: { total?: number; inspected?: number; conform?: number; in_control?: number; rejected?: number }; percentages?: { conform?: number; in_control?: number; rejected?: number }; nonconformities?: { open?: number; closed?: number; critical?: number }; ndt?: { required?: number; completed?: number; pending?: number }; ce_readiness?: { required_checks?: number; completed_checks?: number; percentage?: number } };
 
@@ -31,6 +31,11 @@ function normalizeResult(value: unknown): string {
   return raw;
 }
 
+function normalizeVersion(value: unknown): string | number | undefined {
+  if (typeof value === 'string' || typeof value === 'number') return value;
+  return undefined;
+}
+
 function statusFromRows(rows: unknown): string {
   const items = asArray<Record<string, unknown>>(rows);
   if (!items.length) return 'conform';
@@ -40,28 +45,96 @@ function statusFromRows(rows: unknown): string {
 }
 
 function emptyRun(weldId: string, projectId?: string): WeldInspectionRun {
-  return { id: `draft-${weldId}`, project_id: projectId, weld_id: weldId, status: 'draft', overall_result: 'conform', notes: '', sections: [{ id: 'visual', code: 'VISUAL', name: 'Visual inspection', phase: 'Inspection', sort_order: 1, items: [
-    { code: 'WPS', label: 'Correct WPS applied', norm_code: 'ISO 3834', norm_reference: 'ISO 3834 / ISO 15609', required: true, result: 'conform', comment: '' },
-    { code: 'VT', label: 'Visual inspection completed', norm_code: 'ISO 17637', norm_reference: 'ISO 17637 / ISO 5817', required: true, result: 'conform', comment: '' },
-    { code: 'TRACE', label: 'Traceability verified', norm_code: 'EN 1090-2', norm_reference: 'EN 1090-2', required: true, result: 'conform', comment: '' },
-  ] }], results: [], history: [], attachments: [] };
+  return { id: `draft-${weldId}`, project_id: projectId, weld_id: weldId, status: 'draft', overall_result: 'conform', notes: '', sections: [], results: [], history: [], attachments: [] };
+}
+
+function sectionNameFromCheck(check: Record<string, unknown>, fallback: string) {
+  return String(check.section_name || check.group || check.group_key || check.category || fallback || 'Inspection').trim();
+}
+
+function sectionCodeFromCheck(check: Record<string, unknown>, fallback: string) {
+  return String(check.section_code || check.group_key || check.category || fallback || 'inspection').trim().replace(/\s+/g, '_').toUpperCase();
+}
+
+function normalizeInspectionItem(check: Record<string, unknown>, index: number): InspectionTemplateItem {
+  const code = String(check.item_code || check.code || check.template_item_code || check.criterion_key || `CHECK_${index + 1}`).trim();
+  const label = String(check.label || check.title || check.criterion_key || code || `Inspection item ${index + 1}`).trim();
+  return {
+    id: String(check.id || code || index + 1),
+    code,
+    label,
+    title: label,
+    group: String(check.group || check.section_name || check.group_key || check.category || 'Inspection'),
+    section_code: String(check.section_code || check.group_key || ''),
+    norm_code: String(check.norm_code || ''),
+    norm_reference: String(check.norm_reference || check.norm || ''),
+    required: Boolean(check.required ?? true),
+    allow_na: Boolean(check.allow_na ?? true),
+    requires_photo: Boolean(check.requires_photo ?? false),
+    requires_document: Boolean(check.requires_document ?? false),
+    result: normalizeResult(check.result || check.status || check.default_status || 'conform'),
+    measured_value: String(check.measured_value || ''),
+    comment: String(check.comment || check.remark || ''),
+  };
+}
+
+function sectionsFromChecks(checks: Array<Record<string, unknown>>, templateName?: string): InspectionTemplateSection[] {
+  const grouped = new Map<string, InspectionTemplateSection>();
+  checks.forEach((check, index) => {
+    const code = sectionCodeFromCheck(check, templateName || 'inspection');
+    const name = sectionNameFromCheck(check, templateName || 'Inspection');
+    const item = normalizeInspectionItem(check, index);
+    if (!grouped.has(code)) grouped.set(code, { id: code, code, name, phase: 'Inspection', sort_order: grouped.size + 1, items: [] });
+    grouped.get(code)!.items!.push(item);
+  });
+  return Array.from(grouped.values());
 }
 
 function normalizeInspection(payload: unknown, projectId?: string, weldId?: string): WeldInspectionRun {
   const record = (Array.isArray(payload) ? payload[0] : payload) as Record<string, unknown> | null;
   if (!record) return emptyRun(weldId || 'new', projectId);
   if (record.item && typeof record.item === 'object') return normalizeInspection(record.item, projectId, weldId);
-  if (Array.isArray(record.sections)) {
+
+  const templateRecord = record.template && typeof record.template === 'object' ? record.template as Record<string, unknown> : {};
+  const templateName = String(record.template_name || record.norm_template || templateRecord.name || templateRecord.code || record.norm_name || '').trim();
+  const templateCode = String(record.template_code || templateRecord.code || '').trim();
+  const templateVersion = normalizeVersion(record.template_version || templateRecord.version);
+  const templateId = String(record.template_id || record.inspection_template_id || templateRecord.id || '').trim();
+
+  if (Array.isArray(record.sections) && record.sections.length) {
     const normalized = record as WeldInspectionRun;
+    normalized.template_id = templateId || normalized.template_id;
+    normalized.template_name = templateName || normalized.template_name;
+    normalized.template_code = templateCode || normalized.template_code;
+    normalized.template_version = templateVersion || normalized.template_version;
+    normalized.norm_name = templateName || normalized.norm_name;
     normalized.overall_result = normalizeResult(normalized.overall_result || normalized.status || 'conform');
-    normalized.sections = (normalized.sections || []).map((section) => ({ ...section, name: section.name || section.code, items: (section.items || []).map((item) => ({ ...item, result: normalizeResult(item.result || 'conform') })) }));
+    normalized.sections = (normalized.sections || []).map((section) => ({ ...section, name: section.name || section.code || templateName || 'Inspection', items: (section.items || []).map((item) => ({ ...item, result: normalizeResult(item.result || 'conform') })) }));
     normalized.results = (normalized.results || []).map((item) => ({ ...item, result: normalizeResult(item.result || 'conform') }));
     return normalized;
   }
+
   const checks = asArray<Record<string, unknown>>(record.checks || record.results || record.items || []);
   if (!checks.length) return emptyRun(weldId || String(record.weld_id || 'new'), projectId);
-  const items = checks.map((check, index) => ({ id: String(check.id || check.item_code || index + 1), code: String(check.item_code || check.criterion_key || check.code || `CHECK-${index + 1}`), label: String(check.label || check.title || check.item_code || check.criterion_key || `Inspection item ${index + 1}`), norm_code: String(check.norm_code || ''), norm_reference: String(check.norm_reference || ''), required: true, result: normalizeResult(check.result || check.status || 'conform'), measured_value: String(check.measured_value || ''), comment: String(check.comment || check.remark || '') }));
-  return { id: String(record.id || `inspection-${weldId || 'new'}`), project_id: String(record.project_id || projectId || ''), weld_id: String(record.weld_id || weldId || ''), status: normalizeResult(record.status || record.overall_status || 'conform'), overall_result: normalizeResult(record.overall_status || record.status || record.result || 'conform'), notes: String(record.notes || record.remarks || ''), sections: [{ id: 'visual', code: 'VISUAL', name: 'Visual inspection', phase: 'Inspection', sort_order: 1, items }], results: items, history: [], attachments: [] };
+  const sections = sectionsFromChecks(checks, templateName);
+  const items = sections.flatMap((section) => section.items || []);
+  return {
+    id: String(record.id || `inspection-${weldId || 'new'}`),
+    project_id: String(record.project_id || projectId || ''),
+    weld_id: String(record.weld_id || weldId || ''),
+    template_id: templateId,
+    template_name: templateName || templateCode || undefined,
+    template_code: templateCode || undefined,
+    template_version: templateVersion,
+    norm_name: templateName || templateCode || undefined,
+    status: normalizeResult(record.status || record.overall_status || 'conform'),
+    overall_result: normalizeResult(record.overall_status || record.status || record.result || 'conform'),
+    notes: String(record.notes || record.remarks || ''),
+    sections,
+    results: items,
+    history: [],
+    attachments: [],
+  };
 }
 
 function normalizeTemplateItem(item: Record<string, unknown>, index: number): InspectionTemplateItem {
