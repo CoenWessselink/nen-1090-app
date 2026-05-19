@@ -12,6 +12,18 @@ import {
   RenderWeldControlsTable,
   controlRowsLabel,
 } from '@/features/ce-dossier/ceReportInspectionControls';
+import {
+  RenderCeAttachmentAppendixPages,
+  ceDocumentDate,
+  ceDocumentMime,
+  ceDocumentName,
+  ceDocumentScope,
+  ceDocumentSource,
+  ceDocumentTypeLabel,
+  isCeImageDocument,
+  isCePdfDocument,
+  nonImageAppendixDocuments,
+} from '@/features/ce-dossier/CeReportAttachmentAppendixPages';
 import type { CeDocument, Project } from '@/types/domain';
 import './ce-report-print.css';
 
@@ -75,7 +87,8 @@ const TOC_ITEMS = [
   { id: 'weld-inspections', label: 'Detailed weld inspections' },
   { id: 'photo-evidence', label: 'Photo evidence' },
   { id: 'certificates-wps', label: 'Certificates and WPS documents' },
-  { id: 'attachments-appendix', label: 'Attachments appendix' },
+  { id: 'attachments-appendix', label: 'Attachment register' },
+  { id: 'document-attachments', label: 'PDF and document attachments' },
   { id: 'audit-trail', label: 'Audit trail' },
   { id: 'approval-release', label: 'Approval & release' },
 ] as const;
@@ -95,32 +108,6 @@ function firstString(source: R | null | undefined, keys: string[], fallback = '�
     }
   }
   return fallback;
-}
-
-function docMime(d: CeDocument) {
-  return String(docRecord(d).mime_type || docRecord(d).content_type || docRecord(d).type || '').toLowerCase();
-}
-
-function docSource(d: CeDocument) {
-  const r = docRecord(d);
-  return String(r.url || r.download_url || r.file_url || r.preview_url || r.storage_url || r.public_url || r.href || '');
-}
-
-function docName(d: CeDocument) {
-  const r = docRecord(d);
-  return val(r.file_name || r.filename || r.name || r.title, 'Attachment');
-}
-
-function isPreviewableImage(d: CeDocument) {
-  const mime = docMime(d);
-  const src = docSource(d).toLowerCase();
-  return mime.startsWith('image/') || /\.(png|jpe?g|webp|gif|bmp|svg)(\?|#|$)/i.test(src);
-}
-
-function isPreviewablePdf(d: CeDocument) {
-  const mime = docMime(d);
-  const src = docSource(d).toLowerCase();
-  return mime.includes('pdf') || /\.pdf(\?|#|$)/i.test(src);
 }
 
 function weldNumber(weld: R) {
@@ -146,13 +133,14 @@ function documentMatchesWeld(document: CeDocument, weld: R) {
 }
 
 function photosForWeld(weld: R, documents: CeDocument[]) {
-  return documents.filter((document) => isPreviewableImage(document) && documentMatchesWeld(document, weld));
+  return documents.filter((document) => isCeImageDocument(document) && documentMatchesWeld(document, weld));
 }
 
 async function waitForReportAssets() {
   const root = document.querySelector('.rpt-page-wrap');
   const images = Array.from(root?.querySelectorAll('img') || []);
   const frames = Array.from(root?.querySelectorAll('iframe') || []);
+  const objects = Array.from(root?.querySelectorAll('object') || []);
 
   await Promise.all(images.map((img) => {
     if (img.complete) return Promise.resolve();
@@ -172,7 +160,20 @@ async function waitForReportAssets() {
     };
     frame.onload = finish;
     frame.onerror = finish;
-    window.setTimeout(finish, 1200);
+    window.setTimeout(finish, 2200);
+  })));
+
+  await Promise.all(objects.map((objectEl) => new Promise<void>((resolve) => {
+    let done = false;
+    const finish = () => {
+      if (!done) {
+        done = true;
+        resolve();
+      }
+    };
+    objectEl.onload = finish;
+    objectEl.onerror = finish;
+    window.setTimeout(finish, 2200);
   })));
 
   document.documentElement.setAttribute('data-ce-report-ready', '1');
@@ -239,14 +240,16 @@ export function CeReportPrintPage() {
   const materials = useMemo(() => (aggregate?.materials || []) as R[], [aggregate]);
   const wpsRows = useMemo(() => (aggregate?.wps || []) as R[], [aggregate]);
   const welders = useMemo(() => (aggregate?.welders || []) as R[], [aggregate]);
-  const photoDocuments = useMemo(() => documents.filter(isPreviewableImage), [documents]);
+  const photoDocuments = useMemo(() => documents.filter(isCeImageDocument), [documents]);
+  const documentAppendixRows = useMemo(() => nonImageAppendixDocuments(documents), [documents]);
 
   const detailedWeldPageCount = Math.max(welds.length, 1);
   const photoPage = 7 + detailedWeldPageCount;
   const certificatesPage = photoPage + 1;
   const appendixPage = photoPage + 2;
-  const auditPage = photoPage + 3;
-  const totalPages = photoPage + 3;
+  const attachmentDetailsStartPage = appendixPage + 1;
+  const auditPage = attachmentDetailsStartPage + documentAppendixRows.length;
+  const totalPages = auditPage;
 
   const exportId = useMemo(() => crypto.randomUUID?.() || `rpt-${Date.now()}`, []);
   const generatedAt = new Date().toISOString();
@@ -256,7 +259,7 @@ export function CeReportPrintPage() {
   const projClient = project ? projectClient(project) : firstString(companySettings, ['company_name', 'name', 'tenant_name'], '—');
   const projExc = project ? projectExecutionClass(project) : 'EXC2';
   const tenantName = firstString(companySettings, ['display_name', 'company_name', 'legal_name', 'name', 'tenant_name', 'manufacturer_name'], projClient);
-  const tenantLogo = firstString(companySettings, ['logo_url', 'logoUrl', 'logo', 'company_logo_url', 'companyLogoUrl', 'tenant_logo_url', 'tenantLogoUrl', 'brand_logo_url', 'image_url'], '');
+  const tenantLogo = firstString(companySettings, ['logo_url', 'logo_download_url', 'logoUrl', 'logo', 'company_logo_url', 'companyLogoUrl', 'tenant_logo_url', 'tenantLogoUrl', 'brand_logo_url', 'image_url'], '');
   const tenantAddress = firstString(companySettings, ['address_line', 'address', 'street', 'postal_address'], '—');
   const tenantPostal = firstString(companySettings, ['postal_code', 'zip', 'postcode'], '');
   const tenantCity = firstString(companySettings, ['city', 'place', 'town'], '');
@@ -290,7 +293,7 @@ export function CeReportPrintPage() {
     return (
       <div className="rpt-footer">
         <span>{projCode} · {normLine}</span>
-        <span>Export ID {exportId.slice(0, 8)}… · {generatedAt.slice(0, 16).replace('T', ' ')} · Enterprise report-quality v3 · Page {pageNum} of {totalPagesCount}</span>
+        <span>Export ID {exportId.slice(0, 8)}… · {generatedAt.slice(0, 16).replace('T', ' ')} · Enterprise report-quality v4 · Page {pageNum} of {totalPagesCount}</span>
       </div>
     );
   }
@@ -305,6 +308,7 @@ export function CeReportPrintPage() {
     { label: 'Inspection completed', status: inspections.length ? 'Compliant' : 'Missing', detail: `${inspections.length} inspection records` },
     { label: 'Photos available', status: photoDocuments.length ? 'Compliant' : 'Missing', detail: `${photoDocuments.length} photo evidence items` },
     { label: 'Attachments available', status: documents.length ? 'Compliant' : 'Missing', detail: `${documents.length} attachment records` },
+    { label: 'Document attachments in appendix', status: documentAppendixRows.length ? 'Compliant' : 'In control', detail: `${documentAppendixRows.length} PDF/other document attachments included as appendix pages/register rows` },
     { label: 'Approval release', status: score >= 95 ? 'Compliant' : 'In control', detail: score >= 95 ? 'Prepared, reviewed and released' : 'Pending completion' },
   ];
 
@@ -366,7 +370,7 @@ export function CeReportPrintPage() {
             <div className="rpt-kpi"><span>OVERALL STATUS</span><strong className={statusClass(score)}>{statusLabel(score)}</strong><small>Based on current CE aggregate</small></div>
             <div className="rpt-kpi"><span>DOSSIER</span><strong>{score}%</strong><small>{100 - score}% pending metadata</small></div>
             <div className="rpt-kpi"><span>WELDS</span><strong>{welds.length}</strong><small>{inspections.length} inspection records</small></div>
-            <div className="rpt-kpi"><span>PHOTOS</span><strong>{photoDocuments.length}</strong><small>Inline and appendix</small></div>
+            <div className="rpt-kpi"><span>ATTACHMENTS</span><strong>{documents.length}</strong><small>{photoDocuments.length} photos · {documentAppendixRows.length} documents</small></div>
           </div>
           <div className="rpt-score-bar-row">
             <div><span>Completeness</span><div className="rpt-score-bar"><span style={{ width: `${score}%` }} /></div><strong>{score}%</strong></div>
@@ -379,7 +383,8 @@ export function CeReportPrintPage() {
               <tr><td>Registered welds</td><td>{welds.length}</td><td>{welds.length} weld records</td></tr>
               <tr><td>Inspection records</td><td>{inspections.length}</td><td>{inspections.length} inspection records linked</td></tr>
               <tr><td>Photo evidence</td><td className={photoDocuments.length ? 'rpt-status-green' : 'rpt-status-red'}>{photoDocuments.length ? 'Compliant' : 'Missing'}</td><td>{photoDocuments.length} linked inspection photos</td></tr>
-              <tr><td>Attachments</td><td className={documents.length ? 'rpt-status-green' : 'rpt-status-red'}>{documents.length ? 'Compliant' : 'Missing'}</td><td>{documents.length} linked documents and certificates</td></tr>
+              <tr><td>PDF / document attachments</td><td className={documentAppendixRows.length ? 'rpt-status-green' : 'rpt-status-blue'}>{documentAppendixRows.length ? 'Included' : 'No extra documents'}</td><td>{documentAppendixRows.length} non-image attachments in register and appendix pages</td></tr>
+              <tr><td>Attachments total</td><td className={documents.length ? 'rpt-status-green' : 'rpt-status-red'}>{documents.length ? 'Compliant' : 'Missing'}</td><td>{documents.length} linked documents, certificates and photos</td></tr>
               <tr><td>Welders</td><td>{welders.length}</td><td>{welders.length} qualified welders linked</td></tr>
               <tr><td>WPS</td><td>{wpsRows.length}</td><td>{wpsRows.length} welding procedure specifications</td></tr>
             </tbody>
@@ -482,9 +487,9 @@ export function CeReportPrintPage() {
               {weldPhotos.length ? <div className="rpt-photo-grid">
                 {weldPhotos.map((d, photoIndex) => (
                   <div className="rpt-photo-evidence-card" key={`weld-photo-${String(docRecord(d).id || `${i}-${photoIndex}`)}`}>
-                    <img src={docSource(d)} alt={docName(d)} loading="eager" />
+                    <img src={ceDocumentSource(d)} alt={ceDocumentName(d)} loading="eager" />
                     <div>
-                      <strong>{docName(d)}</strong>
+                      <strong>{ceDocumentName(d)}</strong>
                       <span>Linked scope: {val(docRecord(d).scope || docRecord(d).linked_scope || val(w.weld_number || w.weld_no || w.code))}</span>
                       <span>Uploaded: {val(docRecord(d).uploaded_at || docRecord(d).created_at || docRecord(d).date, '—')}</span>
                       <em>PHOTO EVIDENCE</em>
@@ -515,7 +520,7 @@ export function CeReportPrintPage() {
           {photoDocuments.length ? <div className="rpt-photo-grid">
             {photoDocuments.map((d, i) => (
               <div className="rpt-photo-evidence-card" key={`photo-${String(docRecord(d).id || i)}`}>
-                <img src={docSource(d)} alt={docName(d)} loading="eager" />
+                <img src={ceDocumentSource(d)} alt={ceDocumentName(d)} loading="eager" />
                 <div>
                   <strong>Photo evidence {i + 1}</strong>
                   <span>Linked scope: {val(docRecord(d).scope || docRecord(d).linked_scope || 'weld / inspection')}</span>
@@ -568,29 +573,35 @@ export function CeReportPrintPage() {
       <section className="rpt-page rpt-anchor-offset" id="attachments-appendix" data-print-section="true">
         {header()}
         <div className="rpt-body">
-          <h2>8. Attachments appendix</h2>
+          <h2>8. Attachment register</h2>
+          <p className="rpt-disclaimer">Alle gekoppelde foto’s, PDF-bijlagen en overige documenten zijn hieronder geregistreerd. PDF- en overige documentbijlagen krijgen daarnaast een eigen appendixpagina na dit register.</p>
           <table className="rpt-table rpt-table-compact">
-            <thead><tr><th>ID</th><th>Type</th><th>Filename</th><th>Linked scope</th><th>Uploaded</th></tr></thead>
+            <thead><tr><th>ID</th><th>Type</th><th>Filename</th><th>Linked scope</th><th>Uploaded</th><th>Appendix</th></tr></thead>
             <tbody>
-              {documents.length ? documents.map((d, i) => (
-                <tr key={String(docRecord(d).id || i)}>
-                  <td className="rpt-mono">APP-{String(i + 1).padStart(3, '0')}</td>
-                  <td>{val(docRecord(d).mime_type || docRecord(d).category, 'Document')}</td>
-                  <td>{docSource(d) ? <a href={docSource(d)} target="_blank" rel="noreferrer">{docName(d)}</a> : docName(d)}</td>
-                  <td>{val(docRecord(d).scope || docRecord(d).linked_scope || 'Project')}</td>
-                  <td>{val(docRecord(d).uploaded_at || docRecord(d).created_at || docRecord(d).date)}</td>
-                </tr>
-              )) : <tr><td colSpan={5} className="rpt-empty">No attachments</td></tr>}
+              {documents.length ? documents.map((d, i) => {
+                const isImage = isCeImageDocument(d);
+                const docAppendixIndex = documentAppendixRows.findIndex((row) => String(docRecord(row).id || ceDocumentName(row)) === String(docRecord(d).id || ceDocumentName(d)));
+                return (
+                  <tr key={String(docRecord(d).id || i)}>
+                    <td className="rpt-mono">APP-{String(i + 1).padStart(3, '0')}</td>
+                    <td>{ceDocumentTypeLabel(d)}</td>
+                    <td>{ceDocumentSource(d) ? <a href={ceDocumentSource(d)} target="_blank" rel="noreferrer">{ceDocumentName(d)}</a> : ceDocumentName(d)}</td>
+                    <td>{ceDocumentScope(d)}</td>
+                    <td>{ceDocumentDate(d)}</td>
+                    <td>{isImage ? 'Photo evidence section' : `Document page ${docAppendixIndex >= 0 ? docAppendixIndex + 1 : '—'}`}</td>
+                  </tr>
+                );
+              }) : <tr><td colSpan={6} className="rpt-empty">No attachments</td></tr>}
             </tbody>
           </table>
 
           {documents.length ? <div className="rpt-attachment-preview-list">
-            {documents.map((d, i) => {
-              const src = docSource(d);
-              const name = docName(d);
-              const mime = docMime(d) || val(docRecord(d).category, 'Document');
-              const image = isPreviewableImage(d);
-              const pdf = isPreviewablePdf(d);
+            {documents.slice(0, 8).map((d, i) => {
+              const src = ceDocumentSource(d);
+              const name = ceDocumentName(d);
+              const mime = ceDocumentMime(d) || val(docRecord(d).category, 'Document');
+              const image = isCeImageDocument(d);
+              const pdf = isCePdfDocument(d);
 
               return (
                 <div className="rpt-attachment-card" key={`preview-${String(docRecord(d).id || i)}`}>
@@ -599,15 +610,24 @@ export function CeReportPrintPage() {
                     <span>{mime}</span>
                   </div>
                   {image && src ? <img className="rpt-attachment-image" src={src} alt={name} loading="eager" /> : null}
-                  {pdf && src ? <iframe className="rpt-attachment-frame" src={src} title={name} /> : null}
-                  {!image && !pdf ? <p className="rpt-attachment-note">Document linked in appendix table{src ? <>: <a href={src} target="_blank" rel="noreferrer"> open file</a></> : null}.</p> : null}
+                  {pdf && src ? <p className="rpt-attachment-note">PDF-bijlage is volledig opgenomen als eigen appendixpagina na dit register: <a href={src} target="_blank" rel="noreferrer">open origineel</a>.</p> : null}
+                  {!image && !pdf ? <p className="rpt-attachment-note">Documentbijlage is opgenomen als eigen appendixpagina/registerregel{src ? <>: <a href={src} target="_blank" rel="noreferrer"> open file</a></> : null}.</p> : null}
                 </div>
               );
             })}
+            {documents.length > 8 ? <p className="rpt-more">+{documents.length - 8} additional attachments included in the register and appendix pages.</p> : null}
           </div> : null}
         </div>
         {footer(appendixPage, totalPages)}
       </section>
+
+      <RenderCeAttachmentAppendixPages
+        documents={documents}
+        startPage={attachmentDetailsStartPage}
+        totalPages={totalPages}
+        header={header}
+        footer={footer}
+      />
 
       <section className="rpt-page rpt-anchor-offset" id="audit-trail" data-print-section="true">
         {header()}
@@ -622,8 +642,9 @@ export function CeReportPrintPage() {
               <tr><td>Project ID</td><td className="rpt-mono">{projectId}</td></tr>
               <tr><td>Export ID</td><td className="rpt-mono">{exportId}</td></tr>
               <tr><td>Source hash</td><td className="rpt-mono">{sourceHash}</td></tr>
-              <tr><td>Layout version</td><td>2026.05.enterprise.report-quality.v3</td></tr>
+              <tr><td>Layout version</td><td>2026.05.enterprise.report-quality.v4</td></tr>
               <tr><td>Runtime source</td><td>Canonical CE aggregate payload</td></tr>
+              <tr><td>Attachment handling</td><td>{documents.length} total · {photoDocuments.length} photos · {documentAppendixRows.length} PDF/other document appendix pages</td></tr>
               <RenderControlsAuditRows welds={welds} inspections={inspections} />
             </tbody>
           </table>
