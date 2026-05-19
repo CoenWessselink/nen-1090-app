@@ -47,6 +47,15 @@ function normalizeMutationResponse(payload: unknown): MasterDataItem {
   return record;
 }
 
+function normalizeCompanySettingsResponse(payload: unknown): MasterDataItem {
+  if (!payload || typeof payload !== 'object') return {};
+  const record = payload as Record<string, unknown>;
+  if (record.item && typeof record.item === 'object') return record.item as MasterDataItem;
+  if (record.data && typeof record.data === 'object' && !Array.isArray(record.data)) return record.data as MasterDataItem;
+  if (record.company && typeof record.company === 'object') return record.company as MasterDataItem;
+  return record;
+}
+
 async function mutationRequest(path: string, method: 'POST' | 'PATCH' | 'PUT', payload?: Record<string, unknown>) {
   const body = payload === undefined ? undefined : JSON.stringify(payload);
   try {
@@ -204,16 +213,19 @@ export function deleteWeldCoordinator(coordinatorId: string | number) {
   return apiRequest<void>(`/settings/weld-coordinators/${coordinatorId}`, { method: 'DELETE' });
 }
 
-export function getCompanySettings() {
-  return apiRequest<MasterDataItem>('/settings/company');
+export async function getCompanySettings() {
+  const response = await apiRequest<unknown>('/settings/company');
+  return normalizeCompanySettingsResponse(response);
 }
 
-export function updateCompanySettings(payload: Record<string, unknown>) {
-  return mutationRequest('/settings/company', 'PUT', payload);
+export async function updateCompanySettings(payload: Record<string, unknown>) {
+  const response = await mutationRequest('/settings/company', 'PUT', payload);
+  return normalizeCompanySettingsResponse(response);
 }
 
-export function uploadCompanyLogo(file: File) {
+export async function uploadCompanyLogo(file: File) {
   const formData = new FormData();
   formData.append('file', file);
-  return apiRequest<MasterDataItem>('/settings/company/logo', { method: 'POST', body: formData });
+  const response = await apiRequest<unknown>('/settings/company/logo', { method: 'POST', body: formData });
+  return normalizeCompanySettingsResponse(response);
 }
