@@ -1,4 +1,4 @@
-import { apiRequest } from '@/api/client';
+import { apiRequest, listRequest } from '@/api/client';
 import { getNormTemplate, getNormTemplates, saveWeldInspection as saveCanonicalWeldInspection, type InspectionTemplate, type InspectionTemplateItem, type InspectionTemplateSection, type WeldInspectionRun } from '@/api/norms';
 
 type RuntimeRecord = Record<string, unknown>;
@@ -11,6 +11,7 @@ function asArray<T>(payload: unknown): T[] {
   if (Array.isArray(payload)) return payload as T[];
   const record = asRecord(payload);
   if (Array.isArray(record.items)) return record.items as T[];
+  if (Array.isArray(record.data)) return record.data as T[];
   if (Array.isArray(record.results)) return record.results as T[];
   if (Array.isArray(record.checks)) return record.checks as T[];
   return [];
@@ -32,6 +33,7 @@ function normalizeResult(value: unknown): string {
 function normalizeItem(raw: RuntimeRecord, index: number): InspectionTemplateItem {
   const code = String(raw.code || raw.item_code || raw.template_item_code || raw.criterion_key || `CHECK_${index + 1}`);
   const label = String(raw.label || raw.title || raw.criterion_key || code);
+  const rule = asRecord(raw.acceptance_rule_json);
   return {
     id: String(raw.id || code),
     code,
@@ -42,9 +44,9 @@ function normalizeItem(raw: RuntimeRecord, index: number): InspectionTemplateIte
     norm_reference: String(raw.norm_reference || raw.norm || raw.norm_code || 'EN 1090 / ISO 3834 / ISO 5817'),
     required: Boolean(raw.required ?? true),
     allow_na: Boolean(raw.allow_na ?? true),
-    requires_photo: Boolean(raw.requires_photo ?? false),
-    requires_document: Boolean(raw.requires_document ?? false),
-    blocks_release: Boolean(raw.blocks_release ?? false),
+    requires_photo: Boolean(raw.requires_photo ?? rule.requires_photo ?? false),
+    requires_document: Boolean(raw.requires_document ?? rule.requires_document ?? false),
+    blocks_release: Boolean(raw.blocks_release ?? rule.blocks_ce_release ?? false),
     result: normalizeResult(raw.result || raw.status || raw.default_status || raw.default_value || 'conform'),
     comment: String(raw.comment || raw.remark || ''),
   };
@@ -57,15 +59,21 @@ function sectionsFromItems(items: InspectionTemplateItem[], fallbackName = 'Insp
     if (!grouped.has(code)) grouped.set(code, { id: code, code, name: String(item.group || fallbackName), phase: 'Inspection', items: [] });
     grouped.get(code)!.items!.push(item);
   });
-  return Array.from(grouped.values());
+  return Array.from(grouped.values()).filter((section) => (section.items || []).length > 0);
+}
+
+function hasChecks(run: WeldInspectionRun): boolean {
+  return Boolean((run.sections || []).some((section) => (section.items || []).length > 0) || (run.results || []).length > 0);
 }
 
 function normalizeInspectionPayload(payload: unknown, projectId: string | undefined, weldId: string): WeldInspectionRun {
   const record = Array.isArray(payload) ? asRecord(payload[0]) : asRecord(payload);
   if (!Object.keys(record).length) return emptyRun(projectId, weldId);
-  const checks = asArray<RuntimeRecord>(record.sections).length ? [] : asArray<RuntimeRecord>(record.checks || record.results || record.items);
-  const sections = Array.isArray(record.sections) && record.sections.length
-    ? (record.sections as InspectionTemplateSection[]).map((section) => ({ ...section, items: (section.items || []).map((item, index) => ({ ...item, result: normalizeResult(item.result || 'conform'), id: item.id || `${section.code}-${index}` })) }))
+  const backendSections = Array.isArray(record.sections) ? record.sections as InspectionTemplateSection[] : [];
+  const sectionsWithItems = backendSections.filter((section) => (section.items || []).length > 0);
+  const checks = sectionsWithItems.length ? [] : asArray<RuntimeRecord>(record.checks || record.results || record.items);
+  const sections = sectionsWithItems.length
+    ? sectionsWithItems.map((section) => ({ ...section, items: (section.items || []).map((item, index) => ({ ...item, result: normalizeResult(item.result || 'conform'), id: item.id || `${section.code}-${index}` })) }))
     : sectionsFromItems(checks.map(normalizeItem), String(record.template_name || record.norm_template || 'Inspectie'));
   const results = sections.flatMap((section) => section.items || []);
   return {
@@ -87,21 +95,23 @@ function normalizeInspectionPayload(payload: unknown, projectId: string | undefi
   };
 }
 
-function runFromTemplate(template: InspectionTemplate, projectId: string | undefined, weldId: string): WeldInspectionRun {
-  const rawItems = Array.isArray(template.sections) && template.sections.length
-    ? template.sections.flatMap((section) => (section.items || []).map((item) => ({ ...item, group: section.name, section_code: section.code })))
-    : asArray<RuntimeRecord>(template.items_json || template.items);
+function runFromTemplate(template: InspectionTemplate | RuntimeRecord, projectId: string | undefined, weldId: string): WeldInspectionRun {
+  const record = asRecord(template);
+  const templateSections = Array.isArray(record.sections) ? record.sections as RuntimeRecord[] : [];
+  const rawItems = templateSections.length
+    ? templateSections.flatMap((section) => asArray<RuntimeRecord>(section.items).map((item) => ({ ...item, group: section.name, section_code: section.code })))
+    : asArray<RuntimeRecord>(record.items_json || record.items);
   const items = rawItems.map((item, index) => normalizeItem(asRecord(item), index));
-  const sections = sectionsFromItems(items, template.name || 'Inspectie');
+  const sections = sectionsFromItems(items, String(record.name || 'Inspectie'));
   return {
     id: `draft-${weldId}`,
     project_id: projectId,
     weld_id: weldId,
-    template_id: template.id,
-    template_name: template.name,
-    template_code: template.code,
-    template_version: template.version,
-    norm_name: template.name,
+    template_id: String(record.id || ''),
+    template_name: String(record.name || record.code || 'Inspectietemplate'),
+    template_code: String(record.code || ''),
+    template_version: typeof record.version === 'string' || typeof record.version === 'number' ? record.version : undefined,
+    norm_name: String(record.name || record.code || 'Inspectietemplate'),
     status: 'draft',
     overall_result: 'conform',
     notes: '',
@@ -116,6 +126,22 @@ function emptyRun(projectId: string | undefined, weldId: string): WeldInspection
   return { id: `draft-${weldId}`, project_id: projectId, weld_id: weldId, status: 'draft', overall_result: 'in_control', notes: '', sections: [], results: [], history: [], attachments: [] };
 }
 
+async function settingsTemplates(): Promise<RuntimeRecord[]> {
+  try {
+    return asArray<RuntimeRecord>(await listRequest('/settings/inspection-templates'));
+  } catch {
+    return [];
+  }
+}
+
+async function templateById(templateId: string): Promise<RuntimeRecord | InspectionTemplate | null> {
+  if (!templateId) return null;
+  const direct = await getNormTemplate(templateId).catch(() => null);
+  if (direct && hasChecks(runFromTemplate(direct, undefined, 'probe'))) return direct;
+  const settings = await settingsTemplates();
+  return settings.find((template) => String(template.id) === templateId || String(template.code) === templateId) || null;
+}
+
 async function fallbackFromTemplate(projectId: string | undefined, weldId: string): Promise<WeldInspectionRun> {
   if (!projectId) return emptyRun(projectId, weldId);
   try {
@@ -123,15 +149,29 @@ async function fallbackFromTemplate(projectId: string | undefined, weldId: strin
     const project: RuntimeRecord = await apiRequest<RuntimeRecord>(`/projects/${projectId}`).catch((): RuntimeRecord => ({}));
     const templateId = String(weld.template_id || weld.inspection_template_id || weld.default_template_id || project.template_id || project.inspection_template_id || project.default_template_id || '').trim();
     if (templateId) {
-      const template = await getNormTemplate(templateId).catch(() => null);
-      if (template) return runFromTemplate(template, projectId, weldId);
+      const template = await templateById(templateId);
+      if (template) {
+        const run = runFromTemplate(template, projectId, weldId);
+        if (hasChecks(run)) return run;
+      }
     }
     const exc = normalizeExc(weld.execution_class || weld.exc_class || project.execution_class || project.exc_class || project.default_execution_class);
+    const settings = await settingsTemplates();
+    const settingsMatch = settings.find((item) => normalizeExc(item.exc_class || item.profile_code || item.code || item.name) === exc)
+      || settings.find((item) => String(item.code || item.name || '').toUpperCase().includes(exc));
+    if (settingsMatch) {
+      const run = runFromTemplate(settingsMatch, projectId, weldId);
+      if (hasChecks(run)) return run;
+    }
     const templates = await getNormTemplates({}).catch((): InspectionTemplate[] => []);
     const template = templates.find((item) => normalizeExc(item.exc_class || item.profile_code || item.code || item.name) === exc)
       || templates.find((item) => String(item.code || item.name || '').toUpperCase().includes(exc))
-      || templates[0];
-    return template ? runFromTemplate(template, projectId, weldId) : emptyRun(projectId, weldId);
+      || templates.find((item) => hasChecks(runFromTemplate(item, projectId, weldId)));
+    if (template) {
+      const run = runFromTemplate(template, projectId, weldId);
+      if (hasChecks(run)) return run;
+    }
+    return emptyRun(projectId, weldId);
   } catch {
     return emptyRun(projectId, weldId);
   }
@@ -143,7 +183,7 @@ export async function getSafeWeldInspection(projectIdOrWeldId: string, maybeWeld
   const path = projectId ? `/projects/${projectId}/welds/${weldId}/inspection` : `/welds/${weldId}/inspection`;
   try {
     const normalized = normalizeInspectionPayload(await apiRequest<unknown>(path), projectId, weldId);
-    if ((normalized.sections || []).length) return normalized;
+    if (hasChecks(normalized)) return normalized;
     return await fallbackFromTemplate(projectId, weldId);
   } catch {
     return await fallbackFromTemplate(projectId, weldId);
