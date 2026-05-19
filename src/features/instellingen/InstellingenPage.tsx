@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/Card";
 import { InlineMessage } from "@/components/feedback/InlineMessage";
 import { useAuthStore } from "@/app/store/auth-store";
 import { useUiStore } from "@/app/store/ui-store";
-import { useInspectionTemplates, useMaterials, useSettings, useWeldCoordinators, useWelders, useWps } from "@/hooks/useSettings";
+import { useCompanySettings, useInspectionTemplates, useMaterials, useSettings, useWeldCoordinators, useWelders, useWps } from "@/hooks/useSettings";
 import { MasterDataManager } from "@/features/instellingen/components/MasterDataManager";
 import { CompanySettingsCard } from "@/features/instellingen/components/CompanySettingsCard";
 import { InspectionTemplatesManager } from "@/features/instellingen/components/InspectionTemplatesManager";
@@ -24,11 +24,22 @@ export function InstellingenPage() {
   const pushNotification = useUiStore((state) => state.pushNotification);
 
   const backendSettings = useSettings();
+  const companySettings = useCompanySettings();
   const wps = useWps();
   const materials = useMaterials();
   const welders = useWelders();
   const weldCoordinators = useWeldCoordinators();
   const inspectionTemplates = useInspectionTemplates();
+
+  const companyData = (companySettings.data || {}) as Record<string, unknown>;
+  const companyName = String(
+    companyData.company_name ||
+    companyData.legal_name ||
+    companyData.display_name ||
+    companyData.name ||
+    user?.tenant ||
+    "—",
+  );
 
   const masterDataCount = useMemo(
     () =>
@@ -42,6 +53,7 @@ export function InstellingenPage() {
 
   const refreshAll = () => {
     backendSettings.refetch();
+    companySettings.refetch();
     wps.refetch();
     materials.refetch();
     welders.refetch();
@@ -95,7 +107,7 @@ export function InstellingenPage() {
               <Settings2 size={18} aria-hidden />
               <span>Organisatie</span>
             </div>
-            <strong style={{ fontSize: "clamp(1rem, 3vw, 1.35rem)", wordBreak: "break-word" }}>{user?.tenant || "—"}</strong>
+            <strong style={{ fontSize: "clamp(1rem, 3vw, 1.35rem)", wordBreak: "break-word" }}>{companyName}</strong>
             <small style={{ color: "rgba(255,255,255,0.82)" }}>Bedrijfsinstellingen en branding</small>
           </button>
         </div>
@@ -118,6 +130,11 @@ export function InstellingenPage() {
                 <div>
                   <span>Tenant</span>
                   <strong>{user?.tenant || "—"}</strong>
+                </div>
+
+                <div>
+                  <span>Bedrijfsnaam</span>
+                  <strong>{companyName}</strong>
                 </div>
 
                 <div>
