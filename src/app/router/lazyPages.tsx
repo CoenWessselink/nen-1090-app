@@ -40,4 +40,5 @@ export const NormsSettingsPage = named(() => import('@/features/instellingen/Nor
 /** Welds & admin */
 export const WeldInspectionDetailPage = named(() => import('@/features/welds/WeldInspectionDetailPage'), 'WeldInspectionDetailPage');
 export const SuperadminControlCenter = lazy(() => import('@/features/superadmin/SuperadminControlCenter'));
+export const SuperadminControlCenterPage = lazy(() => import('@/features/superadmin/control-center/SuperadminControlCenterPage'));
 export const TenantProfilePage = lazy(() => import('@/features/superadmin/TenantProfilePage'));
