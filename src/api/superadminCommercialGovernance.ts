@@ -54,6 +54,7 @@ export async function getPlans(): Promise<PlanDefinition[]> {
 // ── Tenant subscription ──
 
 export async function getTenantSubscription(tenantId: string): Promise<TenantSubscription> {
+  if (!tenantId) throw new Error('Tenant ID ontbreekt.');
   try { return await apiRequest<TenantSubscription>(`/superadmin/commercial/tenants/${tenantId}/subscription`); } catch { /* fall through */ }
   const t = await apiRequest<R>(`/platform/tenants/${tenantId}`);
   return {
@@ -94,6 +95,7 @@ export async function cancelTenant(tenantId: string, reason: string): Promise<vo
 // ── Limits ──
 
 export async function getTenantLimits(tenantId: string): Promise<TenantLimitSummary> {
+  if (!tenantId) throw new Error('Tenant ID ontbreekt.');
   try { return await apiRequest<TenantLimitSummary>(`/superadmin/commercial/tenants/${tenantId}/limits`); } catch { /* fall through */ }
   const t = await apiRequest<R>(`/platform/tenants/${tenantId}`).catch(() => ({} as R));
   const limits: TenantLimitRow[] = [
@@ -133,6 +135,7 @@ export async function getFeatureFlags(): Promise<FeatureFlag[]> {
 }
 
 export async function getTenantFeatureFlags(tenantId: string): Promise<TenantFeatureFlag[]> {
+  if (!tenantId) return DEFAULT_FLAGS.map((f) => ({ feature_key: f.key, enabled: f.default_enabled, source: 'default' as const, name: f.name, category: f.category }));
   try { const r = await apiRequest<{ items?: TenantFeatureFlag[] } | TenantFeatureFlag[]>(`/superadmin/governance/tenants/${tenantId}/features`); return Array.isArray(r) ? r : (r as { items: TenantFeatureFlag[] }).items || []; }
   catch { return DEFAULT_FLAGS.map((f) => ({ feature_key: f.key, enabled: f.default_enabled, source: 'default' as const, name: f.name, category: f.category })); }
 }

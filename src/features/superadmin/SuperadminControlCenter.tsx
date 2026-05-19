@@ -99,7 +99,7 @@ export function SuperadminControlCenter() {
   const filteredAllInvoices = useMemo(() => allInvoices.filter((invoice) => invoiceStatus === 'all' ? true : String(invoice.status || '').toLowerCase() === invoiceStatus), [invoiceStatus, allInvoices]);
 
   const loadAllInvoices = useCallback(async () => {
-    const data = await apiRequest<{ ok: boolean; items: InvoiceRow[] }>('/superadmin/invoices?limit=500', token, { retries: 1 }).catch(() => ({ ok: true, items: [] }));
+    const data = await apiRequest<{ ok: boolean; items: InvoiceRow[] }>('/platform/billing/invoices?limit=500', token, { retries: 0 }).catch(() => ({ ok: true, items: [] as InvoiceRow[] }));
     setAllInvoices(data.items || []);
   }, [token]);
 
@@ -108,11 +108,11 @@ export function SuperadminControlCenter() {
     try {
       const [tenantData, auditData, invoiceData, userData, activityData, profileData] = await Promise.all([
         apiRequest<{ ok: boolean; tenant: Tenant }>(`/superadmin/tenants/${tenantId}`, token, { retries: 1 }),
-        apiRequest<{ ok: boolean; audit: AuditRow[] }>(`/superadmin/tenants/${tenantId}/audit?limit=80`, token, { retries: 1 }),
-        apiRequest<{ ok: boolean; items: InvoiceRow[] }>(`/superadmin/tenants/${tenantId}/invoices`, token, { retries: 1 }).catch(() => ({ ok: true, items: [] })),
-        apiRequest<{ ok: boolean; items: UserRow[] }>(`/superadmin/tenants/${tenantId}/users`, token, { retries: 1 }).catch(() => ({ ok: true, items: [] })),
-        apiRequest<{ ok: boolean; activity: ActivityData }>(`/superadmin/tenants/${tenantId}/activity`, token, { retries: 1 }).catch(() => ({ ok: true, activity: {} })),
-        apiRequest<{ ok: boolean; profile: TenantProfile }>(`/superadmin/tenants/${tenantId}/profile`, token, { retries: 1 }).catch(() => ({ ok: true, profile: emptyProfile() })),
+        apiRequest<{ ok: boolean; audit: AuditRow[] }>(`/platform/tenants/${tenantId}/audit?limit=80`, token, { retries: 0 }).catch(() => ({ ok: true, audit: [] as AuditRow[] })),
+        apiRequest<{ ok: boolean; items: InvoiceRow[] }>(`/platform/tenants/${tenantId}/billing`, token, { retries: 0 }).then((r) => ({ ok: true, items: ((r as any)?.invoices || (r as any)?.items || []) as InvoiceRow[] })).catch(() => ({ ok: true, items: [] as InvoiceRow[] })),
+        apiRequest<{ ok: boolean; items: UserRow[] }>(`/platform/tenants/${tenantId}/users`, token, { retries: 0 }).then((r) => ({ ok: true, items: ((r as any)?.items || (Array.isArray(r) ? r : [])) as UserRow[] })).catch(() => ({ ok: true, items: [] as UserRow[] })),
+        apiRequest<{ ok: boolean; activity: ActivityData }>(`/platform/tenants/${tenantId}/activity`, token, { retries: 0 }).catch(() => ({ ok: true, activity: {} as ActivityData })),
+        apiRequest<{ ok: boolean; profile: TenantProfile }>(`/platform/tenants/${tenantId}/profile`, token, { retries: 0 }).then((r) => ({ ok: true, profile: (r || {}) as TenantProfile })).catch(() => ({ ok: true, profile: emptyProfile() })),
       ]);
       setSelectedTenant(tenantData.tenant); setAudit(auditData.audit || []); setInvoices(invoiceData.items || []); setUsers(userData.items || []); setActivity(activityData.activity || {});
       const nextProfile = { ...emptyProfile(tenantData.tenant), ...(profileData.profile || {}) };
