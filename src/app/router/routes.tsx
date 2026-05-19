@@ -28,6 +28,7 @@ import {
   NormsSettingsPage,
   ResetPasswordPage,
   SuperadminControlCenter,
+  SuperadminControlCenterPage,
   TenantProfilePage,
   WeldInspectionDetailPage,
 } from '@/app/router/lazyPages';
@@ -109,6 +110,14 @@ export const routerConfig = [
         ),
       },
       { path: 'superadmin-v2', element: <Navigate to="/superadmin" replace /> },
+      {
+        path: 'superadmin/control-center',
+        element: (
+          <RoleGuard allow={ROLES}>
+            <SuperadminControlCenterPage />
+          </RoleGuard>
+        ),
+      },
       {
         path: 'superadmin/tenant/:tenantId/profile',
         element: (
