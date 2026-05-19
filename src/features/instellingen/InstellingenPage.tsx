@@ -13,6 +13,10 @@ import { MobilePageScaffold } from "@/features/mobile/MobilePageScaffold";
 
 type SettingsTab = "organisatie" | "masterdata";
 
+function displayText(value: unknown): string {
+  return String(value || "").trim();
+}
+
 /**
  * Instellingen gebruikt `MobilePageScaffold` + `mobile-kpi-*`; verticale rhythm komt uit de scaffold-wrapper (`.mobile-unified-body`).
  */
@@ -32,14 +36,12 @@ export function InstellingenPage() {
   const inspectionTemplates = useInspectionTemplates();
 
   const companyData = (companySettings.data || {}) as Record<string, unknown>;
-  const companyName = String(
-    companyData.company_name ||
-    companyData.legal_name ||
-    companyData.display_name ||
-    companyData.name ||
-    user?.tenant ||
-    "—",
-  );
+  const companyName =
+    displayText(companyData.company_name) ||
+    displayText(companyData.legal_name) ||
+    displayText(companyData.display_name) ||
+    displayText(companyData.name);
+  const companyTileName = companySettings.isLoading ? "Bedrijfsnaam laden…" : companyName || "Bedrijfsnaam instellen";
 
   const masterDataCount = useMemo(
     () =>
@@ -107,7 +109,7 @@ export function InstellingenPage() {
               <Settings2 size={18} aria-hidden />
               <span>Organisatie</span>
             </div>
-            <strong style={{ fontSize: "clamp(1rem, 3vw, 1.35rem)", wordBreak: "break-word" }}>{companyName}</strong>
+            <strong style={{ fontSize: "clamp(1rem, 3vw, 1.35rem)", wordBreak: "break-word" }}>{companyTileName}</strong>
             <small style={{ color: "rgba(255,255,255,0.82)" }}>Bedrijfsinstellingen en branding</small>
           </button>
         </div>
@@ -134,7 +136,7 @@ export function InstellingenPage() {
 
                 <div>
                   <span>Bedrijfsnaam</span>
-                  <strong>{companyName}</strong>
+                  <strong>{companyName || "Bedrijfsnaam instellen"}</strong>
                 </div>
 
                 <div>
