@@ -29,6 +29,7 @@ import {
   ResetPasswordPage,
   SuperadminControlCenter,
   SuperadminControlCenterPage,
+  SuperadminCommercialGovernancePage,
   TenantProfilePage,
   WeldInspectionDetailPage,
 } from '@/app/router/lazyPages';
@@ -115,6 +116,14 @@ export const routerConfig = [
         element: (
           <RoleGuard allow={ROLES}>
             <SuperadminControlCenterPage />
+          </RoleGuard>
+        ),
+      },
+      {
+        path: 'superadmin/commercial-governance',
+        element: (
+          <RoleGuard allow={ROLES}>
+            <SuperadminCommercialGovernancePage />
           </RoleGuard>
         ),
       },
