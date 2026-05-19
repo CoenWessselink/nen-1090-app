@@ -228,6 +228,20 @@ td.rpt-status-green, td.rpt-status-blue, td.rpt-status-red, td.rpt-status-orange
 .rpt-attachment-note a { color: var(--rpt-blue); font-weight: 800; text-decoration: none; }
 .rpt-disclaimer { margin-top: 20px; padding: 12px; border: 1px solid var(--rpt-line); border-radius: 8px; font-size: 10px; color: var(--rpt-muted); line-height: 1.6; background: #fff; }
 
+.rpt-attachment-full-page .rpt-body { display: flex; flex-direction: column; min-height: 0; }
+.rpt-attachment-meta-table { margin-bottom: 12px; }
+.rpt-pdf-attachment-block { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; }
+.rpt-pdf-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border: 1px solid var(--rpt-line); border-radius: 10px; background: #f8fafc; }
+.rpt-pdf-toolbar strong { color: var(--rpt-ink); font-size: 12px; }
+.rpt-pdf-toolbar a, .rpt-nonpdf-attachment-block a { color: var(--rpt-blue); font-size: 11px; font-weight: 900; text-decoration: none; }
+.rpt-pdf-toolbar a:hover, .rpt-nonpdf-attachment-block a:hover { text-decoration: underline; }
+.rpt-pdf-object { width: 100%; min-height: 172mm; flex: 1; border: 1px solid var(--rpt-line); border-radius: 10px; background: #fff; }
+.rpt-pdf-frame { width: 100%; min-height: 172mm; border: 0; border-radius: 10px; }
+.rpt-print-fallback-note { border-left: 4px solid var(--rpt-orange); padding-left: 10px; }
+.rpt-nonpdf-attachment-block { padding: 20px; border: 1px solid var(--rpt-line); border-radius: 12px; background: #f8fafc; }
+.rpt-nonpdf-attachment-block strong { display: block; color: var(--rpt-ink); font-size: 15px; margin-bottom: 10px; }
+.rpt-nonpdf-attachment-block p { margin: 0 0 12px; color: #475569; font-size: 12px; line-height: 1.7; }
+
 .rpt-cover {
   padding: 0;
   background: #fff;
@@ -313,8 +327,8 @@ td.rpt-status-green, td.rpt-status-blue, td.rpt-status-red, td.rpt-status-orange
   .rpt-table td { padding: 5px 4px; }
   .rpt-score-bar-row > div { grid-template-columns: 70px 1fr 36px; }
   .rpt-inspection-grid { grid-template-columns: 1fr 1fr; }
-  .rpt-attachment-card-head, .rpt-photo-evidence-card { display: block; }
-  .rpt-attachment-frame { height: 70vh; }
+  .rpt-attachment-card-head, .rpt-photo-evidence-card, .rpt-pdf-toolbar { display: block; }
+  .rpt-attachment-frame, .rpt-pdf-frame, .rpt-pdf-object { height: 70vh; min-height: 70vh; }
   .rpt-cover::before { height: 430px; }
   .rpt-cover::after { top: 430px; }
   .rpt-cover .rpt-header { grid-template-columns: 1fr; padding: 24px; }
@@ -341,8 +355,11 @@ td.rpt-status-green, td.rpt-status-blue, td.rpt-status-red, td.rpt-status-orange
   .rpt-cover .rpt-cover-status { margin-bottom: 28mm !important; }
   .rpt-cover .rpt-footer { margin-left: 14mm !important; margin-right: 14mm !important; }
   .rpt-page:last-child { page-break-after: avoid !important; break-after: avoid !important; }
-  table, tr, td, th, .rpt-inspection-card, .rpt-photo-evidence-card, .rpt-attachment-card, img, iframe { page-break-inside: avoid !important; break-inside: avoid !important; }
+  table, tr, td, th, .rpt-inspection-card, .rpt-photo-evidence-card, .rpt-attachment-card, .rpt-nonpdf-attachment-block, img, iframe, object { page-break-inside: avoid !important; break-inside: avoid !important; }
   .rpt-attachment-image { max-height: 175mm; }
   .rpt-attachment-frame { height: 175mm; }
+  .rpt-pdf-object, .rpt-pdf-frame { height: 168mm !important; min-height: 168mm !important; }
+  .rpt-pdf-toolbar { padding: 7px 9px !important; }
+  .rpt-print-fallback-note { font-size: 8px !important; margin-top: 5px !important; }
   .page-canvas { margin: 0 !important; padding: 0 !important; }
 }
