@@ -63,6 +63,10 @@ async function applyProjectNormSelection(projectId: string | number, executionCl
   }
 }
 
+function scheduleProjectNormSelection(projectId: string | number, executionClass?: string | null, normProfileId?: unknown) {
+  void applyProjectNormSelection(projectId, executionClass, normProfileId);
+}
+
 function normalizePagedList<T>(response: PagedResponse<T>, fallbackLimit = 25) {
   if (Array.isArray(response)) return { items: response, total: response.length, page: 1, limit: fallbackLimit || response.length || 25 };
   const items = Array.isArray(response?.items) ? response.items : Array.isArray(response?.data) ? response.data : [];
@@ -185,6 +189,7 @@ export async function createProject(payload: ProjectFormValues) {
   const response = await apiRequest<Record<string, unknown>>('/projects', { method: 'POST', body: JSON.stringify(mapProjectPayload(payload as ProjectFormValues & Record<string, unknown>)) });
   const createdId = response?.id || response?.project_id;
   if (!createdId) throw new Error('Project aangemaakt, maar backend gaf geen geldig project-object terug.');
+  scheduleProjectNormSelection(createdId as string | number, payload.execution_class, (payload as any).norm_profile_id);
   return normalizeProjectRecord(response);
 }
 
@@ -192,7 +197,7 @@ export async function updateProjectRecord(id: string | number, payload: Partial<
   const body = mapProjectPatch(payload as Partial<ProjectFormValues> & Record<string, unknown>);
   try {
     const response = await apiRequest<Record<string, unknown>>(`/projects/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
-    if (payload.execution_class !== undefined || (payload as any).norm_profile_id !== undefined) await applyProjectNormSelection(id, payload.execution_class || response.execution_class as string, (payload as any).norm_profile_id || body.norm_profile_id);
+    if (payload.execution_class !== undefined || (payload as any).norm_profile_id !== undefined) scheduleProjectNormSelection(id, payload.execution_class || response.execution_class as string, (payload as any).norm_profile_id || body.norm_profile_id);
     return normalizeProjectRecord(response);
   } catch (error) {
     if (error instanceof ApiError && error.status === 422) {
@@ -204,7 +209,7 @@ export async function updateProjectRecord(id: string | number, payload: Partial<
     }
     if (!(error instanceof ApiError) || error.status !== 405) throw error;
     const response = await apiRequest<Record<string, unknown>>(`/projects/${id}`, { method: 'PUT', body: JSON.stringify(body) });
-    if (payload.execution_class !== undefined || (payload as any).norm_profile_id !== undefined) await applyProjectNormSelection(id, payload.execution_class || response.execution_class as string, (payload as any).norm_profile_id || body.norm_profile_id);
+    if (payload.execution_class !== undefined || (payload as any).norm_profile_id !== undefined) scheduleProjectNormSelection(id, payload.execution_class || response.execution_class as string, (payload as any).norm_profile_id || body.norm_profile_id);
     return normalizeProjectRecord(response);
   }
 }
