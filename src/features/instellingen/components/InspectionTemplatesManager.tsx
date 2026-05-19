@@ -1,2 +1,2 @@
-export { InspectionTemplatesManager } from './InspectionTemplatesManagerThreeActions';
-export { default } from './InspectionTemplatesManagerThreeActions';
+export { InspectionTemplatesManager } from './InspectionTemplatesManagerRuntime';
+export { default } from './InspectionTemplatesManagerRuntime';
