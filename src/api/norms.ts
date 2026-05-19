@@ -31,6 +31,11 @@ function normalizeResult(value: unknown): string {
   return raw;
 }
 
+function normalizeVersion(value: unknown): string | number | undefined {
+  if (typeof value === 'string' || typeof value === 'number') return value;
+  return undefined;
+}
+
 function statusFromRows(rows: unknown): string {
   const items = asArray<Record<string, unknown>>(rows);
   if (!items.length) return 'conform';
@@ -93,7 +98,7 @@ function normalizeInspection(payload: unknown, projectId?: string, weldId?: stri
   const templateRecord = record.template && typeof record.template === 'object' ? record.template as Record<string, unknown> : {};
   const templateName = String(record.template_name || record.norm_template || templateRecord.name || templateRecord.code || record.norm_name || '').trim();
   const templateCode = String(record.template_code || templateRecord.code || '').trim();
-  const templateVersion = record.template_version || templateRecord.version;
+  const templateVersion = normalizeVersion(record.template_version || templateRecord.version);
   const templateId = String(record.template_id || record.inspection_template_id || templateRecord.id || '').trim();
 
   if (Array.isArray(record.sections) && record.sections.length) {
@@ -120,7 +125,7 @@ function normalizeInspection(payload: unknown, projectId?: string, weldId?: stri
     template_id: templateId,
     template_name: templateName || templateCode || undefined,
     template_code: templateCode || undefined,
-    template_version: templateVersion as string | number | undefined,
+    template_version: templateVersion,
     norm_name: templateName || templateCode || undefined,
     status: normalizeResult(record.status || record.overall_status || 'conform'),
     overall_result: normalizeResult(record.overall_status || record.status || record.result || 'conform'),
