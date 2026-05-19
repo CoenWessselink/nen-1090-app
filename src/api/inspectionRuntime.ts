@@ -126,6 +126,50 @@ function emptyRun(projectId: string | undefined, weldId: string): WeldInspection
   return { id: `draft-${weldId}`, project_id: projectId, weld_id: weldId, status: 'draft', overall_result: 'in_control', notes: '', sections: [], results: [], history: [], attachments: [] };
 }
 
+const CACHE_PREFIX = 'weldinspect:inspection:';
+
+function cacheKey(projectId: string | undefined, weldId: string) {
+  return `${CACHE_PREFIX}${projectId || 'none'}:${weldId}`;
+}
+
+function cacheResults(projectId: string | undefined, weldId: string, run: WeldInspectionRun) {
+  try {
+    const items = (run.sections || []).flatMap((s) => (s.items || []).map((item) => ({ code: item.code, result: item.result, comment: item.comment })));
+    if (!items.length) return;
+    sessionStorage.setItem(cacheKey(projectId, weldId), JSON.stringify({ notes: run.notes, status: run.status, overall_result: run.overall_result, items, ts: Date.now() }));
+  } catch { /* quota */ }
+}
+
+function loadCachedResults(projectId: string | undefined, weldId: string): Record<string, { result: string; comment: string }> | null {
+  try {
+    const raw = sessionStorage.getItem(cacheKey(projectId, weldId));
+    if (!raw) return null;
+    const cached = JSON.parse(raw) as { items?: Array<{ code: string; result: string; comment: string }>; ts?: number };
+    if (!cached.items?.length) return null;
+    if (cached.ts && Date.now() - cached.ts > 24 * 60 * 60 * 1000) return null;
+    const map: Record<string, { result: string; comment: string }> = {};
+    for (const item of cached.items) map[item.code] = { result: item.result, comment: item.comment };
+    return map;
+  } catch { return null; }
+}
+
+function mergeRunWithCache(run: WeldInspectionRun, projectId: string | undefined, weldId: string): WeldInspectionRun {
+  const cached = loadCachedResults(projectId, weldId);
+  if (!cached) return run;
+  let merged = false;
+  const sections = (run.sections || []).map((section) => ({
+    ...section,
+    items: (section.items || []).map((item) => {
+      const saved = cached[item.code];
+      if (saved && saved.result !== item.result) { merged = true; return { ...item, result: saved.result, comment: saved.comment || item.comment }; }
+      return item;
+    }),
+  }));
+  if (!merged) return run;
+  const results = sections.flatMap((s) => s.items || []);
+  return { ...run, sections, results };
+}
+
 async function settingsTemplates(): Promise<RuntimeRecord[]> {
   try {
     return asArray<RuntimeRecord>(await listRequest('/settings/inspection-templates'));
@@ -183,13 +227,19 @@ export async function getSafeWeldInspection(projectIdOrWeldId: string, maybeWeld
   const path = projectId ? `/projects/${projectId}/welds/${weldId}/inspection` : `/welds/${weldId}/inspection`;
   try {
     const normalized = normalizeInspectionPayload(await apiRequest<unknown>(path), projectId, weldId);
-    if (hasChecks(normalized)) return normalized;
-    return await fallbackFromTemplate(projectId, weldId);
+    if (hasChecks(normalized)) return mergeRunWithCache(normalized, projectId, weldId);
+    const fromTemplate = await fallbackFromTemplate(projectId, weldId);
+    return mergeRunWithCache(fromTemplate, projectId, weldId);
   } catch {
-    return await fallbackFromTemplate(projectId, weldId);
+    const fromTemplate = await fallbackFromTemplate(projectId, weldId);
+    return mergeRunWithCache(fromTemplate, projectId, weldId);
   }
 }
 
 export async function saveSafeWeldInspection(projectIdOrWeldId: string, weldIdOrPayload: string | Record<string, unknown>, maybePayload?: Record<string, unknown>) {
-  return saveCanonicalWeldInspection(projectIdOrWeldId, weldIdOrPayload, maybePayload);
+  const result = await saveCanonicalWeldInspection(projectIdOrWeldId, weldIdOrPayload, maybePayload);
+  const projectId = typeof weldIdOrPayload === 'string' ? projectIdOrWeldId : undefined;
+  const weldId = typeof weldIdOrPayload === 'string' ? weldIdOrPayload : projectIdOrWeldId;
+  cacheResults(projectId, weldId, result);
+  return result;
 }
