@@ -46,6 +46,21 @@ function normalizeExc(value: unknown): WeldFormValues['execution_class'] {
   return (match || 'EXC2') as WeldFormValues['execution_class'];
 }
 
+function normalizeStatus(value: unknown): string {
+  const raw = String(value || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+  if (['conform', 'compliant', 'ok', 'approved', 'goedgekeurd'].includes(raw)) return 'conform';
+  if (['not_conform', 'non_conform', 'non_compliant', 'not_compliant', 'defect', 'rejected', 'niet_conform', 'afgekeurd'].includes(raw)) return 'not_conform';
+  if (['in_control', 'in_controle', 'gerepareerd', 'repaired', 'pending', 'open', 'in_progress'].includes(raw)) return 'in_control';
+  return 'in_control';
+}
+
+function statusForApi(value: unknown): string {
+  const normalized = normalizeStatus(value);
+  if (normalized === 'conform') return 'approved';
+  if (normalized === 'not_conform') return 'rejected';
+  return 'in_progress';
+}
+
 function optionName(item: Option | Record<string, unknown> | undefined) {
   if (!item) return '';
   return String((item as Record<string, unknown>).name || (item as Record<string, unknown>).title || (item as Record<string, unknown>).label || (item as Record<string, unknown>).code || (item as Record<string, unknown>).value || (item as Record<string, unknown>).id || '').trim();
@@ -71,7 +86,7 @@ function templateIdFromProject(project: Project | null, selection: unknown): str
 }
 
 function matchingTemplateId(templates: Option[], exc: string, preferredId = ''): string {
-  if (preferredId && templates.some((item) => String(item.id || '') === preferredId)) return preferredId;
+  if (preferredId && templates.some((item) => String(item.id || '') === preferredId && normalizeExc(item.exc_class || item.execution_class || item.code || item.name) === normalizeExc(exc))) return preferredId;
   const normalizedExc = normalizeExc(exc);
   const matches = templates.filter((item) => normalizeExc(item.exc_class || item.execution_class || item.code || item.name) === normalizedExc);
   return String((matches.find((item) => item.is_default && item.is_locked) || matches.find((item) => item.is_default) || matches[0])?.id || '');
@@ -152,6 +167,11 @@ export function MobileWeldCreatePage() {
   const canSave = useMemo(() => Boolean(form.weld_number.trim()), [form]);
 
   function patch<K extends keyof MobileWeldForm>(key: K, value: MobileWeldForm[K]) {
+    if (key === 'execution_class') {
+      const nextExc = normalizeExc(value);
+      setForm((current) => ({ ...current, execution_class: nextExc, template_id: matchingTemplateId(templates, nextExc, '') }));
+      return;
+    }
     setForm((current) => ({ ...current, [key]: value }));
   }
 
@@ -164,6 +184,7 @@ export function MobileWeldCreatePage() {
       const selectedMaterial = (materials as Array<Record<string, unknown>>).find((item) => String(item.id || '') === String(form.material_id || form.material || ''));
       const selectedWelder = (welders as Array<Record<string, unknown>>).find((item) => String(item.id || '') === String(form.welder_id || ''));
       const welderLabel = optionName(selectedWelder) || form.welder_name || null;
+      const apiStatus = statusForApi(form.status);
       const created = await createWeld(projectId, {
         weld_no: form.weld_number,
         weld_number: form.weld_number,
@@ -181,7 +202,8 @@ export function MobileWeldCreatePage() {
         welder_id: form.welder_id || null,
         welder_name: welderLabel,
         welders: welderLabel,
-        status: form.status || 'conform',
+        status: apiStatus,
+        result: apiStatus,
         execution_class: form.execution_class || 'EXC2',
         template_id: form.template_id || null,
         inspection_template_id: form.template_id || null,
@@ -223,7 +245,7 @@ export function MobileWeldCreatePage() {
         <label className="mobile-form-field mobile-select-field"><span>Welding Coordinator</span><select value={form.coordinator_id || ''} onChange={(event) => patch('coordinator_id', event.target.value)}><option value="">Select Welding Coordinator</option>{coordinators.map((item, index) => <option key={`${item.id || item.code || item.value || index}`} value={String(item.id || '')}>{String(item.name || item.label || item.code || item.value || item.id || '')}</option>)}</select></label>
         <label className="mobile-form-field"><span>Location</span><input value={form.location || ''} onChange={(event) => patch('location', event.target.value)} placeholder="Location" /></label>
         <label className="mobile-form-field mobile-select-field"><span>Inspection template</span><select value={form.template_id || ''} onChange={(event) => patch('template_id', event.target.value)}><option value="">Select template</option>{filteredTemplates.map((item, index) => <option key={`${item.id || index}`} value={String(item.id || '')}>{[String(item.name || item.label || item.id || ''), String(item.norm || '').trim(), item.version ? `v${String(item.version)}` : ''].filter(Boolean).join(' · ')}</option>)}</select></label>
-        <label className="mobile-form-field mobile-select-field"><span>Status</span><select value={form.status} onChange={(event) => patch('status', event.target.value as WeldFormValues['status'])}><option value="conform">Compliant</option><option value="defect">Non-compliant</option><option value="gerepareerd">Pending review</option></select></label>
+        <label className="mobile-form-field mobile-select-field"><span>Status</span><select value={normalizeStatus(form.status)} onChange={(event) => patch('status', event.target.value as WeldFormValues['status'])}><option value="conform">Compliant</option><option value="in_control">In control</option><option value="not_conform">Non-compliant</option></select></label>
         <label className="mobile-upload-field"><span><ImagePlus size={16} /> Add photos</span><input type="file" accept="image/*" capture="environment" multiple onChange={(event) => setFiles(Array.from(event.target.files || []))} /><small><Camera size={14} /> Camera or photo library</small></label>
         {files.length ? <div className="mobile-file-list">{files.map((file) => <div key={`${file.name}-${file.size}`} className="mobile-file-pill">{file.name}</div>)}</div> : null}
         <div className="mobile-inline-actions stack-on-mobile"><button type="button" className="mobile-secondary-button" onClick={() => navigate(`/projecten/${projectId}/lassen`)}>Cancel</button><button type="button" className="mobile-primary-button" onClick={handleSave} disabled={saving || !canSave}>{saving ? 'Saving weld…' : 'Create weld'}</button></div>
