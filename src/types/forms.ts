@@ -36,6 +36,11 @@ export type ProjectFormValues = {
   project_type?: string;
   location?: string;
   planner?: string;
+  coordinator_id?: string;
+  coordinator_name?: string;
+  default_wps_id?: string;
+  default_material_id?: string;
+  default_welder_id?: string;
   inspection_template_id?: string;
   norm_system_id?: string;
   norm_profile_id?: string;
