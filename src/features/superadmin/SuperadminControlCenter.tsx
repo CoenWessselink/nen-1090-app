@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Activity, AlertTriangle, BarChart3, Building2, CheckCircle2, CreditCard, Download, FileText, RefreshCcw, Search, ShieldCheck, Trash2, Users } from 'lucide-react';
+import { Activity, AlertTriangle, BarChart3, Building2, CheckCircle2, CreditCard, Download, FileText, Flag, Gauge, RefreshCcw, Search, ShieldCheck, Trash2, Users } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/app/store/auth-store';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
 
@@ -62,6 +63,7 @@ async function downloadBlob(path: string, token: string | null, fallbackName: st
 }
 
 export function SuperadminControlCenter() {
+  const navigate = useNavigate();
   const token = useAuthStore((state) => state.token);
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [selectedTenantId, setSelectedTenantId] = useState<string | null>(null);
@@ -225,6 +227,11 @@ export function SuperadminControlCenter() {
           <div className="mobile-kpi-top"><span>Geblokkeerd</span></div>
           <strong>{revenue?.suspended_tenants ?? '—'}</strong>
         </div>
+      </div>
+
+      <div className="sa-actions" style={{ marginBottom: 4 }}>
+        <button className="sa-button" onClick={() => navigate('/superadmin/control-center')}><Gauge size={16} /> Control Center</button>
+        <button className="sa-button secondary" onClick={() => navigate('/superadmin/commercial-governance')}><Flag size={16} /> Commercial &amp; Governance</button>
       </div>
 
       <section className="sa-grid"><div className="sa-card"><h3><Building2 size={18} /> Klantomgevingen</h3><div className="sa-toolbar"><div className="sa-search"><Search size={16} /><input id="superadmin-search" className="sa-input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Zoek tenant, e-mail, status" /></div><select className="sa-select" value={status} onChange={(event) => setStatus(event.target.value)}><option value="all">Alle</option><option value="active">Actief</option><option value="suspended">Geblokkeerd</option><option value="deleted">Verwijderd</option><option value="past_due">Past due</option><option value="pending_payment">Pending</option></select></div><div className="sa-list">{loading ? <div className="sa-empty">Tenants laden…</div> : null}{!loading && filteredTenants.length === 0 ? <div className="sa-empty">Geen tenants gevonden.</div> : null}{filteredTenants.map((tenant) => <button key={tenant.id} className={`sa-row ${selectedTenantId === tenant.id ? 'is-active' : ''}`} onClick={() => setSelectedTenantId(tenant.id)} onDoubleClick={() => setActiveTab('bedrijfsgegevens')}><div className="sa-row-top"><div><strong>{tenantLabel(tenant)}</strong><small>{tenant.billing_email || tenant.id}</small></div><span className={`sa-pill ${statusTone(tenant.status)}`}>{tenant.status || 'onbekend'}</span></div><small>{tenant.plan || 'geen plan'} · {tenant.seats || 1} seats · {tenant.access_mode || 'default'}</small></button>)}</div></div>
