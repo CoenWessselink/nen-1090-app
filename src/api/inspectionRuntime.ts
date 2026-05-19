@@ -1,9 +1,15 @@
 import { apiRequest } from '@/api/client';
 import { getNormTemplate, getNormTemplates, saveWeldInspection as saveCanonicalWeldInspection, type InspectionTemplate, type InspectionTemplateItem, type InspectionTemplateSection, type WeldInspectionRun } from '@/api/norms';
 
+type RuntimeRecord = Record<string, unknown>;
+
+function asRecord(payload: unknown): RuntimeRecord {
+  return payload && typeof payload === 'object' && !Array.isArray(payload) ? payload as RuntimeRecord : {};
+}
+
 function asArray<T>(payload: unknown): T[] {
   if (Array.isArray(payload)) return payload as T[];
-  const record = payload && typeof payload === 'object' ? payload as Record<string, unknown> : {};
+  const record = asRecord(payload);
   if (Array.isArray(record.items)) return record.items as T[];
   if (Array.isArray(record.results)) return record.results as T[];
   if (Array.isArray(record.checks)) return record.checks as T[];
@@ -23,7 +29,7 @@ function normalizeResult(value: unknown): string {
   return 'in_control';
 }
 
-function normalizeItem(raw: Record<string, unknown>, index: number): InspectionTemplateItem {
+function normalizeItem(raw: RuntimeRecord, index: number): InspectionTemplateItem {
   const code = String(raw.code || raw.item_code || raw.template_item_code || raw.criterion_key || `CHECK_${index + 1}`);
   const label = String(raw.label || raw.title || raw.criterion_key || code);
   return {
@@ -55,11 +61,9 @@ function sectionsFromItems(items: InspectionTemplateItem[], fallbackName = 'Insp
 }
 
 function normalizeInspectionPayload(payload: unknown, projectId: string | undefined, weldId: string): WeldInspectionRun {
-  const record = Array.isArray(payload) ? payload[0] as Record<string, unknown> | undefined : payload as Record<string, unknown> | undefined;
-  if (!record || typeof record !== 'object') return emptyRun(projectId, weldId);
-  const checks = asArray<Record<string, unknown>>(record.sections).length
-    ? []
-    : asArray<Record<string, unknown>>(record.checks || record.results || record.items);
+  const record = Array.isArray(payload) ? asRecord(payload[0]) : asRecord(payload);
+  if (!Object.keys(record).length) return emptyRun(projectId, weldId);
+  const checks = asArray<RuntimeRecord>(record.sections).length ? [] : asArray<RuntimeRecord>(record.checks || record.results || record.items);
   const sections = Array.isArray(record.sections) && record.sections.length
     ? (record.sections as InspectionTemplateSection[]).map((section) => ({ ...section, items: (section.items || []).map((item, index) => ({ ...item, result: normalizeResult(item.result || 'conform'), id: item.id || `${section.code}-${index}` })) }))
     : sectionsFromItems(checks.map(normalizeItem), String(record.template_name || record.norm_template || 'Inspectie'));
@@ -86,8 +90,8 @@ function normalizeInspectionPayload(payload: unknown, projectId: string | undefi
 function runFromTemplate(template: InspectionTemplate, projectId: string | undefined, weldId: string): WeldInspectionRun {
   const rawItems = Array.isArray(template.sections) && template.sections.length
     ? template.sections.flatMap((section) => (section.items || []).map((item) => ({ ...item, group: section.name, section_code: section.code })))
-    : asArray<Record<string, unknown>>(template.items_json || template.items);
-  const items = rawItems.map((item, index) => normalizeItem(item as Record<string, unknown>, index));
+    : asArray<RuntimeRecord>(template.items_json || template.items);
+  const items = rawItems.map((item, index) => normalizeItem(asRecord(item), index));
   const sections = sectionsFromItems(items, template.name || 'Inspectie');
   return {
     id: `draft-${weldId}`,
@@ -115,15 +119,15 @@ function emptyRun(projectId: string | undefined, weldId: string): WeldInspection
 async function fallbackFromTemplate(projectId: string | undefined, weldId: string): Promise<WeldInspectionRun> {
   if (!projectId) return emptyRun(projectId, weldId);
   try {
-    const weld = await apiRequest<Record<string, unknown>>(`/projects/${projectId}/welds/${weldId}`).catch(() => ({}));
-    const project = await apiRequest<Record<string, unknown>>(`/projects/${projectId}`).catch(() => ({}));
+    const weld: RuntimeRecord = await apiRequest<RuntimeRecord>(`/projects/${projectId}/welds/${weldId}`).catch((): RuntimeRecord => ({}));
+    const project: RuntimeRecord = await apiRequest<RuntimeRecord>(`/projects/${projectId}`).catch((): RuntimeRecord => ({}));
     const templateId = String(weld.template_id || weld.inspection_template_id || weld.default_template_id || project.template_id || project.inspection_template_id || project.default_template_id || '').trim();
     if (templateId) {
       const template = await getNormTemplate(templateId).catch(() => null);
       if (template) return runFromTemplate(template, projectId, weldId);
     }
     const exc = normalizeExc(weld.execution_class || weld.exc_class || project.execution_class || project.exc_class || project.default_execution_class);
-    const templates = await getNormTemplates({}).catch(() => []);
+    const templates = await getNormTemplates({}).catch((): InspectionTemplate[] => []);
     const template = templates.find((item) => normalizeExc(item.exc_class || item.profile_code || item.code || item.name) === exc)
       || templates.find((item) => String(item.code || item.name || '').toUpperCase().includes(exc))
       || templates[0];
