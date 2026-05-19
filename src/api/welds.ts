@@ -1,7 +1,27 @@
-import { apiRequest } from './client';
+import { apiRequest, listRequest } from './client';
 import { uploadMany } from './upload';
 import { runtimeTrace } from '@/utils/runtimeTracing';
 import type { ListParams } from '@/types/api';
+
+type RuntimeRecord = Record<string, unknown>;
+
+function asRecord(value: unknown): RuntimeRecord {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as RuntimeRecord : {};
+}
+
+function asArray<T>(payload: unknown): T[] {
+  if (Array.isArray(payload)) return payload as T[];
+  const record = asRecord(payload);
+  if (Array.isArray(record.items)) return record.items as T[];
+  if (Array.isArray(record.data)) return record.data as T[];
+  if (Array.isArray(record.results)) return record.results as T[];
+  return [];
+}
+
+function normalizeExc(value: unknown): string {
+  const raw = String(value || '').trim().toUpperCase().replace(/\s+/g, '');
+  return raw.match(/EXC[1-4]/)?.[0] || '';
+}
 
 function withQuery(path: string, params?: ListParams): string {
   if (!params) return path;
@@ -20,7 +40,7 @@ function trace(event: string, payload?: Record<string, unknown>) {
 
 function resolveCreateInput(projectIdOrPayload: unknown, payload?: unknown) {
   if (payload !== undefined) return { projectId: String(projectIdOrPayload), payload };
-  const source = (projectIdOrPayload || {}) as Record<string, unknown>;
+  const source = asRecord(projectIdOrPayload || {});
   return { projectId: String(source.project_id || source.projectId || ''), payload: projectIdOrPayload };
 }
 
@@ -31,6 +51,49 @@ async function firstWorking(paths: string[], init?: RequestInit) {
     catch (error) { lastError = error; }
   }
   throw lastError;
+}
+
+async function templateForExecutionClass(executionClass: unknown): Promise<RuntimeRecord | null> {
+  const exc = normalizeExc(executionClass);
+  if (!exc) return null;
+  const templates = asArray<RuntimeRecord>(await listRequest('/settings/inspection-templates').catch(() => []));
+  const candidates = templates.filter((template) => {
+    const templateExc = normalizeExc(template.exc_class || template.execution_class || template.profile_code || template.code || template.name);
+    const code = String(template.code || template.name || '').toUpperCase();
+    return templateExc === exc || code.includes(exc);
+  });
+  const ranked = candidates.sort((a, b) => {
+    const aTenant = a.is_locked ? 0 : 1;
+    const bTenant = b.is_locked ? 0 : 1;
+    const aDefault = a.is_default ? 1 : 0;
+    const bDefault = b.is_default ? 1 : 0;
+    return (bTenant + bDefault) - (aTenant + aDefault);
+  });
+  return ranked[0] || null;
+}
+
+async function hydrateWeldTemplateForExc(payload: unknown, current?: RuntimeRecord): Promise<RuntimeRecord> {
+  const body = { ...asRecord(payload) };
+  const nextExc = normalizeExc(body.execution_class || body.exc_class || body.default_execution_class);
+  if (!nextExc) return body;
+
+  const currentExc = normalizeExc(current?.execution_class || current?.exc_class || current?.default_execution_class);
+  const explicitTemplate = Boolean(body.template_id || body.inspection_template_id || body.default_template_id);
+  const excChanged = !currentExc || currentExc !== nextExc;
+
+  if (!excChanged && explicitTemplate) return body;
+
+  const template = await templateForExecutionClass(nextExc);
+  const templateId = String(template?.id || '').trim();
+  if (!templateId) return body;
+
+  body.execution_class = nextExc;
+  body.exc_class = nextExc;
+  body.template_id = templateId;
+  body.inspection_template_id = templateId;
+  body.default_template_id = templateId;
+  body.template_name = template.name || template.code || body.template_name;
+  return body;
 }
 
 export function getWelds(projectId?: string | number | ListParams) {
@@ -49,12 +112,15 @@ export function getWeld(projectId: string | number, weldId: string | number) {
 export async function createWeld(projectIdOrPayload: unknown, payload?: unknown) {
   const resolved = resolveCreateInput(projectIdOrPayload, payload);
   trace('WELD_CREATE_REQUEST', { projectId: resolved.projectId });
-  return apiRequest(`/projects/${resolved.projectId}/welds`, { method: 'POST', body: JSON.stringify(resolved.payload) });
+  const body = await hydrateWeldTemplateForExc(resolved.payload);
+  return apiRequest(`/projects/${resolved.projectId}/welds`, { method: 'POST', body: JSON.stringify(body) });
 }
 
-export function updateWeld(projectId: string | number, weldId: string | number, payload: unknown) {
+export async function updateWeld(projectId: string | number, weldId: string | number, payload: unknown) {
   trace('WELD_UPDATE_REQUEST', { projectId, weldId });
-  return apiRequest(`/projects/${projectId}/welds/${weldId}`, { method: 'PATCH', body: JSON.stringify(payload) });
+  const current = await apiRequest<RuntimeRecord>(`/projects/${projectId}/welds/${weldId}`).catch((): RuntimeRecord => ({}));
+  const body = await hydrateWeldTemplateForExc(payload, current);
+  return apiRequest(`/projects/${projectId}/welds/${weldId}`, { method: 'PATCH', body: JSON.stringify(body) });
 }
 
 export function deleteWeld(projectId: string | number, weldId: string | number) {
