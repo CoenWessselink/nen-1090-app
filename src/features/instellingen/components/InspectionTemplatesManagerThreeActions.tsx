@@ -90,15 +90,30 @@ function enhanceTemplateActions() {
   }
 }
 
+function runBoundedEnhancer() {
+  let attempts = 0;
+  const maxAttempts = 24;
+  const timer = window.setInterval(() => {
+    attempts += 1;
+    enhanceTemplateActions();
+    const pendingMergedButton = document.querySelector('.mobile-list-stack button');
+    if (attempts >= maxAttempts || !pendingMergedButton) {
+      window.clearInterval(timer);
+    }
+  }, 250);
+  enhanceTemplateActions();
+  return () => window.clearInterval(timer);
+}
+
 export function InspectionTemplatesManager() {
   useEffect(() => {
-    enhanceTemplateActions();
-    const observer = new MutationObserver(() => enhanceTemplateActions());
-    observer.observe(document.body, { childList: true, subtree: true });
+    const cleanup = runBoundedEnhancer();
     window.addEventListener('resize', enhanceTemplateActions);
+    window.addEventListener('focus', enhanceTemplateActions);
     return () => {
-      observer.disconnect();
+      cleanup();
       window.removeEventListener('resize', enhanceTemplateActions);
+      window.removeEventListener('focus', enhanceTemplateActions);
     };
   }, []);
 
