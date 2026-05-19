@@ -1,39 +1,92 @@
 import { useEffect } from 'react';
 import { InspectionTemplatesManager as BaseInspectionTemplatesManager } from './InspectionTemplatesManagerRuntime';
 
+function setButtonText(button: HTMLButtonElement, text: string) {
+  button.textContent = text;
+  button.setAttribute('aria-label', text);
+  button.style.whiteSpace = 'normal';
+  button.style.minHeight = '44px';
+  button.style.justifyContent = 'center';
+}
+
+function makeReadOnlyDeleteButton(source: HTMLButtonElement) {
+  const button = source.cloneNode(false) as HTMLButtonElement;
+  button.type = 'button';
+  button.className = source.className;
+  setButtonText(button, 'Verwijderen');
+  button.onclick = () => {
+    const message = 'Standaardtemplates zijn read-only en kunnen niet worden verwijderd. Dupliceer eerst naar een tenant-template.';
+    window.dispatchEvent(new CustomEvent('weldinspect:toast', { detail: { type: 'warning', title: 'Niet verwijderbaar', message } }));
+    window.alert(message);
+  };
+  return button;
+}
+
+function makeDuplicateButton(source: HTMLButtonElement) {
+  const button = source.cloneNode(false) as HTMLButtonElement;
+  button.type = 'button';
+  button.className = source.className;
+  setButtonText(button, 'Dupliceren');
+  button.onclick = () => source.click();
+  return button;
+}
+
+function normalizeActionContainer(container: HTMLElement) {
+  container.style.display = 'grid';
+  container.style.gridTemplateColumns = 'repeat(3, minmax(86px, 1fr))';
+  container.style.gap = '8px';
+  container.style.alignItems = 'stretch';
+  container.style.width = '100%';
+}
+
+function enhanceLockedTemplateActionRow(container: HTMLElement, originalButton: HTMLButtonElement) {
+  if (container.dataset.threeActionsReady === '1') return;
+  container.dataset.threeActionsReady = '1';
+  normalizeActionContainer(container);
+  setButtonText(originalButton, 'Edit');
+  originalButton.dataset.templateAction = 'edit';
+
+  const duplicateButton = makeDuplicateButton(originalButton);
+  duplicateButton.dataset.templateAction = 'duplicate';
+
+  const deleteButton = makeReadOnlyDeleteButton(originalButton);
+  deleteButton.dataset.templateAction = 'delete';
+
+  originalButton.after(duplicateButton, deleteButton);
+}
+
+function normalizeTenantTemplateActionRow(container: HTMLElement) {
+  normalizeActionContainer(container);
+  const buttons = Array.from(container.querySelectorAll<HTMLButtonElement>('button'));
+  for (const button of buttons) {
+    const text = (button.textContent || '').toLowerCase();
+    if (text.includes('bewerken') || text === 'edit') setButtonText(button, 'Edit');
+    if (text.includes('duplic')) setButtonText(button, 'Dupliceren');
+    if (text.includes('verwij')) setButtonText(button, 'Verwijderen');
+  }
+
+  const edit = buttons.find((button) => /edit/i.test(button.textContent || ''));
+  const duplicate = buttons.find((button) => /dupliceren/i.test(button.textContent || ''));
+  const remove = buttons.find((button) => /verwijderen/i.test(button.textContent || ''));
+  if (edit && duplicate && remove && container.firstElementChild !== edit) {
+    container.replaceChildren(edit, duplicate, remove);
+  }
+}
+
 function enhanceTemplateActions() {
-  const cards = Array.from(document.querySelectorAll<HTMLElement>('.mobile-list-stack .section-title-row'));
-  for (const row of cards) {
-    const button = Array.from(row.querySelectorAll<HTMLButtonElement>('button')).find((node) => /dupliceer\s*&\s*bewerk/i.test(node.textContent || ''));
-    if (!button || button.dataset.threeActionsReady === '1') continue;
+  const actionContainers = Array.from(document.querySelectorAll<HTMLElement>('.mobile-list-stack .section-title-row .toolbar-cluster'));
+  for (const container of actionContainers) {
+    const buttons = Array.from(container.querySelectorAll<HTMLButtonElement>('button'));
+    if (!buttons.length) continue;
 
-    button.dataset.threeActionsReady = '1';
-    button.textContent = 'Edit';
-
-    const duplicateButton = button.cloneNode(false) as HTMLButtonElement;
-    duplicateButton.type = 'button';
-    duplicateButton.textContent = 'Dupliceer';
-    duplicateButton.className = button.className;
-    duplicateButton.onclick = () => button.click();
-
-    const deleteButton = button.cloneNode(false) as HTMLButtonElement;
-    deleteButton.type = 'button';
-    deleteButton.textContent = 'Verwijder';
-    deleteButton.className = button.className;
-    deleteButton.onclick = () => {
-      const message = 'Standaardtemplates zijn read-only en kunnen niet worden verwijderd. Dupliceer eerst naar een tenant-template.';
-      const event = new CustomEvent('weldinspect:toast', { detail: { type: 'warning', title: 'Niet verwijderbaar', message } });
-      window.dispatchEvent(event);
-      window.alert(message);
-    };
-
-    const container = button.parentElement;
-    if (container) {
-      container.style.display = 'grid';
-      container.style.gridTemplateColumns = 'repeat(3, minmax(88px, 1fr))';
-      container.style.gap = '8px';
-      button.after(duplicateButton, deleteButton);
+    const mergedButton = buttons.find((button) => /dupliceer\s*&\s*bewerk/i.test(button.textContent || ''));
+    if (mergedButton) {
+      enhanceLockedTemplateActionRow(container, mergedButton);
+      continue;
     }
+
+    const hasTemplateActions = buttons.some((button) => /bewerken|edit|duplic|verwij/i.test(button.textContent || ''));
+    if (hasTemplateActions) normalizeTenantTemplateActionRow(container);
   }
 }
 
@@ -42,7 +95,11 @@ export function InspectionTemplatesManager() {
     enhanceTemplateActions();
     const observer = new MutationObserver(() => enhanceTemplateActions());
     observer.observe(document.body, { childList: true, subtree: true });
-    return () => observer.disconnect();
+    window.addEventListener('resize', enhanceTemplateActions);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', enhanceTemplateActions);
+    };
   }, []);
 
   return <BaseInspectionTemplatesManager />;
