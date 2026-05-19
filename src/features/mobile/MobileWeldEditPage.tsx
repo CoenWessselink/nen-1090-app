@@ -138,7 +138,7 @@ export function MobileWeldEditPage() {
           location: String(record.location || ''),
           execution_class: normalizeExc(record.execution_class || record.exc_class || project.execution_class || project.exc_class),
           template_id: templateId,
-          status: normalizeStatus(record.inspection_status || record.status || record.result),
+          status: normalizeStatus(record.status || record.inspection_status || record.result),
           wps: String(record.wps || ''),
           wps_id: wpsId,
           coordinator_id: coordinatorId,
