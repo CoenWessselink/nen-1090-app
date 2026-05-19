@@ -42,4 +42,6 @@ export const WeldInspectionDetailPage = named(() => import('@/features/welds/Wel
 export const SuperadminControlCenter = lazy(() => import('@/features/superadmin/SuperadminControlCenter'));
 export const SuperadminControlCenterPage = lazy(() => import('@/features/superadmin/control-center/SuperadminControlCenterPage'));
 export const SuperadminCommercialGovernancePage = lazy(() => import('@/features/superadmin/commercial-governance/SuperadminCommercialGovernancePage'));
+export const InvoiceManagerPage = lazy(() => import('@/features/superadmin/invoices/InvoiceManagerPage'));
+export const InvoicePdfPage = lazy(() => import('@/features/superadmin/invoices/InvoicePdfPage'));
 export const TenantProfilePage = lazy(() => import('@/features/superadmin/TenantProfilePage'));

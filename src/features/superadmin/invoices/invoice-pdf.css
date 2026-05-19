@@ -1,0 +1,48 @@
+.inv-pdf-wrap { font-family: 'Inter', -apple-system, sans-serif; color: #1e293b; background: #f1f5f9; -webkit-font-smoothing: antialiased; padding: 16px; min-height: 100vh; }
+.inv-print-btn { position: fixed; top: 16px; right: 16px; z-index: 100; padding: 12px 24px; background: #2563eb; color: #fff; border: none; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; box-shadow: 0 4px 12px rgba(37,99,235,.3); }
+.inv-pdf-page { max-width: 800px; width: 100%; margin: 0 auto; padding: 48px 40px; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,.06); }
+
+.inv-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 32px; gap: 16px; flex-wrap: wrap; }
+.inv-brand { display: flex; align-items: center; gap: 12px; }
+.inv-logo { width: 40px; height: 40px; background: #2563eb; color: #fff; border-radius: 10px; display: grid; place-items: center; font-weight: 900; font-size: 18px; }
+.inv-brand strong { display: block; font-size: 16px; color: #0f172a; }
+.inv-brand small { display: block; font-size: 10px; color: #64748b; }
+.inv-doc-title { text-align: right; }
+.inv-doc-title h1 { margin: 0; font-size: 28px; font-weight: 800; color: #0f172a; letter-spacing: -.02em; }
+.inv-status { display: inline-block; padding: 4px 12px; border-radius: 6px; font-size: 11px; font-weight: 800; margin-top: 6px; }
+.inv-status-draft { background: #f1f5f9; color: #64748b; }
+.inv-status-sent { background: #eff6ff; color: #2563eb; }
+.inv-status-paid { background: #dcfce7; color: #16a34a; }
+.inv-status-overdue { background: #fee2e2; color: #dc2626; }
+.inv-status-cancelled { background: #f1f5f9; color: #94a3b8; }
+
+.inv-meta-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
+.inv-meta-grid h3 { margin: 0 0 4px; font-size: 10px; color: #94a3b8; text-transform: uppercase; font-weight: 700; letter-spacing: .5px; }
+.inv-meta-grid strong { font-size: 14px; color: #0f172a; }
+
+.inv-addresses { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-bottom: 28px; }
+.inv-addresses h3 { margin: 0 0 8px; font-size: 10px; color: #94a3b8; text-transform: uppercase; font-weight: 700; letter-spacing: .5px; }
+.inv-addresses strong { display: block; font-size: 15px; color: #0f172a; margin-bottom: 4px; }
+.inv-addresses p { margin: 0 0 4px; font-size: 13px; color: #475569; line-height: 1.5; }
+
+.inv-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+.inv-table th { text-align: left; padding: 10px 12px; background: #f8fafc; font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700; letter-spacing: .5px; border-bottom: 2px solid #e2e8f0; }
+.inv-table th:last-child, .inv-table td:last-child { text-align: right; }
+.inv-table td { padding: 12px; border-bottom: 1px solid #f1f5f9; font-size: 14px; color: #334155; }
+
+.inv-totals { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; margin-bottom: 28px; }
+.inv-totals > div { display: flex; gap: 32px; padding: 6px 0; }
+.inv-totals span { font-size: 13px; color: #64748b; min-width: 100px; }
+.inv-totals strong { font-size: 14px; color: #0f172a; min-width: 100px; text-align: right; }
+.inv-total-row { border-top: 2px solid #0f172a; padding-top: 10px !important; }
+.inv-total-row span, .inv-total-row strong { font-size: 16px; font-weight: 800; color: #0f172a; }
+
+.inv-notes { margin-bottom: 28px; padding: 16px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; }
+.inv-notes h3 { margin: 0 0 6px; font-size: 11px; color: #94a3b8; text-transform: uppercase; }
+.inv-notes p { margin: 0; font-size: 13px; color: #475569; line-height: 1.6; }
+
+.inv-footer { border-top: 1px solid #e2e8f0; padding-top: 16px; text-align: center; }
+.inv-footer p { margin: 0 0 4px; font-size: 10px; color: #94a3b8; }
+
+@media (max-width: 640px) { .inv-pdf-page { padding: 24px 16px; } .inv-meta-grid { grid-template-columns: 1fr 1fr; } .inv-addresses { grid-template-columns: 1fr; } }
+@media print { .inv-print-btn { display: none !important; } .inv-pdf-wrap { background: #fff; padding: 0; } .inv-pdf-page { margin: 0; border: none; box-shadow: none; border-radius: 0; padding: 16mm; } @page { size: A4; margin: 0; } body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } }
