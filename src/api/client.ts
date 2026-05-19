@@ -20,7 +20,7 @@ type QueryValue = Primitive | null | undefined;
 export type QueryParams = Record<string, QueryValue>;
 
 const OPTIONAL_REQUEST_HARD_LIMIT = 2;
-const API_REQUEST_TIMEOUT = 30_000;
+const API_REQUEST_TIMEOUT = 12_000;
 
 function newRequestId(): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
