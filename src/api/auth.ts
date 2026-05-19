@@ -8,6 +8,12 @@ type AuthMessageResponse = {
   activation_url?: string;
 };
 
+type ActivateAccountPayload = {
+  token: string;
+  password: string;
+  confirm_password?: string;
+};
+
 function normalizeUser(input: any, fallbackTenant = '') {
   return {
     email: String(input?.email || input?.username || ''),
@@ -77,8 +83,12 @@ export async function changePassword(payload: ChangePasswordPayload) {
   return client.post<any>('/auth/change-password', payload);
 }
 
-export async function activateAccount(payload: { token: string; password: string }) {
-  return client.post<AuthMessageResponse>('/auth/activate', { token: payload.token, new_password: payload.password });
+export async function activateAccount(payload: ActivateAccountPayload) {
+  return client.post<AuthMessageResponse>('/auth/activate', {
+    token: payload.token,
+    new_password: payload.password,
+    confirm_password: payload.confirm_password || payload.password,
+  });
 }
 
 export async function validateActivationToken(token: string) {
