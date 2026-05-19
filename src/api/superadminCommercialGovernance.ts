@@ -56,16 +56,28 @@ export async function getPlans(): Promise<PlanDefinition[]> {
 export async function getTenantSubscription(tenantId: string): Promise<TenantSubscription> {
   if (!tenantId) throw new Error('Tenant ID ontbreekt.');
   try { return await apiRequest<TenantSubscription>(`/superadmin/commercial/tenants/${tenantId}/subscription`); } catch { /* fall through */ }
-  const t = await apiRequest<R>(`/platform/tenants/${tenantId}`);
+
+  let t: R = {};
+  try { t = await apiRequest<R>(`/platform/tenants/${tenantId}`); } catch { /* */ }
+  let sa: R = {};
+  try {
+    const all = await apiRequest<{ tenants?: R[] }>('/superadmin/tenants?limit=250');
+    sa = (all.tenants || []).find((row) => s(row.id) === tenantId) || {};
+  } catch { /* */ }
+
+  const merged = { ...t, ...sa };
+  const plan = s(merged.plan || merged.subscription_plan || (s(merged.status) === 'trial' ? 'trial' : 'professional'));
   return {
-    tenant_id: s(t.id), plan_code: s(t.plan || t.subscription_plan || 'trial'), plan_name: s(t.plan || 'Trial'),
-    status: s(t.status || t.mollie_subscription_status || 'active'), billing_provider: s(t.billing_provider || 'none'),
-    provider_customer_id: s(t.mollie_customer_id), provider_subscription_id: s(t.mollie_subscription_id),
-    trial_started_at: s(t.trial_started_at) || null, trial_ends_at: s(t.trial_until || t.trial_ends_at) || null,
+    tenant_id: s(merged.id || tenantId), plan_code: plan, plan_name: plan.charAt(0).toUpperCase() + plan.slice(1),
+    status: s(merged.status || merged.mollie_subscription_status || 'active'),
+    billing_provider: s(merged.billing_provider || 'none'),
+    provider_customer_id: s(merged.mollie_customer_id), provider_subscription_id: s(merged.mollie_subscription_id),
+    trial_started_at: null, trial_ends_at: s(merged.trial_until || merged.trial_ends_at) || null,
     current_period_start: null, current_period_end: null,
-    cancelled_at: null, suspended_at: null, grace_until: s(t.valid_until) || null,
-    currency: 'EUR', amount_cents: n(t.price_per_seat_year_cents), interval: 'yearly',
-    notes: '', created_at: s(t.created_at), updated_at: s(t.updated_at || t.created_at),
+    cancelled_at: null, suspended_at: null, grace_until: s(merged.valid_until) || null,
+    currency: 'EUR', amount_cents: n(merged.price_per_seat_year_cents || merged.price_per_seat_month_cents),
+    interval: n(merged.price_per_seat_year_cents) > 0 ? 'yearly' : 'monthly',
+    notes: '', created_at: s(merged.created_at), updated_at: s(merged.updated_at || merged.created_at),
   };
 }
 
