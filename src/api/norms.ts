@@ -246,6 +246,9 @@ export async function saveWeldInspection(projectIdOrWeldId: string, weldIdOrPayl
   const body = { ...payload, weld_id: weldId, status, overall_status: status, result: status };
   const path = projectId ? `/projects/${projectId}/welds/${weldId}/inspection` : `/welds/${weldId}/inspection`;
   const saved = await apiRequest<unknown>(path, { method: 'PUT', body: JSON.stringify(body) });
+  if (projectId) {
+    void apiRequest(`/projects/${projectId}/welds/${weldId}`, { method: 'PATCH', body: JSON.stringify({ status, result: status }) }).catch(() => undefined);
+  }
   if (projectId && typeof window !== 'undefined') {
     try { window.sessionStorage.setItem('weldinspect:last-save-toast', JSON.stringify({ type: 'success', title: 'Inspection saved', message: 'The weld list has been updated.', projectId, weldId, at: Date.now() })); } catch { /* ignore */ }
     window.dispatchEvent(new CustomEvent('nen1090:data-refresh', { detail: { scope: 'welds', projectId, weldId, reason: 'inspection-saved' } }));

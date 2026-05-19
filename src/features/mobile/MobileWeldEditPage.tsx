@@ -251,10 +251,12 @@ export function MobileWeldEditPage() {
         weld_coordinator_id: form.coordinator_id || null,
       });
 
-      for (const file of newFiles) {
-        const formData = new FormData();
-        formData.append('files', file, file.name);
-        await uploadWeldAttachment(projectId, weldId, formData);
+      if (newFiles.length) {
+        await Promise.all(newFiles.map((file) => {
+          const formData = new FormData();
+          formData.append('files', file, file.name);
+          return uploadWeldAttachment(projectId, weldId, formData);
+        }));
       }
 
       dispatchAppRefresh({ scope: 'welds', projectId, weldId, reason: 'weld-updated' });
