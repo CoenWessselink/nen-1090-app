@@ -88,8 +88,14 @@ export async function getSuperadminHealth(): Promise<PlatformHealth> {
   } catch { /* fall through */ }
 
   const health = await apiRequest<R>('/health').catch(() => ({} as R));
-  const tenants = await listRequest<Tenant[]>('/platform/tenants', { limit: 500 }).catch(() => []);
-  const tenantList = Array.isArray(tenants) ? tenants : (tenants as R).items ? ((tenants as R).items as Tenant[]) : [];
+  let tenantList: R[] = [];
+  try {
+    const sa = await apiRequest<{ tenants?: R[]; items?: R[] }>('/superadmin/tenants?limit=250');
+    tenantList = sa?.tenants || sa?.items || [];
+  } catch {
+    const tenants = await listRequest<Tenant[]>('/platform/tenants', { limit: 500 }).catch(() => []);
+    tenantList = (Array.isArray(tenants) ? tenants : (tenants as R).items ? ((tenants as R).items as Tenant[]) : []) as R[];
+  }
   let mail: PlatformMailStatus | null = null;
   try { mail = await getPlatformMailStatus(); } catch { /* */ }
 
@@ -120,13 +126,20 @@ export async function getSuperadminTenants(): Promise<SuperadminTenantSummary[]>
     if (dedicated?.items?.length) return dedicated.items;
   } catch { /* fall through */ }
 
-  const payload = await listRequest<Tenant[]>('/platform/tenants', { limit: 500 });
-  const rows = Array.isArray(payload) ? payload : (payload as R).items ? ((payload as R).items as Tenant[]) : [];
+  let rows: R[] = [];
+  try {
+    const sa = await apiRequest<{ tenants?: R[]; items?: R[] }>('/superadmin/tenants?limit=250');
+    rows = sa?.tenants || sa?.items || [];
+  } catch { /* fall through */ }
+  if (!rows.length) {
+    const payload = await listRequest<Tenant[]>('/platform/tenants', { limit: 500 });
+    rows = (Array.isArray(payload) ? payload : (payload as R).items ? ((payload as R).items as Tenant[]) : []) as R[];
+  }
   return rows.map((t) => {
     const r = t as R;
     return {
       tenant_id: safeString(r.id),
-      tenant_name: safeString(r.name || r.display_name),
+      tenant_name: safeString(r.display_name || r.name),
       status: safeString(r.status || (r.is_active ? 'active' : 'inactive')),
       plan: safeString(r.plan || r.subscription_plan || 'free'),
       created_at: safeString(r.created_at),
