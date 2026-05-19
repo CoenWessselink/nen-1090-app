@@ -85,10 +85,12 @@ export function MobileProjectCreatePage() {
     return () => { active = false; };
   }, []);
 
-  const clientOptions = useMemo(() => Array.from(new Set([
-    ...((clients.data?.items || []) as Array<Record<string, unknown>>).map((item) => String(item.name || item.client_name || item.opdrachtgever || item.title || item.code || '')).map((value) => value.trim()).filter(Boolean),
-    ...['CWS Staalbouw', 'Demo Opdrachtgever', String(form.client_name || '').trim()].filter(Boolean),
-  ])), [clients.data, form.client_name]);
+  const clientOptions = useMemo(() => Array.from(new Set(
+    ((clients.data?.items || []) as Array<Record<string, unknown>>)
+      .map((item) => String(item.name || item.client_name || item.opdrachtgever || item.title || item.code || ''))
+      .map((value) => value.trim())
+      .filter(Boolean),
+  )), [clients.data]);
 
   const templateOptions = useMemo(() => ((inspectionTemplates.data?.items || []) as Array<Record<string, unknown>>), [inspectionTemplates.data]);
   const filteredTemplates = useMemo(() => {
@@ -140,7 +142,6 @@ export function MobileProjectCreatePage() {
     return () => { active = false; };
   }, [projectId]);
 
-  useEffect(() => { if (!form.client_name && clientOptions.length) setForm((current) => ({ ...current, client_name: clientOptions[0] })); }, [clientOptions, form.client_name]);
   useEffect(() => {
     if (!filteredTemplates.length) return;
     const current = filteredTemplates.find((item) => String(item.id) === String(form.inspection_template_id || ''));
@@ -196,9 +197,9 @@ export function MobileProjectCreatePage() {
     {loading ? <div className="mobile-state-card">Project laden…</div> : null}
     {error ? <div className="mobile-state-card mobile-state-card-error">{error}</div> : null}
     {!loading ? <div className="mobile-form-card" data-testid="mobile-project-create-form">
-      <label className="mobile-form-field"><span>Projectnaam</span><input value={form.name} onChange={(event) => patch('name', event.target.value)} placeholder="Bijv. Magazijn" /></label>
-      <label className="mobile-form-field"><span>Projectnummer</span><input value={form.projectnummer} onChange={(event) => patch('projectnummer', event.target.value)} placeholder="Bijv. 500" /></label>
-      <label className="mobile-form-field"><span>Opdrachtgever</span><input list="mobile-project-client-suggestions" value={form.client_name} onChange={(event) => patch('client_name', event.target.value)} placeholder="Voer opdrachtgever in" /><datalist id="mobile-project-client-suggestions">{clientOptions.map((option) => <option key={option} value={option} />)}</datalist></label>
+      <label className="mobile-form-field"><span>Projectnaam</span><input value={form.name} onChange={(event) => patch('name', event.target.value)} placeholder="Bijv. Magazijn" autoComplete="off" /></label>
+      <label className="mobile-form-field"><span>Projectnummer</span><input value={form.projectnummer} onChange={(event) => patch('projectnummer', event.target.value)} placeholder="Bijv. 500" autoComplete="off" /></label>
+      <label className="mobile-form-field"><span>Opdrachtgever</span><input value={form.client_name} onChange={(event) => patch('client_name', event.target.value)} placeholder="Vrij invullen" autoComplete="off" autoCorrect="off" spellCheck={false} inputMode="text" />{clientOptions.length ? <small>Vrij tekstveld. Bestaande opdrachtgevers worden niet automatisch ingevuld.</small> : null}</label>
       <label className="mobile-form-field mobile-select-field"><span>Executieklasse</span><select value={normalizeExc(form.execution_class)} onChange={(event) => patch('execution_class', event.target.value)}>{executionClasses.map((exc) => <option key={exc} value={exc}>{exc}</option>)}</select></label>
       <label className="mobile-form-field mobile-select-field"><span>Normsysteem</span><select value={form.norm_system_id || ''} onChange={(event) => patch('norm_system_id', event.target.value)}><option value="">Automatisch</option>{normSystems.map((system) => <option key={system.id} value={system.id}>{system.code} · {system.name}</option>)}</select></label>
       <label className="mobile-form-field mobile-select-field"><span>Normprofiel</span><select value={form.norm_profile_id || ''} onChange={(event) => selectProfile(event.target.value)}><option value="">EU_EXC2_STANDARD automatisch</option>{normProfiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.code} · {profile.name}</option>)}</select><small>Dit profiel bepaalt de standaard inspectietemplates. Wijzigingen maken nieuwe snapshots voor toekomstige inspecties.</small></label>
