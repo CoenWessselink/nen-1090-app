@@ -38,10 +38,17 @@ function normalizeExc(value: unknown): string {
 
 function normalizeStatus(value: unknown): string {
   const raw = String(value || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
-  if (['conform', 'compliant', 'ok', 'approved'].includes(raw)) return 'conform';
-  if (['not_conform', 'non_conform', 'defect', 'rejected', 'niet_conform'].includes(raw)) return 'not_conform';
-  if (['in_control', 'in_controle', 'gerepareerd', 'repaired', 'pending'].includes(raw)) return 'in_control';
-  return 'conform';
+  if (['conform', 'compliant', 'ok', 'approved', 'goedgekeurd'].includes(raw)) return 'conform';
+  if (['not_conform', 'non_conform', 'non_compliant', 'not_compliant', 'defect', 'rejected', 'niet_conform', 'afgekeurd'].includes(raw)) return 'not_conform';
+  if (['in_control', 'in_controle', 'gerepareerd', 'repaired', 'pending', 'open', 'in_progress'].includes(raw)) return 'in_control';
+  return 'in_control';
+}
+
+function statusForApi(value: unknown): string {
+  const normalized = normalizeStatus(value);
+  if (normalized === 'conform') return 'approved';
+  if (normalized === 'not_conform') return 'rejected';
+  return 'in_progress';
 }
 
 function optionName(item: Record<string, unknown> | undefined) {
@@ -83,7 +90,7 @@ export function MobileWeldEditPage() {
   const [form, setForm] = useState<WeldFormState>({
     assembly_id: '', weld_no: '', inspected_at: '', process: '135', material: '', material_id: '',
     welders: '', welder_id: '', location: '', execution_class: 'EXC2', template_id: '',
-    status: 'conform', wps: '', wps_id: '', coordinator_id: '',
+    status: 'in_control', wps: '', wps_id: '', coordinator_id: '',
   });
   const [attachments, setAttachments] = useState<AttachmentRow[]>([]);
   const [assemblyOptions, setAssemblyOptions] = useState<Array<Record<string, unknown>>>([]);
@@ -131,7 +138,7 @@ export function MobileWeldEditPage() {
           location: String(record.location || ''),
           execution_class: normalizeExc(record.execution_class || record.exc_class || project.execution_class || project.exc_class),
           template_id: templateId,
-          status: normalizeStatus(record.status),
+          status: normalizeStatus(record.inspection_status || record.status || record.result),
           wps: String(record.wps || ''),
           wps_id: wpsId,
           coordinator_id: coordinatorId,
@@ -147,9 +154,19 @@ export function MobileWeldEditPage() {
     return () => { active = false; };
   }, [projectId, weldId]);
 
+  useEffect(() => {
+    if (!allTemplates.length || loading) return;
+    const currentTemplate = allTemplates.find((item) => String(item.id || '') === String(form.template_id || ''));
+    if (currentTemplate && templateMatchesExc(currentTemplate, form.execution_class)) return;
+    const nextTemplate = bestTemplateForExc(allTemplates, form.execution_class);
+    if (nextTemplate && nextTemplate !== form.template_id) {
+      setForm((current) => ({ ...current, template_id: nextTemplate }));
+    }
+  }, [allTemplates, form.execution_class, form.template_id, loading]);
+
   function handleExcChange(nextExc: string) {
     const nextTemplate = bestTemplateForExc(allTemplates, nextExc);
-    setForm((current) => ({ ...current, execution_class: nextExc, template_id: nextTemplate }));
+    setForm((current) => ({ ...current, execution_class: nextExc, template_id: nextTemplate || current.template_id }));
   }
 
   async function handleDeleteAttachment(attachmentId: string) {
@@ -166,6 +183,7 @@ export function MobileWeldEditPage() {
       const selectedMaterial = materialItems.find((item) => String(item.id || '') === String(form.material_id || ''));
       const selectedWelder = welderItems.find((item) => String(item.id || '') === String(form.welder_id || ''));
       const welderLabel = optionName(selectedWelder) || form.welders || null;
+      const apiStatus = statusForApi(form.status);
       await updateWeld(projectId, weldId, {
         assembly_id: form.assembly_id || null,
         weld_number: form.weld_no, weld_no: form.weld_no,
@@ -176,7 +194,8 @@ export function MobileWeldEditPage() {
         welder_id: form.welder_id || null, welder_name: welderLabel, welders: welderLabel,
         execution_class: form.execution_class,
         template_id: form.template_id || null, inspection_template_id: form.template_id || null,
-        status: form.status,
+        status: apiStatus,
+        result: apiStatus,
         wps_id: form.wps_id || null, wps: optionCode(selectedWps) || form.wps || null,
         coordinator_id: form.coordinator_id || null,
         welding_coordinator_id: form.coordinator_id || null,
