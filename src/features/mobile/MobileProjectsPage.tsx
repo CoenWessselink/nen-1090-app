@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { deleteProject, getProjectWelds, getProjects } from '@/api/projects';
 import { ConfirmDialog } from '@/components/confirm-dialog/ConfirmDialog';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
-import { APP_REFRESH_EVENT, formatValue, normalizeApiError, normalizeWeldStatus, projectCode, projectExecutionClass, projectTitle, weldStatusLabel } from '@/features/mobile/mobile-utils';
+import { APP_REFRESH_EVENT, formatValue, normalizeApiError, normalizeWeldStatus, projectCode, projectExecutionClass, projectTitle } from '@/features/mobile/mobile-utils';
 import type { Project, Weld } from '@/types/domain';
 
 type ProjectRuntimeStatus = {
@@ -37,7 +37,6 @@ function deriveProjectStatus(welds: Weld[] | undefined): ProjectRuntimeStatus {
   const statuses = rows.map(weldRuntimeStatus);
   const nonCompliant = statuses.filter((status) => status === 'not_conform').length;
   const compliant = statuses.filter((status) => status === 'conform').length;
-  const inControl = statuses.filter((status) => status === 'in_control' || status === 'open' || !status).length;
   if (nonCompliant > 0) {
     return { status: 'not_conform', label: 'Non-compliant', toneClass: 'mobile-pill-danger', countLabel: `${nonCompliant}/${total} aandacht` };
   }
