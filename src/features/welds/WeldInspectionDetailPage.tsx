@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState, type CSSProperties, type ReactElement } from 'react';
 import { ArrowLeft, CalendarDays, CheckCircle2, ClipboardList, Eye, MapPin, MinusCircle, Save, ShieldCheck, XCircle } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { getWeldInspection, saveWeldInspection, type InspectionTemplateItem, type InspectionTemplateSection, type WeldInspectionRun } from '@/api/norms';
+import { getSafeWeldInspection as getWeldInspection, saveSafeWeldInspection as saveWeldInspection } from '@/api/inspectionRuntime';
+import type { InspectionTemplateItem, InspectionTemplateSection, WeldInspectionRun } from '@/api/norms';
 import { getProject } from '@/api/projects';
 import { getWeld } from '@/api/welds';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
