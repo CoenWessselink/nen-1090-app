@@ -3,6 +3,7 @@ import { Camera, Trash2 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getAssemblies } from '@/api/assemblies';
 import { deleteAttachment } from '@/api/documents';
+import { getProject } from '@/api/projects';
 import { getProjectNormSelection } from '@/api/norms';
 import { deleteWeld, getWeld, getWeldAttachments, updateWeld, uploadWeldAttachment } from '@/api/welds';
 import { ConfirmDialog } from '@/components/confirm-dialog/ConfirmDialog';
@@ -137,18 +138,23 @@ export function MobileWeldEditPage() {
     setLoading(true);
     Promise.all([
       getWeld(projectId, weldId),
+      getProject(projectId).catch(() => null),
       getProjectNormSelection(projectId).catch(() => null),
       getWeldAttachments(projectId, weldId).catch(() => []),
       getAssemblies(projectId).catch(() => ({ items: [] })),
     ])
-      .then(([result, normSelection, attachmentResult, assembliesResult]) => {
+      .then(([result, projectRecord, normSelection, attachmentResult, assembliesResult]) => {
         if (!active) return;
         setProjectNormSelection(normSelection);
         const record = (result || {}) as Record<string, unknown>;
-        const existingExc = excFromSelection(normSelection, String(record.execution_class || record.exc_class || 'EXC2'));
-        const wpsId = String(record.wps_id || '').trim();
-        const materialId = String(record.material_id || '').trim();
-        const welderId = String(record.welder_id || '').trim();
+        const project = (projectRecord || {}) as Record<string, unknown>;
+        const fallbackExc = String(record.execution_class || record.exc_class || project.execution_class || project.exc_class || 'EXC2');
+        const existingExc = excFromSelection(normSelection, fallbackExc);
+        const wpsId = String(record.wps_id || project.default_wps_id || project.wps_id || '').trim();
+        const materialId = String(record.material_id || project.default_material_id || project.material_id || '').trim();
+        const welderId = String(record.welder_id || project.default_welder_id || project.welder_id || '').trim();
+        const coordinatorId = coordinatorIdFromRecord(record) || coordinatorIdFromRecord(project);
+        const templateId = templateIdFromRecord(record) || templateIdFromRecord(project);
         setForm({
           assembly_id: String(record.assembly_id || record.assemblyId || ''),
           weld_no: String(record.weld_no || record.weld_number || ''),
@@ -160,11 +166,11 @@ export function MobileWeldEditPage() {
           welder_id: welderId,
           location: String(record.location || ''),
           execution_class: existingExc,
-          template_id: templateIdFromRecord(record),
+          template_id: templateId,
           status: String(record.status || 'conform'),
           wps: String(record.wps || ''),
           wps_id: wpsId,
-          coordinator_id: coordinatorIdFromRecord(record),
+          coordinator_id: coordinatorId,
         });
         const assemblyRows = Array.isArray(assembliesResult) ? assembliesResult : Array.isArray((assembliesResult as Record<string, unknown>)?.items) ? ((assembliesResult as Record<string, unknown>).items as Array<Record<string, unknown>>) : [];
         setAssemblyOptions(assemblyRows);
