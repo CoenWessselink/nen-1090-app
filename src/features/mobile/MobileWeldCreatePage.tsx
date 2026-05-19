@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { createWeld, uploadWeldAttachment } from '@/api/welds';
 import { getAssemblies } from '@/api/assemblies';
 import { getProject } from '@/api/projects';
+import { getProjectNormSelection } from '@/api/norms';
 import { getInspectionTemplates, getProcesses, getWeldCoordinators, getWelders } from '@/api/settings';
 import { useMaterials } from '@/hooks/useSettings';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
@@ -15,7 +16,7 @@ function defaultForm(projectId: string): WeldFormValues {
   return { project_id: projectId, weld_number: '', assembly_id: '', wps_id: '', welder_name: '', coordinator_id: '', process: '135', location: '', status: 'conform', execution_class: 'EXC2', template_id: '' };
 }
 
-type Option = { id?: string; code?: string; name?: string; label?: string; value?: string; exc_class?: string; execution_class?: string; norm?: string; version?: string | number };
+type Option = { id?: string; code?: string; name?: string; label?: string; value?: string; exc_class?: string; execution_class?: string; norm?: string; version?: string | number; is_default?: boolean; is_locked?: boolean };
 type MobileWeldForm = WeldFormValues & { material?: string };
 
 function asOptions(value: unknown): Option[] {
@@ -33,6 +34,48 @@ function unwrapCreatedWeldId(value: unknown): string {
   const record = value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
   const nested = record.weld && typeof record.weld === 'object' ? (record.weld as Record<string, unknown>) : {};
   return String(record.id || record.weld_id || nested.id || nested.weld_id || '');
+}
+
+function normalizeExc(value: unknown): WeldFormValues['execution_class'] {
+  const raw = String(value || '').trim().toUpperCase().replace(/\s+/g, '');
+  const match = raw.match(/EXC[1-4]/)?.[0];
+  return (match || 'EXC2') as WeldFormValues['execution_class'];
+}
+
+function excFromProject(project: Project | null, selection: unknown): WeldFormValues['execution_class'] {
+  const selectionRecord = selection && typeof selection === 'object' ? (selection as Record<string, unknown>) : {};
+  const profile = (selectionRecord.norm_profile || selectionRecord.profile) && typeof (selectionRecord.norm_profile || selectionRecord.profile) === 'object'
+    ? ((selectionRecord.norm_profile || selectionRecord.profile) as Record<string, unknown>)
+    : {};
+  return normalizeExc(
+    selectionRecord.exc_class ||
+    profile.exc_class ||
+    project?.execution_class ||
+    project?.executieklasse ||
+    project?.exc_class ||
+    (project as Record<string, unknown> | null)?.default_execution_class,
+  );
+}
+
+function templateIdFromProject(project: Project | null, selection: unknown): string {
+  const selectionRecord = selection && typeof selection === 'object' ? (selection as Record<string, unknown>) : {};
+  const snapshots = Array.isArray(selectionRecord.snapshots) ? selectionRecord.snapshots as Array<Record<string, unknown>> : [];
+  return String(
+    (project as Record<string, unknown> | null)?.default_template_id ||
+    (project as Record<string, unknown> | null)?.inspection_template_id ||
+    selectionRecord.template_id ||
+    selectionRecord.inspection_template_id ||
+    snapshots[0]?.source_template_id ||
+    snapshots[0]?.template_id ||
+    '',
+  ).trim();
+}
+
+function matchingTemplateId(templates: Option[], exc: string, preferredId = ''): string {
+  if (preferredId && templates.some((item) => String(item.id || '') === preferredId)) return preferredId;
+  const normalizedExc = normalizeExc(exc);
+  const matches = templates.filter((item) => normalizeExc(item.exc_class || item.execution_class || item.code || item.name) === normalizedExc);
+  return String((matches.find((item) => item.is_default && item.is_locked) || matches.find((item) => item.is_default) || matches[0])?.id || '');
 }
 
 export function MobileWeldCreatePage() {
@@ -55,30 +98,30 @@ export function MobileWeldCreatePage() {
     let active = true;
     Promise.all([
       getProject(projectId).catch(() => null),
+      getProjectNormSelection(projectId).catch(() => null),
       getProcesses().catch(() => []),
       getWelders().catch(() => []),
       getWeldCoordinators().catch(() => []),
       getInspectionTemplates().catch(() => []),
       getAssemblies(projectId).catch(() => ({ items: [] })),
     ])
-      .then(([projectRecord, processRows, welderRows, coordinatorRows, templateRows, assemblyRows]) => {
+      .then(([projectRecord, normSelection, processRows, welderRows, coordinatorRows, templateRows, assemblyRows]) => {
         if (!active) return;
+        const templateOptions = asOptions(templateRows);
         setProcesses(asOptions(processRows));
         setWelders(asOptions(welderRows));
         setCoordinators(asOptions(coordinatorRows));
-        setTemplates(asOptions(templateRows));
+        setTemplates(templateOptions);
         setAssemblies(asOptions(assemblyRows));
 
-        if (projectRecord) {
-          const proj = projectRecord as Project;
-          const projExc = String(proj.execution_class || proj.executieklasse || proj.exc_class || '').trim();
-          const projTemplateId = String(proj.default_template_id || proj.inspection_template_id || '').trim();
-          setForm((current) => ({
-            ...current,
-            execution_class: (projExc || current.execution_class || 'EXC2') as WeldFormValues['execution_class'],
-            template_id: projTemplateId || current.template_id,
-          }));
-        }
+        const proj = projectRecord ? (projectRecord as Project) : null;
+        const inheritedExc = excFromProject(proj, normSelection);
+        const preferredTemplateId = templateIdFromProject(proj, normSelection);
+        setForm((current) => ({
+          ...current,
+          execution_class: inheritedExc,
+          template_id: matchingTemplateId(templateOptions, inheritedExc, preferredTemplateId),
+        }));
         setProjectLoaded(true);
       })
       .catch(() => undefined);
@@ -87,9 +130,8 @@ export function MobileWeldCreatePage() {
 
   useEffect(() => {
     if (!projectLoaded) return;
-    if (form.template_id) return;
-    const matching = templates.find((item) => String(item.exc_class || item.execution_class || '').toUpperCase() === String(form.execution_class || '').toUpperCase());
-    if (matching?.id) setForm((current) => ({ ...current, template_id: String(matching.id) }));
+    const nextTemplateId = matchingTemplateId(templates, form.execution_class, form.template_id);
+    if (nextTemplateId !== form.template_id) setForm((current) => ({ ...current, template_id: nextTemplateId }));
   }, [templates, form.execution_class, form.template_id, projectLoaded]);
 
   const canSave = useMemo(() => Boolean(form.weld_number.trim()), [form]);
@@ -108,6 +150,7 @@ export function MobileWeldCreatePage() {
         weld_number: form.weld_number,
         assembly_id: form.assembly_id || null,
         coordinator_id: form.coordinator_id || null,
+        welding_coordinator_id: form.coordinator_id || null,
         wps_id: form.wps_id || null,
         process: form.process || null,
         material: form.material || null,
@@ -117,6 +160,7 @@ export function MobileWeldCreatePage() {
         status: form.status || 'conform',
         execution_class: form.execution_class || 'EXC2',
         template_id: form.template_id || null,
+        inspection_template_id: form.template_id || null,
         project_id: projectId,
       }) as Record<string, unknown>;
       const weldId = unwrapCreatedWeldId(created);
@@ -135,6 +179,8 @@ export function MobileWeldCreatePage() {
     }
   }
 
+  const filteredTemplates = templates.filter((item) => normalizeExc(item.exc_class || item.execution_class || item.code || item.name) === normalizeExc(form.execution_class));
+
   return (
     <MobilePageScaffold title="Create weld" subtitle="Add weld details" backTo={`/projecten/${projectId}/lassen`}>
       {error ? <div className="mobile-inline-alert is-error">{error}</div> : null}
@@ -147,7 +193,8 @@ export function MobileWeldCreatePage() {
         <label className="mobile-form-field mobile-select-field"><span>Material</span><select value={form.material || ''} onChange={(event) => patch('material', event.target.value)}><option value="">Select material</option>{materials.map((item, index) => <option key={`${item.id || item.code || item.value || index}`} value={String(item.code || item.value || item.name || '')}>{String(item.name || item.label || item.code || item.value || '')}</option>)}</select></label>
         <label className="mobile-form-field mobile-select-field"><span>Welder</span><select value={form.welder_name || ''} onChange={(event) => patch('welder_name', event.target.value)}><option value="">Select welder</option>{welders.map((item, index) => <option key={`${item.id || item.code || item.value || index}`} value={String(item.name || item.label || item.code || item.value || '')}>{String(item.name || item.label || item.code || item.value || '')}</option>)}</select></label>
         <label className="mobile-form-field mobile-select-field"><span>Welding Coordinator</span><select value={form.coordinator_id || ''} onChange={(event) => patch('coordinator_id', event.target.value)}><option value="">Select Welding Coordinator</option>{coordinators.map((item, index) => <option key={`${item.id || item.code || item.value || index}`} value={String(item.id || '')}>{String(item.name || item.label || item.code || item.value || item.id || '')}</option>)}</select></label>
-        <label className="mobile-form-field mobile-select-field"><span>Inspection template</span><select value={form.template_id || ''} onChange={(event) => patch('template_id', event.target.value)}><option value="">Select template</option>{templates.filter((item) => !form.execution_class || String(item.exc_class || item.execution_class || '').toUpperCase() === String(form.execution_class || '').toUpperCase()).map((item, index) => <option key={`${item.id || index}`} value={String(item.id || '')}>{[String(item.name || item.label || item.id || ''), String(item.norm || '').trim(), item.version ? `v${String(item.version)}` : ''].filter(Boolean).join(' · ')}</option>)}</select></label>
+        <label className="mobile-form-field"><span>Location</span><input value={form.location || ''} onChange={(event) => patch('location', event.target.value)} placeholder="Location" /></label>
+        <label className="mobile-form-field mobile-select-field"><span>Inspection template</span><select value={form.template_id || ''} onChange={(event) => patch('template_id', event.target.value)}><option value="">Select template</option>{filteredTemplates.map((item, index) => <option key={`${item.id || index}`} value={String(item.id || '')}>{[String(item.name || item.label || item.id || ''), String(item.norm || '').trim(), item.version ? `v${String(item.version)}` : ''].filter(Boolean).join(' · ')}</option>)}</select></label>
         <label className="mobile-form-field mobile-select-field"><span>Status</span><select value={form.status} onChange={(event) => patch('status', event.target.value as WeldFormValues['status'])}><option value="conform">Compliant</option><option value="defect">Non-compliant</option><option value="gerepareerd">Pending review</option></select></label>
         <label className="mobile-upload-field"><span><ImagePlus size={16} /> Add photos</span><input type="file" accept="image/*" capture="environment" multiple onChange={(event) => setFiles(Array.from(event.target.files || []))} /><small><Camera size={14} /> Camera or photo library</small></label>
         {files.length ? <div className="mobile-file-list">{files.map((file) => <div key={`${file.name}-${file.size}`} className="mobile-file-pill">{file.name}</div>)}</div> : null}
