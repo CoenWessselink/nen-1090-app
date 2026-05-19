@@ -30,6 +30,8 @@ import {
   SuperadminControlCenter,
   SuperadminControlCenterPage,
   SuperadminCommercialGovernancePage,
+  InvoiceManagerPage,
+  InvoicePdfPage,
   TenantProfilePage,
   WeldInspectionDetailPage,
 } from '@/app/router/lazyPages';
@@ -124,6 +126,22 @@ export const routerConfig = [
         element: (
           <RoleGuard allow={ROLES}>
             <SuperadminCommercialGovernancePage />
+          </RoleGuard>
+        ),
+      },
+      {
+        path: 'superadmin/invoices',
+        element: (
+          <RoleGuard allow={ROLES}>
+            <InvoiceManagerPage />
+          </RoleGuard>
+        ),
+      },
+      {
+        path: 'superadmin/invoices/:invoiceId/pdf',
+        element: (
+          <RoleGuard allow={ROLES}>
+            <InvoicePdfPage />
           </RoleGuard>
         ),
       },
