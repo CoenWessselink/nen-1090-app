@@ -146,10 +146,6 @@ function itemPayload(item: TemplateItem, index: number) {
   };
 }
 
-function buttonStyle: never {
-  throw new Error('unreachable');
-}
-
 export function InspectionTemplatesManager() {
   const templates = useInspectionTemplates();
   const createMutation = useCreateMasterData();
