@@ -146,8 +146,33 @@ function normalizeTemplate(template: InspectionTemplate): InspectionTemplate {
   const directItems = Array.isArray(template.items_json) ? template.items_json : Array.isArray(template.items) ? template.items : [];
   const sectionItems = Array.isArray(template.sections) ? template.sections.flatMap((section) => (section.items || []).map((item) => ({ ...item, section_code: section.code, group: section.name }))) : [];
   const items = (directItems.length ? directItems : sectionItems).map((item, index) => normalizeTemplateItem(item as Record<string, unknown>, index));
-  const sections = Array.isArray(template.sections) && template.sections.length ? template.sections : [{ id: `${template.code}-section`, code: 'checks', name: 'Controlepunten', phase: 'Inspection', sort_order: 1, items }];
+  const sections = Array.isArray(template.sections) && template.sections.length
+    ? template.sections.map((section) => ({ ...section, name: section.name || section.code, items: (section.items || []).map((item, index) => normalizeTemplateItem({ ...item, section_code: section.code, group: section.name }, index)) }))
+    : [{ id: `${template.code}-section`, code: 'checks', name: 'Controlepunten', phase: 'Inspection', sort_order: 1, items }];
   return { ...template, id: String(template.id || template.code), code: String(template.code || template.id), name: String(template.name || template.code || 'Inspectietemplate'), exc_class: template.exc_class || String(template.profile_code || template.code || '').match(/EXC[1-4]/)?.[0] || 'EXC2', norm: template.norm || 'EN 1090 / ISO 3834 / ISO 5817', items, items_json: items, item_count: Number(template.item_count || items.length || 0), sections };
+}
+
+function runFromTemplate(template: InspectionTemplate, projectId: string | undefined, weldId: string): WeldInspectionRun {
+  const normalized = normalizeTemplate(template);
+  const sections = (normalized.sections || []).filter((section) => (section.items || []).length);
+  const results = sections.flatMap((section) => section.items || []);
+  return {
+    id: `draft-${weldId}`,
+    project_id: projectId,
+    weld_id: weldId,
+    template_id: normalized.id,
+    template_name: normalized.name,
+    template_code: normalized.code,
+    template_version: normalized.version,
+    norm_name: normalized.name,
+    status: 'draft',
+    overall_result: 'conform',
+    notes: '',
+    sections,
+    results,
+    history: [],
+    attachments: [],
+  };
 }
 
 function templatesFromValidation(payload: unknown): InspectionTemplate[] {
@@ -183,12 +208,34 @@ export async function getProjectNormSelection(projectId: string) {
 
 export async function setProjectNormSelection(projectId: string, payload: Record<string, unknown>) { return await apiRequest<ProjectNormSelection>(`/projects/${projectId}/norm-selection`, { method: 'POST', body: JSON.stringify(payload) }); }
 
+async function fallbackInspectionFromWeldTemplate(projectId: string | undefined, weldId: string): Promise<WeldInspectionRun | null> {
+  if (!projectId) return null;
+  try {
+    const weld = await apiRequest<Record<string, unknown>>(`/projects/${projectId}/welds/${weldId}`);
+    const templateId = String(weld.template_id || weld.inspection_template_id || weld.default_template_id || '').trim();
+    if (!templateId) return null;
+    const template = await getNormTemplate(templateId);
+    const run = runFromTemplate(template, projectId, weldId);
+    return (run.sections || []).length ? run : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function getWeldInspection(projectIdOrWeldId: string, maybeWeldId?: string) {
   const projectId = maybeWeldId ? projectIdOrWeldId : currentProjectId();
   const weldId = maybeWeldId || projectIdOrWeldId;
-  const paths = projectId ? [`/projects/${projectId}/welds/${weldId}/inspection`, `/projects/${projectId}/welds/${weldId}/inspections`, `/welds/${weldId}/inspection`] : [`/welds/${weldId}/inspection`];
-  try { return normalizeInspection(await optionalRequest<unknown>(paths), projectId, weldId); }
-  catch (error) { if (error instanceof ApiError && [404, 405, 422, 501].includes(error.status)) return emptyRun(weldId, projectId); throw error; }
+  const path = projectId ? `/projects/${projectId}/welds/${weldId}/inspection` : `/welds/${weldId}/inspection`;
+  try {
+    const normalized = normalizeInspection(await apiRequest<unknown>(path), projectId, weldId);
+    if ((normalized.sections || []).length) return normalized;
+    return (await fallbackInspectionFromWeldTemplate(projectId, weldId)) || normalized;
+  } catch (error) {
+    if (error instanceof ApiError && [404, 405, 422, 501].includes(error.status)) {
+      return (await fallbackInspectionFromWeldTemplate(projectId, weldId)) || emptyRun(weldId, projectId);
+    }
+    throw error;
+  }
 }
 
 export async function saveWeldInspection(projectIdOrWeldId: string, weldIdOrPayload: string | Record<string, unknown>, maybePayload?: Record<string, unknown>) {
@@ -197,9 +244,8 @@ export async function saveWeldInspection(projectIdOrWeldId: string, weldIdOrPayl
   const payload = (typeof weldIdOrPayload === 'string' ? maybePayload : weldIdOrPayload) || {};
   const status = String((payload as Record<string, unknown>).status || (payload as Record<string, unknown>).overall_status || statusFromRows((payload as Record<string, unknown>).results || (payload as Record<string, unknown>).checks || (payload as Record<string, unknown>).items) || 'conform');
   const body = { ...payload, weld_id: weldId, status, overall_status: status, result: status };
-  const path = projectId ? `/projects/${projectId}/welds/${weldId}/inspections` : `/welds/${weldId}/inspections`;
+  const path = projectId ? `/projects/${projectId}/welds/${weldId}/inspection` : `/welds/${weldId}/inspection`;
   const saved = await apiRequest<unknown>(path, { method: 'PUT', body: JSON.stringify(body) });
-  if (projectId) await apiRequest(`/projects/${projectId}/welds/${weldId}`, { method: 'PATCH', body: JSON.stringify({ status, result: status }) }).catch(() => undefined);
   if (projectId && typeof window !== 'undefined') {
     try { window.sessionStorage.setItem('weldinspect:last-save-toast', JSON.stringify({ type: 'success', title: 'Inspection saved', message: 'The weld list has been updated.', projectId, weldId, at: Date.now() })); } catch { /* ignore */ }
     window.dispatchEvent(new CustomEvent('nen1090:data-refresh', { detail: { scope: 'welds', projectId, weldId, reason: 'inspection-saved' } }));
