@@ -50,6 +50,7 @@ export function SuperadminCommercialGovernancePage() {
   useEffect(() => { void loadAll(); }, [loadAll]);
 
   async function selectTenant(tenantId: string) {
+    if (!tenantId) return;
     setSelectedTenantId(tenantId); setDetailLoading(true); setTab('subscription');
     try {
       const [sub, lim, feat, au] = await Promise.all([
