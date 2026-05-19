@@ -189,10 +189,12 @@ export function MobileWeldCreatePage() {
       }) as Record<string, unknown>;
       const weldId = unwrapCreatedWeldId(created);
       if (!weldId) throw new Error('Weld was created, but the API did not return a weld id.');
-      for (const file of files) {
-        const formData = new FormData();
-        formData.append('files', file, file.name);
-        await uploadWeldAttachment(projectId, weldId, formData);
+      if (files.length) {
+        await Promise.all(files.map((file) => {
+          const formData = new FormData();
+          formData.append('files', file, file.name);
+          return uploadWeldAttachment(projectId, weldId, formData);
+        }));
       }
       dispatchAppRefresh({ scope: 'welds', projectId, weldId, reason: 'weld-created' });
       navigate(`/projecten/${projectId}/lassen`, { replace: true });
