@@ -8,6 +8,7 @@ import '@/styles/marketing-scope.css';
 import '@/styles/ui-polish.css';
 import '@/styles/mobile-overhaul-fixes.css';
 import '@/styles/runtime-mobile-hotfix.css';
+import '@/styles/report-logo-and-settings-fixes.css';
 import { installFrontendEnglish } from '@/lib/frontend-english';
 import { initSentry } from '@/lib/sentry';
 
