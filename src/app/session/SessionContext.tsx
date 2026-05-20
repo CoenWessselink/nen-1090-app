@@ -1,7 +1,7 @@
 import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { ApiError } from '@/api/client';
-import { getMe, refreshCentralSession, refreshSession } from '@/api/auth';
-import { readAnyPersistedSession, useAuthStore } from '@/app/store/auth-store';
+import { getMe, refreshCentralSession } from '@/api/auth';
+import { cookieSessionMarker, useAuthStore } from '@/app/store/auth-store';
 import type { Role, SessionUser } from '@/types/domain';
 
 export type AccessPermission =
@@ -89,6 +89,19 @@ function normalizeMeUser(input: Record<string, unknown>): SessionUser {
   };
 }
 
+function normalizeRefreshUser(input: unknown): SessionUser | null {
+  const record = input && typeof input === 'object' ? input as Record<string, unknown> : null;
+  const rawUser = record?.user && typeof record.user === 'object' ? record.user as Record<string, unknown> : null;
+  if (!rawUser?.email) return null;
+  return {
+    email: String(rawUser.email || ''),
+    tenant: String(rawUser.tenant || ''),
+    tenantId: rawUser.tenant_id as string | number | undefined ?? rawUser.tenantId as string | number | undefined ?? '',
+    role: String(rawUser.role || rawUser.canonical_role || ''),
+    name: String(rawUser.name || ''),
+  };
+}
+
 export function SessionProvider({ children }: PropsWithChildren) {
   const token = useAuthStore((state) => state.token);
   const refreshToken = useAuthStore((state) => state.refreshToken);
@@ -96,100 +109,50 @@ export function SessionProvider({ children }: PropsWithChildren) {
   const impersonation = useAuthStore((state) => state.impersonation);
   const clearSession = useAuthStore((state) => state.clearSession);
   const setSession = useAuthStore((state) => state.setSession);
-  const updateToken = useAuthStore((state) => state.updateToken);
   const [isBootstrapping, setIsBootstrapping] = useState(true);
   const lastValidationRef = useRef<{ token: string; timestamp: number } | null>(null);
-
-  useEffect(() => {
-    try {
-      const persisted = readAnyPersistedSession();
-      if (!token && persisted.token && persisted.user) {
-        useAuthStore.setState({
-          token: persisted.token,
-          refreshToken: persisted.refreshToken,
-          user: persisted.user,
-          impersonation: null,
-        });
-      }
-    } catch (error) {
-      console.error('Persisted session restore failed', error);
-      clearSession();
-    }
-  }, [clearSession, token]);
 
   useEffect(() => {
     let cancelled = false;
 
     async function bootstrap() {
       try {
-        const persisted = readAnyPersistedSession();
-        const effectiveToken = token || persisted.token;
-        const effectiveRefreshToken = refreshToken || persisted.refreshToken;
-        const effectiveUser = user || persisted.user;
-
-        if (!effectiveToken || !effectiveUser) {
-          if (!cancelled) setIsBootstrapping(false);
-          return;
-        }
-
-        if (!token && effectiveToken && effectiveUser) {
-          setSession(effectiveToken, effectiveUser, effectiveRefreshToken || null);
-        }
-
         const lastValidation = lastValidationRef.current;
         const now = Date.now();
 
-        if (lastValidation?.token === effectiveToken && now - lastValidation.timestamp < AUTH_VALIDATE_TTL_MS) {
+        if (token && user && lastValidation?.token === token && now - lastValidation.timestamp < AUTH_VALIDATE_TTL_MS) {
           if (!cancelled) setIsBootstrapping(false);
           return;
         }
 
-        lastValidationRef.current = { token: effectiveToken, timestamp: now };
-
         try {
           const me = await getMe();
-
           if (!cancelled) {
-            setSession(effectiveToken, normalizeMeUser(me as Record<string, unknown>), effectiveRefreshToken || null);
+            const normalizedUser = normalizeMeUser(me as Record<string, unknown>);
+            lastValidationRef.current = { token: cookieSessionMarker, timestamp: Date.now() };
+            setSession(cookieSessionMarker, normalizedUser, null);
           }
+          return;
         } catch (error) {
-          if (isUnauthorized(error)) {
-            try {
-              const refreshed = effectiveRefreshToken
-                ? await refreshSession(effectiveRefreshToken)
-                : await refreshCentralSession();
-
-              if (!cancelled && refreshed.access_token && refreshed.user?.email) {
-                const refreshedUser: SessionUser = {
-                  email: refreshed.user.email,
-                  tenant: refreshed.user.tenant || '',
-                  tenantId: refreshed.user.tenant_id || '',
-                  role: refreshed.user.role || '',
-                  name: refreshed.user.name || '',
-                };
-
-                lastValidationRef.current = {
-                  token: refreshed.access_token,
-                  timestamp: Date.now(),
-                };
-
-                setSession(
-                  refreshed.access_token,
-                  refreshedUser,
-                  refreshed.refresh_token || effectiveRefreshToken || null,
-                );
-
-                updateToken(refreshed.access_token);
-                return;
-              }
-
-              if (!cancelled) clearSession();
-            } catch (refreshError) {
-              console.error('Session refresh failed', refreshError);
-              if (!cancelled) clearSession();
-            }
-          } else {
+          if (!isUnauthorized(error)) {
             console.error('Session bootstrap failed', error);
+            return;
+          }
+        }
+
+        try {
+          const refreshed = await refreshCentralSession();
+          const refreshedUser = normalizeRefreshUser(refreshed);
+          if (!cancelled && refreshedUser) {
+            lastValidationRef.current = { token: cookieSessionMarker, timestamp: Date.now() };
+            setSession(cookieSessionMarker, refreshedUser, null);
+            return;
+          }
+          if (!cancelled) clearSession();
+        } catch (refreshError) {
+          if (!cancelled) {
+            console.error('Session refresh failed', refreshError);
+            clearSession();
           }
         }
       } catch (bootstrapError) {
@@ -205,12 +168,11 @@ export function SessionProvider({ children }: PropsWithChildren) {
     return () => {
       cancelled = true;
     };
-  }, [refreshToken, setSession, token, updateToken, user, clearSession]);
+  }, [clearSession, setSession, token, user]);
 
-  const persisted = readAnyPersistedSession();
-  const effectiveToken = token || persisted.token;
-  const effectiveRefreshToken = refreshToken || persisted.refreshToken;
-  const effectiveUser = user || persisted.user;
+  const effectiveToken = token || null;
+  const effectiveRefreshToken = refreshToken || null;
+  const effectiveUser = user || null;
   const normalizedRole = normalizeRole(effectiveUser?.role);
   const permissions = useMemo(() => permissionMap[normalizedRole] || [], [normalizedRole]);
 
