@@ -1,4 +1,4 @@
-/* Dashboard reference pass: calmer typography, tighter alignment and readable full dashboard. */
+/* Dashboard reference pass: four-card premium mobile dashboard. */
 
 @media (max-width: 1024px) {
   .mobile-page-header {
@@ -18,6 +18,10 @@
 
   .mobile-dashboard-premium-grid {
     gap: 14px !important;
+  }
+
+  .mobile-dashboard-premium-grid .mobile-kpi-card-action {
+    display: none !important;
   }
 
   .mobile-dashboard-premium-grid .mobile-kpi-card:not(.mobile-kpi-card-action) {
@@ -58,16 +62,33 @@
     letter-spacing: -0.022em !important;
   }
 
-  .mobile-kpi-subtitle {
+  .mobile-dashboard-premium-grid .mobile-kpi-card:nth-child(1) .mobile-kpi-subtitle,
+  .mobile-dashboard-premium-grid .mobile-kpi-card:nth-child(2) .mobile-kpi-subtitle,
+  .mobile-dashboard-premium-grid .mobile-kpi-card:nth-child(3) .mobile-kpi-subtitle,
+  .mobile-dashboard-premium-grid .mobile-kpi-card:nth-child(4) .mobile-kpi-subtitle {
     grid-column: 2 / 4 !important;
     grid-row: 2 !important;
     display: block !important;
     margin: 4px 56px 0 0 !important;
-    color: rgba(255,255,255,.78) !important;
-    font-size: clamp(13px, 3.1vw, 16px) !important;
+    color: transparent !important;
+    font-size: 0 !important;
     line-height: 1.18 !important;
     font-weight: 500 !important;
   }
+
+  .mobile-dashboard-premium-grid .mobile-kpi-card:nth-child(1) .mobile-kpi-subtitle::after,
+  .mobile-dashboard-premium-grid .mobile-kpi-card:nth-child(2) .mobile-kpi-subtitle::after,
+  .mobile-dashboard-premium-grid .mobile-kpi-card:nth-child(3) .mobile-kpi-subtitle::after,
+  .mobile-dashboard-premium-grid .mobile-kpi-card:nth-child(4) .mobile-kpi-subtitle::after {
+    color: rgba(255,255,255,.78) !important;
+    font-size: clamp(13px, 3.1vw, 16px) !important;
+    line-height: 1.18 !important;
+  }
+
+  .mobile-dashboard-premium-grid .mobile-kpi-card:nth-child(1) .mobile-kpi-subtitle::after { content: 'Projecten in uitvoering'; }
+  .mobile-dashboard-premium-grid .mobile-kpi-card:nth-child(2) .mobile-kpi-subtitle::after { content: 'Lassen die actie vereisen'; }
+  .mobile-dashboard-premium-grid .mobile-kpi-card:nth-child(3) .mobile-kpi-subtitle::after { content: 'Afwijkingen die aandacht nodig hebben'; }
+  .mobile-dashboard-premium-grid .mobile-kpi-card:nth-child(4) .mobile-kpi-subtitle::after { content: 'Inspecties succesvol afgerond'; }
 
   .mobile-dashboard-premium-grid .mobile-kpi-card strong {
     grid-column: 2 !important;
@@ -177,21 +198,6 @@
       radial-gradient(circle at 66% 65%, rgba(255,255,255,.66) 0 6px, transparent 7px),
       radial-gradient(circle at 90% 24%, rgba(255,255,255,.66) 0 6px, transparent 7px);
   }
-
-  .mobile-dashboard-premium-grid .mobile-kpi-card-action {
-    min-height: 104px !important;
-    padding: 20px 22px !important;
-    color: #0f172a !important;
-    background: rgba(255,255,255,.94) !important;
-    border-color: rgba(199,217,246,.84) !important;
-  }
-
-  .mobile-dashboard-premium-grid .mobile-kpi-card-action .mobile-kpi-top span,
-  .mobile-dashboard-premium-grid .mobile-kpi-card-action .mobile-kpi-subtitle,
-  .mobile-dashboard-premium-grid .mobile-kpi-card-action strong {
-    color: #0f172a !important;
-    text-shadow: none !important;
-  }
 }
 
 @media (max-width: 430px) {
@@ -235,8 +241,17 @@
     line-height: 1.06 !important;
   }
 
-  .mobile-kpi-subtitle {
+  .mobile-dashboard-premium-grid .mobile-kpi-card:nth-child(1) .mobile-kpi-subtitle,
+  .mobile-dashboard-premium-grid .mobile-kpi-card:nth-child(2) .mobile-kpi-subtitle,
+  .mobile-dashboard-premium-grid .mobile-kpi-card:nth-child(3) .mobile-kpi-subtitle,
+  .mobile-dashboard-premium-grid .mobile-kpi-card:nth-child(4) .mobile-kpi-subtitle {
     margin-right: 44px !important;
+  }
+
+  .mobile-dashboard-premium-grid .mobile-kpi-card:nth-child(1) .mobile-kpi-subtitle::after,
+  .mobile-dashboard-premium-grid .mobile-kpi-card:nth-child(2) .mobile-kpi-subtitle::after,
+  .mobile-dashboard-premium-grid .mobile-kpi-card:nth-child(3) .mobile-kpi-subtitle::after,
+  .mobile-dashboard-premium-grid .mobile-kpi-card:nth-child(4) .mobile-kpi-subtitle::after {
     font-size: 12.5px !important;
     line-height: 1.16 !important;
   }
