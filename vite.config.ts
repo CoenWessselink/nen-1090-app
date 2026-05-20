@@ -20,7 +20,7 @@ export default defineConfig({
     host: true,
   },
   build: {
-    sourcemap: true,
+    sourcemap: false,
     outDir: 'dist',
     emptyOutDir: true,
   },
