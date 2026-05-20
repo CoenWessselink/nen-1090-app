@@ -1,6 +1,5 @@
 import { PropsWithChildren } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { readAnyPersistedSession } from '@/app/store/auth-store';
 import { useSession } from '@/app/session/SessionContext';
 
 function isLocalPreviewBypassEnabled() {
@@ -15,18 +14,20 @@ function isLocalPreviewBypassEnabled() {
 export function ProtectedRoute({ children }: PropsWithChildren) {
   const location = useLocation();
   const session = useSession();
-  const persisted = readAnyPersistedSession();
-  const hasPersistedSession = Boolean(persisted.token && persisted.user);
 
   if (isLocalPreviewBypassEnabled()) {
     return <>{children}</>;
   }
 
-  const mayAccess = session.isAuthenticated || hasPersistedSession;
+  if (session.isBootstrapping) {
+    return (
+      <div className="route-fallback" role="status" aria-live="polite" style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>
+        Sessie controleren…
+      </div>
+    );
+  }
 
-  // Never render null while bootstrapping: without a session gate we redirect to login
-  // immediately so URL and DOM match (e2e + avoids blank flash on /dashboard).
-  if (!mayAccess) {
+  if (!session.isAuthenticated) {
     const from = `${location.pathname}${location.search}${location.hash}`;
     return (
       <Navigate
@@ -37,6 +38,5 @@ export function ProtectedRoute({ children }: PropsWithChildren) {
     );
   }
 
-  // Session or persisted credentials present: allow shell while bootstrap validates / refreshes.
   return <>{children}</>;
 }
