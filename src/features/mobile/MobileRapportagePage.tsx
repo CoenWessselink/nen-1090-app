@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Download, FileText, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { exportPdf, openPdfViewer } from '@/api/exports';
 import { useReports } from '@/hooks/useReports';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
 import { openDownloadUrl } from '@/utils/download';
@@ -23,8 +24,9 @@ function reportPdfUrl(row: ReportRow) {
   return String(row.pdf_url || row.download_url || '').trim();
 }
 
-function isProjectSummary(row: ReportRow) {
-  return String(row.type || '').toLowerCase().includes('project') || String(row.type || '').toLowerCase().includes('weld_compliance') || String(row.id || '').startsWith('project-');
+function rowProjectId(row: ReportRow) {
+  const value = row.project_id ?? (String(row.id || '').startsWith('project-summary-') ? String(row.id).replace('project-summary-', '') : '');
+  return String(value || '').trim();
 }
 
 function reportTitle(row?: ReportRow | null) {
@@ -41,6 +43,14 @@ function reportFilename(row: ReportRow) {
   return `Weld-Compliance-Report-${projectNumber}-${projectName}-${new Date().toISOString().slice(0, 10)}.pdf`;
 }
 
+function reportProjectMeta(row: ReportRow) {
+  return {
+    name: row.project_name || row.title || null,
+    code: row.projectnummer || String(row.project_id || row.id || ''),
+    client_name: row.client_name || null,
+  };
+}
+
 export function MobileRapportagePage() {
   const navigate = useNavigate();
   const reports = useReports({ page: 1, limit: 50 });
@@ -54,25 +64,46 @@ export function MobileRapportagePage() {
     return rows.filter((row) => JSON.stringify(row).toLowerCase().includes(q));
   }, [rows, search]);
 
-  const featured = visibleRows.find((item) => reportPdfUrl(item) || item.project_id) || null;
+  const featured = visibleRows.find((item) => rowProjectId(item) || reportPdfUrl(item)) || null;
 
-  async function openReport(row: ReportRow) {
+  async function createPdf(row: ReportRow) {
     setActionError(null);
-    if (row.project_id && isProjectSummary(row)) {
-      navigate(`/projecten/${row.project_id}/pdf-viewer`);
-      return;
-    }
-
-    const url = reportPdfUrl(row);
-    if (url) {
-      try {
-        await openDownloadUrl(url, reportFilename(row));
-      } catch (err) {
-        setActionError(normalizeApiError(err, 'PDF openen mislukt.'));
+    const projectId = rowProjectId(row);
+    try {
+      if (projectId) {
+        await openPdfViewer(projectId, reportProjectMeta(row));
+        return;
       }
-      return;
+      const url = reportPdfUrl(row);
+      if (url) await openDownloadUrl(url, reportFilename(row));
+    } catch (err) {
+      setActionError(normalizeApiError(err, 'PDF openen mislukt.'));
     }
-    if (row.project_id) navigate(`/projecten/${row.project_id}/pdf-viewer`);
+  }
+
+  async function downloadReport(row: ReportRow) {
+    setActionError(null);
+    const projectId = rowProjectId(row);
+    try {
+      if (projectId) {
+        await exportPdf(projectId, reportProjectMeta(row));
+        return;
+      }
+      const url = reportPdfUrl(row);
+      if (url) await openDownloadUrl(url, reportFilename(row));
+    } catch (err) {
+      setActionError(normalizeApiError(err, 'Download mislukt.'));
+    }
+  }
+
+  function openProject(row: ReportRow) {
+    const projectId = rowProjectId(row);
+    if (projectId) navigate(`/projecten/${projectId}/overzicht`);
+  }
+
+  function openCeDossier(row: ReportRow) {
+    const projectId = rowProjectId(row);
+    if (projectId) navigate(`/projecten/${projectId}/ce-v2`);
   }
 
   return (
@@ -84,7 +115,7 @@ export function MobileRapportagePage() {
         </div>
       </div>
 
-      <div className="mobile-list-card mobile-report-highlight" role="button" tabIndex={0} onClick={() => { if (featured) void openReport(featured); }}>
+      <div className="mobile-list-card mobile-report-highlight" role="button" tabIndex={0} onClick={() => { if (featured) void createPdf(featured); }}>
         <div className="mobile-list-card-head">
           <strong>PDF</strong>
           <span className="mobile-pill mobile-pill-success">Open now</span>
@@ -105,7 +136,7 @@ export function MobileRapportagePage() {
       {!reports.isLoading && !reports.isError ? (
         <div className="mobile-list-stack">
           {visibleRows.map((row) => {
-            const pdfUrl = reportPdfUrl(row);
+            const projectId = rowProjectId(row);
             return (
               <div key={String(row.id)} className="mobile-list-card">
                 <div className="mobile-list-card-head">
@@ -113,29 +144,27 @@ export function MobileRapportagePage() {
                   <span className="mobile-list-card-meta">{formatValue(row.created_at, '—')}</span>
                 </div>
                 <span className="mobile-list-card-subtitle">{formatValue(row.project_name || row.projectnummer || row.client_name, 'Project unknown')}</span>
-                <div className="mobile-inline-actions mobile-report-actions">
-                  {row.project_id ? (
-                    <button type="button" className="mobile-secondary-button" onClick={() => navigate(`/projecten/${row.project_id}/overzicht`)}>
-                      Project
-                    </button>
-                  ) : null}
-                  <button type="button" className="mobile-primary-button" onClick={() => void openReport(row)}>
+                <div
+                  className="mobile-inline-actions mobile-report-actions"
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+                    gap: 12,
+                    alignItems: 'stretch',
+                  }}
+                >
+                  <button type="button" className="mobile-secondary-button" onClick={() => openProject(row)} disabled={!projectId}>
+                    Project
+                  </button>
+                  <button type="button" className="mobile-primary-button" onClick={() => void createPdf(row)} disabled={!projectId && !reportPdfUrl(row)}>
                     Create PDF
                   </button>
-                  {pdfUrl ? (
-                    <button
-                      type="button"
-                      className="mobile-secondary-button"
-                      onClick={() => {
-                        setActionError(null);
-                        void openDownloadUrl(pdfUrl, reportFilename(row)).catch((err) => {
-                          setActionError(normalizeApiError(err, 'Download mislukt.'));
-                        });
-                      }}
-                    >
-                      <Download size={14} /> Download
-                    </button>
-                  ) : null}
+                  <button type="button" className="mobile-secondary-button" onClick={() => void downloadReport(row)} disabled={!projectId && !reportPdfUrl(row)}>
+                    <Download size={14} /> Download
+                  </button>
+                  <button type="button" className="mobile-secondary-button" onClick={() => openCeDossier(row)} disabled={!projectId}>
+                    CE Dossier
+                  </button>
                 </div>
               </div>
             );
