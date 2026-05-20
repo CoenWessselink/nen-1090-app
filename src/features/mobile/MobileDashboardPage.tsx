@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { FileCheck2, FileText, FolderKanban, FolderPlus, Settings, TriangleAlert, Wrench } from 'lucide-react';
 import { getDashboardSummary } from '@/api/dashboard';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
+import { PremiumActionCard, PremiumMetricCard } from '@/features/mobile/PremiumDashboard';
 import { APP_REFRESH_EVENT, formatValue, normalizeApiError } from '@/features/mobile/mobile-utils';
 import type { DashboardSummary } from '@/types/domain';
 
@@ -57,48 +58,54 @@ export function MobileDashboardPage() {
   const onboarding = (summary?.onboarding || {}) as DashboardOnboarding;
   const showExampleHint = Boolean(onboarding.show_example_project_hint || summary?.example_project_available);
 
-  const cards = useMemo(
+  const metricCards = useMemo(
     () => [
       {
         label: 'Actieve projecten',
         subtitle: 'Projecten in uitvoering',
         value: formatValue(summary?.active_projects || summary?.open_projects || 0, '0'),
-        tone: 'danger',
+        tone: 'danger' as const,
         icon: FolderKanban,
         to: '/projecten',
-        visual: 'bars',
+        visual: 'bars' as const,
       },
       {
         label: 'Open lassen',
         subtitle: 'Lassen die actie vereisen',
         value: formatValue(summary?.open_welds || 0, '0'),
-        tone: 'warning',
+        tone: 'warning' as const,
         icon: Wrench,
         to: '/projecten',
-        visual: 'donut',
+        visual: 'donut' as const,
       },
       {
         label: 'Niet-conforme lassen',
         subtitle: 'Afwijkingen die aandacht nodig hebben',
         value: formatValue(summary?.rejected_welds || 0, '0'),
-        tone: 'primary',
+        tone: 'primary' as const,
         icon: TriangleAlert,
         to: '/projecten',
-        visual: 'shield',
+        visual: 'shield' as const,
       },
       {
         label: 'Afgeronde inspecties',
         subtitle: 'Inspecties succesvol afgerond',
         value: formatValue(summary?.ce_dossier_ready || summary?.reports || 0, '0'),
-        tone: 'success',
+        tone: 'success' as const,
         icon: FileCheck2,
         to: '/rapportage',
-        visual: 'line',
+        visual: 'line' as const,
       },
-      { label: 'Rapportages', value: formatValue(summary?.reports || 0, '0'), subtitle: 'Beschikbare rapporten', tone: 'secondary', icon: FileText, to: '/rapportage', compact: true },
-      { label: 'Instellingen', value: '', subtitle: 'Stamdata & templates', tone: 'secondary', icon: Settings, to: '/instellingen', compact: true },
-      { label: 'Project aanmaken', value: '', subtitle: 'Nieuw project', tone: 'secondary', icon: FolderPlus, to: '/projecten/nieuw', compact: true },
-      { label: 'Las toevoegen', value: '', subtitle: 'Kies een project', tone: 'secondary', icon: Wrench, to: '/projecten', compact: true },
+    ],
+    [summary],
+  );
+
+  const actionCards = useMemo(
+    () => [
+      { label: 'Rapportages', value: formatValue(summary?.reports || 0, '0'), subtitle: 'Beschikbare rapporten', icon: FileText, to: '/rapportage' },
+      { label: 'Instellingen', subtitle: 'Stamdata & templates', icon: Settings, to: '/instellingen' },
+      { label: 'Project aanmaken', subtitle: 'Nieuw project', icon: FolderPlus, to: '/projecten/nieuw' },
+      { label: 'Las toevoegen', subtitle: 'Kies een project', icon: Wrench, to: '/projecten' },
     ],
     [summary],
   );
@@ -128,23 +135,31 @@ export function MobileDashboardPage() {
           </button>
         ) : null}
         {!loading && !error ? (
-          <div className="mobile-kpi-grid mobile-dashboard-premium-grid">
-            {cards.map((card) => {
-              const Icon = card.icon;
-              return (
-                <button
+          <div className="premium-dashboard-stack">
+            {metricCards.map((card) => (
+              <PremiumMetricCard
+                key={card.label}
+                label={card.label}
+                subtitle={card.subtitle}
+                value={card.value}
+                tone={card.tone}
+                visual={card.visual}
+                icon={card.icon}
+                onClick={() => navigate(card.to)}
+              />
+            ))}
+            <div className="premium-dashboard-actions">
+              {actionCards.map((card) => (
+                <PremiumActionCard
                   key={card.label}
-                  type="button"
-                  className={`mobile-kpi-card mobile-kpi-card-${card.tone} ${card.compact ? 'mobile-kpi-card-action' : ''} ${card.visual ? `mobile-kpi-visual-${card.visual}` : ''}`}
+                  label={card.label}
+                  subtitle={card.subtitle}
+                  value={card.value}
+                  icon={card.icon}
                   onClick={() => navigate(card.to)}
-                >
-                  {!card.compact ? <span className="mobile-kpi-more" aria-hidden="true">•••</span> : null}
-                  <div className="mobile-kpi-top"><Icon size={18} /><span>{card.label}</span></div>
-                  {card.subtitle ? <span className="mobile-kpi-subtitle">{card.subtitle}</span> : null}
-                  <strong>{card.value}</strong>
-                </button>
-              );
-            })}
+                />
+              ))}
+            </div>
           </div>
         ) : null}
       </MobilePageScaffold>
