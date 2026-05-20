@@ -26,7 +26,7 @@ import {
 
 export type MasterDataType = 'wps' | 'materials' | 'welders' | 'weld-coordinators' | 'inspection-templates';
 type PreviewState = { url: string; mimeType: string; filename: string } | null;
-type ImportRow = Record<string, unknown>;
+type MasterDataRow = Record<string, unknown>;
 
 const LABEL_MAP: Record<string, string> = {
   code: 'Code',
@@ -91,7 +91,7 @@ function documentKindFor(type: MasterDataType): string {
   return 'document';
 }
 
-function pickEditableKeys(rows: Array<Record<string, unknown>>, type: MasterDataType) {
+function pickEditableKeys(rows: MasterDataRow[], type: MasterDataType) {
   if (type === 'inspection-templates') return ['name', 'exc_class', 'version', 'is_default', 'items_json'];
   if (type === 'welders') return ['code', 'name', 'process', 'welding_method', 'qualification', 'certificate_no', 'material_group', 'thickness_range', 'welding_position', 'notes'];
   if (type === 'weld-coordinators') return ['code', 'name', 'email', 'level', 'process', 'qualification', 'certificate_no', 'notes'];
@@ -100,8 +100,8 @@ function pickEditableKeys(rows: Array<Record<string, unknown>>, type: MasterData
   return Object.keys(source).filter((key) => !['id', 'created_at', 'updated_at', 'tenant_id'].includes(key)).slice(0, 6);
 }
 
-function defaultDraft(type: MasterDataType, rows: Array<Record<string, unknown>>) {
-  const draft: Record<string, unknown> = Object.fromEntries(pickEditableKeys(rows, type).map((key) => [key, '']));
+function defaultDraft(type: MasterDataType, rows: MasterDataRow[]): MasterDataRow {
+  const draft: MasterDataRow = Object.fromEntries(pickEditableKeys(rows, type).map((key) => [key, '']));
   if (type === 'inspection-templates') {
     draft.exc_class = 'EXC2';
     draft.version = 1;
@@ -116,7 +116,7 @@ function defaultDraft(type: MasterDataType, rows: Array<Record<string, unknown>>
   return draft;
 }
 
-function normalizeDraft(type: MasterDataType, draft: Record<string, unknown>) {
+function normalizeDraft(type: MasterDataType, draft: MasterDataRow): MasterDataRow {
   if (type === 'inspection-templates') {
     return {
       name: String(draft.name || ''),
@@ -126,7 +126,7 @@ function normalizeDraft(type: MasterDataType, draft: Record<string, unknown>) {
       items_json: typeof draft.items_json === 'string' ? JSON.parse(draft.items_json || '[]') : draft.items_json,
     };
   }
-  const normalized: Record<string, unknown> = {};
+  const normalized: MasterDataRow = {};
   Object.entries(draft).forEach(([key, value]) => {
     normalized[key] = typeof value === 'string' ? value.trim() : value;
   });
@@ -145,12 +145,10 @@ function downloadBlob(filename: string, blob: Blob) {
 
 function extractId(result: unknown): string | null {
   if (!result || typeof result !== 'object') return null;
-  const direct = (result as Record<string, unknown>).id;
+  const direct = (result as MasterDataRow).id;
   if (direct) return String(direct);
-  const data = (result as Record<string, unknown>).data;
-  if (data && typeof data === 'object' && (data as Record<string, unknown>).id) {
-    return String((data as Record<string, unknown>).id);
-  }
+  const data = (result as MasterDataRow).data;
+  if (data && typeof data === 'object' && (data as MasterDataRow).id) return String((data as MasterDataRow).id);
   return null;
 }
 
@@ -178,7 +176,7 @@ function parseHtmlRows(text: string): string[][] {
     .filter((line) => line.some(Boolean));
 }
 
-function parseImportRows(text: string): ImportRow[] {
+function parseImportRows(text: string): MasterDataRow[] {
   const table = /<table|<tr|<html/i.test(text) ? parseHtmlRows(text) : parseDelimited(text);
   let headerIndex = -1;
   let headerMap: Record<number, string> = {};
@@ -200,7 +198,7 @@ function parseImportRows(text: string): ImportRow[] {
   if (headerIndex < 0) throw new Error('Geen geldige kolomkoppen gevonden. Gebruik minimaal Naam/Name/Welder en eventueel Code.');
 
   return table.slice(headerIndex + 1).map((line) => {
-    const item: ImportRow = {};
+    const item: MasterDataRow = {};
     Object.entries(headerMap).forEach(([columnIndex, key]) => {
       const value = line[Number(columnIndex)]?.trim();
       if (value) item[key] = value;
@@ -219,7 +217,7 @@ export function MasterDataManager({
 }: {
   title: string;
   type: MasterDataType;
-  rows: Array<Record<string, unknown>>;
+  rows: MasterDataRow[];
   isLoading: boolean;
   isError: boolean;
   refetch: () => void;
@@ -233,10 +231,10 @@ export function MasterDataManager({
 
   const [search, setSearch] = useState('');
   const [editorOpen, setEditorOpen] = useState(false);
-  const [deleteRow, setDeleteRow] = useState<Record<string, unknown> | null>(null);
+  const [deleteRow, setDeleteRow] = useState<MasterDataRow | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | number | null>(null);
-  const [draft, setDraft] = useState<Record<string, unknown>>(() => defaultDraft(type, rows));
+  const [draft, setDraft] = useState<MasterDataRow>(() => defaultDraft(type, rows));
 
   const [docRows, setDocRows] = useState<EntityDocument[]>([]);
   const [docLoading, setDocLoading] = useState(false);
@@ -247,19 +245,16 @@ export function MasterDataManager({
   const scope = documentScopeFor(type);
   const documentLabel = type === 'welders' || type === 'weld-coordinators' ? 'Certificaten' : 'Documenten';
 
-  useEffect(() => {
-    return () => {
-      if (preview?.url) window.URL.revokeObjectURL(preview.url);
-    };
+  useEffect(() => () => {
+    if (preview?.url) window.URL.revokeObjectURL(preview.url);
   }, [preview?.url]);
 
-  const filteredRows = useMemo(
+  const filteredRows = useMemo<MasterDataRow[]>(
     () => rows.filter((row) => JSON.stringify(row).toLowerCase().includes(search.toLowerCase())),
     [rows, search],
   );
 
   const editableKeys = useMemo(() => pickEditableKeys(rows, type), [rows, type]);
-
   const visibleKeys = useMemo(() => {
     const preferred = editableKeys.filter((key) => !['notes', 'items_json'].includes(key));
     const available = preferred.filter((key) => filteredRows.some((row) => row[key] !== undefined && row[key] !== null && row[key] !== ''));
@@ -270,8 +265,7 @@ export function MasterDataManager({
     if (!scope || !entityId) return;
     setDocLoading(true);
     try {
-      const response = await listEntityDocuments(scope, entityId, documentKindFor(type));
-      setDocRows(response || []);
+      setDocRows((await listEntityDocuments(scope, entityId, documentKindFor(type))) || []);
     } catch (error) {
       setDocRows([]);
       setMessage(error instanceof Error ? error.message : `${documentLabel} laden mislukt.`);
@@ -289,10 +283,10 @@ export function MasterDataManager({
     setEditorOpen(true);
   };
 
-  const openEdit = (row: Record<string, unknown>) => {
+  const openEdit = (row: MasterDataRow) => {
     const rowId = String(row.id || 'new');
     setEditingId(rowId);
-    const nextDraft = Object.fromEntries(editableKeys.map((key) => [key, row[key] ?? '']));
+    const nextDraft = Object.fromEntries(editableKeys.map((key) => [key, row[key] ?? ''])) as MasterDataRow;
     if (type === 'inspection-templates') nextDraft.items_json = JSON.stringify(row.items_json || [], null, 2);
     setDraft(nextDraft);
     setPendingFiles([]);
@@ -332,19 +326,14 @@ export function MasterDataManager({
     const firstImage = files.find((file) => file.type.startsWith('image/'));
     if (firstImage) {
       if (preview?.url) window.URL.revokeObjectURL(preview.url);
-      setPreview({
-        url: window.URL.createObjectURL(firstImage),
-        mimeType: firstImage.type,
-        filename: firstImage.name,
-      });
+      setPreview({ url: window.URL.createObjectURL(firstImage), mimeType: firstImage.type, filename: firstImage.name });
     }
     event.target.value = '';
   }
 
   async function handleDocumentDownload(document: EntityDocument) {
     try {
-      const blob = await downloadEntityDocument(String(document.id));
-      downloadBlob(document.filename || 'document.bin', blob);
+      downloadBlob(document.filename || 'document.bin', await downloadEntityDocument(String(document.id)));
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Download mislukt.');
     }
@@ -354,11 +343,7 @@ export function MasterDataManager({
     try {
       const blob = await downloadEntityDocument(String(document.id));
       if (preview?.url) window.URL.revokeObjectURL(preview.url);
-      setPreview({
-        url: window.URL.createObjectURL(blob),
-        mimeType: document.mime_type || blob.type || 'application/octet-stream',
-        filename: document.filename || 'document',
-      });
+      setPreview({ url: window.URL.createObjectURL(blob), mimeType: document.mime_type || blob.type || 'application/octet-stream', filename: document.filename || 'document' });
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Preview mislukt.');
     }
@@ -375,7 +360,7 @@ export function MasterDataManager({
   }
 
   async function exportWelders() {
-    const columns: Array<XlsxColumn<Record<string, unknown>>> = [
+    const columns: Array<XlsxColumn<MasterDataRow>> = [
       { key: 'code', header: 'Code', width: 18 },
       { key: 'name', header: 'Naam', width: 28 },
       { key: 'process', header: 'Proces', width: 16 },
@@ -443,7 +428,6 @@ export function MasterDataManager({
     try {
       const payload = normalizeDraft(type, draft);
       let savedId: string | null = editingId ? String(editingId) : null;
-
       if (editingId && editingId !== 'new') {
         const result = await updateMutation.mutateAsync({ type, id: editingId, payload });
         savedId = extractId(result) || savedId;
@@ -453,11 +437,7 @@ export function MasterDataManager({
         savedId = extractId(result);
         setMessage(`${title} aangemaakt.`);
       }
-
-      if (scope && savedId && pendingFiles.length > 0) {
-        await uploadFilesForEntity(savedId, pendingFiles);
-      }
-
+      if (scope && savedId && pendingFiles.length > 0) await uploadFilesForEntity(savedId, pendingFiles);
       pushNotification({ title: `${title} opgeslagen`, description: 'Wijziging opgeslagen.', tone: 'success' });
       setEditorOpen(false);
       setEditingId(null);
@@ -485,123 +465,69 @@ export function MasterDataManager({
     }
   };
 
-  const columns: ColumnDef<Record<string, unknown>>[] = [
+  const columns: ColumnDef<MasterDataRow>[] = [
     ...visibleKeys.map((key) => ({
       key,
       header: LABEL_MAP[key] || key,
       sortable: true,
-      cell: (row: Record<string, unknown>) => String(row[key] ?? '—'),
+      cell: (row: MasterDataRow) => String(row[key] ?? '—'),
     })),
     {
       key: 'actions',
       header: 'Acties',
       cell: (row) => (
         <div className="row-actions">
-          <Button variant="secondary" disabled={!canWrite} onClick={() => openEdit(row)}>
-            Wijzigen
-          </Button>
-          {scope ? (
-            <Button variant="secondary" onClick={() => openEdit(row)}>
-              <Upload size={16} /> {documentLabel}
-            </Button>
-          ) : null}
-          <Button variant="ghost" disabled={!canWrite} onClick={() => setDeleteRow(row)}>
-            <Trash2 size={16} /> Verwijderen
-          </Button>
+          <Button variant="secondary" disabled={!canWrite} onClick={() => openEdit(row)}>Wijzigen</Button>
+          {scope ? <Button variant="secondary" onClick={() => openEdit(row)}><Upload size={16} /> {documentLabel}</Button> : null}
+          <Button variant="ghost" disabled={!canWrite} onClick={() => setDeleteRow(row)}><Trash2 size={16} /> Verwijderen</Button>
         </div>
       ),
     },
   ];
 
   const renderField = (key: string) => {
-    if (type === 'inspection-templates' && key === 'exc_class') {
-      return <select value={String(draft[key] ?? 'EXC2')} onChange={(event) => setDraft((current) => ({ ...current, [key]: event.target.value }))}><option value="EXC1">EXC1</option><option value="EXC2">EXC2</option><option value="EXC3">EXC3</option><option value="EXC4">EXC4</option></select>;
-    }
-    if (type === 'inspection-templates' && key === 'is_default') {
-      return <select value={String(Boolean(draft[key]))} onChange={(event) => setDraft((current) => ({ ...current, [key]: event.target.value === 'true' }))}><option value="false">Nee</option><option value="true">Ja</option></select>;
-    }
-    if (key === 'items_json' || key === 'notes') {
-      return <textarea value={String(draft[key] ?? '')} onChange={(event) => setDraft((current) => ({ ...current, [key]: event.target.value }))} style={{ minHeight: key === 'items_json' ? 220 : 96 }} />;
-    }
-    if (key === 'kind') {
-      return <select value={String(draft[key] ?? 'WPS')} onChange={(event) => setDraft((current) => ({ ...current, [key]: event.target.value }))}><option value="WPS">WPS</option><option value="WPQR">WPQR</option></select>;
-    }
-    if (key === 'process') {
-      return <select value={String(draft[key] ?? '')} onChange={(event) => setDraft((current) => ({ ...current, [key]: event.target.value }))}><option value="">Kies proces</option><option value="111">111 BMBE</option><option value="135">135 MAG</option><option value="136">136 MAG gevulde draad</option><option value="138">138 MAG metaalpoeder</option><option value="141">141 TIG</option></select>;
-    }
-    if (key === 'level') {
-      return <select value={String(draft[key] ?? 'IWT')} onChange={(event) => setDraft((current) => ({ ...current, [key]: event.target.value }))}><option value="IWE">IWE</option><option value="IWT">IWT</option><option value="IWS">IWS</option><option value="RWC">RWC</option></select>;
-    }
+    if (type === 'inspection-templates' && key === 'exc_class') return <select value={String(draft[key] ?? 'EXC2')} onChange={(event) => setDraft((current) => ({ ...current, [key]: event.target.value }))}><option value="EXC1">EXC1</option><option value="EXC2">EXC2</option><option value="EXC3">EXC3</option><option value="EXC4">EXC4</option></select>;
+    if (type === 'inspection-templates' && key === 'is_default') return <select value={String(Boolean(draft[key]))} onChange={(event) => setDraft((current) => ({ ...current, [key]: event.target.value === 'true' }))}><option value="false">Nee</option><option value="true">Ja</option></select>;
+    if (key === 'items_json' || key === 'notes') return <textarea value={String(draft[key] ?? '')} onChange={(event) => setDraft((current) => ({ ...current, [key]: event.target.value }))} style={{ minHeight: key === 'items_json' ? 220 : 96 }} />;
+    if (key === 'kind') return <select value={String(draft[key] ?? 'WPS')} onChange={(event) => setDraft((current) => ({ ...current, [key]: event.target.value }))}><option value="WPS">WPS</option><option value="WPQR">WPQR</option></select>;
+    if (key === 'process') return <select value={String(draft[key] ?? '')} onChange={(event) => setDraft((current) => ({ ...current, [key]: event.target.value }))}><option value="">Kies proces</option><option value="111">111 BMBE</option><option value="135">135 MAG</option><option value="136">136 MAG gevulde draad</option><option value="138">138 MAG metaalpoeder</option><option value="141">141 TIG</option></select>;
+    if (key === 'level') return <select value={String(draft[key] ?? 'IWT')} onChange={(event) => setDraft((current) => ({ ...current, [key]: event.target.value }))}><option value="IWE">IWE</option><option value="IWT">IWT</option><option value="IWS">IWS</option><option value="RWC">RWC</option></select>;
     return <Input value={String(draft[key] ?? '')} onChange={(event) => setDraft((current) => ({ ...current, [key]: event.target.value }))} />;
   };
 
   const renderDocumentSection = () => {
     if (!scope) return null;
     const isExisting = Boolean(editingId && editingId !== 'new');
-
     return (
-      <div
-        className="master-data-documents-panel"
-        style={{ marginTop: 20, padding: 16, border: '1px solid #dbe7ff', borderRadius: 16, background: '#f8fbff', display: 'flex', flexDirection: 'column', gap: 14 }}
-      >
+      <div className="master-data-documents-panel" style={{ marginTop: 20, padding: 16, border: '1px solid #dbe7ff', borderRadius: 16, background: '#f8fbff', display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div className="section-title-row">
           <div>
             <h3 style={{ margin: 0 }}>{documentLabel}</h3>
-            <p className="list-subtle" style={{ margin: '4px 0 0' }}>
-              Upload certificaten, WPS/WPQR-documenten, PDF's en foto's direct bij dit masterdata-record.
-            </p>
+            <p className="list-subtle" style={{ margin: '4px 0 0' }}>Upload certificaten, WPS/WPQR-documenten, PDF's en foto's direct bij dit masterdata-record.</p>
           </div>
           <label className="button button-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
             <Upload size={16} /> {docUploading ? 'Uploaden...' : 'Bestanden toevoegen'}
-            <input
-              type="file"
-              multiple
-              accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx"
-              hidden
-              onChange={isExisting ? handleExistingUpload : handlePendingUpload}
-              disabled={docUploading}
-            />
+            <input type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx" hidden onChange={isExisting ? handleExistingUpload : handlePendingUpload} disabled={docUploading} />
           </label>
         </div>
-
-        {!isExisting ? (
-          <InlineMessage tone="neutral">
-            Nieuwe bestanden worden gekoppeld nadat je dit record opslaat. Geselecteerd: {pendingFiles.length} bestand(en).
-          </InlineMessage>
-        ) : null}
-
+        {!isExisting ? <InlineMessage tone="neutral">Nieuwe bestanden worden gekoppeld nadat je dit record opslaat. Geselecteerd: {pendingFiles.length} bestand(en).</InlineMessage> : null}
         {pendingFiles.length > 0 ? (
           <div className="list-stack compact-list">
             {pendingFiles.map((file, index) => (
               <div key={`${file.name}-${index}`} className="list-row">
-                <div>
-                  <strong>{file.name}</strong>
-                  <div className="list-subtle">{Math.round(file.size / 1024)} KB · klaar voor upload na opslaan</div>
-                </div>
-                <Button variant="ghost" onClick={() => setPendingFiles((current) => current.filter((_, itemIndex) => itemIndex !== index))}>
-                  <X size={16} /> Verwijderen
-                </Button>
+                <div><strong>{file.name}</strong><div className="list-subtle">{Math.round(file.size / 1024)} KB · klaar voor upload na opslaan</div></div>
+                <Button variant="ghost" onClick={() => setPendingFiles((current) => current.filter((_, itemIndex) => itemIndex !== index))}><X size={16} /> Verwijderen</Button>
               </div>
             ))}
           </div>
         ) : null}
-
         {isExisting && docLoading ? <LoadingState label={`${documentLabel} laden...`} /> : null}
-
-        {isExisting && !docLoading && docRows.length === 0 ? (
-          <EmptyState title={`Geen ${documentLabel.toLowerCase()}`} description={`Voeg hier documenten toe voor deze ${title.toLowerCase()}.`} />
-        ) : null}
-
+        {isExisting && !docLoading && docRows.length === 0 ? <EmptyState title={`Geen ${documentLabel.toLowerCase()}`} description={`Voeg hier documenten toe voor deze ${title.toLowerCase()}.`} /> : null}
         {isExisting && !docLoading && docRows.length > 0 ? (
           <div className="list-stack compact-list">
             {docRows.map((document) => (
               <div key={String(document.id)} className="list-row">
-                <div>
-                  <strong><FileText size={15} /> {document.filename}</strong>
-                  <div className="list-subtle">
-                    {document.mime_type || 'bestand'} · {document.uploaded_at || 'onbekende datum'}
-                  </div>
-                </div>
+                <div><strong><FileText size={15} /> {document.filename}</strong><div className="list-subtle">{document.mime_type || 'bestand'} · {document.uploaded_at || 'onbekende datum'}</div></div>
                 <div className="inline-end-cluster">
                   <Button variant="secondary" onClick={() => void handleDocumentPreview(document)}><Eye size={16} /> Preview</Button>
                   <Button variant="secondary" onClick={() => void handleDocumentDownload(document)}><Download size={16} /> Download</Button>
@@ -611,20 +537,10 @@ export function MasterDataManager({
             ))}
           </div>
         ) : null}
-
         {preview ? (
           <div style={{ marginTop: 12, border: '1px solid #dbe7ff', borderRadius: 12, overflow: 'hidden', background: '#fff' }}>
-            <div className="section-title-row" style={{ padding: 12 }}>
-              <strong>{preview.filename}</strong>
-              <Button variant="ghost" onClick={() => { window.URL.revokeObjectURL(preview.url); setPreview(null); }}><X size={16} /> Sluiten</Button>
-            </div>
-            {preview.mimeType.startsWith('image/') ? (
-              <img src={preview.url} alt={preview.filename} style={{ display: 'block', width: '100%', maxHeight: 520, objectFit: 'contain' }} />
-            ) : preview.mimeType.includes('pdf') ? (
-              <iframe src={preview.url} title={preview.filename} style={{ width: '100%', height: 520, border: 0 }} />
-            ) : (
-              <div style={{ padding: 16 }}>Preview niet beschikbaar voor dit bestandstype. Gebruik Download.</div>
-            )}
+            <div className="section-title-row" style={{ padding: 12 }}><strong>{preview.filename}</strong><Button variant="ghost" onClick={() => { window.URL.revokeObjectURL(preview.url); setPreview(null); }}><X size={16} /> Sluiten</Button></div>
+            {preview.mimeType.startsWith('image/') ? <img src={preview.url} alt={preview.filename} style={{ display: 'block', width: '100%', maxHeight: 520, objectFit: 'contain' }} /> : preview.mimeType.includes('pdf') ? <iframe src={preview.url} title={preview.filename} style={{ width: '100%', height: 520, border: 0 }} /> : <div style={{ padding: 16 }}>Preview niet beschikbaar voor dit bestandstype. Gebruik Download.</div>}
           </div>
         ) : null}
       </div>
@@ -639,67 +555,29 @@ export function MasterDataManager({
           <Badge tone={canWrite ? 'success' : 'neutral'}>{canWrite ? 'CRUD actief' : 'Alleen lezen'}</Badge>
           {type === 'welders' ? (
             <>
-              <Button variant="secondary" onClick={() => void exportWelders()} disabled={!filteredRows.length}>
-                <Download size={16} /> Export Excel
-              </Button>
-              <Button variant="secondary" onClick={() => welderImportRef.current?.click()} disabled={!canWrite}>
-                <Upload size={16} /> Import Excel
-              </Button>
-              <input
-                ref={welderImportRef}
-                type="file"
-                accept=".xls,.csv,text/csv,application/vnd.ms-excel"
-                hidden
-                onChange={(event) => void importWelders(event.target.files?.[0])}
-              />
+              <Button variant="secondary" onClick={() => void exportWelders()} disabled={!filteredRows.length}><Download size={16} /> Export Excel</Button>
+              <Button variant="secondary" onClick={() => welderImportRef.current?.click()} disabled={!canWrite}><Upload size={16} /> Import Excel</Button>
+              <input ref={welderImportRef} type="file" accept=".xls,.csv,text/csv,application/vnd.ms-excel" hidden onChange={(event) => void importWelders(event.target.files?.[0])} />
             </>
           ) : null}
           <Button onClick={openCreate} disabled={!canWrite}><Plus size={16} /> Nieuw</Button>
         </div>
       </div>
-
       {message ? <InlineMessage tone="success">{message}</InlineMessage> : null}
       {!canWrite ? <InlineMessage tone="error">{`Je hebt geen schrijfrechten voor ${title.toLowerCase()}.`}</InlineMessage> : null}
-
-      <div className="toolbar-shell">
-        <div className="search-shell inline-search-shell">
-          <Search size={16} />
-          <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={`Zoek in ${title.toLowerCase()}`} />
-        </div>
-      </div>
-
+      <div className="toolbar-shell"><div className="search-shell inline-search-shell"><Search size={16} /><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={`Zoek in ${title.toLowerCase()}`} /></div></div>
       {isLoading ? <LoadingState label={`${title} laden...`} /> : null}
       {isError ? <ErrorState title={`${title} niet geladen`} description="Controleer of het settings-endpoint bereikbaar is." /> : null}
       {!isLoading && !isError && filteredRows.length === 0 ? <EmptyState title={`Geen ${title.toLowerCase()}`} description="Pas je zoekterm aan of maak een nieuw item aan." /> : null}
       {!isLoading && !isError && filteredRows.length > 0 ? <DataTable columns={columns} rows={filteredRows} rowKey={(row) => String(row.id || row.code || row.name)} pageSize={8} /> : null}
-
       <Modal open={editorOpen} title={editingId ? `${title} wijzigen` : `${title} aanmaken`} onClose={() => setEditorOpen(false)}>
         <div className="form-grid">
-          {editableKeys.map((key) => (
-            <label key={key}>
-              <span>{LABEL_MAP[key] || key}</span>
-              {renderField(key)}
-            </label>
-          ))}
+          {editableKeys.map((key) => <label key={key}><span>{LABEL_MAP[key] || key}</span>{renderField(key)}</label>)}
           {renderDocumentSection()}
-          <div className="stack-actions">
-            <Button onClick={saveRow} disabled={!canWrite || createMutation.isPending || updateMutation.isPending || docUploading}>
-              Opslaan
-            </Button>
-            <Button variant="secondary" onClick={() => setEditorOpen(false)}>Annuleren</Button>
-          </div>
+          <div className="stack-actions"><Button onClick={saveRow} disabled={!canWrite || createMutation.isPending || updateMutation.isPending || docUploading}>Opslaan</Button><Button variant="secondary" onClick={() => setEditorOpen(false)}>Annuleren</Button></div>
         </div>
       </Modal>
-
-      <ConfirmDialog
-        open={Boolean(deleteRow)}
-        title="Item verwijderen"
-        description={`Weet je zeker dat je ${String(deleteRow?.name || deleteRow?.code || 'dit item')} wilt verwijderen?`}
-        confirmLabel="Verwijderen"
-        cancelLabel="Annuleren"
-        onConfirm={removeRow}
-        onClose={() => setDeleteRow(null)}
-      />
+      <ConfirmDialog open={Boolean(deleteRow)} title="Item verwijderen" description={`Weet je zeker dat je ${String(deleteRow?.name || deleteRow?.code || 'dit item')} wilt verwijderen?`} confirmLabel="Verwijderen" cancelLabel="Annuleren" onConfirm={removeRow} onClose={() => setDeleteRow(null)} />
     </Card>
   );
 }
