@@ -1,7 +1,5 @@
-import { readAnyPersistedSession, useAuthStore } from '@/app/store/auth-store';
 import { ApiError } from './client';
 
-const COOKIE_SESSION_MARKER = '__cookie_session__';
 const MAX_UPLOAD_SIZE_BYTES = 25 * 1024 * 1024;
 
 const BLOCKED_EXTENSIONS = ['.exe', '.bat', '.cmd', '.scr', '.com', '.js', '.msi', '.vbs', '.ps1', '.sh'];
@@ -42,22 +40,8 @@ function isCrossOriginUrl(url: string): boolean {
   }
 }
 
-function authSnapshot() {
-  const state = useAuthStore.getState();
-  if (state?.token || state?.refreshToken || state?.user) return state;
-  const persisted = readAnyPersistedSession();
-  return { ...state, token: persisted.token, refreshToken: persisted.refreshToken, user: persisted.user };
-}
-
 function headersForUpload(): Headers {
   const headers = new Headers();
-  const session = authSnapshot();
-  const access = session.token;
-
-  if (access && access !== COOKIE_SESSION_MARKER) {
-    headers.append('Authorization', `Bearer ${access}`);
-  }
-
   headers.append('Accept', 'application/json');
   return headers;
 }
