@@ -27,6 +27,22 @@ import {
 export type MasterDataType = 'wps' | 'materials' | 'welders' | 'weld-coordinators' | 'inspection-templates';
 type PreviewState = { url: string; mimeType: string; filename: string } | null;
 type MasterDataRow = Record<string, unknown>;
+type ImportAction = 'create' | 'update' | 'skip' | 'error';
+type WelderImportPreviewItem = {
+  rowNumber: number;
+  action: ImportAction;
+  reason: string;
+  payload: MasterDataRow;
+  existingId?: string | number;
+};
+type WelderImportPreview = {
+  filename: string;
+  items: WelderImportPreviewItem[];
+  created: number;
+  updated: number;
+  skipped: number;
+  errors: number;
+};
 
 const WELDER_KEYS = [
   'certificate_no',
@@ -164,6 +180,14 @@ function exportCell(row: MasterDataRow, key: string): string {
   return String(value);
 }
 
+function normalizeText(value: unknown) {
+  return String(value || '').trim();
+}
+
+function normalizeKey(value: unknown) {
+  return normalizeText(value).toLowerCase();
+}
+
 function defaultDraft(type: MasterDataType, rows: MasterDataRow[]): MasterDataRow {
   const draft: MasterDataRow = Object.fromEntries(pickEditableKeys(rows, type).map((key) => [key, '']));
   if (type === 'inspection-templates') {
@@ -273,6 +297,54 @@ function parseImportRows(text: string): MasterDataRow[] {
   }).filter((item) => Object.values(item).some(Boolean));
 }
 
+function buildWelderImportPreview(filename: string, importedRows: MasterDataRow[], existingRows: MasterDataRow[]): WelderImportPreview {
+  const existingById = new Map(existingRows.map((row) => [normalizeKey(row.id), row]));
+  const existingByCode = new Map(existingRows.map((row) => [normalizeKey(row.code || row.certificate_no), row]).filter(([key]) => Boolean(key)));
+  const existingByName = new Map(existingRows.map((row) => [normalizeKey(row.name), row]).filter(([key]) => Boolean(key)));
+  const seenCertificates = new Map<string, number>();
+  const seenNamesWithoutCertificate = new Map<string, number>();
+
+  const items = importedRows.map((raw, index): WelderImportPreviewItem => {
+    const payload = normalizeDraft('welders', raw);
+    const certificate = normalizeText(payload.certificate_no || payload.code);
+    const name = normalizeText(payload.name);
+    const validUntil = normalizeText(payload.valid_until);
+    const process = normalizeText(payload.process);
+    const rowNumber = index + 1;
+    const errors: string[] = [];
+
+    if (!certificate) errors.push('Certificate No. ontbreekt');
+    if (!name) errors.push('Welder ontbreekt');
+    if (!validUntil) errors.push('Valid until ontbreekt');
+    if (!process) errors.push('Welding process ontbreekt');
+
+    const certificateKey = normalizeKey(certificate);
+    const nameKey = normalizeKey(name);
+    if (certificateKey && seenCertificates.has(certificateKey)) errors.push(`Dubbel certificaat in importbestand: ook regel ${seenCertificates.get(certificateKey)}`);
+    if (certificateKey) seenCertificates.set(certificateKey, rowNumber);
+    if (!certificateKey && nameKey && seenNamesWithoutCertificate.has(nameKey)) errors.push(`Dubbele lasser zonder certificaatnummer: ook regel ${seenNamesWithoutCertificate.get(nameKey)}`);
+    if (!certificateKey && nameKey) seenNamesWithoutCertificate.set(nameKey, rowNumber);
+
+    if (errors.length) return { rowNumber, action: 'error', reason: errors.join(', '), payload };
+
+    const existing = payload.id
+      ? existingById.get(normalizeKey(payload.id))
+      : existingByCode.get(certificateKey) || existingByName.get(nameKey);
+
+    if (existing?.id) return { rowNumber, action: 'update', reason: 'Bestaand record gevonden op certificaatnummer of naam', payload, existingId: existing.id as string | number };
+    return { rowNumber, action: 'create', reason: 'Nieuw record', payload };
+  });
+
+  return {
+    filename,
+    items,
+    created: items.filter((item) => item.action === 'create').length,
+    updated: items.filter((item) => item.action === 'update').length,
+    skipped: items.filter((item) => item.action === 'skip').length,
+    errors: items.filter((item) => item.action === 'error').length,
+  };
+}
+
 export function MasterDataManager({ title, type, rows, isLoading, isError, refetch }: {
   title: string;
   type: MasterDataType;
@@ -294,6 +366,8 @@ export function MasterDataManager({ title, type, rows, isLoading, isError, refet
   const [message, setMessage] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | number | null>(null);
   const [draft, setDraft] = useState<MasterDataRow>(() => defaultDraft(type, rows));
+  const [importPreview, setImportPreview] = useState<WelderImportPreview | null>(null);
+  const [importing, setImporting] = useState(false);
 
   const [docRows, setDocRows] = useState<EntityDocument[]>([]);
   const [docLoading, setDocLoading] = useState(false);
@@ -447,39 +521,43 @@ export function MasterDataManager({ title, type, rows, isLoading, isError, refet
     if (!file || !canWrite) return;
     try {
       const importedRows = parseImportRows(await file.text());
+      const nextPreview = buildWelderImportPreview(file.name, importedRows, rows);
+      setImportPreview(nextPreview);
+      setMessage(nextPreview.errors ? `Import gecontroleerd: ${nextPreview.errors} fout(en). Los deze op voordat je definitief importeert.` : 'Import gecontroleerd. Controleer de preview en klik daarna op Definitief importeren.');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Welders import controleren mislukt.');
+      pushNotification({ title: 'Welders import controleren mislukt', description: error instanceof Error ? error.message : 'Onbekende fout', tone: 'error' });
+    } finally {
+      if (welderImportRef.current) welderImportRef.current.value = '';
+    }
+  }
+
+  async function confirmWelderImport() {
+    if (!importPreview || importPreview.errors > 0 || importing) return;
+    setImporting(true);
+    try {
       let created = 0;
       let updated = 0;
-      let skipped = 0;
-      const existingById = new Map(rows.map((row) => [String(row.id || ''), row]));
-      const existingByCode = new Map(rows.map((row) => [String(row.code || row.certificate_no || '').trim().toLowerCase(), row]));
-      const existingByName = new Map(rows.map((row) => [String(row.name || '').trim().toLowerCase(), row]));
-
-      for (const item of importedRows) {
-        const payload = normalizeDraft('welders', item);
-        const name = String(payload.name || '').trim();
-        const code = String(payload.code || payload.certificate_no || '').trim();
-        if (!name && !code) {
-          skipped += 1;
-          continue;
-        }
-        const existing = item.id ? existingById.get(String(item.id)) : existingByCode.get(code.toLowerCase()) || existingByName.get(name.toLowerCase());
-        if (existing?.id) {
-          await updateMutation.mutateAsync({ type: 'welders', id: existing.id as string | number, payload });
+      const writableItems = importPreview.items.filter((item) => item.action === 'create' || item.action === 'update');
+      for (const item of writableItems) {
+        if (item.action === 'update' && item.existingId) {
+          await updateMutation.mutateAsync({ type: 'welders', id: item.existingId, payload: item.payload });
           updated += 1;
-        } else {
-          await createMutation.mutateAsync({ type: 'welders', payload });
+        }
+        if (item.action === 'create') {
+          await createMutation.mutateAsync({ type: 'welders', payload: item.payload });
           created += 1;
         }
       }
-
-      setMessage(`Welders import gereed: ${created} nieuw, ${updated} bijgewerkt, ${skipped} overgeslagen.`);
+      setMessage(`Welders import gereed: ${created} nieuw, ${updated} bijgewerkt, ${importPreview.skipped} overgeslagen.`);
       pushNotification({ title: 'Welders geïmporteerd', description: `${created} nieuw, ${updated} bijgewerkt.`, tone: 'success' });
+      setImportPreview(null);
       refetch();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Welders import mislukt.');
+      setMessage(error instanceof Error ? error.message : 'Definitieve import mislukt. Reeds verwerkte regels kunnen zijn opgeslagen; controleer de lijst en importeer daarna alleen resterende regels.');
       pushNotification({ title: 'Welders import mislukt', description: error instanceof Error ? error.message : 'Onbekende fout', tone: 'error' });
     } finally {
-      if (welderImportRef.current) welderImportRef.current.value = '';
+      setImporting(false);
     }
   }
 
@@ -543,6 +621,15 @@ export function MasterDataManager({ title, type, rows, isLoading, isError, refet
         </div>
       ),
     },
+  ];
+
+  const previewColumns: ColumnDef<WelderImportPreviewItem>[] = [
+    { key: 'rowNumber', header: 'Regel', cell: (item) => String(item.rowNumber) },
+    { key: 'action', header: 'Actie', cell: (item) => item.action === 'create' ? 'Nieuw' : item.action === 'update' ? 'Bijwerken' : item.action === 'error' ? 'Fout' : 'Overslaan' },
+    { key: 'certificate', header: 'Certificate No.', cell: (item) => exportCell(item.payload, 'certificate_no') || '—' },
+    { key: 'welder', header: 'Welder', cell: (item) => exportCell(item.payload, 'name') || '—' },
+    { key: 'validUntil', header: 'Valid until', cell: (item) => exportCell(item.payload, 'valid_until') || '—' },
+    { key: 'reason', header: 'Controle', cell: (item) => item.reason },
   ];
 
   const renderField = (key: string) => {
@@ -623,7 +710,7 @@ export function MasterDataManager({ title, type, rows, isLoading, isError, refet
           <Button onClick={openCreate} disabled={!canWrite}><Plus size={16} /> Nieuw</Button>
         </div>
       </div>
-      {message ? <InlineMessage tone="success">{message}</InlineMessage> : null}
+      {message ? <InlineMessage tone={message.toLowerCase().includes('fout') || message.toLowerCase().includes('mislukt') ? 'error' : 'success'}>{message}</InlineMessage> : null}
       {!canWrite ? <InlineMessage tone="error">{`Je hebt geen schrijfrechten voor ${title.toLowerCase()}.`}</InlineMessage> : null}
       <div className="toolbar-shell"><div className="search-shell inline-search-shell"><Search size={16} /><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={`Zoek in ${title.toLowerCase()}`} /></div></div>
       {isLoading ? <LoadingState label={`${title} laden...`} /> : null}
@@ -636,6 +723,25 @@ export function MasterDataManager({ title, type, rows, isLoading, isError, refet
           {renderDocumentSection()}
           <div className="stack-actions"><Button onClick={saveRow} disabled={!canWrite || createMutation.isPending || updateMutation.isPending || docUploading}>Opslaan</Button><Button variant="secondary" onClick={() => setEditorOpen(false)}>Annuleren</Button></div>
         </div>
+      </Modal>
+      <Modal open={Boolean(importPreview)} title="Welders import controleren" onClose={() => { if (!importing) setImportPreview(null); }}>
+        {importPreview ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <InlineMessage tone={importPreview.errors ? 'error' : 'success'}>
+              Bestand: {importPreview.filename} · Nieuw: {importPreview.created} · Bijwerken: {importPreview.updated} · Fouten: {importPreview.errors}
+            </InlineMessage>
+            <p className="list-subtle" style={{ margin: 0 }}>
+              Er wordt nog niets opgeslagen. Controleer eerst deze preview. Definitief importeren is alleen mogelijk zonder foutregels.
+            </p>
+            <DataTable columns={previewColumns} rows={importPreview.items} rowKey={(item) => `${item.rowNumber}-${item.action}`} pageSize={10} />
+            <div className="stack-actions">
+              <Button onClick={() => void confirmWelderImport()} disabled={importing || importPreview.errors > 0 || importPreview.created + importPreview.updated === 0}>
+                {importing ? 'Importeren...' : 'Definitief importeren'}
+              </Button>
+              <Button variant="secondary" onClick={() => setImportPreview(null)} disabled={importing}>Annuleren</Button>
+            </div>
+          </div>
+        ) : null}
       </Modal>
       <ConfirmDialog open={Boolean(deleteRow)} title="Item verwijderen" description={`Weet je zeker dat je ${String(deleteRow?.name || deleteRow?.certificate_no || deleteRow?.code || 'dit item')} wilt verwijderen?`} confirmLabel="Verwijderen" cancelLabel="Annuleren" onConfirm={removeRow} onClose={() => setDeleteRow(null)} />
     </Card>
