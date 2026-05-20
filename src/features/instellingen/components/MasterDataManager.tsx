@@ -128,9 +128,8 @@ function documentScopeFor(type: MasterDataType): EntityDocumentScope | null {
   return null;
 }
 
-function documentKindFor(type: MasterDataType): string {
-  if (type === 'welders' || type === 'weld-coordinators') return 'certificate';
-  return 'document';
+function documentKindFor(type: MasterDataType) {
+  return type === 'welders' || type === 'weld-coordinators' ? 'certificate' : 'document';
 }
 
 function pickEditableKeys(rows: MasterDataRow[], type: MasterDataType) {
@@ -142,15 +141,27 @@ function pickEditableKeys(rows: MasterDataRow[], type: MasterDataType) {
   return Object.keys(source).filter((key) => !['id', 'created_at', 'updated_at', 'tenant_id'].includes(key)).slice(0, 6);
 }
 
-function displayValue(row: MasterDataRow, key: string) {
-  if (key === 'certificate_no') return row.certificate_no ?? row.code ?? '—';
-  if (key === 'process') return row.process ?? row.welding_process ?? '—';
-  if (key === 'welding_position') return row.welding_position ?? row.position ?? '—';
-  if (key === 'range_material_thickness') return row.range_material_thickness ?? row.thickness_range ?? '—';
-  if (key === 'range_outside_pipe_diameter') return row.range_outside_pipe_diameter ?? row.diameter_range ?? '—';
-  if (key === 'name') return row.name ?? row.full_name ?? row.display_name ?? '—';
-  if (key === 'valid_until') return row.valid_until ?? row.qualification_expiry ?? row.expiry_date ?? '—';
-  return row[key] ?? '—';
+function readValue(row: MasterDataRow, key: string): unknown {
+  if (key === 'certificate_no') return row.certificate_no ?? row.code;
+  if (key === 'process') return row.process ?? row.welding_process;
+  if (key === 'welding_position') return row.welding_position ?? row.position;
+  if (key === 'range_material_thickness') return row.range_material_thickness ?? row.thickness_range;
+  if (key === 'range_outside_pipe_diameter') return row.range_outside_pipe_diameter ?? row.diameter_range;
+  if (key === 'name') return row.name ?? row.full_name ?? row.display_name;
+  if (key === 'valid_until') return row.valid_until ?? row.qualification_expiry ?? row.expiry_date;
+  return row[key];
+}
+
+function displayValue(row: MasterDataRow, key: string): string {
+  const value = readValue(row, key);
+  if (value === null || value === undefined || value === '') return '—';
+  return String(value);
+}
+
+function exportCell(row: MasterDataRow, key: string): string {
+  const value = readValue(row, key);
+  if (value === null || value === undefined) return '';
+  return String(value);
 }
 
 function defaultDraft(type: MasterDataType, rows: MasterDataRow[]): MasterDataRow {
@@ -262,14 +273,7 @@ function parseImportRows(text: string): MasterDataRow[] {
   }).filter((item) => Object.values(item).some(Boolean));
 }
 
-export function MasterDataManager({
-  title,
-  type,
-  rows,
-  isLoading,
-  isError,
-  refetch,
-}: {
+export function MasterDataManager({ title, type, rows, isLoading, isError, refetch }: {
   title: string;
   type: MasterDataType;
   rows: MasterDataRow[];
@@ -342,7 +346,7 @@ export function MasterDataManager({
   const openEdit = (row: MasterDataRow) => {
     const rowId = String(row.id || 'new');
     setEditingId(rowId);
-    const nextDraft = Object.fromEntries(editableKeys.map((key) => [key, displayValue(row, key) === '—' ? '' : displayValue(row, key)])) as MasterDataRow;
+    const nextDraft = Object.fromEntries(editableKeys.map((key) => [key, exportCell(row, key)])) as MasterDataRow;
     if (type === 'inspection-templates') nextDraft.items_json = JSON.stringify(row.items_json || [], null, 2);
     setDraft(nextDraft);
     setPendingFiles([]);
@@ -417,16 +421,16 @@ export function MasterDataManager({
 
   async function exportWelders() {
     const columns: Array<XlsxColumn<MasterDataRow>> = [
-      { key: 'certificate_no', header: 'Certificate No. (9606-1)', width: 28, value: (row) => displayValue(row, 'certificate_no') },
-      { key: 'process', header: 'Welding process', width: 18, value: (row) => displayValue(row, 'process') },
-      { key: 'type_of_weld', header: 'Type of weld', width: 16, value: (row) => displayValue(row, 'type_of_weld') },
-      { key: 'base_metal', header: 'Base metal', width: 14, value: (row) => displayValue(row, 'base_metal') },
-      { key: 'filler_material', header: 'Filler material', width: 18, value: (row) => displayValue(row, 'filler_material') },
-      { key: 'welding_position', header: 'Welding positions', width: 20, value: (row) => displayValue(row, 'welding_position') },
-      { key: 'range_material_thickness', header: 'Range material thickness', width: 24, value: (row) => displayValue(row, 'range_material_thickness') },
-      { key: 'range_outside_pipe_diameter', header: 'Range outside pipe diameter', width: 26, value: (row) => displayValue(row, 'range_outside_pipe_diameter') },
-      { key: 'name', header: 'Welder', width: 24, value: (row) => displayValue(row, 'name') },
-      { key: 'valid_until', header: 'Valid until', width: 16, value: (row) => displayValue(row, 'valid_until') },
+      { key: 'certificate_no', header: 'Certificate No. (9606-1)', width: 28, value: (row) => exportCell(row, 'certificate_no') },
+      { key: 'process', header: 'Welding process', width: 18, value: (row) => exportCell(row, 'process') },
+      { key: 'type_of_weld', header: 'Type of weld', width: 16, value: (row) => exportCell(row, 'type_of_weld') },
+      { key: 'base_metal', header: 'Base metal', width: 14, value: (row) => exportCell(row, 'base_metal') },
+      { key: 'filler_material', header: 'Filler material', width: 18, value: (row) => exportCell(row, 'filler_material') },
+      { key: 'welding_position', header: 'Welding positions', width: 20, value: (row) => exportCell(row, 'welding_position') },
+      { key: 'range_material_thickness', header: 'Range material thickness', width: 24, value: (row) => exportCell(row, 'range_material_thickness') },
+      { key: 'range_outside_pipe_diameter', header: 'Range outside pipe diameter', width: 26, value: (row) => exportCell(row, 'range_outside_pipe_diameter') },
+      { key: 'name', header: 'Welder', width: 24, value: (row) => exportCell(row, 'name') },
+      { key: 'valid_until', header: 'Valid until', width: 16, value: (row) => exportCell(row, 'valid_until') },
     ];
     await exportStyledXlsx({
       filename: `WeldInspect-Pro-Welding-Qualification-Summary-${todayStamp()}.xls`,
@@ -526,7 +530,7 @@ export function MasterDataManager({
       key,
       header: LABEL_MAP[key] || key,
       sortable: true,
-      cell: (row: MasterDataRow) => String(displayValue(row, key)),
+      cell: (row: MasterDataRow) => displayValue(row, key),
     })),
     {
       key: 'actions',
