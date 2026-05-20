@@ -139,7 +139,7 @@ export function MobileDashboardPage() {
               >
                 {!card.compact ? <span className="mobile-kpi-more" aria-hidden="true">•••</span> : null}
                 <div className="mobile-kpi-top"><Icon size={18} /><span>{card.label}</span></div>
-                {card.subtitle ? <span className="mobile-kpi-subtitle">{card.subtitle}</span> : null}
+                {card.subtitle ? <span className="mobile-kpi-subtitle" translate="no">{card.subtitle}</span> : null}
                 <strong>{card.value}</strong>
               </button>
             );
