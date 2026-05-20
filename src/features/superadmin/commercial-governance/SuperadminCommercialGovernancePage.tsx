@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { CreditCard, Flag, Key, RefreshCcw, Shield, Sliders } from 'lucide-react';
+import { CreditCard, FileText, Flag, Gauge, Key, RefreshCcw, Shield, Sliders } from 'lucide-react';
 import { apiRequest } from '@/api/client';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
 import {
@@ -69,7 +69,7 @@ export function SuperadminCommercialGovernancePage() {
 
   const tabs: Array<{ key: Tab; label: string; icon: typeof CreditCard }> = [
     { key: 'overview', label: 'Overzicht', icon: Shield },
-    { key: 'subscription', label: 'Abonnement', icon: CreditCard },
+    { key: 'subscription', label: 'Subscription', icon: CreditCard },
     { key: 'limits', label: 'Limieten', icon: Sliders },
     { key: 'features', label: 'Features', icon: Flag },
     { key: 'audit', label: 'Audit Log', icon: Key },
@@ -78,6 +78,12 @@ export function SuperadminCommercialGovernancePage() {
   return (
     <MobilePageScaffold title="Commercial & Governance" subtitle="Billing, limieten, features en support" rightSlot={<button type="button" className="mobile-icon-button" onClick={loadTenants} disabled={loading}><RefreshCcw size={18} /></button>}>
       <div className="cg-page">
+        <div className="cg-superadmin-nav" aria-label="Superadmin modules">
+          <a className="mobile-secondary-button" href="/superadmin"><Gauge size={16} /> Control Center</a>
+          <a className="mobile-primary-button" href="/superadmin/commercial-governance"><Shield size={16} /> Commercial & Governance</a>
+          <a className="mobile-secondary-button" href="/superadmin/invoices"><FileText size={16} /> Billing</a>
+        </div>
+
         {error ? <div className="cg-alert cg-alert-danger">{error}</div> : null}
 
         <div className="cg-kpi-grid">
