@@ -37,16 +37,32 @@ export function dossierPayloadFromAggregate(aggregate: CeAggregateResponse): Rec
   };
 }
 
+function attachmentDownloadUrl(row: Record<string, unknown>, id: string) {
+  const explicit = String(row.url || row.download_url || row.file_url || row.preview_url || row.storage_url || row.public_url || row.href || '').trim();
+  if (explicit) return explicit;
+  return id ? `/api/v1/attachments/${id}/download` : '';
+}
+
 export function attachmentsAsCeDocuments(attachments: Record<string, unknown>[]): CeDocument[] {
   return attachments.map((row) => {
     const id = String(row.id ?? '');
-    const filename = String(row.filename || row.uploaded_filename || row.title || row.name || '');
+    const filename = String(row.filename || row.uploaded_filename || row.file_name || row.title || row.name || '');
     const mime_type = String(row.mime_type || row.content_type || row.mimeType || '');
+    const url = attachmentDownloadUrl(row, id);
+
     return {
       ...row,
       id,
       filename,
+      file_name: filename,
+      name: filename,
+      title: filename,
       mime_type,
+      content_type: mime_type,
+      url,
+      download_url: url,
+      file_url: url,
+      preview_url: url,
     } as CeDocument;
   });
 }
