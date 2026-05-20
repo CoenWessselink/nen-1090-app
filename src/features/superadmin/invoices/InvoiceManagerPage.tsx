@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { FileText, Gauge, ListChecks, Plus, Printer, RefreshCcw, Search, Shield, Trash2 } from 'lucide-react';
+import { Download, FileText, Gauge, ListChecks, Plus, Printer, RefreshCcw, Search, Shield, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { apiRequest } from '@/api/client';
 import { useSession } from '@/app/session/SessionContext';
@@ -12,6 +12,99 @@ function eur(cents: number) { return new Intl.NumberFormat('nl-NL', { style: 'cu
 function fmtDate(v: string) { if (!v) return '—'; const d = new Date(v); return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('nl-NL'); }
 function statusTone(s: string) { if (s === 'paid') return 'success'; if (s === 'overdue') return 'danger'; if (s === 'sent') return 'info'; return 'neutral'; }
 function statusLabel(s: string) { if (s === 'paid') return 'Betaald'; if (s === 'sent') return 'Verzonden'; if (s === 'overdue') return 'Verlopen'; if (s === 'cancelled') return 'Geannuleerd'; return 'Concept'; }
+function moneyValue(cents: number) { return ((Number(cents) || 0) / 100).toFixed(2); }
+function todayStamp() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
+function escapeExcel(v: unknown) { return String(v ?? '—').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+function excelDate(v: string | null | undefined) { return v ? fmtDate(v) : '—'; }
+
+function exportInvoicesToExcel(invoices: Invoice[]) {
+  const generatedAt = new Intl.DateTimeFormat('nl-NL', { dateStyle: 'short', timeStyle: 'short' }).format(new Date());
+  const totalExVat = invoices.reduce((sum, invoice) => sum + Number(invoice.subtotal_cents || 0), 0);
+  const totalVat = invoices.reduce((sum, invoice) => sum + Number(invoice.vat_cents || 0), 0);
+  const totalIncVat = invoices.reduce((sum, invoice) => sum + Number(invoice.total_cents || 0), 0);
+  const rows = invoices.map((invoice) => `
+    <tr>
+      <td>${escapeExcel(invoice.number || invoice.id)}</td>
+      <td>${escapeExcel(statusLabel(invoice.status))}</td>
+      <td>${escapeExcel(invoice.tenant_name || invoice.company_name || invoice.tenant_id)}</td>
+      <td>${escapeExcel(invoice.tenant_id)}</td>
+      <td>${escapeExcel(invoice.company_name)}</td>
+      <td>${escapeExcel(invoice.email)}</td>
+      <td>${escapeExcel(excelDate(invoice.issue_date))}</td>
+      <td>${escapeExcel(excelDate(invoice.due_date))}</td>
+      <td>${escapeExcel(excelDate(invoice.paid_at))}</td>
+      <td class="currency">${moneyValue(invoice.subtotal_cents)}</td>
+      <td>${escapeExcel(`${invoice.vat_percent}%`)}</td>
+      <td class="currency">${moneyValue(invoice.vat_cents)}</td>
+      <td class="currency total">${moneyValue(invoice.total_cents)}</td>
+      <td>${invoice.lines.length}</td>
+      <td>${escapeExcel(invoice.notes)}</td>
+    </tr>`).join('');
+
+  const html = `<!DOCTYPE html>
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+  <meta charset="utf-8" />
+  <!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Facturen</x:Name><x:WorksheetOptions><x:DisplayGridlines/><x:FreezePanes/><x:FrozenNoSplit/><x:SplitHorizontal>5</x:SplitHorizontal><x:TopRowBottomPane>5</x:TopRowBottomPane></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
+  <style>
+    body { font-family: Aptos, Calibri, Arial, sans-serif; color: #0f172a; }
+    table { border-collapse: collapse; width: 100%; }
+    td, th { border: 1px solid #dbe7f3; padding: 8px 10px; vertical-align: middle; }
+    .title { background: #1e3a8a; color: #ffffff; font-size: 22px; font-weight: 800; border-color: #1e3a8a; }
+    .subtitle { background: #dbeafe; color: #1e3a8a; font-weight: 700; }
+    .summary-label { background: #eff6ff; color: #1e3a8a; font-weight: 800; }
+    .summary-value { background: #eff6ff; color: #0f172a; font-weight: 800; mso-number-format:'€ #,##0.00'; text-align: right; }
+    th { background: #2563eb; color: #ffffff; font-weight: 800; text-align: left; border-color: #1d4ed8; }
+    tr:nth-child(even) td { background: #f8fbff; }
+    .currency { mso-number-format:'€ #,##0.00'; text-align: right; }
+    .total { color: #1e3a8a; font-weight: 800; }
+  </style>
+</head>
+<body>
+  <table>
+    <tr><td colspan="15" class="title">WeldInspect Pro — Facturenoverzicht</td></tr>
+    <tr><td colspan="15" class="subtitle">Export vanaf Superadmin &gt; Billing &gt; Invoice overzicht · ${escapeExcel(generatedAt)} · ${invoices.length} facturen</td></tr>
+    <tr><td colspan="15"></td></tr>
+    <tr>
+      <td class="summary-label">Aantal facturen</td><td>${invoices.length}</td>
+      <td class="summary-label">Totaal excl. BTW</td><td class="summary-value">${moneyValue(totalExVat)}</td>
+      <td class="summary-label">BTW</td><td class="summary-value">${moneyValue(totalVat)}</td>
+      <td class="summary-label">Totaal incl. BTW</td><td class="summary-value">${moneyValue(totalIncVat)}</td>
+      <td colspan="7"></td>
+    </tr>
+    <tr><td colspan="15"></td></tr>
+    <tr>
+      <th>Factuurnummer</th>
+      <th>Status</th>
+      <th>Tenant</th>
+      <th>Tenant ID</th>
+      <th>Bedrijfsnaam</th>
+      <th>E-mail</th>
+      <th>Factuurdatum</th>
+      <th>Vervaldatum</th>
+      <th>Betaald op</th>
+      <th>Excl. BTW</th>
+      <th>BTW %</th>
+      <th>BTW</th>
+      <th>Incl. BTW</th>
+      <th>Regels</th>
+      <th>Opmerkingen</th>
+    </tr>
+    ${rows || '<tr><td colspan="15">Geen facturen beschikbaar.</td></tr>'}
+  </table>
+</body>
+</html>`;
+
+  const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `WeldInspect-Pro-Facturen-${todayStamp()}.xls`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
 
 type TenantOption = { id: string; name: string; display_name: string };
 type BillingMode = 'create' | 'overview';
@@ -209,7 +302,18 @@ export function InvoiceManagerPage() {
 
         {mode === 'overview' ? (
           <div className="cg-section">
-            <h3><ListChecks size={18} /> Factuur overzicht</h3>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+              <h3><ListChecks size={18} /> Factuur overzicht</h3>
+              <button
+                type="button"
+                className="mobile-primary-button"
+                onClick={() => exportInvoicesToExcel(filtered)}
+                disabled={loading || filtered.length === 0}
+                title={filtered.length ? 'Exporteer facturenoverzicht naar Excel' : 'Geen facturen beschikbaar om te exporteren'}
+              >
+                <Download size={16} /> Export Excel
+              </button>
+            </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', border: '1px solid #e2e8f0', borderRadius: 14, background: '#fff' }}>
               <Search size={14} />
               <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Zoek factuur…" style={{ border: 'none', outline: 'none', flex: 1, fontSize: 14, background: 'transparent' }} />
