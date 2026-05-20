@@ -141,15 +141,13 @@ export function RenderWeldControlsTable({ weld, inspections }: { weld: R; inspec
   }
 
   return (
-    <table className="rpt-table rpt-table-compact rpt-control-table">
+    <table className="rpt-table rpt-table-compact rpt-control-table rpt-control-table-simplified">
       <thead>
         <tr>
           <th>#</th>
           <th>Groep / sectie</th>
           <th>Controlepunt</th>
-          <th>Item code</th>
           <th>Status</th>
-          <th>Waarde</th>
           <th>Opmerking</th>
         </tr>
       </thead>
@@ -159,9 +157,7 @@ export function RenderWeldControlsTable({ weld, inspections }: { weld: R; inspec
             <td>{index + 1}</td>
             <td>{val(control.group || control.section_name || control.section_code || 'Inspection')}</td>
             <td>{controlPoint(control, index)}</td>
-            <td>{itemCode(control, index)}</td>
             <td>{renderControlStatus(statusValue(control))}</td>
-            <td>{val(control.measured_value || control.value || control.input_value || '')}</td>
             <td>{itemComment(control)}</td>
           </tr>
         ))}
