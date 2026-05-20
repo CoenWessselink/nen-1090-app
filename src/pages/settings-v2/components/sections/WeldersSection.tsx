@@ -12,6 +12,17 @@ interface WeldersSectionProps {
 
 type WelderImportRow = Record<string, unknown>;
 
+type WelderImportPayload = WelderImportRow & {
+  id?: unknown;
+  name: string;
+  qualification_expiry: unknown;
+  certificate_number: unknown;
+  process: unknown;
+  material_group: unknown;
+  position: unknown;
+  status: unknown;
+};
+
 const WELDER_EXPORT_COLUMNS = [
   { key: 'id', header: 'ID', width: 24 },
   { key: 'name', header: 'Welder', width: 28, value: (row: any) => row.name || row.full_name || row.display_name || '' },
@@ -143,7 +154,7 @@ async function readWelderImportRows(file: File): Promise<WelderImportRow[]> {
   return rowsToImportRows(table);
 }
 
-function normalizeImportPayload(row: WelderImportRow) {
+function normalizeImportPayload(row: WelderImportRow): WelderImportPayload {
   const name = String(row.name || '').trim();
   return {
     ...row,
