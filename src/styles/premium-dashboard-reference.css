@@ -1,14 +1,14 @@
-/* Dashboard reference pass: high-fidelity proportions for the approved premium mobile dashboard. */
+/* Dashboard reference pass: calmer typography, tighter alignment and readable full dashboard. */
 
 @media (max-width: 1024px) {
   .mobile-page-header {
-    min-height: 158px !important;
-    margin-bottom: 24px !important;
-    padding-bottom: 26px !important;
+    min-height: 154px !important;
+    margin-bottom: 22px !important;
+    padding-bottom: 24px !important;
   }
 
   .mobile-page-header-row {
-    min-height: 102px !important;
+    min-height: 98px !important;
   }
 
   .mobile-page > .mobile-page-body {
@@ -17,16 +17,16 @@
   }
 
   .mobile-dashboard-premium-grid {
-    gap: 15px !important;
+    gap: 14px !important;
   }
 
   .mobile-dashboard-premium-grid .mobile-kpi-card:not(.mobile-kpi-card-action) {
     display: grid !important;
-    grid-template-columns: 64px minmax(0, 1fr) 184px !important;
+    grid-template-columns: 60px minmax(0, 1fr) 178px !important;
     grid-template-rows: auto auto 1fr !important;
-    column-gap: 20px !important;
-    min-height: 146px !important;
-    padding: 24px 24px 20px !important;
+    column-gap: 18px !important;
+    min-height: 138px !important;
+    padding: 22px 22px 18px !important;
     border-radius: 28px !important;
   }
 
@@ -37,10 +37,10 @@
   .mobile-dashboard-premium-grid .mobile-kpi-top svg {
     grid-column: 1 !important;
     grid-row: 1 / span 2 !important;
-    width: 58px !important;
-    height: 58px !important;
-    padding: 15px !important;
-    border-radius: 20px !important;
+    width: 52px !important;
+    height: 52px !important;
+    padding: 13px !important;
+    border-radius: 18px !important;
     align-self: start !important;
     background: rgba(255,255,255,.17) !important;
     box-shadow: inset 0 1px 0 rgba(255,255,255,.44), 0 12px 26px rgba(0,0,0,.10) !important;
@@ -50,23 +50,23 @@
     grid-column: 2 / 4 !important;
     grid-row: 1 !important;
     align-self: end !important;
-    padding-right: 58px !important;
+    padding-right: 56px !important;
     color: #fff !important;
-    font-size: clamp(22px, 4.85vw, 29px) !important;
-    line-height: 1.04 !important;
-    font-weight: 850 !important;
-    letter-spacing: -0.028em !important;
+    font-size: clamp(18px, 4.1vw, 24px) !important;
+    line-height: 1.05 !important;
+    font-weight: 820 !important;
+    letter-spacing: -0.022em !important;
   }
 
   .mobile-kpi-subtitle {
     grid-column: 2 / 4 !important;
     grid-row: 2 !important;
     display: block !important;
-    margin: 5px 58px 0 0 !important;
+    margin: 4px 56px 0 0 !important;
     color: rgba(255,255,255,.78) !important;
-    font-size: clamp(15px, 3.55vw, 18px) !important;
-    line-height: 1.22 !important;
-    font-weight: 520 !important;
+    font-size: clamp(13px, 3.1vw, 16px) !important;
+    line-height: 1.18 !important;
+    font-weight: 500 !important;
   }
 
   .mobile-dashboard-premium-grid .mobile-kpi-card strong {
@@ -75,24 +75,24 @@
     align-self: end !important;
     margin: 0 !important;
     color: #fff !important;
-    font-size: clamp(56px, 14vw, 72px) !important;
-    line-height: .82 !important;
+    font-size: clamp(48px, 12.4vw, 64px) !important;
+    line-height: .84 !important;
     font-weight: 900 !important;
-    letter-spacing: -0.07em !important;
+    letter-spacing: -0.065em !important;
   }
 
   .mobile-kpi-more {
     position: absolute !important;
-    top: 24px !important;
-    right: 24px !important;
+    top: 21px !important;
+    right: 21px !important;
     display: grid !important;
     place-items: center !important;
-    min-width: 38px !important;
-    height: 30px !important;
+    min-width: 36px !important;
+    height: 28px !important;
     border-radius: 15px !important;
     background: rgba(255,255,255,.13) !important;
     color: rgba(255,255,255,.90) !important;
-    font-size: 16px !important;
+    font-size: 15px !important;
     letter-spacing: 2px !important;
     line-height: 1 !important;
   }
@@ -107,7 +107,7 @@
     bottom: 15px;
     width: 160px;
     height: 112px;
-    opacity: .15;
+    opacity: .13;
     pointer-events: none;
     z-index: 0;
     background-image: radial-gradient(rgba(255,255,255,.55) 1px, transparent 1.5px);
@@ -125,69 +125,84 @@
   }
 
   .mobile-kpi-visual-bars::after {
-    right: 44px;
-    bottom: 24px;
-    width: 178px;
-    height: 82px;
-    opacity: .30;
+    right: 42px;
+    bottom: 22px;
+    width: 172px;
+    height: 78px;
+    opacity: .28;
     background:
-      linear-gradient(26deg, transparent 0 57%, rgba(255,255,255,.40) 58% 60%, transparent 61%),
-      radial-gradient(circle at 88% 8%, rgba(255,255,255,.70) 0 5px, transparent 6px),
-      linear-gradient(to top, rgba(255,255,255,.52) 0 44%, transparent 44%) 0 100% / 19px 58px no-repeat,
-      linear-gradient(to top, rgba(255,255,255,.52) 0 56%, transparent 56%) 36px 100% / 19px 70px no-repeat,
-      linear-gradient(to top, rgba(255,255,255,.52) 0 70%, transparent 70%) 72px 100% / 19px 84px no-repeat,
-      linear-gradient(to top, rgba(255,255,255,.52) 0 86%, transparent 86%) 108px 100% / 19px 98px no-repeat;
+      linear-gradient(26deg, transparent 0 57%, rgba(255,255,255,.34) 58% 60%, transparent 61%),
+      radial-gradient(circle at 88% 8%, rgba(255,255,255,.64) 0 5px, transparent 6px),
+      linear-gradient(to top, rgba(255,255,255,.48) 0 44%, transparent 44%) 0 100% / 18px 55px no-repeat,
+      linear-gradient(to top, rgba(255,255,255,.48) 0 56%, transparent 56%) 34px 100% / 18px 66px no-repeat,
+      linear-gradient(to top, rgba(255,255,255,.48) 0 70%, transparent 70%) 68px 100% / 18px 80px no-repeat,
+      linear-gradient(to top, rgba(255,255,255,.48) 0 86%, transparent 86%) 102px 100% / 18px 94px no-repeat;
     border-radius: 14px;
   }
 
   .mobile-kpi-visual-donut::after {
     right: 48px;
     bottom: 22px;
-    width: 108px;
-    height: 108px;
+    width: 102px;
+    height: 102px;
     border-radius: 50%;
-    border: 23px solid rgba(255,255,255,.28);
-    border-top-color: rgba(255,255,255,.78);
-    border-right-color: rgba(255,255,255,.56);
+    border: 21px solid rgba(255,255,255,.27);
+    border-top-color: rgba(255,255,255,.74);
+    border-right-color: rgba(255,255,255,.52);
     transform: rotate(28deg);
-    opacity: .72;
+    opacity: .68;
   }
 
   .mobile-kpi-visual-shield::after {
     right: 52px;
     bottom: 21px;
-    width: 100px;
-    height: 100px;
-    opacity: .17;
-    border: 9px solid rgba(255,255,255,.56);
-    border-radius: 30px 30px 42px 42px;
+    width: 96px;
+    height: 96px;
+    opacity: .15;
+    border: 8px solid rgba(255,255,255,.54);
+    border-radius: 29px 29px 40px 40px;
     transform: rotate(45deg) skew(-6deg, -6deg);
   }
 
   .mobile-kpi-visual-line::after {
     right: 30px;
     bottom: 22px;
-    width: 218px;
-    height: 96px;
-    opacity: .34;
+    width: 210px;
+    height: 92px;
+    opacity: .30;
     background:
-      linear-gradient(145deg, transparent 0 25%, rgba(255,255,255,.50) 25% 28%, transparent 28% 48%, rgba(255,255,255,.50) 48% 51%, transparent 51% 72%, rgba(255,255,255,.50) 72% 75%, transparent 75%),
-      radial-gradient(circle at 12% 74%, rgba(255,255,255,.70) 0 6px, transparent 7px),
-      radial-gradient(circle at 42% 44%, rgba(255,255,255,.70) 0 6px, transparent 7px),
-      radial-gradient(circle at 66% 65%, rgba(255,255,255,.70) 0 6px, transparent 7px),
-      radial-gradient(circle at 90% 24%, rgba(255,255,255,.70) 0 6px, transparent 7px);
+      linear-gradient(145deg, transparent 0 25%, rgba(255,255,255,.46) 25% 28%, transparent 28% 48%, rgba(255,255,255,.46) 48% 51%, transparent 51% 72%, rgba(255,255,255,.46) 72% 75%, transparent 75%),
+      radial-gradient(circle at 12% 74%, rgba(255,255,255,.66) 0 6px, transparent 7px),
+      radial-gradient(circle at 42% 44%, rgba(255,255,255,.66) 0 6px, transparent 7px),
+      radial-gradient(circle at 66% 65%, rgba(255,255,255,.66) 0 6px, transparent 7px),
+      radial-gradient(circle at 90% 24%, rgba(255,255,255,.66) 0 6px, transparent 7px);
+  }
+
+  .mobile-dashboard-premium-grid .mobile-kpi-card-action {
+    min-height: 104px !important;
+    padding: 20px 22px !important;
+    color: #0f172a !important;
+    background: rgba(255,255,255,.94) !important;
+    border-color: rgba(199,217,246,.84) !important;
+  }
+
+  .mobile-dashboard-premium-grid .mobile-kpi-card-action .mobile-kpi-top span,
+  .mobile-dashboard-premium-grid .mobile-kpi-card-action .mobile-kpi-subtitle,
+  .mobile-dashboard-premium-grid .mobile-kpi-card-action strong {
+    color: #0f172a !important;
+    text-shadow: none !important;
   }
 }
 
 @media (max-width: 430px) {
   .mobile-page-header {
-    min-height: 142px !important;
-    margin-bottom: 19px !important;
+    min-height: 140px !important;
+    margin-bottom: 18px !important;
     padding-bottom: 20px !important;
   }
 
   .mobile-page-header-row {
-    min-height: 88px !important;
+    min-height: 86px !important;
   }
 
   .mobile-page > .mobile-page-body {
@@ -200,75 +215,77 @@
   }
 
   .mobile-dashboard-premium-grid .mobile-kpi-card:not(.mobile-kpi-card-action) {
-    grid-template-columns: 54px minmax(0, 1fr) 112px !important;
+    grid-template-columns: 50px minmax(0, 1fr) 112px !important;
     column-gap: 12px !important;
-    min-height: 128px !important;
-    padding: 18px 17px 16px !important;
+    min-height: 122px !important;
+    padding: 17px 16px 15px !important;
     border-radius: 25px !important;
   }
 
   .mobile-dashboard-premium-grid .mobile-kpi-top svg {
-    width: 47px !important;
-    height: 47px !important;
-    padding: 11px !important;
+    width: 44px !important;
+    height: 44px !important;
+    padding: 10px !important;
     border-radius: 16px !important;
   }
 
   .mobile-dashboard-premium-grid .mobile-kpi-top span {
-    padding-right: 46px !important;
-    font-size: 20px !important;
+    padding-right: 44px !important;
+    font-size: 17px !important;
+    line-height: 1.06 !important;
   }
 
   .mobile-kpi-subtitle {
-    margin-right: 46px !important;
-    font-size: 13.5px !important;
+    margin-right: 44px !important;
+    font-size: 12.5px !important;
+    line-height: 1.16 !important;
   }
 
   .mobile-dashboard-premium-grid .mobile-kpi-card strong {
-    font-size: 52px !important;
+    font-size: 47px !important;
   }
 
   .mobile-kpi-more {
-    top: 18px !important;
-    right: 16px !important;
-    min-width: 32px !important;
-    height: 25px !important;
-    font-size: 13px !important;
+    top: 17px !important;
+    right: 15px !important;
+    min-width: 31px !important;
+    height: 24px !important;
+    font-size: 12px !important;
   }
 
   .mobile-kpi-visual-bars::before,
   .mobile-kpi-visual-donut::before,
   .mobile-kpi-visual-shield::before,
   .mobile-kpi-visual-line::before {
-    transform: scale(.78);
+    transform: scale(.74);
     transform-origin: right bottom;
   }
 
   .mobile-kpi-visual-bars::after {
     right: 18px;
     bottom: 15px;
-    transform: scale(.78);
+    transform: scale(.74);
     transform-origin: right bottom;
   }
 
   .mobile-kpi-visual-donut::after {
     right: 22px;
     bottom: 15px;
-    transform: rotate(28deg) scale(.78);
+    transform: rotate(28deg) scale(.74);
     transform-origin: right bottom;
   }
 
   .mobile-kpi-visual-shield::after {
     right: 24px;
     bottom: 14px;
-    transform: rotate(45deg) skew(-6deg, -6deg) scale(.78);
+    transform: rotate(45deg) skew(-6deg, -6deg) scale(.74);
     transform-origin: right bottom;
   }
 
   .mobile-kpi-visual-line::after {
     right: 16px;
     bottom: 14px;
-    transform: scale(.78);
+    transform: scale(.74);
     transform-origin: right bottom;
   }
 }
