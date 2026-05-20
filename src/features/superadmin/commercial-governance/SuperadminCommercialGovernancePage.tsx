@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import { CreditCard, FileText, Flag, Gauge, Key, RefreshCcw, Shield, Sliders } from 'lucide-react';
+import { CreditCard, Download, FileText, Flag, Gauge, Key, RefreshCcw, Shield, Sliders } from 'lucide-react';
 import { apiRequest } from '@/api/client';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
+import { exportStyledXlsx } from '@/lib/xlsxExport';
 import {
   getTenantSubscription, getTenantLimits, getTenantFeatureFlags, getGovernanceAuditLog,
   type TenantSubscription, type TenantLimitSummary, type TenantFeatureFlag, type GovernanceAuditEvent,
@@ -16,6 +17,38 @@ type Tab = 'overview' | 'subscription' | 'limits' | 'features' | 'audit';
 type TenantRow = { id: string; name: string; display_name: string; status: string; plan: string; seats: number; is_active: boolean; created_at: string };
 
 function statusTone(s: string) { if (s === 'active') return 'success'; if (s.includes('suspend') || s.includes('cancel') || s === 'past_due' || s === 'deleted') return 'danger'; if (s === 'trial' || s === 'trialing') return 'warning'; return 'neutral'; }
+function todayStamp() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
+function fmtDate(v: string) { if (!v) return '—'; const d = new Date(v); return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('nl-NL'); }
+
+function exportTenantsToExcel(tenants: TenantRow[]) {
+  const active = tenants.filter((t) => t.status === 'active' || (t.is_active && t.status !== 'trial')).length;
+  const trial = tenants.filter((t) => t.status === 'trial' || t.status === 'trialing').length;
+  const suspended = tenants.filter((t) => t.status === 'suspended' || t.status === 'deleted').length;
+
+  exportStyledXlsx({
+    filename: `WeldInspect-Pro-Tenants-${todayStamp()}.xlsx`,
+    sheetName: 'Tenants',
+    title: 'WeldInspect Pro — Tenantoverzicht',
+    subtitle: `Export vanaf Superadmin > Commercial & Governance · ${new Date().toLocaleString('nl-NL')} · ${tenants.length} tenants`,
+    summary: [
+      { label: 'Active', value: active, type: 'integer' },
+      { label: 'Trial', value: trial, type: 'integer' },
+      { label: 'Suspended', value: suspended, type: 'integer' },
+      { label: 'Totaal', value: tenants.length, type: 'integer' },
+    ],
+    columns: [
+      { key: 'display_name', header: 'Tenant', width: 34, value: (tenant) => tenant.display_name || tenant.name || tenant.id },
+      { key: 'name', header: 'Naam', width: 28 },
+      { key: 'id', header: 'Tenant ID', width: 34 },
+      { key: 'status', header: 'Status', width: 16 },
+      { key: 'plan', header: 'Plan', width: 18, value: (tenant) => tenant.plan || '—' },
+      { key: 'seats', header: 'Seats', width: 12, type: 'integer', value: (tenant) => tenant.seats || 1 },
+      { key: 'is_active', header: 'Actief', width: 12, value: (tenant) => (tenant.is_active ? 'Ja' : 'Nee') },
+      { key: 'created_at', header: 'Aangemaakt', width: 18, value: (tenant) => fmtDate(tenant.created_at) },
+    ],
+    rows: tenants,
+  });
+}
 
 export function SuperadminCommercialGovernancePage() {
   const [tenants, setTenants] = useState<TenantRow[]>([]);
@@ -94,7 +127,12 @@ export function SuperadminCommercialGovernancePage() {
         {error ? <div className="cg-alert cg-alert-danger">{error}</div> : null}
 
         <div className="cg-tenant-selector">
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Zoek tenant…" className="cg-search" />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Zoek tenant…" className="cg-search" style={{ flex: '1 1 260px' }} />
+            <button type="button" className="mobile-primary-button" onClick={() => exportTenantsToExcel(filteredTenants)} disabled={loading || filteredTenants.length === 0}>
+              <Download size={16} /> Export Excel
+            </button>
+          </div>
           <div className="cg-tenant-list">
             {loading ? <div className="cg-empty">Tenants laden…</div> : null}
             {filteredTenants.map((t) => (
