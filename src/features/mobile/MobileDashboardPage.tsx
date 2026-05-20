@@ -104,48 +104,50 @@ export function MobileDashboardPage() {
   );
 
   return (
-    <MobilePageScaffold title="Dashboard" subtitle="Overzicht">
-      {loading ? <div className="mobile-state-card">Dashboard laden…</div> : null}
-      {error ? <div className="mobile-state-card mobile-state-card-error">{error}</div> : null}
-      {refreshing && !loading ? <div className="mobile-list-card-meta" style={{ marginBottom: 8 }}>Dashboard vernieuwen…</div> : null}
-      {!loading && !error && showExampleHint ? (
-        <button
-          type="button"
-          className="mobile-state-card"
-          style={{ textAlign: 'left', marginBottom: 14, borderColor: '#c7d8ff', background: '#eef4ff' }}
-          onClick={() => navigate('/projecten')}
-        >
-          <strong style={{ display: 'block', color: '#2547a8', marginBottom: 6 }}>
-            {onboarding.title || 'Example EN 1090 project is ready'}
-          </strong>
-          <span style={{ display: 'block', color: '#475569', lineHeight: 1.35 }}>
-            {onboarding.message || 'Open the example project to explore projects, welds, inspections, compliance and PDF export.'}
-          </span>
-          {onboarding.project_code ? (
-            <small style={{ display: 'block', color: '#64748b', marginTop: 8 }}>Project: {onboarding.project_code}</small>
-          ) : null}
-        </button>
-      ) : null}
-      {!loading && !error ? (
-        <div className="mobile-kpi-grid mobile-dashboard-premium-grid">
-          {cards.map((card) => {
-            const Icon = card.icon;
-            return (
-              <button
-                key={card.label}
-                type="button"
-                className={`mobile-kpi-card mobile-kpi-card-${card.tone} ${card.compact ? 'mobile-kpi-card-action' : ''} ${card.visual ? `mobile-kpi-visual-${card.visual}` : ''}`}
-                onClick={() => navigate(card.to)}
-              >
-                {!card.compact ? <span className="mobile-kpi-more" aria-hidden="true">•••</span> : null}
-                <div className="mobile-kpi-top"><Icon size={18} /><span>{card.label}</span></div>
-                {card.subtitle ? <span className="mobile-kpi-subtitle" translate="no">{card.subtitle}</span> : null}
-                <strong>{card.value}</strong>
-              </button>
-            );
-          })}
-        </div>
-      ) : null}
-    </MobilePageScaffold>
+    <div translate="no">
+      <MobilePageScaffold title="Dashboard" subtitle="Overzicht">
+        {loading ? <div className="mobile-state-card">Dashboard laden…</div> : null}
+        {error ? <div className="mobile-state-card mobile-state-card-error">{error}</div> : null}
+        {refreshing && !loading ? <div className="mobile-list-card-meta" style={{ marginBottom: 8 }}>Dashboard vernieuwen…</div> : null}
+        {!loading && !error && showExampleHint ? (
+          <button
+            type="button"
+            className="mobile-state-card"
+            style={{ textAlign: 'left', marginBottom: 14, borderColor: '#c7d8ff', background: '#eef4ff' }}
+            onClick={() => navigate('/projecten')}
+          >
+            <strong style={{ display: 'block', color: '#2547a8', marginBottom: 6 }}>
+              {onboarding.title || 'Example EN 1090 project is ready'}
+            </strong>
+            <span style={{ display: 'block', color: '#475569', lineHeight: 1.35 }}>
+              {onboarding.message || 'Open the example project to explore projects, welds, inspections, compliance and PDF export.'}
+            </span>
+            {onboarding.project_code ? (
+              <small style={{ display: 'block', color: '#64748b', marginTop: 8 }}>Project: {onboarding.project_code}</small>
+            ) : null}
+          </button>
+        ) : null}
+        {!loading && !error ? (
+          <div className="mobile-kpi-grid mobile-dashboard-premium-grid">
+            {cards.map((card) => {
+              const Icon = card.icon;
+              return (
+                <button
+                  key={card.label}
+                  type="button"
+                  className={`mobile-kpi-card mobile-kpi-card-${card.tone} ${card.compact ? 'mobile-kpi-card-action' : ''} ${card.visual ? `mobile-kpi-visual-${card.visual}` : ''}`}
+                  onClick={() => navigate(card.to)}
+                >
+                  {!card.compact ? <span className="mobile-kpi-more" aria-hidden="true">•••</span> : null}
+                  <div className="mobile-kpi-top"><Icon size={18} /><span>{card.label}</span></div>
+                  {card.subtitle ? <span className="mobile-kpi-subtitle">{card.subtitle}</span> : null}
+                  <strong>{card.value}</strong>
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
+      </MobilePageScaffold>
+    </div>
   );
 }
