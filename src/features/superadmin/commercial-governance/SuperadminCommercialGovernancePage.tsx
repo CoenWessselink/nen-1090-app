@@ -80,11 +80,9 @@ export function SuperadminCommercialGovernancePage() {
       <div className="cg-page">
         <div className="cg-superadmin-nav" aria-label="Superadmin modules">
           <a className="mobile-secondary-button" href="/superadmin"><Gauge size={16} /> Control Center</a>
-          <a className="mobile-primary-button" href="/superadmin/commercial-governance"><Shield size={16} /> Commercial & Governance</a>
+          <a className="mobile-primary-button" href="/superadmin/commercial-governance"><Shield size={16} /> Commercial en Governance</a>
           <a className="mobile-secondary-button" href="/superadmin/invoices"><FileText size={16} /> Billing</a>
         </div>
-
-        {error ? <div className="cg-alert cg-alert-danger">{error}</div> : null}
 
         <div className="cg-kpi-grid">
           <div className="cg-kpi"><span>Active</span><strong>{activeTenants}</strong></div>
@@ -92,6 +90,8 @@ export function SuperadminCommercialGovernancePage() {
           <div className="cg-kpi"><span>Suspended</span><strong>{suspendedTenants}</strong></div>
           <div className="cg-kpi"><span>Totaal</span><strong>{tenants.length}</strong></div>
         </div>
+
+        {error ? <div className="cg-alert cg-alert-danger">{error}</div> : null}
 
         <div className="cg-tenant-selector">
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Zoek tenant…" className="cg-search" />
