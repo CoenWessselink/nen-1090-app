@@ -86,7 +86,6 @@ export function RenderCeAttachmentAppendixPages({
       {appendixDocuments.map((document, index) => {
         const src = ceDocumentSource(document);
         const name = ceDocumentName(document);
-        const isPdf = isCePdfDocument(document);
         const appendixId = `APP-DOC-${String(index + 1).padStart(3, '0')}`;
 
         return (
@@ -102,35 +101,20 @@ export function RenderCeAttachmentAppendixPages({
               <table className="rpt-table rpt-meta-table rpt-attachment-meta-table">
                 <tbody>
                   <tr><td>Attachment ID</td><td className="rpt-mono">{appendixId}</td></tr>
-                  <tr><td>Filename</td><td>{src ? <a href={src} target="_blank" rel="noreferrer">{name}</a> : name}</td></tr>
+                  <tr><td>Filename</td><td>{name}</td></tr>
                   <tr><td>Type</td><td>{ceDocumentTypeLabel(document)}</td></tr>
                   <tr><td>Linked scope</td><td>{ceDocumentScope(document)}</td></tr>
                   <tr><td>Uploaded</td><td>{ceDocumentDate(document)}</td></tr>
                 </tbody>
               </table>
 
-              {isPdf && src ? (
-                <div className="rpt-pdf-attachment-block">
-                  <div className="rpt-pdf-toolbar">
-                    <strong>PDF bijlage opgenomen in dossier</strong>
-                    <a href={src} target="_blank" rel="noreferrer">Open origineel PDF-bestand</a>
-                  </div>
-                  <object className="rpt-pdf-object" data={src} type="application/pdf" aria-label={name}>
-                    <iframe className="rpt-attachment-frame rpt-pdf-frame" src={src} title={name} />
-                  </object>
-                  <p className="rpt-attachment-note rpt-print-fallback-note">
-                    Browser-print kan PDF-objecten per browser verschillend verwerken. Het originele PDF-bestand is hierboven als dossierbijlage geregistreerd en gekoppeld via de bestandslink.
-                  </p>
-                </div>
-              ) : (
-                <div className="rpt-nonpdf-attachment-block">
-                  <strong>Overige documentbijlage opgenomen in dossierregister</strong>
-                  <p>
-                    Dit bestandstype wordt niet inhoudelijk naar PDF gerenderd door de browser. Het document is volledig geregistreerd als bijlage met bestandsnaam, type, scope, datum en downloadreferentie.
-                  </p>
-                  {src ? <a href={src} target="_blank" rel="noreferrer">Open originele bijlage</a> : null}
-                </div>
-              )}
+              <div className="rpt-nonpdf-attachment-block">
+                <strong>Documentbijlage opgenomen in dossierregister</strong>
+                <p>
+                  Deze bijlage is geregistreerd als onderdeel van het CE-dossier met bestandsnaam, type, scope en uploaddatum. De inhoud wordt niet automatisch in een frame geladen, zodat CSP-beleid en beveiligde downloads geen rapportfouten veroorzaken.
+                </p>
+                {src ? <a href={src} target="_blank" rel="noreferrer">Open originele bijlage</a> : null}
+              </div>
             </div>
             {footer(startPage + index, totalPages)}
           </section>
