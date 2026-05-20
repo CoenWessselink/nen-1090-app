@@ -3,9 +3,14 @@
   --premium-ink: #071331;
   --premium-muted: #64748b;
   --premium-border: rgba(190, 211, 245, 0.74);
+  --premium-surface: rgba(255, 255, 255, 0.92);
+  --premium-surface-strong: #ffffff;
+  --premium-blue: #1468e8;
   --premium-shadow-card: 0 16px 34px rgba(17, 38, 72, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.34);
+  --premium-shadow-soft: 0 14px 34px rgba(20, 54, 103, 0.11);
   --premium-radius-xl: 34px;
   --premium-radius-lg: 28px;
+  --premium-radius-md: 22px;
 }
 
 @media (max-width: 1024px) {
@@ -152,6 +157,203 @@
     letter-spacing: -0.07em !important;
     color: inherit !important;
   }
+
+  .card,
+  .settings-card,
+  .settings-panel,
+  .mobile-list-card,
+  .mobile-form-card,
+  .section-nav-tile,
+  .project-card,
+  .report-card,
+  .billing-card,
+  .superadmin-card,
+  .ce-card,
+  .dashboard-card,
+  .content-card,
+  .details-card,
+  .form-card,
+  .list-card {
+    border: 1px solid var(--premium-border) !important;
+    border-radius: var(--premium-radius-lg) !important;
+    background: var(--premium-surface) !important;
+    box-shadow: var(--premium-shadow-soft) !important;
+  }
+
+  .mobile-list-card,
+  .section-nav-tile,
+  .settings-card,
+  .settings-panel,
+  .card {
+    overflow: hidden !important;
+  }
+
+  .section-title-row,
+  .card-header,
+  .settings-card-header,
+  .mobile-list-card-header,
+  .panel-header {
+    color: var(--premium-ink) !important;
+    font-weight: 850 !important;
+    letter-spacing: -0.025em !important;
+  }
+
+  .section-title-row svg,
+  .card-header svg,
+  .settings-card-header svg,
+  .mobile-list-card-header svg,
+  .section-nav-tile svg {
+    color: var(--premium-blue) !important;
+    stroke-width: 2.4 !important;
+  }
+
+  .mobile-state-card,
+  .empty-state,
+  .loading-state,
+  .error-state,
+  .inline-message,
+  .toast,
+  .alert {
+    border: 1px solid var(--premium-border) !important;
+    border-radius: var(--premium-radius-md) !important;
+    background: rgba(255,255,255,.9) !important;
+    box-shadow: 0 10px 26px rgba(20,54,103,.10) !important;
+  }
+
+  input,
+  select,
+  textarea,
+  .form-input,
+  .form-select,
+  .mobile-input,
+  .input,
+  .select-trigger {
+    border-radius: 20px !important;
+    border-color: rgba(184, 205, 236, 0.95) !important;
+    background: rgba(255, 255, 255, 0.94) !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.78) !important;
+  }
+
+  input:focus,
+  select:focus,
+  textarea:focus,
+  .form-input:focus,
+  .mobile-input:focus {
+    border-color: rgba(20,104,232,.62) !important;
+    box-shadow: 0 0 0 4px rgba(20,104,232,.12), inset 0 1px 0 rgba(255,255,255,.8) !important;
+  }
+
+  button,
+  .button,
+  .btn,
+  .primary-button,
+  .secondary-button,
+  .buttonlike-file,
+  .row-actions a,
+  .stack-actions a {
+    border-radius: 18px !important;
+  }
+
+  .btn-primary,
+  .button-primary,
+  button[type='submit'],
+  .primary-button {
+    background: linear-gradient(135deg, #2f7cff, #145be4) !important;
+    box-shadow: 0 12px 24px rgba(20,91,228,.23) !important;
+  }
+
+  table,
+  .table,
+  .data-table,
+  .mobile-table,
+  .settings-table {
+    border-radius: var(--premium-radius-md) !important;
+    overflow: hidden !important;
+    background: rgba(255,255,255,.92) !important;
+    box-shadow: 0 10px 28px rgba(20,54,103,.09) !important;
+  }
+
+  th,
+  .table-header,
+  .data-table-header {
+    background: linear-gradient(180deg, #f7fbff, #edf4ff) !important;
+    color: #23406f !important;
+    font-weight: 850 !important;
+  }
+
+  .bottom-nav,
+  .mobile-bottom-nav,
+  nav[aria-label='Mobiele navigatie'],
+  .mobile-tabbar {
+    border: 1px solid rgba(207,219,239,.76) !important;
+    border-radius: 30px !important;
+    background: rgba(255,255,255,.88) !important;
+    box-shadow: 0 18px 48px rgba(13,42,86,.18) !important;
+    backdrop-filter: blur(22px) saturate(150%) !important;
+    -webkit-backdrop-filter: blur(22px) saturate(150%) !important;
+  }
+
+  .bottom-nav button,
+  .mobile-bottom-nav button,
+  nav[aria-label='Mobiele navigatie'] button,
+  .mobile-tabbar button,
+  .bottom-nav a,
+  .mobile-bottom-nav a,
+  nav[aria-label='Mobiele navigatie'] a,
+  .mobile-tabbar a {
+    border-radius: 22px !important;
+    font-weight: 800 !important;
+  }
+
+  .bottom-nav .active,
+  .mobile-bottom-nav .active,
+  nav[aria-label='Mobiele navigatie'] .active,
+  .mobile-tabbar .active,
+  .bottom-nav [aria-current='page'],
+  .mobile-bottom-nav [aria-current='page'],
+  nav[aria-label='Mobiele navigatie'] [aria-current='page'],
+  .mobile-tabbar [aria-current='page'] {
+    color: #145df4 !important;
+    background: linear-gradient(180deg, #edf4ff, #e7f0ff) !important;
+    box-shadow: inset 0 0 0 1px rgba(86,137,255,.18), 0 10px 20px rgba(20,94,242,.10) !important;
+  }
+
+  .modal-panel,
+  [data-modal-panel],
+  .dialog-content,
+  .modal-content {
+    border: 1px solid rgba(215,226,244,.9) !important;
+    border-radius: 28px !important;
+    box-shadow: 0 28px 80px rgba(15,23,42,.26) !important;
+  }
+
+  .overlay-header,
+  .modal-header,
+  .dialog-header {
+    background: linear-gradient(180deg, #ffffff, #f6faff) !important;
+  }
+
+  .tabs,
+  .tab-list,
+  .segmented-control,
+  .filter-tabs {
+    padding: 5px !important;
+    border: 1px solid rgba(196,214,242,.82) !important;
+    border-radius: 22px !important;
+    background: rgba(255,255,255,.76) !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.84) !important;
+  }
+
+  .tab-active,
+  .tabs .active,
+  .filter-tabs .active,
+  .segmented-control .active,
+  [aria-selected='true'] {
+    border-radius: 17px !important;
+    color: #115ee8 !important;
+    background: #eef5ff !important;
+    box-shadow: 0 8px 18px rgba(20,94,242,.10) !important;
+  }
 }
 
 @media (max-width: 430px) {
@@ -165,4 +367,20 @@
   .mobile-kpi-top { grid-template-columns: 62px minmax(0, 1fr) !important; gap: 14px !important; font-size: 23px !important; }
   .mobile-kpi-top svg { width: 52px !important; height: 52px !important; padding: 14px !important; border-radius: 18px !important; }
   .mobile-kpi-card strong { font-size: 68px !important; }
+  .card,
+  .settings-card,
+  .settings-panel,
+  .mobile-list-card,
+  .mobile-form-card,
+  .section-nav-tile,
+  .project-card,
+  .report-card,
+  .billing-card,
+  .superadmin-card,
+  .ce-card,
+  .dashboard-card,
+  .content-card,
+  .details-card,
+  .form-card,
+  .list-card { border-radius: 24px !important; }
 }
