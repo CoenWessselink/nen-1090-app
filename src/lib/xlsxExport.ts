@@ -1,3 +1,5 @@
+import type { Alignment, Fill, Font, Workbook, Worksheet } from 'exceljs';
+
 type ExcelCellValue = string | number | boolean | null | undefined;
 
 export type XlsxColumn<T> = {
@@ -24,107 +26,131 @@ export type ExportStyledXlsxOptions<T> = {
   summary?: XlsxSummaryItem[];
 };
 
-function escapeXml(value: ExcelCellValue) {
-  return String(value ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
-}
+const APP_BLUE = 'FF2563EB';
+const APP_DARK_BLUE = 'FF1E3A8A';
+const APP_LIGHT_BLUE = 'FFDBEAFE';
+const APP_SOFT_BLUE = 'FFEFF6FF';
+const BORDER_BLUE = 'FFD7E3F3';
+const TEXT_DARK = 'FF0F172A';
+const WHITE = 'FFFFFFFF';
 
 function safeSheetName(name: string) {
   return (name || 'Export').replace(/[\\/?*\[\]:]/g, ' ').trim().slice(0, 31) || 'Export';
 }
 
 function downloadName(filename: string) {
-  return filename.replace(/\.xlsx$/i, '.xml').replace(/\.xls$/i, '.xml').replace(/\.xml$/i, '.xml') || 'export.xml';
+  const clean = filename.replace(/\.xml$/i, '.xlsx').replace(/\.xls$/i, '.xlsx');
+  return clean.toLowerCase().endsWith('.xlsx') ? clean : `${clean}.xlsx`;
 }
 
-function excelCell(value: ExcelCellValue, styleId = 'Default', numeric = false) {
-  if (numeric && typeof value === 'number' && Number.isFinite(value)) {
-    return `<Cell ss:StyleID="${styleId}"><Data ss:Type="Number">${value}</Data></Cell>`;
-  }
-  return `<Cell ss:StyleID="${styleId}"><Data ss:Type="String">${escapeXml(value)}</Data></Cell>`;
+function styleFill(color: string): Fill {
+  return { type: 'pattern', pattern: 'solid', fgColor: { argb: color } };
 }
 
-function columnXml(width?: number) {
-  return `<Column ss:AutoFitWidth="0" ss:Width="${Math.max(9, Number(width || 18)) * 6}"/>`;
+function styleFont(options: Partial<Font> = {}): Partial<Font> {
+  return { name: 'Aptos', color: { argb: TEXT_DARK }, size: 11, ...options };
 }
 
-export function exportStyledXlsx<T>(options: ExportStyledXlsxOptions<T>) {
+function applyBorder(worksheet: Worksheet) {
+  worksheet.eachRow((row) => {
+    row.eachCell((cell) => {
+      cell.border = {
+        top: { style: 'thin', color: { argb: BORDER_BLUE } },
+        left: { style: 'thin', color: { argb: BORDER_BLUE } },
+        bottom: { style: 'thin', color: { argb: BORDER_BLUE } },
+        right: { style: 'thin', color: { argb: BORDER_BLUE } },
+      };
+      cell.alignment = { vertical: 'middle', wrapText: true } as Partial<Alignment>;
+    });
+  });
+}
+
+function numericValue(value: ExcelCellValue) {
+  const n = Number(value || 0);
+  return Number.isFinite(n) ? n : 0;
+}
+
+export async function exportStyledXlsx<T>(options: ExportStyledXlsxOptions<T>) {
+  const ExcelJS = await import('exceljs');
+  const workbook: Workbook = new ExcelJS.Workbook();
+  workbook.creator = 'WeldInspect Pro';
+  workbook.created = new Date();
+  workbook.modified = new Date();
+
   const { filename, sheetName, title, subtitle, columns, rows, summary = [] } = options;
-  const columnCount = Math.max(columns.length, 1);
-  const summaryItems = summary.slice(0, Math.floor(columnCount / 2));
+  const worksheet = workbook.addWorksheet(safeSheetName(sheetName), {
+    views: [{ state: 'frozen', ySplit: summary.length ? 6 : 4 }],
+    properties: { defaultRowHeight: 22 },
+  });
 
-  const titleRow = `<Row ss:Height="28">${excelCell(title, 'Title')}${Array.from({ length: columnCount - 1 }, () => '<Cell ss:StyleID="Title"/>').join('')}</Row>`;
-  const subtitleRow = `<Row>${excelCell(subtitle || `Export gegenereerd op ${new Date().toLocaleString('nl-NL')}`, 'Subtitle')}${Array.from({ length: columnCount - 1 }, () => '<Cell ss:StyleID="Subtitle"/>').join('')}</Row>`;
+  const colCount = Math.max(columns.length, 1);
+  worksheet.columns = columns.map((column) => ({ width: column.width || 18 }));
 
-  const summaryRow = summaryItems.length
-    ? `<Row>${summaryItems.flatMap((item) => [
-        excelCell(item.label, 'SummaryLabel'),
-        excelCell(item.value, item.type === 'currency' ? 'SummaryCurrency' : 'SummaryValue', item.type === 'currency' || item.type === 'number' || item.type === 'integer'),
-      ]).join('')}</Row><Row/>`
-    : '';
+  worksheet.mergeCells(1, 1, 1, colCount);
+  const titleCell = worksheet.getCell(1, 1);
+  titleCell.value = title;
+  titleCell.font = styleFont({ name: 'Aptos Display', size: 18, bold: true, color: { argb: WHITE } });
+  titleCell.fill = styleFill(APP_DARK_BLUE);
+  titleCell.alignment = { vertical: 'middle', horizontal: 'left' };
+  worksheet.getRow(1).height = 30;
 
-  const headerRow = `<Row>${columns.map((column) => excelCell(column.header, 'Header')).join('')}</Row>`;
-  const dataRows = rows.map((row) => {
-    const cells = columns.map((column) => {
-      const raw = column.value ? column.value(row) : (row as Record<string, ExcelCellValue>)[String(column.key)];
-      const numeric = column.type === 'currency' || column.type === 'number' || column.type === 'integer';
-      const style = column.type === 'currency' ? 'Currency' : numeric ? 'Number' : 'Default';
-      return excelCell(raw, style, numeric);
-    }).join('');
-    return `<Row>${cells}</Row>`;
-  }).join('');
+  worksheet.mergeCells(2, 1, 2, colCount);
+  const subtitleCell = worksheet.getCell(2, 1);
+  subtitleCell.value = subtitle || `Export gegenereerd op ${new Date().toLocaleString('nl-NL')}`;
+  subtitleCell.font = styleFont({ bold: true, color: { argb: APP_DARK_BLUE } });
+  subtitleCell.fill = styleFill(APP_LIGHT_BLUE);
 
-  const workbook = `<?xml version="1.0" encoding="UTF-8"?>
-<?mso-application progid="Excel.Sheet"?>
-<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
- xmlns:o="urn:schemas-microsoft-com:office:office"
- xmlns:x="urn:schemas-microsoft-com:office:excel"
- xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
- xmlns:html="http://www.w3.org/TR/REC-html40">
- <DocumentProperties xmlns="urn:schemas-microsoft-com:office:office">
-  <Author>WeldInspect Pro</Author>
-  <Created>${new Date().toISOString()}</Created>
- </DocumentProperties>
- <Styles>
-  <Style ss:ID="Default" ss:Name="Normal">
-   <Font ss:FontName="Aptos" ss:Size="11" ss:Color="#0f172a"/>
-   <Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#dbe7f3"/><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#dbe7f3"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#dbe7f3"/><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#dbe7f3"/></Borders>
-  </Style>
-  <Style ss:ID="Title"><Font ss:FontName="Aptos Display" ss:Size="18" ss:Bold="1" ss:Color="#ffffff"/><Interior ss:Color="#1e3a8a" ss:Pattern="Solid"/></Style>
-  <Style ss:ID="Subtitle"><Font ss:FontName="Aptos" ss:Size="11" ss:Bold="1" ss:Color="#1e3a8a"/><Interior ss:Color="#dbeafe" ss:Pattern="Solid"/></Style>
-  <Style ss:ID="Header"><Font ss:FontName="Aptos" ss:Size="11" ss:Bold="1" ss:Color="#ffffff"/><Interior ss:Color="#2563eb" ss:Pattern="Solid"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#1d4ed8"/><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#1d4ed8"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#1d4ed8"/><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#1d4ed8"/></Borders></Style>
-  <Style ss:ID="SummaryLabel"><Font ss:FontName="Aptos" ss:Size="11" ss:Bold="1" ss:Color="#1e3a8a"/><Interior ss:Color="#eff6ff" ss:Pattern="Solid"/></Style>
-  <Style ss:ID="SummaryValue"><Font ss:FontName="Aptos" ss:Size="11" ss:Bold="1" ss:Color="#0f172a"/><Interior ss:Color="#eff6ff" ss:Pattern="Solid"/></Style>
-  <Style ss:ID="Currency"><NumberFormat ss:Format="&quot;€&quot; #,##0.00"/></Style>
-  <Style ss:ID="SummaryCurrency"><Font ss:FontName="Aptos" ss:Size="11" ss:Bold="1" ss:Color="#0f172a"/><Interior ss:Color="#eff6ff" ss:Pattern="Solid"/><NumberFormat ss:Format="&quot;€&quot; #,##0.00"/></Style>
-  <Style ss:ID="Number"><NumberFormat ss:Format="0"/></Style>
- </Styles>
- <Worksheet ss:Name="${escapeXml(safeSheetName(sheetName))}">
-  <Table>
-   ${columns.map((column) => columnXml(column.width)).join('')}
-   ${titleRow}
-   ${subtitleRow}
-   <Row/>
-   ${summaryRow}
-   ${headerRow}
-   ${dataRows || `<Row>${excelCell('Geen regels beschikbaar.', 'Default')}</Row>`}
-  </Table>
-  <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
-   <FreezePanes/>
-   <FrozenNoSplit/>
-   <SplitHorizontal>${summaryItems.length ? 6 : 4}</SplitHorizontal>
-   <TopRowBottomPane>${summaryItems.length ? 7 : 5}</TopRowBottomPane>
-   <ProtectObjects>False</ProtectObjects>
-   <ProtectScenarios>False</ProtectScenarios>
-  </WorksheetOptions>
- </Worksheet>
-</Workbook>`;
+  let rowIndex = 4;
+  if (summary.length) {
+    const summaryRow = worksheet.getRow(rowIndex);
+    summary.slice(0, Math.floor(colCount / 2)).forEach((item, index) => {
+      const labelCell = summaryRow.getCell(index * 2 + 1);
+      const valueCell = summaryRow.getCell(index * 2 + 2);
+      labelCell.value = item.label;
+      valueCell.value = item.type === 'currency' || item.type === 'number' || item.type === 'integer' ? numericValue(item.value) : String(item.value ?? '');
+      labelCell.font = styleFont({ bold: true, color: { argb: APP_DARK_BLUE } });
+      valueCell.font = styleFont({ bold: true });
+      labelCell.fill = styleFill(APP_SOFT_BLUE);
+      valueCell.fill = styleFill(APP_SOFT_BLUE);
+      if (item.type === 'currency') valueCell.numFmt = '€ #,##0.00';
+      if (item.type === 'integer') valueCell.numFmt = '0';
+    });
+    rowIndex += 2;
+  }
 
-  const blob = new Blob([workbook], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+  const headerRow = worksheet.getRow(rowIndex);
+  columns.forEach((column, index) => {
+    const cell = headerRow.getCell(index + 1);
+    cell.value = column.header;
+    cell.font = styleFont({ bold: true, color: { argb: WHITE } });
+    cell.fill = styleFill(APP_BLUE);
+  });
+  headerRow.height = 24;
+
+  rows.forEach((row) => {
+    const excelRow = worksheet.addRow(
+      columns.map((column) => {
+        const value = column.value ? column.value(row) : (row as Record<string, ExcelCellValue>)[String(column.key)];
+        return column.type === 'currency' || column.type === 'number' || column.type === 'integer' ? numericValue(value) : value ?? '';
+      }),
+    );
+    columns.forEach((column, index) => {
+      const cell = excelRow.getCell(index + 1);
+      if (column.type === 'currency') cell.numFmt = '€ #,##0.00';
+      if (column.type === 'integer') cell.numFmt = '0';
+      if (column.type === 'number') cell.numFmt = '#,##0.00';
+    });
+  });
+
+  worksheet.autoFilter = {
+    from: { row: rowIndex, column: 1 },
+    to: { row: Math.max(rowIndex + rows.length, rowIndex), column: colCount },
+  };
+  worksheet.getRow(rowIndex).font = styleFont({ bold: true, color: { argb: WHITE } });
+  applyBorder(worksheet);
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
