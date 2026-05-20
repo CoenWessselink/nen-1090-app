@@ -59,10 +59,42 @@ export function MobileDashboardPage() {
 
   const cards = useMemo(
     () => [
-      { label: 'Actieve projecten', value: formatValue(summary?.active_projects || summary?.open_projects || 0, '0'), tone: 'danger', icon: FolderKanban, to: '/projecten' },
-      { label: 'Open lassen', value: formatValue(summary?.open_welds || 0, '0'), tone: 'warning', icon: Wrench, to: '/projecten' },
-      { label: 'Niet-conforme lassen', value: formatValue(summary?.rejected_welds || 0, '0'), tone: 'primary', icon: TriangleAlert, to: '/projecten' },
-      { label: 'CE dossiers gereed', value: formatValue(summary?.ce_dossier_ready || summary?.reports || 0, '0'), tone: 'success', icon: FileCheck2, to: '/rapportage' },
+      {
+        label: 'Actieve projecten',
+        subtitle: 'Projecten in uitvoering',
+        value: formatValue(summary?.active_projects || summary?.open_projects || 0, '0'),
+        tone: 'danger',
+        icon: FolderKanban,
+        to: '/projecten',
+        visual: 'bars',
+      },
+      {
+        label: 'Open lassen',
+        subtitle: 'Lassen die actie vereisen',
+        value: formatValue(summary?.open_welds || 0, '0'),
+        tone: 'warning',
+        icon: Wrench,
+        to: '/projecten',
+        visual: 'donut',
+      },
+      {
+        label: 'Niet-conforme lassen',
+        subtitle: 'Afwijkingen die aandacht nodig hebben',
+        value: formatValue(summary?.rejected_welds || 0, '0'),
+        tone: 'primary',
+        icon: TriangleAlert,
+        to: '/projecten',
+        visual: 'shield',
+      },
+      {
+        label: 'Afgeronde inspecties',
+        subtitle: 'Inspecties succesvol afgerond',
+        value: formatValue(summary?.ce_dossier_ready || summary?.reports || 0, '0'),
+        tone: 'success',
+        icon: FileCheck2,
+        to: '/rapportage',
+        visual: 'line',
+      },
       { label: 'Rapportages', value: formatValue(summary?.reports || 0, '0'), subtitle: 'Beschikbare rapporten', tone: 'secondary', icon: FileText, to: '/rapportage', compact: true },
       { label: 'Instellingen', value: '', subtitle: 'Stamdata & templates', tone: 'secondary', icon: Settings, to: '/instellingen', compact: true },
       { label: 'Project aanmaken', value: '', subtitle: 'Nieuw project', tone: 'secondary', icon: FolderPlus, to: '/projecten/nieuw', compact: true },
@@ -95,18 +127,20 @@ export function MobileDashboardPage() {
         </button>
       ) : null}
       {!loading && !error ? (
-        <div className="mobile-kpi-grid">
+        <div className="mobile-kpi-grid mobile-dashboard-premium-grid">
           {cards.map((card) => {
             const Icon = card.icon;
             return (
               <button
                 key={card.label}
                 type="button"
-                className={`mobile-kpi-card mobile-kpi-card-${card.tone} ${card.compact ? 'mobile-kpi-card-action' : ''}`}
+                className={`mobile-kpi-card mobile-kpi-card-${card.tone} ${card.compact ? 'mobile-kpi-card-action' : ''} ${card.visual ? `mobile-kpi-visual-${card.visual}` : ''}`}
                 onClick={() => navigate(card.to)}
               >
+                {!card.compact ? <span className="mobile-kpi-more" aria-hidden="true">•••</span> : null}
                 <div className="mobile-kpi-top"><Icon size={18} /><span>{card.label}</span></div>
-                <strong>{card.value}</strong>{card.compact ? <small style={{ color: 'rgba(255,255,255,0.82)' }}>{card.subtitle}</small> : null}
+                {card.subtitle ? <span className="mobile-kpi-subtitle">{card.subtitle}</span> : null}
+                <strong>{card.value}</strong>
               </button>
             );
           })}
