@@ -85,48 +85,62 @@ function normalizeHeader(value: unknown) {
 
 function cellText(value: unknown) {
   if (value == null) return '';
-  if (value instanceof Date) return value.toISOString().slice(0, 10);
-  if (typeof value === 'object' && 'text' in value) return String((value as { text?: unknown }).text || '');
-  return String(value).trim();
+  return String(value).replace(/\s+/g, ' ').trim();
+}
+
+function parseDelimited(text: string): string[][] {
+  const delimiter = text.includes('\t') ? '\t' : ';';
+  return text
+    .split(/\r?\n/)
+    .map((line) => line.split(delimiter).map((cell) => cell.replace(/^"|"$/g, '').replace(/""/g, '"').trim()))
+    .filter((line) => line.some(Boolean));
+}
+
+function parseHtmlTable(text: string): string[][] {
+  const doc = new DOMParser().parseFromString(text, 'text/html');
+  return Array.from(doc.querySelectorAll('tr'))
+    .map((tr) => Array.from(tr.querySelectorAll('th,td')).map((td) => cellText(td.textContent)))
+    .filter((line) => line.some(Boolean));
+}
+
+function rowsToImportRows(table: string[][]): WelderImportRow[] {
+  let headerIndex = -1;
+  let headerMap: Record<number, string> = {};
+
+  table.some((line, index) => {
+    const candidate: Record<number, string> = {};
+    line.forEach((header, columnIndex) => {
+      const normalized = normalizeHeader(header);
+      const field = HEADER_TO_FIELD[normalized] || HEADER_TO_FIELD[normalized.replace(/ /g, '_')];
+      if (field) candidate[columnIndex] = field;
+    });
+    if (Object.keys(candidate).length >= 2 || Object.values(candidate).includes('name')) {
+      headerIndex = index;
+      headerMap = candidate;
+      return true;
+    }
+    return false;
+  });
+
+  if (headerIndex < 0) throw new Error('Geen geldige kolomkoppen gevonden. Gebruik minimaal Welder/Name en Qualification Expiry.');
+
+  return table.slice(headerIndex + 1).map((line) => {
+    const item: WelderImportRow = {};
+    Object.entries(headerMap).forEach(([columnIndex, field]) => {
+      const value = cellText(line[Number(columnIndex)]);
+      if (value) item[field] = value;
+    });
+    return item;
+  }).filter((item) => Object.values(item).some(Boolean));
 }
 
 async function readWelderImportRows(file: File): Promise<WelderImportRow[]> {
-  const ExcelJS = await import('exceljs');
-  const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(await file.arrayBuffer());
-  const worksheet = workbook.worksheets[0];
-  if (!worksheet) return [];
-
-  let headerRowNumber = 1;
-  let headerMap: Record<number, string> = {};
-
-  worksheet.eachRow((row, rowNumber) => {
-    if (Object.keys(headerMap).length) return;
-    const candidate: Record<number, string> = {};
-    row.eachCell((cell, colNumber) => {
-      const header = normalizeHeader(cell.value);
-      const field = HEADER_TO_FIELD[header] || HEADER_TO_FIELD[header.replace(/ /g, '_')];
-      if (field) candidate[colNumber] = field;
-    });
-    if (Object.keys(candidate).length >= 2 || Object.values(candidate).includes('name')) {
-      headerRowNumber = rowNumber;
-      headerMap = candidate;
-    }
-  });
-
-  if (!Object.keys(headerMap).length) throw new Error('Geen geldige kolomkoppen gevonden. Gebruik minimaal Welder/Name en Qualification Expiry.');
-
-  const imported: WelderImportRow[] = [];
-  worksheet.eachRow((row, rowNumber) => {
-    if (rowNumber <= headerRowNumber) return;
-    const item: WelderImportRow = {};
-    Object.entries(headerMap).forEach(([columnNumber, field]) => {
-      const value = cellText(row.getCell(Number(columnNumber)).value);
-      if (value) item[field] = value;
-    });
-    if (Object.values(item).some(Boolean)) imported.push(item);
-  });
-  return imported;
+  if (file.name.toLowerCase().endsWith('.xlsx')) {
+    throw new Error('Importeer voorlopig als .xls of CSV. Open het Excel-bestand en kies Opslaan als > Excel 97-2003 werkmap (.xls) of CSV.');
+  }
+  const text = await file.text();
+  const table = /<table|<tr|<html/i.test(text) ? parseHtmlTable(text) : parseDelimited(text);
+  return rowsToImportRows(table);
 }
 
 function normalizeImportPayload(row: WelderImportRow) {
@@ -151,7 +165,7 @@ export default function WeldersSection({ rows }: WeldersSectionProps) {
   async function handleExport() {
     setMessage(null);
     await exportStyledXlsx({
-      filename: `WeldInspect-Pro-Welders-${todayStamp()}.xlsx`,
+      filename: `WeldInspect-Pro-Welders-${todayStamp()}.xls`,
       sheetName: 'Welders',
       title: 'WeldInspect Pro — Welders',
       subtitle: `Export vanuit Instellingen > Welders · ${new Date().toLocaleString('nl-NL')} · ${rows.length} welders`,
@@ -216,7 +230,7 @@ export default function WeldersSection({ rows }: WeldersSectionProps) {
         <input
           ref={fileInputRef}
           type="file"
-          accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          accept=".xls,.csv,text/csv,application/vnd.ms-excel"
           style={{ display: 'none' }}
           onChange={(event) => void handleImport(event.target.files?.[0])}
         />
