@@ -28,20 +28,40 @@ export type MasterDataType = 'wps' | 'materials' | 'welders' | 'weld-coordinator
 type PreviewState = { url: string; mimeType: string; filename: string } | null;
 type MasterDataRow = Record<string, unknown>;
 
+const WELDER_KEYS = [
+  'certificate_no',
+  'process',
+  'type_of_weld',
+  'base_metal',
+  'filler_material',
+  'welding_position',
+  'range_material_thickness',
+  'range_outside_pipe_diameter',
+  'name',
+  'valid_until',
+  'notes',
+];
+
 const LABEL_MAP: Record<string, string> = {
   code: 'Code',
-  name: 'Naam',
+  name: 'Welder',
   title: 'Naam / titel',
   kind: 'Type',
   description: 'Omschrijving',
   status: 'Status',
-  process: 'Proces',
+  process: 'Welding process',
   welding_method: 'Lasmethode',
   qualification: 'Kwalificatie',
   material_group: 'Materiaalgroep',
   thickness_range: 'Diktebereik',
-  welding_position: 'Laspositie',
-  certificate_no: 'Certificaatnummer',
+  welding_position: 'Welding positions',
+  certificate_no: 'Certificate No. (9606-1)',
+  type_of_weld: 'Type of weld',
+  base_metal: 'Base metal',
+  filler_material: 'Filler material',
+  range_material_thickness: 'Range material thickness',
+  range_outside_pipe_diameter: 'Range outside pipe diameter',
+  valid_until: 'Valid until',
   document_no: 'Documentnummer',
   norm: 'Norm',
   level: 'Niveau',
@@ -55,26 +75,48 @@ const LABEL_MAP: Record<string, string> = {
 
 const WELDER_IMPORT_HEADERS: Record<string, string> = {
   id: 'id',
-  code: 'code',
+  code: 'certificate_no',
+  certificate_no: 'certificate_no',
+  certificate_number: 'certificate_no',
+  certificaatnummer: 'certificate_no',
+  cert_no: 'certificate_no',
+  certificate: 'certificate_no',
+  '9606_1': 'certificate_no',
   welder: 'name',
   lasser: 'name',
   name: 'name',
   naam: 'name',
   process: 'process',
   proces: 'process',
-  welding_method: 'welding_method',
-  lasmethode: 'welding_method',
-  qualification: 'qualification',
-  kwalificatie: 'qualification',
-  certificate_no: 'certificate_no',
-  certificaatnummer: 'certificate_no',
-  certificate_number: 'certificate_no',
-  material_group: 'material_group',
-  materiaalgroep: 'material_group',
-  thickness_range: 'thickness_range',
-  diktebereik: 'thickness_range',
+  welding_process: 'process',
+  lasproces: 'process',
+  type_of_weld: 'type_of_weld',
+  type_las: 'type_of_weld',
+  weld_type: 'type_of_weld',
+  base_metal: 'base_metal',
+  base_material: 'base_metal',
+  basismateriaal: 'base_metal',
+  filler_material: 'filler_material',
+  toevoegmateriaal: 'filler_material',
+  welding_positions: 'welding_position',
   welding_position: 'welding_position',
+  lasposities: 'welding_position',
   laspositie: 'welding_position',
+  positions: 'welding_position',
+  material_group: 'filler_material',
+  materiaalgroep: 'filler_material',
+  thickness_range: 'range_material_thickness',
+  diktebereik: 'range_material_thickness',
+  range_material_thickness: 'range_material_thickness',
+  materiaaldiktebereik: 'range_material_thickness',
+  range_outside_pipe_diameter: 'range_outside_pipe_diameter',
+  pipe_diameter_range: 'range_outside_pipe_diameter',
+  diameterbereik: 'range_outside_pipe_diameter',
+  buisdiameterbereik: 'range_outside_pipe_diameter',
+  valid_until: 'valid_until',
+  valid_untill: 'valid_until',
+  geldig_tot: 'valid_until',
+  vervaldatum: 'valid_until',
   notes: 'notes',
   opmerkingen: 'notes',
 };
@@ -93,11 +135,22 @@ function documentKindFor(type: MasterDataType): string {
 
 function pickEditableKeys(rows: MasterDataRow[], type: MasterDataType) {
   if (type === 'inspection-templates') return ['name', 'exc_class', 'version', 'is_default', 'items_json'];
-  if (type === 'welders') return ['code', 'name', 'process', 'welding_method', 'qualification', 'certificate_no', 'material_group', 'thickness_range', 'welding_position', 'notes'];
+  if (type === 'welders') return WELDER_KEYS;
   if (type === 'weld-coordinators') return ['code', 'name', 'email', 'level', 'process', 'qualification', 'certificate_no', 'notes'];
   if (type === 'wps') return ['kind', 'code', 'title', 'document_no', 'version', 'process', 'welding_method', 'material_group', 'thickness_range', 'welding_position', 'norm', 'status', 'notes'];
   const source = rows[0] || { code: '', name: '', description: '', status: '' };
   return Object.keys(source).filter((key) => !['id', 'created_at', 'updated_at', 'tenant_id'].includes(key)).slice(0, 6);
+}
+
+function displayValue(row: MasterDataRow, key: string) {
+  if (key === 'certificate_no') return row.certificate_no ?? row.code ?? '—';
+  if (key === 'process') return row.process ?? row.welding_process ?? '—';
+  if (key === 'welding_position') return row.welding_position ?? row.position ?? '—';
+  if (key === 'range_material_thickness') return row.range_material_thickness ?? row.thickness_range ?? '—';
+  if (key === 'range_outside_pipe_diameter') return row.range_outside_pipe_diameter ?? row.diameter_range ?? '—';
+  if (key === 'name') return row.name ?? row.full_name ?? row.display_name ?? '—';
+  if (key === 'valid_until') return row.valid_until ?? row.qualification_expiry ?? row.expiry_date ?? '—';
+  return row[key] ?? '—';
 }
 
 function defaultDraft(type: MasterDataType, rows: MasterDataRow[]): MasterDataRow {
@@ -131,6 +184,7 @@ function normalizeDraft(type: MasterDataType, draft: MasterDataRow): MasterDataR
     normalized[key] = typeof value === 'string' ? value.trim() : value;
   });
   if (type === 'wps' && normalized.kind === 'WPQ') normalized.kind = 'WPQR';
+  if (type === 'welders' && !normalized.code && normalized.certificate_no) normalized.code = normalized.certificate_no;
   return normalized;
 }
 
@@ -158,7 +212,7 @@ function todayStamp() {
 }
 
 function normalizeImportHeader(value: unknown) {
-  return String(value || '').trim().toLowerCase().replace(/\s+/g, '_').replace(/-/g, '_');
+  return String(value || '').trim().toLowerCase().replace(/[.:()]/g, '').replace(/\s+/g, '_').replace(/-/g, '_');
 }
 
 function parseDelimited(text: string): string[][] {
@@ -195,7 +249,7 @@ function parseImportRows(text: string): MasterDataRow[] {
     return false;
   });
 
-  if (headerIndex < 0) throw new Error('Geen geldige kolomkoppen gevonden. Gebruik minimaal Naam/Name/Welder en eventueel Code.');
+  if (headerIndex < 0) throw new Error('Geen geldige kolomkoppen gevonden. Gebruik minimaal Certificate No., Welder en Valid until.');
 
   return table.slice(headerIndex + 1).map((line) => {
     const item: MasterDataRow = {};
@@ -203,6 +257,7 @@ function parseImportRows(text: string): MasterDataRow[] {
       const value = line[Number(columnIndex)]?.trim();
       if (value) item[key] = value;
     });
+    if (!item.code && item.certificate_no) item.code = item.certificate_no;
     return item;
   }).filter((item) => Object.values(item).some(Boolean));
 }
@@ -257,9 +312,10 @@ export function MasterDataManager({
   const editableKeys = useMemo(() => pickEditableKeys(rows, type), [rows, type]);
   const visibleKeys = useMemo(() => {
     const preferred = editableKeys.filter((key) => !['notes', 'items_json'].includes(key));
+    if (type === 'welders') return preferred;
     const available = preferred.filter((key) => filteredRows.some((row) => row[key] !== undefined && row[key] !== null && row[key] !== ''));
     return (available.length ? available : preferred).slice(0, 6);
-  }, [editableKeys, filteredRows]);
+  }, [editableKeys, filteredRows, type]);
 
   async function refreshDocuments(entityId: string) {
     if (!scope || !entityId) return;
@@ -286,7 +342,7 @@ export function MasterDataManager({
   const openEdit = (row: MasterDataRow) => {
     const rowId = String(row.id || 'new');
     setEditingId(rowId);
-    const nextDraft = Object.fromEntries(editableKeys.map((key) => [key, row[key] ?? ''])) as MasterDataRow;
+    const nextDraft = Object.fromEntries(editableKeys.map((key) => [key, displayValue(row, key) === '—' ? '' : displayValue(row, key)])) as MasterDataRow;
     if (type === 'inspection-templates') nextDraft.items_json = JSON.stringify(row.items_json || [], null, 2);
     setDraft(nextDraft);
     setPendingFiles([]);
@@ -361,22 +417,22 @@ export function MasterDataManager({
 
   async function exportWelders() {
     const columns: Array<XlsxColumn<MasterDataRow>> = [
-      { key: 'code', header: 'Code', width: 18 },
-      { key: 'name', header: 'Naam', width: 28 },
-      { key: 'process', header: 'Proces', width: 16 },
-      { key: 'welding_method', header: 'Lasmethode', width: 20 },
-      { key: 'qualification', header: 'Kwalificatie', width: 24 },
-      { key: 'certificate_no', header: 'Certificaatnummer', width: 24 },
-      { key: 'material_group', header: 'Materiaalgroep', width: 18 },
-      { key: 'thickness_range', header: 'Diktebereik', width: 20 },
-      { key: 'welding_position', header: 'Laspositie', width: 18 },
-      { key: 'notes', header: 'Opmerkingen', width: 36 },
+      { key: 'certificate_no', header: 'Certificate No. (9606-1)', width: 28, value: (row) => displayValue(row, 'certificate_no') },
+      { key: 'process', header: 'Welding process', width: 18, value: (row) => displayValue(row, 'process') },
+      { key: 'type_of_weld', header: 'Type of weld', width: 16, value: (row) => displayValue(row, 'type_of_weld') },
+      { key: 'base_metal', header: 'Base metal', width: 14, value: (row) => displayValue(row, 'base_metal') },
+      { key: 'filler_material', header: 'Filler material', width: 18, value: (row) => displayValue(row, 'filler_material') },
+      { key: 'welding_position', header: 'Welding positions', width: 20, value: (row) => displayValue(row, 'welding_position') },
+      { key: 'range_material_thickness', header: 'Range material thickness', width: 24, value: (row) => displayValue(row, 'range_material_thickness') },
+      { key: 'range_outside_pipe_diameter', header: 'Range outside pipe diameter', width: 26, value: (row) => displayValue(row, 'range_outside_pipe_diameter') },
+      { key: 'name', header: 'Welder', width: 24, value: (row) => displayValue(row, 'name') },
+      { key: 'valid_until', header: 'Valid until', width: 16, value: (row) => displayValue(row, 'valid_until') },
     ];
     await exportStyledXlsx({
-      filename: `WeldInspect-Pro-Welders-${todayStamp()}.xls`,
-      sheetName: 'Welders',
-      title: 'WeldInspect Pro — Welders',
-      subtitle: `Export vanuit Instellingen > Welders · ${new Date().toLocaleString('nl-NL')} · ${filteredRows.length} lassers`,
+      filename: `WeldInspect-Pro-Welding-Qualification-Summary-${todayStamp()}.xls`,
+      sheetName: 'Welding Qualification',
+      title: 'WeldInspect Pro — Summary of Welding Qualification',
+      subtitle: `Lasserscertificeringsoverzicht · ${new Date().toLocaleString('nl-NL')} · ${filteredRows.length} lassers`,
       summary: [{ label: 'Aantal lassers', value: filteredRows.length, type: 'integer' }],
       columns,
       rows: filteredRows,
@@ -391,13 +447,13 @@ export function MasterDataManager({
       let updated = 0;
       let skipped = 0;
       const existingById = new Map(rows.map((row) => [String(row.id || ''), row]));
-      const existingByCode = new Map(rows.map((row) => [String(row.code || '').trim().toLowerCase(), row]));
+      const existingByCode = new Map(rows.map((row) => [String(row.code || row.certificate_no || '').trim().toLowerCase(), row]));
       const existingByName = new Map(rows.map((row) => [String(row.name || '').trim().toLowerCase(), row]));
 
       for (const item of importedRows) {
         const payload = normalizeDraft('welders', item);
         const name = String(payload.name || '').trim();
-        const code = String(payload.code || '').trim();
+        const code = String(payload.code || payload.certificate_no || '').trim();
         if (!name && !code) {
           skipped += 1;
           continue;
@@ -470,7 +526,7 @@ export function MasterDataManager({
       key,
       header: LABEL_MAP[key] || key,
       sortable: true,
-      cell: (row: MasterDataRow) => String(row[key] ?? '—'),
+      cell: (row: MasterDataRow) => String(displayValue(row, key)),
     })),
     {
       key: 'actions',
@@ -569,7 +625,7 @@ export function MasterDataManager({
       {isLoading ? <LoadingState label={`${title} laden...`} /> : null}
       {isError ? <ErrorState title={`${title} niet geladen`} description="Controleer of het settings-endpoint bereikbaar is." /> : null}
       {!isLoading && !isError && filteredRows.length === 0 ? <EmptyState title={`Geen ${title.toLowerCase()}`} description="Pas je zoekterm aan of maak een nieuw item aan." /> : null}
-      {!isLoading && !isError && filteredRows.length > 0 ? <DataTable columns={columns} rows={filteredRows} rowKey={(row) => String(row.id || row.code || row.name)} pageSize={8} /> : null}
+      {!isLoading && !isError && filteredRows.length > 0 ? <DataTable columns={columns} rows={filteredRows} rowKey={(row) => String(row.id || row.certificate_no || row.code || row.name)} pageSize={8} /> : null}
       <Modal open={editorOpen} title={editingId ? `${title} wijzigen` : `${title} aanmaken`} onClose={() => setEditorOpen(false)}>
         <div className="form-grid">
           {editableKeys.map((key) => <label key={key}><span>{LABEL_MAP[key] || key}</span>{renderField(key)}</label>)}
@@ -577,7 +633,7 @@ export function MasterDataManager({
           <div className="stack-actions"><Button onClick={saveRow} disabled={!canWrite || createMutation.isPending || updateMutation.isPending || docUploading}>Opslaan</Button><Button variant="secondary" onClick={() => setEditorOpen(false)}>Annuleren</Button></div>
         </div>
       </Modal>
-      <ConfirmDialog open={Boolean(deleteRow)} title="Item verwijderen" description={`Weet je zeker dat je ${String(deleteRow?.name || deleteRow?.code || 'dit item')} wilt verwijderen?`} confirmLabel="Verwijderen" cancelLabel="Annuleren" onConfirm={removeRow} onClose={() => setDeleteRow(null)} />
+      <ConfirmDialog open={Boolean(deleteRow)} title="Item verwijderen" description={`Weet je zeker dat je ${String(deleteRow?.name || deleteRow?.certificate_no || deleteRow?.code || 'dit item')} wilt verwijderen?`} confirmLabel="Verwijderen" cancelLabel="Annuleren" onConfirm={removeRow} onClose={() => setDeleteRow(null)} />
     </Card>
   );
 }
