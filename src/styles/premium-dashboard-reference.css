@@ -1,60 +1,75 @@
 /* Dashboard-specific refinement to match the approved premium reference more closely. */
 
 @media (max-width: 1024px) {
+  .mobile-page-header {
+    min-height: 142px !important;
+    margin-bottom: 22px !important;
+    padding-bottom: 24px !important;
+  }
+
+  .mobile-page-header-row {
+    min-height: 92px !important;
+  }
+
+  .mobile-page > .mobile-page-body {
+    padding-left: 26px !important;
+    padding-right: 26px !important;
+  }
+
   .mobile-dashboard-premium-grid {
-    gap: 16px !important;
+    gap: 14px !important;
   }
 
   .mobile-dashboard-premium-grid .mobile-kpi-card:not(.mobile-kpi-card-action) {
-    min-height: 132px !important;
-    padding: 20px 24px 18px !important;
-    border-radius: 30px !important;
+    min-height: 118px !important;
+    padding: 18px 22px 16px !important;
+    border-radius: 26px !important;
   }
 
   .mobile-dashboard-premium-grid .mobile-kpi-top {
-    grid-template-columns: 58px minmax(0, 1fr) !important;
-    gap: 16px !important;
-    margin-bottom: 2px !important;
-    font-size: clamp(21px, 4.8vw, 27px) !important;
+    grid-template-columns: 52px minmax(0, 1fr) !important;
+    gap: 14px !important;
+    margin-bottom: 1px !important;
+    font-size: clamp(19px, 4.4vw, 25px) !important;
     line-height: 1.05 !important;
   }
 
   .mobile-dashboard-premium-grid .mobile-kpi-top svg {
-    width: 50px !important;
-    height: 50px !important;
-    padding: 13px !important;
-    border-radius: 18px !important;
+    width: 46px !important;
+    height: 46px !important;
+    padding: 12px !important;
+    border-radius: 17px !important;
   }
 
   .mobile-dashboard-premium-grid .mobile-kpi-card strong {
-    margin-left: 74px !important;
-    margin-top: 5px !important;
-    font-size: clamp(48px, 13vw, 66px) !important;
+    margin-left: 66px !important;
+    margin-top: 3px !important;
+    font-size: clamp(42px, 11.5vw, 58px) !important;
     line-height: .88 !important;
   }
 
   .mobile-kpi-subtitle {
     display: block !important;
-    margin-left: 74px !important;
-    margin-top: -1px !important;
+    margin-left: 66px !important;
+    margin-top: -2px !important;
     color: rgba(255,255,255,.80) !important;
-    font-size: clamp(15px, 3.6vw, 18px) !important;
-    line-height: 1.22 !important;
+    font-size: clamp(14px, 3.3vw, 17px) !important;
+    line-height: 1.2 !important;
     font-weight: 520 !important;
   }
 
   .mobile-kpi-more {
     position: absolute !important;
-    top: 20px !important;
-    right: 22px !important;
+    top: 18px !important;
+    right: 20px !important;
     display: grid !important;
     place-items: center !important;
-    min-width: 38px !important;
-    height: 30px !important;
-    border-radius: 15px !important;
+    min-width: 34px !important;
+    height: 27px !important;
+    border-radius: 14px !important;
     background: rgba(255,255,255,.12) !important;
     color: rgba(255,255,255,.88) !important;
-    font-size: 16px !important;
+    font-size: 14px !important;
     letter-spacing: 2px !important;
     line-height: 1 !important;
   }
@@ -70,128 +85,143 @@
   }
 
   .mobile-kpi-visual-bars::after {
-    right: 38px;
-    bottom: 24px;
-    width: 170px;
-    height: 76px;
-    opacity: .26;
+    right: 34px;
+    bottom: 18px;
+    width: 148px;
+    height: 64px;
+    opacity: .25;
     background:
-      linear-gradient(to top, rgba(255,255,255,.55) 0 44%, transparent 44%) 0 100% / 19px 58px no-repeat,
-      linear-gradient(to top, rgba(255,255,255,.55) 0 56%, transparent 56%) 37px 100% / 19px 70px no-repeat,
-      linear-gradient(to top, rgba(255,255,255,.55) 0 70%, transparent 70%) 74px 100% / 19px 84px no-repeat,
-      linear-gradient(to top, rgba(255,255,255,.55) 0 86%, transparent 86%) 111px 100% / 19px 98px no-repeat;
-    border-radius: 14px;
+      linear-gradient(to top, rgba(255,255,255,.55) 0 44%, transparent 44%) 0 100% / 17px 48px no-repeat,
+      linear-gradient(to top, rgba(255,255,255,.55) 0 56%, transparent 56%) 32px 100% / 17px 58px no-repeat,
+      linear-gradient(to top, rgba(255,255,255,.55) 0 70%, transparent 70%) 64px 100% / 17px 70px no-repeat,
+      linear-gradient(to top, rgba(255,255,255,.55) 0 86%, transparent 86%) 96px 100% / 17px 82px no-repeat;
+    border-radius: 12px;
   }
 
   .mobile-kpi-visual-donut::after {
-    right: 52px;
-    bottom: 24px;
-    width: 104px;
-    height: 104px;
+    right: 46px;
+    bottom: 18px;
+    width: 88px;
+    height: 88px;
     border-radius: 50%;
-    border: 22px solid rgba(255,255,255,.30);
+    border: 19px solid rgba(255,255,255,.30);
     border-top-color: rgba(255,255,255,.76);
     transform: rotate(42deg);
-    opacity: .68;
+    opacity: .66;
   }
 
   .mobile-kpi-visual-shield::after {
-    right: 54px;
-    bottom: 22px;
-    width: 100px;
-    height: 100px;
-    opacity: .17;
-    border: 9px solid rgba(255,255,255,.56);
-    border-radius: 30px 30px 42px 42px;
+    right: 46px;
+    bottom: 17px;
+    width: 86px;
+    height: 86px;
+    opacity: .16;
+    border: 8px solid rgba(255,255,255,.56);
+    border-radius: 26px 26px 36px 36px;
     transform: rotate(45deg) skew(-6deg, -6deg);
   }
 
   .mobile-kpi-visual-line::after {
-    right: 30px;
-    bottom: 24px;
-    width: 210px;
-    height: 96px;
-    opacity: .32;
+    right: 26px;
+    bottom: 18px;
+    width: 180px;
+    height: 82px;
+    opacity: .30;
     background:
       linear-gradient(145deg, transparent 0 25%, rgba(255,255,255,.55) 25% 28%, transparent 28% 48%, rgba(255,255,255,.55) 48% 51%, transparent 51% 72%, rgba(255,255,255,.55) 72% 75%, transparent 75%),
-      radial-gradient(circle at 12% 74%, rgba(255,255,255,.72) 0 6px, transparent 7px),
-      radial-gradient(circle at 42% 44%, rgba(255,255,255,.72) 0 6px, transparent 7px),
-      radial-gradient(circle at 66% 65%, rgba(255,255,255,.72) 0 6px, transparent 7px),
-      radial-gradient(circle at 90% 24%, rgba(255,255,255,.72) 0 6px, transparent 7px);
+      radial-gradient(circle at 12% 74%, rgba(255,255,255,.72) 0 5px, transparent 6px),
+      radial-gradient(circle at 42% 44%, rgba(255,255,255,.72) 0 5px, transparent 6px),
+      radial-gradient(circle at 66% 65%, rgba(255,255,255,.72) 0 5px, transparent 6px),
+      radial-gradient(circle at 90% 24%, rgba(255,255,255,.72) 0 5px, transparent 6px);
   }
 }
 
 @media (max-width: 430px) {
+  .mobile-page-header {
+    min-height: 132px !important;
+    margin-bottom: 18px !important;
+    padding-bottom: 18px !important;
+  }
+
+  .mobile-page-header-row {
+    min-height: 82px !important;
+  }
+
+  .mobile-page > .mobile-page-body {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+
   .mobile-dashboard-premium-grid {
-    gap: 14px !important;
+    gap: 12px !important;
   }
 
   .mobile-dashboard-premium-grid .mobile-kpi-card:not(.mobile-kpi-card-action) {
-    min-height: 124px !important;
-    padding: 17px 18px !important;
-    border-radius: 26px !important;
+    min-height: 108px !important;
+    padding: 15px 16px !important;
+    border-radius: 24px !important;
   }
 
   .mobile-dashboard-premium-grid .mobile-kpi-top {
-    grid-template-columns: 50px minmax(0, 1fr) !important;
-    gap: 11px !important;
-    font-size: 21px !important;
+    grid-template-columns: 44px minmax(0, 1fr) !important;
+    gap: 10px !important;
+    font-size: 19px !important;
   }
 
   .mobile-dashboard-premium-grid .mobile-kpi-top svg {
-    width: 44px !important;
-    height: 44px !important;
-    padding: 11px !important;
-    border-radius: 16px !important;
+    width: 39px !important;
+    height: 39px !important;
+    padding: 10px !important;
+    border-radius: 15px !important;
   }
 
   .mobile-dashboard-premium-grid .mobile-kpi-card strong,
   .mobile-kpi-subtitle {
-    margin-left: 61px !important;
+    margin-left: 54px !important;
   }
 
   .mobile-dashboard-premium-grid .mobile-kpi-card strong {
-    font-size: 54px !important;
-    margin-top: 4px !important;
+    font-size: 46px !important;
+    margin-top: 3px !important;
   }
 
   .mobile-kpi-subtitle {
-    font-size: 14px !important;
+    font-size: 13px !important;
   }
 
   .mobile-kpi-more {
-    top: 17px !important;
-    right: 17px !important;
-    min-width: 34px !important;
-    height: 27px !important;
-    font-size: 14px !important;
+    top: 15px !important;
+    right: 15px !important;
+    min-width: 31px !important;
+    height: 25px !important;
+    font-size: 13px !important;
   }
 
   .mobile-kpi-visual-bars::after {
-    right: 26px;
-    bottom: 18px;
-    transform: scale(.78);
+    right: 20px;
+    bottom: 13px;
+    transform: scale(.70);
     transform-origin: right bottom;
   }
 
   .mobile-kpi-visual-donut::after {
-    right: 34px;
-    bottom: 20px;
-    transform: rotate(42deg) scale(.82);
+    right: 24px;
+    bottom: 14px;
+    transform: rotate(42deg) scale(.72);
     transform-origin: right bottom;
   }
 
   .mobile-kpi-visual-shield::after {
-    right: 36px;
-    bottom: 18px;
-    transform: rotate(45deg) skew(-6deg, -6deg) scale(.82);
+    right: 26px;
+    bottom: 12px;
+    transform: rotate(45deg) skew(-6deg, -6deg) scale(.72);
     transform-origin: right bottom;
   }
 
   .mobile-kpi-visual-line::after {
-    right: 22px;
-    bottom: 18px;
-    transform: scale(.78);
+    right: 16px;
+    bottom: 12px;
+    transform: scale(.70);
     transform-origin: right bottom;
   }
 }
