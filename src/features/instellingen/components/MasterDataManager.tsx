@@ -1,4 +1,4 @@
-import { type ChangeEvent, useEffect, useMemo, useState } from 'react';
+import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { Download, Eye, FileText, Plus, Search, Trash2, Upload, X } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -14,6 +14,7 @@ import { InlineMessage } from '@/components/feedback/InlineMessage';
 import { useCreateMasterData, useDeleteMasterData, useUpdateMasterData } from '@/hooks/useSettings';
 import { useUiStore } from '@/app/store/ui-store';
 import { useAccess } from '@/hooks/useAccess';
+import { exportStyledXlsx, type XlsxColumn } from '@/lib/xlsxExport';
 import {
   deleteEntityDocument,
   downloadEntityDocument,
@@ -25,6 +26,7 @@ import {
 
 export type MasterDataType = 'wps' | 'materials' | 'welders' | 'weld-coordinators' | 'inspection-templates';
 type PreviewState = { url: string; mimeType: string; filename: string } | null;
+type ImportRow = Record<string, unknown>;
 
 const LABEL_MAP: Record<string, string> = {
   code: 'Code',
@@ -49,6 +51,32 @@ const LABEL_MAP: Record<string, string> = {
   is_default: 'Standaard',
   version: 'Versie',
   items_json: 'Template items',
+};
+
+const WELDER_IMPORT_HEADERS: Record<string, string> = {
+  id: 'id',
+  code: 'code',
+  welder: 'name',
+  lasser: 'name',
+  name: 'name',
+  naam: 'name',
+  process: 'process',
+  proces: 'process',
+  welding_method: 'welding_method',
+  lasmethode: 'welding_method',
+  qualification: 'qualification',
+  kwalificatie: 'qualification',
+  certificate_no: 'certificate_no',
+  certificaatnummer: 'certificate_no',
+  certificate_number: 'certificate_no',
+  material_group: 'material_group',
+  materiaalgroep: 'material_group',
+  thickness_range: 'thickness_range',
+  diktebereik: 'thickness_range',
+  welding_position: 'welding_position',
+  laspositie: 'welding_position',
+  notes: 'notes',
+  opmerkingen: 'notes',
 };
 
 function documentScopeFor(type: MasterDataType): EntityDocumentScope | null {
@@ -126,6 +154,61 @@ function extractId(result: unknown): string | null {
   return null;
 }
 
+function todayStamp() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function normalizeImportHeader(value: unknown) {
+  return String(value || '').trim().toLowerCase().replace(/\s+/g, '_').replace(/-/g, '_');
+}
+
+function parseDelimited(text: string): string[][] {
+  const delimiter = text.includes('\t') ? '\t' : text.includes(';') ? ';' : ',';
+  return text
+    .split(/\r?\n/)
+    .map((line) => line.split(delimiter).map((cell) => cell.replace(/^"|"$/g, '').replace(/""/g, '"').trim()))
+    .filter((line) => line.some(Boolean));
+}
+
+function parseHtmlRows(text: string): string[][] {
+  const doc = new DOMParser().parseFromString(text, 'text/html');
+  return Array.from(doc.querySelectorAll('tr'))
+    .map((row) => Array.from(row.querySelectorAll('th,td')).map((cell) => String(cell.textContent || '').trim()))
+    .filter((line) => line.some(Boolean));
+}
+
+function parseImportRows(text: string): ImportRow[] {
+  const table = /<table|<tr|<html/i.test(text) ? parseHtmlRows(text) : parseDelimited(text);
+  let headerIndex = -1;
+  let headerMap: Record<number, string> = {};
+
+  table.some((line, index) => {
+    const candidate: Record<number, string> = {};
+    line.forEach((header, columnIndex) => {
+      const key = WELDER_IMPORT_HEADERS[normalizeImportHeader(header)];
+      if (key) candidate[columnIndex] = key;
+    });
+    if (Object.values(candidate).includes('name') || Object.keys(candidate).length >= 2) {
+      headerIndex = index;
+      headerMap = candidate;
+      return true;
+    }
+    return false;
+  });
+
+  if (headerIndex < 0) throw new Error('Geen geldige kolomkoppen gevonden. Gebruik minimaal Naam/Name/Welder en eventueel Code.');
+
+  return table.slice(headerIndex + 1).map((line) => {
+    const item: ImportRow = {};
+    Object.entries(headerMap).forEach(([columnIndex, key]) => {
+      const value = line[Number(columnIndex)]?.trim();
+      if (value) item[key] = value;
+    });
+    return item;
+  }).filter((item) => Object.values(item).some(Boolean));
+}
+
 export function MasterDataManager({
   title,
   type,
@@ -146,6 +229,7 @@ export function MasterDataManager({
   const updateMutation = useUpdateMasterData();
   const deleteMutation = useDeleteMasterData();
   const pushNotification = useUiStore((state) => state.pushNotification);
+  const welderImportRef = useRef<HTMLInputElement | null>(null);
 
   const [search, setSearch] = useState('');
   const [editorOpen, setEditorOpen] = useState(false);
@@ -287,6 +371,70 @@ export function MasterDataManager({
       setMessage(`${documentLabel} verwijderd.`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Verwijderen mislukt.');
+    }
+  }
+
+  async function exportWelders() {
+    const columns: Array<XlsxColumn<Record<string, unknown>>> = [
+      { key: 'code', header: 'Code', width: 18 },
+      { key: 'name', header: 'Naam', width: 28 },
+      { key: 'process', header: 'Proces', width: 16 },
+      { key: 'welding_method', header: 'Lasmethode', width: 20 },
+      { key: 'qualification', header: 'Kwalificatie', width: 24 },
+      { key: 'certificate_no', header: 'Certificaatnummer', width: 24 },
+      { key: 'material_group', header: 'Materiaalgroep', width: 18 },
+      { key: 'thickness_range', header: 'Diktebereik', width: 20 },
+      { key: 'welding_position', header: 'Laspositie', width: 18 },
+      { key: 'notes', header: 'Opmerkingen', width: 36 },
+    ];
+    await exportStyledXlsx({
+      filename: `WeldInspect-Pro-Welders-${todayStamp()}.xls`,
+      sheetName: 'Welders',
+      title: 'WeldInspect Pro — Welders',
+      subtitle: `Export vanuit Instellingen > Welders · ${new Date().toLocaleString('nl-NL')} · ${filteredRows.length} lassers`,
+      summary: [{ label: 'Aantal lassers', value: filteredRows.length, type: 'integer' }],
+      columns,
+      rows: filteredRows,
+    });
+  }
+
+  async function importWelders(file: File | undefined) {
+    if (!file || !canWrite) return;
+    try {
+      const importedRows = parseImportRows(await file.text());
+      let created = 0;
+      let updated = 0;
+      let skipped = 0;
+      const existingById = new Map(rows.map((row) => [String(row.id || ''), row]));
+      const existingByCode = new Map(rows.map((row) => [String(row.code || '').trim().toLowerCase(), row]));
+      const existingByName = new Map(rows.map((row) => [String(row.name || '').trim().toLowerCase(), row]));
+
+      for (const item of importedRows) {
+        const payload = normalizeDraft('welders', item);
+        const name = String(payload.name || '').trim();
+        const code = String(payload.code || '').trim();
+        if (!name && !code) {
+          skipped += 1;
+          continue;
+        }
+        const existing = item.id ? existingById.get(String(item.id)) : existingByCode.get(code.toLowerCase()) || existingByName.get(name.toLowerCase());
+        if (existing?.id) {
+          await updateMutation.mutateAsync({ type: 'welders', id: existing.id as string | number, payload });
+          updated += 1;
+        } else {
+          await createMutation.mutateAsync({ type: 'welders', payload });
+          created += 1;
+        }
+      }
+
+      setMessage(`Welders import gereed: ${created} nieuw, ${updated} bijgewerkt, ${skipped} overgeslagen.`);
+      pushNotification({ title: 'Welders geïmporteerd', description: `${created} nieuw, ${updated} bijgewerkt.`, tone: 'success' });
+      refetch();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Welders import mislukt.');
+      pushNotification({ title: 'Welders import mislukt', description: error instanceof Error ? error.message : 'Onbekende fout', tone: 'error' });
+    } finally {
+      if (welderImportRef.current) welderImportRef.current.value = '';
     }
   }
 
@@ -489,6 +637,23 @@ export function MasterDataManager({
         <h3>{title}</h3>
         <div className="inline-end-cluster">
           <Badge tone={canWrite ? 'success' : 'neutral'}>{canWrite ? 'CRUD actief' : 'Alleen lezen'}</Badge>
+          {type === 'welders' ? (
+            <>
+              <Button variant="secondary" onClick={() => void exportWelders()} disabled={!filteredRows.length}>
+                <Download size={16} /> Export Excel
+              </Button>
+              <Button variant="secondary" onClick={() => welderImportRef.current?.click()} disabled={!canWrite}>
+                <Upload size={16} /> Import Excel
+              </Button>
+              <input
+                ref={welderImportRef}
+                type="file"
+                accept=".xls,.csv,text/csv,application/vnd.ms-excel"
+                hidden
+                onChange={(event) => void importWelders(event.target.files?.[0])}
+              />
+            </>
+          ) : null}
           <Button onClick={openCreate} disabled={!canWrite}><Plus size={16} /> Nieuw</Button>
         </div>
       </div>
