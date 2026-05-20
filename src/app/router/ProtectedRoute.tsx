@@ -19,12 +19,11 @@ export function ProtectedRoute({ children }: PropsWithChildren) {
     return <>{children}</>;
   }
 
+  // HttpOnly cookie auth cannot be inspected synchronously by JavaScript. Keep
+  // rendering the requested route while /auth/me validates the cookie so direct
+  // deep links such as CE report do not get stuck behind a blocking splash.
   if (session.isBootstrapping) {
-    return (
-      <div className="route-fallback" role="status" aria-live="polite" style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>
-        Sessie controleren…
-      </div>
-    );
+    return <>{children}</>;
   }
 
   if (!session.isAuthenticated) {
