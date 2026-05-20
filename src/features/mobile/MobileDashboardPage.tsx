@@ -104,7 +104,7 @@ export function MobileDashboardPage() {
   );
 
   return (
-    <div translate="no">
+    <div data-no-translate="true">
       <MobilePageScaffold title="Dashboard" subtitle="Overzicht">
         {loading ? <div className="mobile-state-card">Dashboard laden…</div> : null}
         {error ? <div className="mobile-state-card mobile-state-card-error">{error}</div> : null}
