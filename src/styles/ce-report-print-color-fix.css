@@ -1,7 +1,6 @@
 /* CE report print color parity, readability and performance fixes.
-   Chrome suppresses CSS backgrounds when "Achtergrondbeelden" is off. The print cover
-   therefore uses a large printable border on a pseudo-element for the dark navy band.
-   Borders are preserved by Chrome print even when background graphics are off. */
+   Component CSS is lazy-loaded later, so these print selectors intentionally use
+   higher specificity to win in Chrome print preview. */
 
 .rpt-page-wrap,
 .rpt-page-wrap *,
@@ -33,55 +32,40 @@
 }
 
 @media print {
-  .rpt-page-wrap,
-  .rpt-page,
-  .rpt-cover,
-  .rpt-cover::before,
-  .rpt-cover::after,
-  .rpt-cover .rpt-header,
-  .rpt-cover .rpt-cover-body,
-  .rpt-cover .rpt-cover-status,
-  .rpt-cover .rpt-cover-grid,
-  .rpt-cover .rpt-cover-grid > div,
-  .rpt-cover .rpt-pill,
-  .rpt-cover .rpt-pill-outline,
-  .rpt-cover .rpt-status-green,
-  .rpt-cover .rpt-status-blue,
-  .rpt-cover .rpt-status-orange,
-  .rpt-cover .rpt-product-logo::before,
-  .rpt-cover .rpt-tenant-logo-box,
-  .rpt-table th,
-  .rpt-score-bar,
-  .rpt-score-bar > span,
-  .rpt-pdf-toolbar,
-  .rpt-nonpdf-attachment-block,
-  .rpt-disclaimer {
+  html body .rpt-page-wrap,
+  html body .rpt-page-wrap *,
+  html body .rpt-page-wrap::before,
+  html body .rpt-page-wrap::after,
+  html body .rpt-page-wrap *::before,
+  html body .rpt-page-wrap *::after {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
-  .rpt-cover {
+  html body .rpt-page.rpt-cover {
     position: relative !important;
+    width: 210mm !important;
+    min-height: 297mm !important;
+    padding: 0 !important;
     background: #ffffff !important;
     color: #0f172a !important;
     overflow: hidden !important;
   }
 
-  .rpt-cover::before {
+  html body .rpt-page.rpt-cover::before {
     content: '' !important;
     position: absolute !important;
-    inset: 0 auto auto 0 !important;
+    inset: 0 0 auto 0 !important;
     z-index: 0 !important;
     display: block !important;
     width: 210mm !important;
-    height: 0 !important;
-    border-top: 102mm solid #0b2544 !important;
-    border-right: 210mm solid transparent !important;
-    background: transparent !important;
+    height: 102mm !important;
+    background: #0b2544 !important;
+    border: 0 !important;
     box-sizing: border-box !important;
   }
 
-  .rpt-cover::after {
+  html body .rpt-page.rpt-cover::after {
     content: '' !important;
     position: absolute !important;
     left: 0 !important;
@@ -93,12 +77,12 @@
     background: #2563eb !important;
   }
 
-  .rpt-cover > * {
+  html body .rpt-page.rpt-cover > * {
     position: relative !important;
     z-index: 1 !important;
   }
 
-  .rpt-cover .rpt-header {
+  html body .rpt-page.rpt-cover .rpt-header {
     margin: 0 !important;
     padding: 10mm 14mm 4mm !important;
     border-bottom: 0 !important;
@@ -106,40 +90,40 @@
     grid-template-columns: minmax(52mm, 1fr) minmax(45mm, .8fr) minmax(58mm, 1fr) !important;
   }
 
-  .rpt-cover .rpt-header-center,
-  .rpt-cover .rpt-product-logo-title {
+  html body .rpt-page.rpt-cover .rpt-header-center,
+  html body .rpt-page.rpt-cover .rpt-product-logo-title {
     color: #ffffff !important;
     text-shadow: none !important;
   }
 
-  .rpt-cover .rpt-product-logo-title {
+  html body .rpt-page.rpt-cover .rpt-product-logo-title {
     font-size: 16pt !important;
     line-height: .95 !important;
   }
 
-  .rpt-cover .rpt-product-logo-title b {
+  html body .rpt-page.rpt-cover .rpt-product-logo-title b {
     color: #2f7cff !important;
   }
 
-  .rpt-cover .rpt-product-logo::before {
+  html body .rpt-page.rpt-cover .rpt-product-logo::before {
     background: #ffffff !important;
     color: #2563eb !important;
     border-color: #2f77ff !important;
     box-shadow: none !important;
   }
 
-  .rpt-cover .rpt-tenant-logo-box {
+  html body .rpt-page.rpt-cover .rpt-tenant-logo-box {
     background: #ffffff !important;
     color: #0f172a !important;
     box-shadow: none !important;
     border-color: #334155 !important;
   }
 
-  .rpt-cover .rpt-cover-body {
+  html body .rpt-page.rpt-cover .rpt-cover-body {
     padding: 7mm 14mm 0 !important;
   }
 
-  .rpt-cover h1 {
+  html body .rpt-page.rpt-cover h1 {
     color: #ffffff !important;
     text-shadow: none !important;
     font-size: 31pt !important;
@@ -147,19 +131,19 @@
     margin: 12mm 0 6mm !important;
   }
 
-  .rpt-cover .rpt-cover-norms {
+  html body .rpt-page.rpt-cover .rpt-cover-norms {
     color: #ffffff !important;
     text-shadow: none !important;
     font-size: 9.5pt !important;
     margin-bottom: 8mm !important;
   }
 
-  .rpt-cover .rpt-cover-status {
+  html body .rpt-page.rpt-cover .rpt-cover-status {
     gap: 5mm !important;
     margin-bottom: 34mm !important;
   }
 
-  .rpt-cover .rpt-pill {
+  html body .rpt-page.rpt-cover .rpt-pill {
     min-width: 38mm !important;
     height: 10mm !important;
     padding: 0 8mm !important;
@@ -168,26 +152,26 @@
     box-shadow: none !important;
   }
 
-  .rpt-cover .rpt-status-green,
-  .rpt-cover .rpt-status-blue,
-  .rpt-cover .rpt-status-orange {
+  html body .rpt-page.rpt-cover .rpt-status-green,
+  html body .rpt-page.rpt-cover .rpt-status-blue,
+  html body .rpt-page.rpt-cover .rpt-status-orange {
     background: #19a34a !important;
     border: 0 !important;
     color: #ffffff !important;
   }
 
-  .rpt-cover .rpt-pill-outline {
+  html body .rpt-page.rpt-cover .rpt-pill-outline {
     background: #2563eb !important;
     border: 0 !important;
     color: #ffffff !important;
   }
 
-  .rpt-cover .rpt-cover-grid {
+  html body .rpt-page.rpt-cover .rpt-cover-grid {
     gap: 3.2mm !important;
     margin: 0 0 5mm !important;
   }
 
-  .rpt-cover .rpt-cover-grid > div {
+  html body .rpt-page.rpt-cover .rpt-cover-grid > div {
     min-height: 0 !important;
     padding: 5.5mm 8mm 5mm 10mm !important;
     border: 1px solid #d9e4ef !important;
@@ -199,28 +183,28 @@
     column-gap: 9mm !important;
   }
 
-  .rpt-cover .rpt-cover-grid > div:nth-child(3) {
+  html body .rpt-page.rpt-cover .rpt-cover-grid > div:nth-child(3) {
     border-left-color: #16a34a !important;
   }
 
-  .rpt-cover .rpt-cover-grid span {
+  html body .rpt-page.rpt-cover .rpt-cover-grid span {
     font-size: 7pt !important;
   }
 
-  .rpt-cover .rpt-cover-grid strong {
+  html body .rpt-page.rpt-cover .rpt-cover-grid strong {
     color: #0f172a !important;
     font-size: 16pt !important;
     line-height: 1.08 !important;
   }
 
-  .rpt-cover .rpt-cover-grid small {
+  html body .rpt-page.rpt-cover .rpt-cover-grid small {
     color: #334155 !important;
     font-size: 7.5pt !important;
     line-height: 1.25 !important;
     margin-top: 1.5mm !important;
   }
 
-  .rpt-cover .rpt-meta-table {
+  html body .rpt-page.rpt-cover .rpt-meta-table {
     page-break-inside: auto !important;
     break-inside: auto !important;
     margin-top: 2mm !important;
@@ -229,7 +213,7 @@
     font-size: 7.2pt !important;
   }
 
-  .rpt-cover .rpt-meta-table thead th {
+  html body .rpt-page.rpt-cover .rpt-meta-table thead th {
     background: #eef6ff !important;
     color: #0f172a !important;
     border-bottom: 1px solid #dbe5ef !important;
@@ -237,18 +221,18 @@
     padding: 2.5mm 4mm !important;
   }
 
-  .rpt-cover .rpt-meta-table td {
+  html body .rpt-page.rpt-cover .rpt-meta-table td {
     color: #0f172a !important;
     padding: 2.1mm 4mm !important;
     font-size: 7pt !important;
     line-height: 1.16 !important;
   }
 
-  .rpt-cover .rpt-meta-table td:first-child {
+  html body .rpt-page.rpt-cover .rpt-meta-table td:first-child {
     color: #0f172a !important;
   }
 
-  .rpt-cover .rpt-footer {
+  html body .rpt-page.rpt-cover .rpt-footer {
     color: #55708f !important;
     margin-left: 14mm !important;
     margin-right: 14mm !important;
