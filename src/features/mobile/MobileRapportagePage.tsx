@@ -3,7 +3,6 @@ import { Download, FileText, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useReports } from '@/hooks/useReports';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
-import { exportPdf, openPdfViewer } from '@/api/exports';
 import { openDownloadUrl } from '@/utils/download';
 import { formatValue, normalizeApiError } from '@/features/mobile/mobile-utils';
 
@@ -43,12 +42,10 @@ function reportFilename(row: ReportRow) {
   return `Weld-Compliance-Report-${projectNumber}-${projectName}-${new Date().toISOString().slice(0, 10)}.pdf`;
 }
 
-function projectInfo(row: ReportRow) {
-  return {
-    name: row.project_name || row.title || null,
-    code: row.projectnummer || null,
-    client_name: row.client_name || null,
-  };
+function ceReportUrl(row: ReportRow, autoPrint = false) {
+  const projectId = rowProjectId(row);
+  if (!projectId) return '';
+  return `/projecten/${projectId}/ce-report${autoPrint ? '?print=1' : ''}`;
 }
 
 export function MobileRapportagePage() {
@@ -68,9 +65,9 @@ export function MobileRapportagePage() {
 
   function createPdf(row: ReportRow) {
     setActionError(null);
-    const projectId = rowProjectId(row);
-    if (projectId) {
-      void openPdfViewer(projectId, projectInfo(row)).catch((err) => setActionError(normalizeApiError(err, 'PDF openen mislukt.')));
+    const url = ceReportUrl(row, false);
+    if (url) {
+      window.open(url, '_blank', 'noopener,noreferrer');
       return;
     }
     const fallbackUrl = reportPdfUrl(row);
@@ -81,9 +78,9 @@ export function MobileRapportagePage() {
 
   function downloadReport(row: ReportRow) {
     setActionError(null);
-    const projectId = rowProjectId(row);
-    if (projectId) {
-      void exportPdf(projectId, projectInfo(row)).catch((err) => setActionError(normalizeApiError(err, 'Download mislukt.')));
+    const url = ceReportUrl(row, true);
+    if (url) {
+      window.open(url, '_blank', 'noopener,noreferrer');
       return;
     }
     const fallbackUrl = reportPdfUrl(row);
