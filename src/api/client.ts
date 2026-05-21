@@ -18,6 +18,7 @@ export class ApiError extends Error {
 type Primitive = string | number | boolean;
 type QueryValue = Primitive | null | undefined;
 export type QueryParams = Record<string, QueryValue>;
+type ApiRequestInit = RequestInit & { timeoutMs?: number };
 
 const OPTIONAL_REQUEST_HARD_LIMIT = 2;
 const API_REQUEST_TIMEOUT = 12_000;
@@ -155,16 +156,24 @@ async function refreshAuth(): Promise<boolean> {
   return refreshPromise;
 }
 
-async function fetchWithTimeout(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+function stripApiOnlyInit(init?: ApiRequestInit): RequestInit | undefined {
+  if (!init) return undefined;
+  const { timeoutMs: _timeoutMs, ...requestInit } = init;
+  return requestInit;
+}
+
+async function fetchWithTimeout(input: RequestInfo | URL, init?: ApiRequestInit): Promise<Response> {
   const controller = new AbortController();
+  const requestInit = stripApiOnlyInit(init);
+  const timeoutMs = Math.max(1_000, init?.timeoutMs ?? API_REQUEST_TIMEOUT);
 
   const timeout = window.setTimeout(() => {
     controller.abort();
-  }, API_REQUEST_TIMEOUT);
+  }, timeoutMs);
 
   try {
     return await fetch(input, {
-      ...init,
+      ...requestInit,
       signal: controller.signal,
     });
   } finally {
@@ -174,7 +183,7 @@ async function fetchWithTimeout(input: RequestInfo | URL, init?: RequestInit): P
 
 export async function apiRequest<T = unknown>(
   path: string,
-  init?: RequestInit,
+  init?: ApiRequestInit,
   ...legacyArgs: unknown[]
 ): Promise<T> {
   classifyCompatPattern(path);
@@ -277,7 +286,7 @@ export async function firstSuccessfulListRequest<T = unknown>(
   return null;
 }
 
-export async function optionalRequest<T = unknown>(paths: string[], init?: RequestInit): Promise<T> {
+export async function optionalRequest<T = unknown>(paths: string[], init?: ApiRequestInit): Promise<T> {
   runtimeTrace('OPTIONAL_REQUEST_STARTED', {
     candidateCount: paths.length,
     canonicalPath: paths[0] || null,
@@ -313,13 +322,13 @@ export async function optionalRequest<T = unknown>(paths: string[], init?: Reque
   throw lastError instanceof Error ? lastError : new ApiError('No optional request succeeded');
 }
 
-export async function downloadRequest(path: string, init?: RequestInit): Promise<Blob> {
+export async function downloadRequest(path: string, init?: ApiRequestInit): Promise<Blob> {
   return apiRequest<Blob>(path, init);
 }
 
 export async function downloadUrlAsBlob(
   path: string,
-  init?: RequestInit,
+  init?: ApiRequestInit,
 ): Promise<{ blob: Blob; filename: string }> {
   const response = await fetchWithTimeout(buildBasePath(path), {
     credentials: 'include',
@@ -348,7 +357,7 @@ export async function downloadUrlAsBlob(
 
 export async function downloadUrlAsObjectUrl(
   path: string,
-  init?: RequestInit,
+  init?: ApiRequestInit,
 ): Promise<{ url: string; filename: string; contentType: string }> {
   const { blob, filename } = await downloadUrlAsBlob(path, init);
 
@@ -362,7 +371,7 @@ export async function downloadUrlAsObjectUrl(
 export async function openProtectedFile(
   path: string,
   fallbackName = 'download.pdf',
-  init?: RequestInit,
+  init?: ApiRequestInit,
 ): Promise<void> {
   const { url, filename } = await downloadUrlAsObjectUrl(path, init);
   const popup = window.open(url, '_blank', 'noopener,noreferrer');
@@ -382,26 +391,26 @@ export async function openProtectedFile(
 }
 
 const client = {
-  get: <T = unknown>(path: string, init?: RequestInit) => apiRequest<T>(path, { ...init, method: 'GET' }),
-  post: <T = unknown>(path: string, body?: unknown, init?: RequestInit) =>
+  get: <T = unknown>(path: string, init?: ApiRequestInit) => apiRequest<T>(path, { ...init, method: 'GET' }),
+  post: <T = unknown>(path: string, body?: unknown, init?: ApiRequestInit) =>
     apiRequest<T>(path, {
       ...init,
       method: 'POST',
       body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
     }),
-  put: <T = unknown>(path: string, body?: unknown, init?: RequestInit) =>
+  put: <T = unknown>(path: string, body?: unknown, init?: ApiRequestInit) =>
     apiRequest<T>(path, {
       ...init,
       method: 'PUT',
       body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
     }),
-  patch: <T = unknown>(path: string, body?: unknown, init?: RequestInit) =>
+  patch: <T = unknown>(path: string, body?: unknown, init?: ApiRequestInit) =>
     apiRequest<T>(path, {
       ...init,
       method: 'PATCH',
       body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
     }),
-  delete: <T = unknown>(path: string, init?: RequestInit) =>
+  delete: <T = unknown>(path: string, init?: ApiRequestInit) =>
     apiRequest<T>(path, { ...init, method: 'DELETE' }),
 };
 
