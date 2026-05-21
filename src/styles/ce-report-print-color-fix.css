@@ -1,7 +1,7 @@
-/* CE report print color parity, readability and screen performance fixes.
-   Chrome's print dialog suppresses CSS backgrounds when "Background graphics" is off.
-   The cover therefore uses a printable SVG content layer in print mode so the
-   dark cover remains visible in the preview/PDF without relying on background-image. */
+/* CE report print readability and performance fixes.
+   Chrome's print preview suppresses CSS backgrounds when "Achtergrondbeelden" is off.
+   Therefore the print version uses a clean light cover that does not rely on dark
+   CSS backgrounds. The screen report keeps the premium dark cover. */
 
 .rpt-page-wrap,
 .rpt-page-wrap *,
@@ -62,73 +62,95 @@
 
   .rpt-cover {
     background: #ffffff !important;
+    border-top: 8mm solid #10233d !important;
   }
 
   .rpt-cover::before {
-    content: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 2100 1000' preserveAspectRatio='none'%3E%3Cdefs%3E%3CradialGradient id='g1' cx='18%25' cy='20%25' r='55%25'%3E%3Cstop offset='0%25' stop-color='%232b6fe8' stop-opacity='.32'/%3E%3Cstop offset='100%25' stop-color='%23071a31' stop-opacity='0'/%3E%3C/radialGradient%3E%3ClinearGradient id='g2' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%23071a31'/%3E%3Cstop offset='58%25' stop-color='%230b2544'/%3E%3Cstop offset='100%25' stop-color='%230e315f'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='2100' height='1000' fill='url(%23g2)'/%3E%3Cpath d='M0 1000 L900 0 L2100 0 L2100 1000 Z' fill='%2313335d' opacity='.52'/%3E%3Crect width='2100' height='1000' fill='url(%23g1)'/%3E%3C/svg%3E") !important;
-    position: absolute !important;
-    inset: 0 0 auto 0 !important;
-    z-index: 0 !important;
-    display: block !important;
-    width: 210mm !important;
-    height: 100mm !important;
-    overflow: hidden !important;
-    background: none !important;
-    border-bottom: 0 !important;
+    content: '' !important;
+    background: transparent !important;
+    display: none !important;
   }
 
   .rpt-cover::after {
+    top: 38mm !important;
+    height: 1.4mm !important;
     background: #2563eb !important;
   }
 
   .rpt-cover .rpt-header {
-    border-bottom: 0 !important;
+    padding: 8mm 14mm 7mm !important;
+    border-bottom: 2px solid #2563eb !important;
+    color: #0f172a !important;
   }
 
-  .rpt-cover h1,
-  .rpt-cover .rpt-cover-norms,
-  .rpt-cover .rpt-header-center,
-  .rpt-cover .rpt-product-logo-title {
-    color: #ffffff !important;
-    text-shadow: 0 3px 14px rgba(0, 0, 0, .28) !important;
+  .rpt-cover .rpt-header-center {
+    color: #334155 !important;
+    text-shadow: none !important;
+  }
+
+  .rpt-cover .rpt-product-logo-title,
+  .rpt-cover .rpt-product-logo-title b {
+    color: #0f172a !important;
+    text-shadow: none !important;
   }
 
   .rpt-cover .rpt-product-logo-title b {
-    color: #2f7cff !important;
+    color: #2563eb !important;
   }
 
   .rpt-cover .rpt-product-logo::before {
     background: #ffffff !important;
     color: #2563eb !important;
-    border-color: #2f77ff !important;
+    border-color: #2563eb !important;
     box-shadow: none !important;
-  }
-
-  .rpt-cover .rpt-status-green,
-  .rpt-cover .rpt-status-blue,
-  .rpt-cover .rpt-status-orange {
-    background: #19a34a !important;
-    border: 0 !important;
-    color: #ffffff !important;
-    box-shadow: 0 10px 24px rgba(0, 0, 0, .18) !important;
-  }
-
-  .rpt-cover .rpt-pill-outline {
-    background: #2563eb !important;
-    border: 0 !important;
-    color: #ffffff !important;
-    box-shadow: 0 10px 24px rgba(0, 0, 0, .18) !important;
   }
 
   .rpt-cover .rpt-tenant-logo-box {
     background: #ffffff !important;
     color: #0f172a !important;
     box-shadow: none !important;
+    border-color: #334155 !important;
+  }
+
+  .rpt-cover .rpt-cover-body {
+    padding-top: 9mm !important;
+  }
+
+  .rpt-cover h1 {
+    color: #0f172a !important;
+    text-shadow: none !important;
+    margin-top: 6mm !important;
+  }
+
+  .rpt-cover .rpt-cover-norms {
+    color: #334155 !important;
+    text-shadow: none !important;
+  }
+
+  .rpt-cover .rpt-cover-status {
+    margin-bottom: 21mm !important;
+  }
+
+  .rpt-cover .rpt-status-green,
+  .rpt-cover .rpt-status-blue,
+  .rpt-cover .rpt-status-orange {
+    background: #dcfce7 !important;
+    border: 1.5px solid #16a34a !important;
+    color: #166534 !important;
+    box-shadow: none !important;
+  }
+
+  .rpt-cover .rpt-pill-outline {
+    background: #dbeafe !important;
+    border: 1.5px solid #2563eb !important;
+    color: #1d4ed8 !important;
+    box-shadow: none !important;
   }
 
   .rpt-cover .rpt-cover-grid > div {
     background: #ffffff !important;
     box-shadow: none !important;
+    border-color: #d9e4ef !important;
   }
 
   .rpt-cover .rpt-cover-grid strong,
@@ -136,5 +158,11 @@
   .rpt-cover .rpt-meta-table td,
   .rpt-cover .rpt-footer {
     color: #0f172a !important;
+  }
+
+  .rpt-cover .rpt-meta-table thead th {
+    background: #eef6ff !important;
+    color: #0f172a !important;
+    border-bottom: 2px solid #dbe5ef !important;
   }
 }
