@@ -175,7 +175,7 @@ export default function SuperadminBillingPage() {
   }, []);
 
   const kpis = data.kpis || {};
-  const tenants = Array.isArray(data.tenants) ? data.tenants : [];
+  const tenants = useMemo(() => (Array.isArray(data.tenants) ? data.tenants : []), [data.tenants]);
   const payments = useMemo(() => (Array.isArray(data.payments) ? data.payments : []), [data.payments]);
   const invoices = useMemo(() => (Array.isArray(data.invoices) ? data.invoices : []), [data.invoices]);
   const tenantNameById = useMemo(() => {
