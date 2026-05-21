@@ -1,4 +1,5 @@
 import { lazy, type ComponentType } from 'react';
+import { PublicAuthShell } from '@/features/auth/PublicAuthShell';
 
 const named = <T extends Record<string, ComponentType<unknown>>>(loader: () => Promise<T>, exportName: keyof T) =>
   lazy(async () => {
@@ -7,12 +8,19 @@ const named = <T extends Record<string, ComponentType<unknown>>>(loader: () => P
     return { default: C };
   });
 
+const publicAuth = <T extends { default: ComponentType<unknown> }>(loader: () => Promise<T>) =>
+  lazy(async () => {
+    const m = await loader();
+    const C = m.default;
+    return { default: (props: unknown) => <PublicAuthShell><C {...(props as object)} /></PublicAuthShell> };
+  });
+
 /** Auth & billing: default exports → simple lazy */
 export const ForgotPasswordPage = lazy(() => import('@/features/auth/ForgotPasswordPage'));
-export const ResetPasswordPage = lazy(() => import('@/features/auth/ResetPasswordPage'));
+export const ResetPasswordPage = publicAuth(() => import('@/features/auth/ResetPasswordPage'));
 export const LogoutPage = lazy(() => import('@/features/auth/LogoutPage'));
-export const ChangePasswordPage = lazy(() => import('@/features/auth/ChangePasswordPage'));
-export const ActivateAccountPage = lazy(() => import('@/features/auth/ActivateAccountPage'));
+export const ChangePasswordPage = publicAuth(() => import('@/features/auth/ChangePasswordPage'));
+export const ActivateAccountPage = publicAuth(() => import('@/features/auth/ActivateAccountPage'));
 export const BillingSuccessPage = lazy(() => import('@/features/billing/BillingSuccessPage'));
 export const BillingPage = lazy(() => import('@/features/billing/BillingPage'));
 
