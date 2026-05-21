@@ -33,7 +33,7 @@ export function MobileDashboardPage() {
       })
       .catch((err) => {
         if (!active) return;
-        setError(normalizeApiError(err, 'Dashboard could not be loaded.'));
+        setError(normalizeApiError(err, 'Dashboard kon niet worden geladen.'));
       })
       .finally(() => {
         if (!active) return;
@@ -104,7 +104,7 @@ export function MobileDashboardPage() {
     () => [
       { label: 'Rapportages', value: formatValue(summary?.reports || 0, '0'), subtitle: 'Beschikbare rapporten', icon: FileText, to: '/rapportage' },
       { label: 'Instellingen', subtitle: 'Stamdata & templates', icon: Settings, to: '/instellingen' },
-      { label: 'Project aanmaken', subtitle: 'Nieuw project', icon: FolderPlus, to: '/projecten/nieuw' },
+      { label: 'Nieuw project', subtitle: 'Project aanmaken', icon: FolderPlus, to: '/projecten/nieuw' },
       { label: 'Las toevoegen', subtitle: 'Kies een project', icon: Wrench, to: '/projecten' },
     ],
     [summary],
@@ -124,10 +124,10 @@ export function MobileDashboardPage() {
             onClick={() => navigate('/projecten')}
           >
             <strong style={{ display: 'block', color: '#2547a8', marginBottom: 6 }}>
-              {onboarding.title || 'Example EN 1090 project is ready'}
+              {onboarding.title || 'Voorbeeldproject EN 1090 staat klaar'}
             </strong>
             <span style={{ display: 'block', color: '#475569', lineHeight: 1.35 }}>
-              {onboarding.message || 'Open the example project to explore projects, welds, inspections, compliance and PDF export.'}
+              {onboarding.message || 'Open het voorbeeldproject om projecten, lassen, inspecties, compliance en PDF-export te bekijken.'}
             </span>
             {onboarding.project_code ? (
               <small style={{ display: 'block', color: '#64748b', marginTop: 8 }}>Project: {onboarding.project_code}</small>
