@@ -16,9 +16,20 @@ function record(document: CeDocument): R {
   return document as unknown as R;
 }
 
+function rawDocumentSource(document: CeDocument) {
+  const row = record(document);
+  return String(row.download_url || row.url || row.file_url || row.storage_url || row.public_url || row.href || row.preview_url || '');
+}
+
 export function ceDocumentSource(document: CeDocument) {
   const row = record(document);
-  return String(row.url || row.download_url || row.file_url || row.preview_url || row.storage_url || row.public_url || row.href || '');
+  const preview = String(row.preview_url || row.thumbnail_url || row.thumb_url || '');
+  const raw = rawDocumentSource(document);
+  const mime = String(row.mime_type || row.content_type || row.type || '').toLowerCase();
+  const imageByMime = mime.startsWith('image/');
+  const imageByName = /\.(png|jpe?g|webp|gif|bmp|svg)(\?|#|$)/i.test(raw || preview || String(row.filename || row.file_name || row.name || ''));
+  if ((imageByMime || imageByName) && preview) return preview;
+  return raw;
 }
 
 export function ceDocumentName(document: CeDocument) {
@@ -49,7 +60,7 @@ export function isCeImageDocument(document: CeDocument) {
 
 export function isCePdfDocument(document: CeDocument) {
   const mime = ceDocumentMime(document);
-  const src = ceDocumentSource(document).toLowerCase();
+  const src = rawDocumentSource(document).toLowerCase();
   return mime.includes('pdf') || /\.pdf(\?|#|$)/i.test(src);
 }
 
@@ -84,7 +95,7 @@ export function RenderCeAttachmentAppendixPages({
   return (
     <>
       {appendixDocuments.map((document, index) => {
-        const src = ceDocumentSource(document);
+        const src = rawDocumentSource(document);
         const name = ceDocumentName(document);
         const appendixId = `APP-DOC-${String(index + 1).padStart(3, '0')}`;
 
