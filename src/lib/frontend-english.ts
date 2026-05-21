@@ -384,7 +384,7 @@ function translateText(input: string): string {
 function shouldSkipElement(element: Element | null): boolean {
   if (!element) return false;
   const tag = element.tagName.toLowerCase();
-  return tag === 'script' || tag === 'style' || tag === 'code' || tag === 'pre' || element.hasAttribute('data-no-translate');
+  return tag === 'script' || tag === 'style' || tag === 'code' || tag === 'pre' || Boolean(element.closest('[data-no-translate="true"]'));
 }
 
 function translateAttributes(element: Element): void {
