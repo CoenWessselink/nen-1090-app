@@ -1,6 +1,6 @@
-/* CE report print color parity and readability fix.
-   Chrome print preview can drop background colors unless print-color-adjust is applied on
-   the actual report nodes and generated pseudo-elements. Keep this late in the CSS order. */
+/* CE report print color parity, readability and screen performance fixes.
+   Chrome's print dialog can suppress CSS backgrounds when "Background graphics" is off.
+   Therefore print output must not depend on white text over a dark background. */
 
 .rpt-page-wrap,
 .rpt-page-wrap *,
@@ -59,54 +59,73 @@
     print-color-adjust: exact !important;
   }
 
+  .rpt-cover {
+    background: #ffffff !important;
+  }
+
   .rpt-cover::before {
-    background:
-      linear-gradient(135deg, rgba(37, 99, 235, .10) 0 32%, transparent 32% 100%),
-      radial-gradient(circle at 18% 20%, rgba(59, 130, 246, .18), transparent 30%),
-      linear-gradient(135deg, #071a31 0%, #0b2544 58%, #0e315f 100%) !important;
+    background: none !important;
+    border-bottom: 3px solid #2563eb !important;
   }
 
   .rpt-cover::after {
     background: #2563eb !important;
   }
 
+  .rpt-cover .rpt-header {
+    border-bottom: 3px solid #2563eb !important;
+  }
+
   .rpt-cover h1,
   .rpt-cover .rpt-cover-norms,
   .rpt-cover .rpt-header-center,
   .rpt-cover .rpt-product-logo-title {
-    color: #ffffff !important;
-    text-shadow: 0 4px 18px rgba(0, 0, 0, .28) !important;
+    color: #0f172a !important;
+    text-shadow: none !important;
   }
 
   .rpt-cover .rpt-product-logo-title b {
-    color: #2f7cff !important;
+    color: #2563eb !important;
+  }
+
+  .rpt-cover .rpt-product-logo::before {
+    background: #ffffff !important;
+    color: #2563eb !important;
+    border-color: #2563eb !important;
+    box-shadow: none !important;
   }
 
   .rpt-cover .rpt-status-green,
   .rpt-cover .rpt-status-blue,
   .rpt-cover .rpt-status-orange {
-    background: #19a34a !important;
-    color: #ffffff !important;
+    background: #dcfce7 !important;
+    border: 1.5px solid #16a34a !important;
+    color: #166534 !important;
+    box-shadow: none !important;
   }
 
   .rpt-cover .rpt-pill-outline {
-    background: #2563eb !important;
-    color: #ffffff !important;
+    background: #dbeafe !important;
+    border: 1.5px solid #2563eb !important;
+    color: #1d4ed8 !important;
+    box-shadow: none !important;
   }
 
   .rpt-cover .rpt-tenant-logo-box {
     background: #ffffff !important;
     color: #0f172a !important;
+    box-shadow: none !important;
   }
 
-  /* Readability fallback if a browser still suppresses backgrounds in print preview. */
-  @supports not (print-color-adjust: exact) {
-    .rpt-cover h1,
-    .rpt-cover .rpt-cover-norms,
-    .rpt-cover .rpt-header-center,
-    .rpt-cover .rpt-product-logo-title {
-      color: #0f172a !important;
-      text-shadow: none !important;
-    }
+  .rpt-cover .rpt-cover-grid > div {
+    background: #ffffff !important;
+    box-shadow: none !important;
+  }
+
+  .rpt-cover .rpt-cover-grid strong,
+  .rpt-cover .rpt-cover-grid small,
+  .rpt-cover .rpt-meta-table td,
+  .rpt-cover .rpt-footer {
+    color: #0f172a !important;
   }
 }
