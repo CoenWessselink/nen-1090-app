@@ -12,6 +12,25 @@
   print-color-adjust: exact !important;
 }
 
+@media screen {
+  .rpt-page[data-print-section='true'] {
+    content-visibility: auto;
+    contain-intrinsic-size: 1120px;
+  }
+
+  .rpt-page[data-print-section='true']:first-of-type,
+  .rpt-page[data-print-section='true']:nth-of-type(2) {
+    content-visibility: visible;
+  }
+
+  .rpt-photo-evidence-card,
+  .rpt-attachment-card,
+  .rpt-attachment-full-page {
+    content-visibility: auto;
+    contain-intrinsic-size: 420px;
+  }
+}
+
 @media print {
   .rpt-page-wrap,
   .rpt-page,
