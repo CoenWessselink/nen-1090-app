@@ -4,8 +4,6 @@ type DownloadCeReportRouteAsPdfOptions = {
   timeoutMs?: number;
 };
 
-const A4_WIDTH_MM = 210;
-const A4_HEIGHT_MM = 297;
 const DEFAULT_TIMEOUT_MS = 30_000;
 
 function wait(ms: number) {
@@ -54,25 +52,25 @@ async function waitForReportReady(doc: Document, timeoutMs: number) {
     const pages = doc.querySelectorAll<HTMLElement>('.rpt-page[data-print-section="true"]');
     if (ready && pages.length > 0) {
       await wait(350);
-      return Array.from(pages);
+      return;
     }
     await wait(150);
   }
 
   const pages = doc.querySelectorAll<HTMLElement>('.rpt-page[data-print-section="true"]');
-  if (pages.length > 0) return Array.from(pages);
+  if (pages.length > 0) return;
   throw new Error('CE-report inhoud is niet gevonden.');
 }
 
-function createHiddenReportFrame(url: string) {
+function createVisiblePrintFrame(url: string, title: string) {
   const iframe = document.createElement('iframe');
-  iframe.title = 'CE report PDF generator';
+  iframe.title = title;
   iframe.setAttribute('aria-hidden', 'true');
   iframe.style.position = 'fixed';
-  iframe.style.left = '-10000px';
+  iframe.style.left = '0';
   iframe.style.top = '0';
-  iframe.style.width = '1280px';
-  iframe.style.height = '1800px';
+  iframe.style.width = '1px';
+  iframe.style.height = '1px';
   iframe.style.border = '0';
   iframe.style.opacity = '0';
   iframe.style.pointerEvents = 'none';
@@ -82,10 +80,15 @@ function createHiddenReportFrame(url: string) {
   return iframe;
 }
 
+function setDocumentTitleForPrint(doc: Document, filename: string) {
+  const name = safeFilename(filename).replace(/\.pdf$/i, '');
+  if (doc.title !== name) doc.title = name;
+}
+
 export async function downloadCeReportRouteAsPdf({ url, filename, timeoutMs = DEFAULT_TIMEOUT_MS }: DownloadCeReportRouteAsPdfOptions) {
   if (!url) throw new Error('CE-report route ontbreekt.');
 
-  const iframe = createHiddenReportFrame(url);
+  const iframe = createVisiblePrintFrame(url, `CE report PDF generator - ${safeFilename(filename)}`);
   try {
     await waitForIframeLoad(iframe, timeoutMs);
     const doc = iframe.contentDocument;
@@ -93,47 +96,12 @@ export async function downloadCeReportRouteAsPdf({ url, filename, timeoutMs = DE
     if (!doc || !win) throw new Error('CE-report pagina is niet toegankelijk.');
 
     await doc.fonts?.ready?.catch(() => undefined);
-    const pages = await waitForReportReady(doc, timeoutMs);
-    const [{ default: html2canvas }, { default: JsPDF }] = await Promise.all([
-      import('html2canvas'),
-      import('jspdf'),
-    ]);
-
-    const pdf = new JsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
-
-    for (let index = 0; index < pages.length; index += 1) {
-      const page = pages[index];
-      page.scrollIntoView({ block: 'start' });
-      await wait(50);
-      const canvas = await html2canvas(page, {
-        backgroundColor: '#ffffff',
-        scale: Math.min(2, Math.max(1, window.devicePixelRatio || 1.5)),
-        useCORS: true,
-        allowTaint: true,
-        logging: false,
-        imageTimeout: 12_000,
-        windowWidth: Math.max(1280, page.scrollWidth, doc.documentElement.scrollWidth),
-        windowHeight: Math.max(1800, page.scrollHeight, doc.documentElement.scrollHeight),
-      });
-
-      const imgData = canvas.toDataURL('image/jpeg', 0.96);
-      if (index > 0) pdf.addPage('a4', 'portrait');
-
-      const imageRatio = canvas.height / canvas.width;
-      const pageRatio = A4_HEIGHT_MM / A4_WIDTH_MM;
-      if (imageRatio > pageRatio) {
-        const width = A4_HEIGHT_MM / imageRatio;
-        const x = (A4_WIDTH_MM - width) / 2;
-        pdf.addImage(imgData, 'JPEG', x, 0, width, A4_HEIGHT_MM, undefined, 'FAST');
-      } else {
-        const height = A4_WIDTH_MM * imageRatio;
-        const y = (A4_HEIGHT_MM - height) / 2;
-        pdf.addImage(imgData, 'JPEG', 0, y, A4_WIDTH_MM, height, undefined, 'FAST');
-      }
-    }
-
-    pdf.save(safeFilename(filename));
+    await waitForReportReady(doc, timeoutMs);
+    setDocumentTitleForPrint(doc, filename);
+    win.focus();
+    await wait(100);
+    win.print();
   } finally {
-    iframe.remove();
+    window.setTimeout(() => iframe.remove(), 2_000);
   }
 }
