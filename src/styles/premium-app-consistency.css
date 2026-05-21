@@ -244,6 +244,11 @@ nav[aria-label='Mobiele navigatie'] [aria-current='page'],
   box-shadow: inset 0 0 0 1px rgba(86, 137, 255, .18), 0 10px 20px rgba(20, 94, 242, .10) !important;
 }
 
+/* Hide the redundant masterdata CRUD status badge while keeping all table actions visible. */
+.settings-page .settings-sections .section-title-row > .badge-success {
+  display: none !important;
+}
+
 /* Settings overview tiles — always visible at the top of settings-related pages. */
 .settings-overview-grid {
   display: grid !important;
