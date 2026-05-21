@@ -1,0 +1,292 @@
+/* Premium App Consistency — visual-only polish layer.
+   No routes, dataflow, business logic or hidden functional elements. */
+
+:root {
+  --premium-app-ink: #071331;
+  --premium-app-muted: #64748b;
+  --premium-app-border: rgba(190, 211, 245, .76);
+  --premium-app-surface: rgba(255, 255, 255, .94);
+  --premium-app-soft: rgba(246, 250, 255, .92);
+  --premium-app-blue: #1468e8;
+  --premium-app-shadow: 0 16px 34px rgba(17, 38, 72, .12), inset 0 1px 0 rgba(255, 255, 255, .34);
+  --premium-app-radius-lg: 28px;
+  --premium-app-radius-md: 22px;
+}
+
+.mobile-page,
+.page-canvas {
+  color: var(--premium-app-ink);
+}
+
+.card,
+.settings-card,
+.settings-panel,
+.mobile-list-card,
+.mobile-form-card,
+.mobile-detail-card,
+.section-nav-tile,
+.project-card,
+.report-card,
+.billing-card,
+.superadmin-card,
+.ce-card,
+.dashboard-card,
+.content-card,
+details-card,
+.form-card,
+.list-card,
+.upload-block,
+.upload-panel,
+.file-upload,
+.attachment-card,
+.template-card {
+  border: 1px solid var(--premium-app-border) !important;
+  border-radius: var(--premium-app-radius-lg) !important;
+  background: var(--premium-app-surface) !important;
+  box-shadow: var(--premium-app-shadow) !important;
+}
+
+.mobile-list-card,
+.mobile-form-card,
+.mobile-detail-card,
+.project-card,
+.report-card,
+.billing-card,
+.superadmin-card,
+.ce-card,
+.settings-card,
+.settings-panel {
+  overflow: hidden !important;
+}
+
+.section-title-row,
+.card-header,
+.settings-card-header,
+.mobile-list-card-header,
+.panel-header,
+.modal-header,
+.dialog-header {
+  color: var(--premium-app-ink) !important;
+  font-weight: 850 !important;
+  letter-spacing: -0.025em !important;
+}
+
+.mobile-list-card-meta,
+.card-subtitle,
+.settings-card-subtitle,
+.help-text,
+.form-hint,
+.muted,
+.text-muted {
+  color: var(--premium-app-muted) !important;
+}
+
+input,
+select,
+textarea,
+.form-input,
+.form-select,
+.mobile-input,
+.input,
+.select-trigger,
+.search-input,
+.filter-input {
+  border-radius: 20px !important;
+  border-color: rgba(184, 205, 236, .95) !important;
+  background: rgba(255, 255, 255, .96) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .78) !important;
+}
+
+input:focus,
+select:focus,
+textarea:focus,
+.form-input:focus,
+.form-select:focus,
+.mobile-input:focus,
+.search-input:focus,
+.filter-input:focus {
+  border-color: rgba(20, 104, 232, .62) !important;
+  box-shadow: 0 0 0 4px rgba(20, 104, 232, .12), inset 0 1px 0 rgba(255, 255, 255, .8) !important;
+  outline: none !important;
+}
+
+button,
+.button,
+.btn,
+.primary-button,
+.secondary-button,
+.buttonlike-file,
+.row-actions a,
+.stack-actions a {
+  border-radius: 18px !important;
+}
+
+.btn-primary,
+.button-primary,
+button[type='submit'],
+.primary-button,
+.mobile-primary-button {
+  background: linear-gradient(135deg, #2f7cff, #145be4) !important;
+  box-shadow: 0 12px 24px rgba(20, 91, 228, .23) !important;
+}
+
+.mobile-secondary-button,
+.secondary-button,
+.btn-secondary {
+  border: 1px solid rgba(199, 217, 246, .9) !important;
+  color: #10203e !important;
+  background: rgba(255, 255, 255, .96) !important;
+}
+
+.mobile-danger-button,
+.danger-button,
+.btn-danger {
+  color: #fff !important;
+  background: linear-gradient(135deg, #ef725f, #dc4f43) !important;
+  box-shadow: 0 12px 24px rgba(220, 79, 67, .18) !important;
+}
+
+table,
+.table,
+.data-table,
+.mobile-table,
+.settings-table {
+  border-radius: var(--premium-app-radius-md) !important;
+  overflow: hidden !important;
+  background: rgba(255, 255, 255, .93) !important;
+  box-shadow: 0 10px 28px rgba(20, 54, 103, .09) !important;
+}
+
+th,
+.table-header,
+.data-table-header {
+  background: linear-gradient(180deg, #f7fbff, #edf4ff) !important;
+  color: #23406f !important;
+  font-weight: 850 !important;
+}
+
+.mobile-state-card,
+.empty-state,
+.loading-state,
+.error-state,
+.inline-message,
+.toast,
+.alert {
+  border: 1px solid var(--premium-app-border) !important;
+  border-radius: var(--premium-app-radius-md) !important;
+  background: rgba(255, 255, 255, .92) !important;
+  box-shadow: 0 10px 26px rgba(20, 54, 103, .10) !important;
+}
+
+.modal-panel,
+[data-modal-panel],
+.dialog-content,
+.modal-content,
+.ConfirmDialog,
+.confirm-dialog {
+  border: 1px solid rgba(215, 226, 244, .9) !important;
+  border-radius: 28px !important;
+  box-shadow: 0 28px 80px rgba(15, 23, 42, .26) !important;
+}
+
+.overlay-header,
+.modal-header,
+.dialog-header {
+  background: linear-gradient(180deg, #ffffff, #f6faff) !important;
+}
+
+.tabs,
+.tab-list,
+.segmented-control,
+.filter-tabs {
+  padding: 5px !important;
+  border: 1px solid rgba(196, 214, 242, .82) !important;
+  border-radius: 22px !important;
+  background: rgba(255, 255, 255, .76) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .84) !important;
+}
+
+.tab-active,
+.tabs .active,
+.filter-tabs .active,
+.segmented-control .active,
+[aria-selected='true'] {
+  border-radius: 17px !important;
+  color: #115ee8 !important;
+  background: #eef5ff !important;
+  box-shadow: 0 8px 18px rgba(20, 94, 242, .10) !important;
+}
+
+.bottom-nav,
+.mobile-bottom-nav,
+nav[aria-label='Mobiele navigatie'],
+.mobile-tabbar {
+  border: 1px solid rgba(207, 219, 239, .76) !important;
+  border-radius: 30px !important;
+  background: rgba(255, 255, 255, .88) !important;
+  box-shadow: 0 18px 48px rgba(13, 42, 86, .18) !important;
+  backdrop-filter: blur(22px) saturate(150%) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(150%) !important;
+}
+
+.bottom-nav button,
+.mobile-bottom-nav button,
+nav[aria-label='Mobiele navigatie'] button,
+.mobile-tabbar button,
+.bottom-nav a,
+.mobile-bottom-nav a,
+nav[aria-label='Mobiele navigatie'] a,
+.mobile-tabbar a {
+  border-radius: 22px !important;
+  font-weight: 800 !important;
+}
+
+.bottom-nav .active,
+.mobile-bottom-nav .active,
+nav[aria-label='Mobiele navigatie'] .active,
+.mobile-tabbar .active,
+.bottom-nav [aria-current='page'],
+.mobile-bottom-nav [aria-current='page'],
+nav[aria-label='Mobiele navigatie'] [aria-current='page'],
+.mobile-tabbar [aria-current='page'] {
+  color: #145df4 !important;
+  background: linear-gradient(180deg, #edf4ff, #e7f0ff) !important;
+  box-shadow: inset 0 0 0 1px rgba(86, 137, 255, .18), 0 10px 20px rgba(20, 94, 242, .10) !important;
+}
+
+@media (max-width: 1024px) {
+  .page-canvas {
+    padding-bottom: calc(124px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .mobile-page > .mobile-page-body {
+    padding-bottom: calc(42px + env(safe-area-inset-bottom)) !important;
+  }
+}
+
+@media (max-width: 430px) {
+  .card,
+  .settings-card,
+  .settings-panel,
+  .mobile-list-card,
+  .mobile-form-card,
+  .mobile-detail-card,
+  .section-nav-tile,
+  .project-card,
+  .report-card,
+  .billing-card,
+  .superadmin-card,
+  .ce-card,
+  .dashboard-card,
+  .content-card,
+  .details-card,
+  .form-card,
+  .list-card,
+  .upload-block,
+  .upload-panel,
+  .file-upload,
+  .attachment-card,
+  .template-card {
+    border-radius: 24px !important;
+  }
+}
