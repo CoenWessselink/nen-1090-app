@@ -34,7 +34,7 @@ export function PremiumMetricCard({ label, subtitle, value, tone, visual, icon: 
 export function PremiumActionCard(props: PremiumActionCardProps) {
   const { label, subtitle, value, tone, visual, icon: Icon, onClick } = props;
   return (
-    <button type="button" className={`premium-dashboard-card premium-dashboard-action-card premium-dashboard-card-${tone} premium-dashboard-card-${visual}`} onClick={onClick} data-no-translate="true">
+    <button type="button" className={`premium-dashboard-card premium-dashboard-action-tile premium-dashboard-card-${tone} premium-dashboard-card-${visual}`} onClick={onClick} data-no-translate="true">
       <span className="premium-dashboard-more" aria-hidden="true">•••</span>
       <span className="premium-dashboard-icon" aria-hidden="true"><Icon size={30} /></span>
       <span className="premium-dashboard-copy">
