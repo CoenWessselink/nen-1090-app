@@ -163,20 +163,24 @@ export function MobileProjectCreatePage() {
         coordinator_name: form.coordinator_name || (coordinator ? optionName(coordinator) : ''),
       };
       const result = isEdit ? await updateProject(projectId, payload) : await createProject(payload);
+      const savedProjectId = String(result.id || projectId || '');
+
+      dispatchAppRefresh({ scope: 'projects', projectId: savedProjectId, reason: isEdit ? 'project-updated' : 'project-created' });
+      navigate(`/projecten/${savedProjectId}/overzicht`, { replace: true });
+
       if (form.norm_profile_id) {
-        await setProjectNormSelection(String(result.id || projectId), {
+        void setProjectNormSelection(savedProjectId, {
           norm_system_id: form.norm_system_id || undefined,
           norm_profile_id: form.norm_profile_id,
           exc_class: normalizeExc(form.execution_class),
           iso3834_level: form.iso3834_level || undefined,
           iso5817_level: form.iso5817_level || undefined,
-        }).catch(() => undefined);
+        })
+          .then(() => dispatchAppRefresh({ scope: 'projects', projectId: savedProjectId, reason: 'project-norm-selection-updated' }))
+          .catch(() => undefined);
       }
-      dispatchAppRefresh({ scope: 'projects', projectId: String(result.id || projectId || ''), reason: isEdit ? 'project-updated' : 'project-created' });
-      navigate(`/projecten/${result.id}/overzicht`, { replace: true });
     } catch (err) {
       setError(normalizeApiError(err, isEdit ? 'Project wijzigen mislukt.' : 'Project aanmaken mislukt.'));
-    } finally {
       setSaving(false);
     }
   }
