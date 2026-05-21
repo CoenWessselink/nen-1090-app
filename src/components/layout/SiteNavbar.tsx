@@ -1,17 +1,37 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { useSession } from '@/app/session/SessionContext';
 import { Menu, X } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { appRouteMeta } from '@/app/router/routes';
 import './site-navbar.css';
 
-const marketingBase = import.meta.env.VITE_MARKETING_BASE_URL || 'https://weldinspectpro.com';
+const PRODUCTION_MARKETING_BASE = 'https://weldinspectpro.com';
+
+function normalizeMarketingBase(value: string | undefined): string {
+  const configured = String(value || '').trim().replace(/\/+$/, '');
+  if (!configured) return PRODUCTION_MARKETING_BASE;
+
+  try {
+    const parsed = new URL(configured);
+    const host = parsed.hostname.toLowerCase();
+    if (host === 'weldinspectpro.com' || host === 'www.weldinspectpro.com') {
+      return `${parsed.protocol}//${parsed.host}`;
+    }
+  } catch {
+    return PRODUCTION_MARKETING_BASE;
+  }
+
+  return PRODUCTION_MARKETING_BASE;
+}
+
+const marketingBase = normalizeMarketingBase(import.meta.env.VITE_MARKETING_BASE_URL);
 
 const marketingLinks = [
   { href: `${marketingBase}/platform.html`, label: 'Platform' },
   { href: `${marketingBase}/use-cases.html`, label: 'Oplossingen' },
   { href: `${marketingBase}/standards.html`, label: 'Normen' },
   { href: `${marketingBase}/resources.html`, label: 'Resources' },
+  { href: `${marketingBase}/#footer`, label: 'Over ons' },
 ];
 
 function NavbarApp() {
@@ -84,10 +104,12 @@ function NavbarApp() {
 function NavbarPublic() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  const closeMobileMenu = useMemo(() => () => setMobileOpen(false), []);
+
   return (
-    <header className="site-navbar">
+    <header className="site-navbar site-navbar-public">
       <div className="site-navbar-inner">
-        <a className="site-navbar-brand" href={marketingBase}>
+        <a className="site-navbar-brand" href={`${marketingBase}/`} aria-label="WeldInspect Pro home">
           <span className="site-navbar-mark">W</span>
           <span className="site-navbar-brandtext">
             <strong>WELDINSPECT <em>PRO</em></strong>
@@ -95,7 +117,7 @@ function NavbarPublic() {
           </span>
         </a>
 
-        <nav className="site-navbar-links">
+        <nav className="site-navbar-links" aria-label="Marketing navigatie">
           {marketingLinks.map((item) => (
             <a key={item.href} className="site-navbar-link" href={item.href}>
               {item.label}
@@ -117,20 +139,21 @@ function NavbarPublic() {
           type="button"
           onClick={() => setMobileOpen(!mobileOpen)}
           aria-label={mobileOpen ? 'Sluit menu' : 'Open menu'}
+          aria-expanded={mobileOpen}
         >
           {mobileOpen ? <X size={20} /> : <Menu size={20} />}
         </button>
       </div>
 
       {mobileOpen && (
-        <nav className="site-navbar-mobile">
+        <nav className="site-navbar-mobile" aria-label="Mobiele marketing navigatie">
           {marketingLinks.map((item) => (
-            <a key={item.href} href={item.href}>{item.label}</a>
+            <a key={item.href} href={item.href} onClick={closeMobileMenu}>{item.label}</a>
           ))}
-          <NavLink to="/login" className="site-navbar-btn site-navbar-btn-ghost" onClick={() => setMobileOpen(false)}>
+          <NavLink to="/login" className="site-navbar-btn site-navbar-btn-ghost" onClick={closeMobileMenu}>
             Inloggen
           </NavLink>
-          <a className="site-navbar-btn site-navbar-btn-primary" href={`${marketingBase}/demo.html`}>
+          <a className="site-navbar-btn site-navbar-btn-primary" href={`${marketingBase}/demo.html`} onClick={closeMobileMenu}>
             Book a Demo
           </a>
         </nav>
