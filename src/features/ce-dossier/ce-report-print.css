@@ -12,6 +12,16 @@
   --rpt-orange: #d97706;
 }
 
+.rpt-page-wrap,
+.rpt-page-wrap *,
+.rpt-page-wrap::before,
+.rpt-page-wrap::after,
+.rpt-page-wrap *::before,
+.rpt-page-wrap *::after {
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
+}
+
 .rpt-page-wrap { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: var(--rpt-ink); background: #f1f5f9; -webkit-font-smoothing: antialiased; padding: 16px; }
 .rpt-print-btn { position: fixed; top: 16px; right: 16px; z-index: 100; padding: 12px 24px; background: var(--rpt-blue); color: #fff; border: none; border-radius: 10px; font-size: 14px; font-weight: 800; cursor: pointer; font-family: inherit; box-shadow: 0 4px 12px rgba(37, 99, 235, .3); }
 .rpt-print-btn:hover { background: #1d4ed8; }
@@ -25,7 +35,7 @@
 .rpt-header-left, .rpt-header-right { display: flex; align-items: center; min-width: 0; }
 .rpt-header-right { justify-content: flex-end; }
 .rpt-header-center { text-align: center; color: #315173; font-size: 8px; font-weight: 800; letter-spacing: .02em; }
-.rpt-product-logo { display: grid; grid-template-columns: 36px 1fr; align-items: center; column-gap: 10px; min-width: 190px; color: var(--rpt-ink); border: 1px solid transparent; background: transparent !important; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+.rpt-product-logo { display: grid; grid-template-columns: 36px 1fr; align-items: center; column-gap: 10px; min-width: 190px; color: var(--rpt-ink); border: 1px solid transparent; background: transparent !important; }
 .rpt-product-logo::before { content: 'W'; width: 34px; height: 34px; display: grid; place-items: center; border: 2px solid var(--rpt-blue); border-radius: 9px; color: var(--rpt-blue); font-size: 17px; font-weight: 950; line-height: 1; }
 .rpt-product-logo-title { display: block; color: var(--rpt-ink); font-size: 14px; font-weight: 950; line-height: 1; letter-spacing: -.03em; text-transform: uppercase; }
 .rpt-product-logo-title b { color: var(--rpt-blue); }
@@ -138,7 +148,7 @@ td.rpt-status-green, td.rpt-status-blue, td.rpt-status-red, td.rpt-status-orange
 .rpt-cover .rpt-header { margin: 0; padding: 34px 54px 22px; border-bottom: 0; grid-template-columns: minmax(230px, 1fr) minmax(210px, .8fr) minmax(250px, 1fr); color: #fff; }
 .rpt-cover .rpt-header-center { color: rgba(255,255,255,.88); font-size: 9px; line-height: 1.45; font-weight: 850; }
 .rpt-cover .rpt-product-logo { color: #fff; grid-template-columns: 54px 1fr; column-gap: 14px; min-width: 270px; }
-.rpt-cover .rpt-product-logo::before { width: 48px; height: 48px; background: #fff; border: 3px solid #2f77ff; color: #2563eb; border-radius: 14px; font-size: 26px; box-shadow: 0 6px 18px rgba(0,0,0,.22); }
+.rpt-cover .rpt-product-logo::before { width: 48px; height: 48px; background: #fff !important; border: 3px solid #2f77ff; color: #2563eb; border-radius: 14px; font-size: 26px; box-shadow: 0 6px 18px rgba(0,0,0,.22); }
 .rpt-cover .rpt-product-logo-title { color: #fff; font-size: 25px; letter-spacing: -.045em; text-shadow: 0 2px 8px rgba(0,0,0,.22); }
 .rpt-cover .rpt-product-logo-title b { color: #2f7cff; }
 .rpt-cover .rpt-tenant-logo-box { justify-self: end; min-width: 250px; max-width: 292px; min-height: 78px; padding: 12px 18px; background: #fff !important; border: 2px solid rgba(15, 23, 42, .75); box-shadow: 0 12px 28px rgba(0,0,0,.24); }
@@ -149,7 +159,9 @@ td.rpt-status-green, td.rpt-status-blue, td.rpt-status-red, td.rpt-status-orange
 .rpt-cover .rpt-cover-norms { color: rgba(255,255,255,.88); font-size: 15px; margin-bottom: 26px; }
 .rpt-cover .rpt-cover-status { justify-content: center; gap: 14px; margin-bottom: 96px; }
 .rpt-cover .rpt-pill { min-width: 150px; height: 46px; padding: 0 24px; border-radius: 999px; border: 0; color: #fff; font-size: 14px; box-shadow: 0 12px 26px rgba(0,0,0,.20); }
-.rpt-cover .rpt-status-green, .rpt-cover .rpt-status-blue, .rpt-cover .rpt-status-orange { background: #19a34a !important; color: #fff; }
+.rpt-cover .rpt-status-green { background: #19a34a !important; color: #fff !important; }
+.rpt-cover .rpt-status-blue { background: #2563eb !important; color: #fff !important; }
+.rpt-cover .rpt-status-orange { background: #d97706 !important; color: #fff !important; }
 .rpt-cover .rpt-pill-outline { background: #2563eb !important; color: #fff; border: 0; }
 .rpt-cover .rpt-cover-grid { display: grid; grid-template-columns: 1fr; gap: 14px; margin: 0 0 28px; text-align: left; }
 .rpt-cover .rpt-cover-grid > div { position: relative; min-height: auto; padding: 22px 28px 20px 34px; border: 1px solid #d9e4ef; border-left: 10px solid var(--rpt-blue); border-radius: 12px; background: #fff; box-shadow: 0 12px 28px rgba(15, 35, 61, .08); display: grid; grid-template-columns: 140px 1fr; column-gap: 28px; align-items: center; }
@@ -197,17 +209,40 @@ td.rpt-status-green, td.rpt-status-blue, td.rpt-status-red, td.rpt-status-orange
   html, body, #root, .app-shell, .app-shell *, .page-canvas, main { background: #fff !important; overflow: visible !important; height: auto !important; min-height: 0 !important; transform: none !important; filter: none !important; contain: none !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
   html, body { width: 210mm !important; margin: 0 !important; padding: 0 !important; }
   body * { visibility: hidden !important; }
-  .rpt-page-wrap, .rpt-page-wrap * { visibility: visible !important; }
+  .rpt-page-wrap, .rpt-page-wrap *, .rpt-page-wrap::before, .rpt-page-wrap::after, .rpt-page-wrap *::before, .rpt-page-wrap *::after { visibility: visible !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
   .rpt-print-btn, .sidebar, .topbar-shell, .mobile-tabbar, .mobile-page-header { display: none !important; }
   .rpt-page-wrap { position: static !important; width: 210mm !important; min-height: auto !important; background: #fff !important; padding: 0 !important; margin: 0 !important; }
   .rpt-page { display: flex !important; max-width: none !important; width: 210mm !important; min-height: 297mm !important; margin: 0 !important; border: none !important; box-shadow: none !important; border-radius: 0 !important; padding: 16mm 18mm 14mm !important; page-break-after: always !important; break-after: page !important; overflow: hidden !important; }
-  .rpt-cover { padding: 0 !important; }
-  .rpt-cover::before { height: 100mm !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-  .rpt-cover::after { top: 100mm !important; }
-  .rpt-cover .rpt-header { padding: 12mm 14mm 5mm !important; }
+  .rpt-cover { padding: 0 !important; background: #ffffff !important; box-shadow: inset 0 102mm 0 0 #0b2544 !important; }
+  .rpt-cover::before { content: '' !important; position: absolute !important; inset: 0 0 auto 0 !important; width: 210mm !important; height: 102mm !important; display: block !important; z-index: 0 !important; background: linear-gradient(135deg, rgba(37, 99, 235, .10) 0 32%, transparent 32% 100%), radial-gradient(circle at 18% 20%, rgba(59, 130, 246, .18), transparent 30%), linear-gradient(135deg, #071a31 0%, #0b2544 58%, #0e315f 100%) !important; }
+  .rpt-cover::after { content: '' !important; position: absolute !important; left: 0 !important; right: 0 !important; top: 100mm !important; height: 1.6mm !important; display: block !important; z-index: 0 !important; background: #2563eb !important; }
+  .rpt-cover > * { position: relative !important; z-index: 1 !important; }
+  .rpt-cover .rpt-header { margin: 0 !important; padding: 12mm 14mm 5mm !important; border-bottom: 0 !important; grid-template-columns: minmax(52mm, 1fr) minmax(45mm, .8fr) minmax(58mm, 1fr) !important; }
+  .rpt-cover .rpt-header-center { color: rgba(255,255,255,.88) !important; }
+  .rpt-cover .rpt-product-logo-title { color: #ffffff !important; font-size: 16pt !important; line-height: .95 !important; text-shadow: none !important; }
+  .rpt-cover .rpt-product-logo-title b { color: #2f7cff !important; }
+  .rpt-cover .rpt-product-logo::before { background: #ffffff !important; color: #2563eb !important; border-color: #2f77ff !important; box-shadow: none !important; }
+  .rpt-cover .rpt-tenant-logo-box { background: #ffffff !important; color: #0f172a !important; box-shadow: none !important; border-color: #334155 !important; }
   .rpt-cover .rpt-cover-body { padding: 8mm 14mm 0 !important; }
-  .rpt-cover .rpt-cover-status { margin-bottom: 24mm !important; }
-  .rpt-cover .rpt-footer { margin-left: 14mm !important; margin-right: 14mm !important; }
+  .rpt-cover h1 { color: #ffffff !important; text-shadow: none !important; font-size: 31pt !important; line-height: 1.02 !important; margin: 12mm 0 6mm !important; }
+  .rpt-cover .rpt-cover-norms { color: rgba(255,255,255,.88) !important; text-shadow: none !important; font-size: 9.5pt !important; margin-bottom: 8mm !important; }
+  .rpt-cover .rpt-cover-status { gap: 5mm !important; margin-bottom: 34mm !important; }
+  .rpt-cover .rpt-pill { min-width: 38mm !important; height: 10mm !important; padding: 0 8mm !important; border-radius: 999px !important; font-size: 9pt !important; box-shadow: none !important; }
+  .rpt-cover .rpt-status-green { background: #19a34a !important; color: #ffffff !important; }
+  .rpt-cover .rpt-status-blue { background: #2563eb !important; color: #ffffff !important; }
+  .rpt-cover .rpt-status-orange { background: #d97706 !important; color: #ffffff !important; }
+  .rpt-cover .rpt-pill-outline { background: #2563eb !important; border: 0 !important; color: #ffffff !important; }
+  .rpt-cover .rpt-cover-grid { gap: 3.2mm !important; margin: 0 0 5mm !important; }
+  .rpt-cover .rpt-cover-grid > div { min-height: 0 !important; padding: 5.5mm 8mm 5mm 10mm !important; border: 1px solid #d9e4ef !important; border-left: 2.4mm solid #2563eb !important; border-radius: 3mm !important; background: #ffffff !important; box-shadow: none !important; grid-template-columns: 34mm 1fr !important; column-gap: 9mm !important; }
+  .rpt-cover .rpt-cover-grid > div:nth-child(3) { border-left-color: #16a34a !important; }
+  .rpt-cover .rpt-cover-grid span { font-size: 7pt !important; }
+  .rpt-cover .rpt-cover-grid strong { color: #0f172a !important; font-size: 16pt !important; line-height: 1.08 !important; }
+  .rpt-cover .rpt-cover-grid small { color: #334155 !important; font-size: 7.5pt !important; line-height: 1.25 !important; margin-top: 1.5mm !important; }
+  .rpt-cover .rpt-meta-table { page-break-inside: auto !important; break-inside: auto !important; margin-top: 2mm !important; margin-bottom: 0 !important; box-shadow: none !important; font-size: 7.2pt !important; }
+  .rpt-cover .rpt-meta-table thead th { background: #08213d !important; color: #ffffff !important; border-bottom: 0 !important; font-size: 7pt !important; padding: 2.5mm 4mm !important; }
+  .rpt-cover .rpt-meta-table td { color: #0f172a !important; padding: 2.1mm 4mm !important; font-size: 7pt !important; line-height: 1.16 !important; }
+  .rpt-cover .rpt-meta-table td:first-child { color: #0f172a !important; }
+  .rpt-cover .rpt-footer { margin-left: 14mm !important; margin-right: 14mm !important; color: #55708f !important; }
   .rpt-page:last-child { page-break-after: avoid !important; break-after: avoid !important; }
   table, tr, td, th, .rpt-inspection-card, .rpt-photo-evidence-card, .rpt-attachment-card, .rpt-nonpdf-attachment-block, img, iframe, object { page-break-inside: avoid !important; break-inside: avoid !important; }
   .rpt-attachment-image { max-height: 175mm; }
