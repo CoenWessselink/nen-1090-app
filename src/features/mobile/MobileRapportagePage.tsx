@@ -1,10 +1,9 @@
 import { useMemo, useState } from 'react';
-import { Download, FileText, Search } from 'lucide-react';
+import { FileText, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useReports } from '@/hooks/useReports';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
 import { openDownloadUrl } from '@/utils/download';
-import { exportPdf } from '@/api/exports';
 import { formatValue, normalizeApiError } from '@/features/mobile/mobile-utils';
 
 type ReportRow = {
@@ -49,21 +48,12 @@ function ceReportUrl(row: ReportRow) {
   return `/projecten/${projectId}/ce-report`;
 }
 
-function reportProjectMeta(row: ReportRow) {
-  return {
-    name: row.project_name || row.title || null,
-    code: row.projectnummer || String(row.project_id || row.id || '') || null,
-    client_name: row.client_name || null,
-  };
-}
-
 export function MobileRapportagePage() {
   const navigate = useNavigate();
   const reports = useReports({ page: 1, limit: 50 });
   const rows = useMemo(() => ((reports.data?.items || []) as ReportRow[]), [reports.data]);
   const [search, setSearch] = useState('');
   const [actionError, setActionError] = useState<string | null>(null);
-  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   const visibleRows = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -83,23 +73,6 @@ export function MobileRapportagePage() {
     const fallbackUrl = reportPdfUrl(row);
     if (fallbackUrl) {
       void openDownloadUrl(fallbackUrl, reportFilename(row)).catch((err) => setActionError(normalizeApiError(err, 'PDF openen mislukt.')));
-    }
-  }
-
-  function downloadReport(row: ReportRow) {
-    setActionError(null);
-    const projectId = rowProjectId(row);
-    if (projectId) {
-      const key = String(row.id || projectId);
-      setDownloadingId(key);
-      void exportPdf(projectId, reportProjectMeta(row))
-        .catch((err) => setActionError(normalizeApiError(err, 'PDF-download mislukt.')))
-        .finally(() => setDownloadingId(null));
-      return;
-    }
-    const fallbackUrl = reportPdfUrl(row);
-    if (fallbackUrl) {
-      void openDownloadUrl(fallbackUrl, reportFilename(row)).catch((err) => setActionError(normalizeApiError(err, 'Download mislukt.')));
     }
   }
 
@@ -144,7 +117,6 @@ export function MobileRapportagePage() {
         <div className="mobile-list-stack">
           {visibleRows.map((row) => {
             const projectId = rowProjectId(row);
-            const rowDownloading = downloadingId === String(row.id || projectId);
             return (
               <div key={String(row.id)} className="mobile-list-card">
                 <div className="mobile-list-card-head">
@@ -152,18 +124,12 @@ export function MobileRapportagePage() {
                   <span className="mobile-list-card-meta">{formatValue(row.created_at, '—')}</span>
                 </div>
                 <span className="mobile-list-card-subtitle">{formatValue(row.project_name || row.projectnummer || row.client_name, 'Project unknown')}</span>
-                <div
-                  className="mobile-inline-actions mobile-report-actions"
-                  style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 12, alignItems: 'stretch' }}
-                >
+                <div className="mobile-inline-actions mobile-report-actions">
                   <button type="button" className="mobile-secondary-button" onClick={() => openProject(row)} disabled={!projectId}>
                     Project
                   </button>
                   <button type="button" className="mobile-primary-button" onClick={() => createPdf(row)} disabled={!projectId && !reportPdfUrl(row)}>
-                    Open nieuw rapport
-                  </button>
-                  <button type="button" className="mobile-secondary-button" onClick={() => downloadReport(row)} disabled={rowDownloading || (!projectId && !reportPdfUrl(row))}>
-                    <Download size={14} /> {rowDownloading ? 'Downloaden…' : 'PDF downloaden'}
+                    Rapport
                   </button>
                   <button type="button" className="mobile-secondary-button" onClick={() => openCeDossier(row)} disabled={!projectId}>
                     CE Dossier
