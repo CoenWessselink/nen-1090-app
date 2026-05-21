@@ -14,6 +14,7 @@ import '@/styles/premium-dashboard-reference.css';
 import '@/styles/premium-tile-reference.css';
 import '@/styles/premium-app-consistency.css';
 import '@/styles/premium-masterdata-cleanup.css';
+import '@/styles/ce-report-print-color-fix.css';
 import { installFrontendEnglish } from '@/lib/frontend-english';
 import { initSentry } from '@/lib/sentry';
 
