@@ -102,10 +102,42 @@ export function MobileDashboardPage() {
 
   const actionCards = useMemo(
     () => [
-      { label: 'Rapportages', value: formatValue(summary?.reports || 0, '0'), subtitle: 'Beschikbare rapporten', icon: FileText, to: '/rapportage' },
-      { label: 'Instellingen', subtitle: 'Stamdata & templates', icon: Settings, to: '/instellingen' },
-      { label: 'Nieuw project', subtitle: 'Project aanmaken', icon: FolderPlus, to: '/projecten/nieuw' },
-      { label: 'Las toevoegen', subtitle: 'Kies een project', icon: Wrench, to: '/projecten' },
+      {
+        label: 'Rapportages',
+        value: formatValue(summary?.reports || 0, '0'),
+        subtitle: 'Beschikbare rapporten',
+        icon: FileText,
+        to: '/rapportage',
+        tone: 'primary' as const,
+        visual: 'line' as const,
+      },
+      {
+        label: 'Instellingen',
+        value: '›',
+        subtitle: 'Stamdata en templates',
+        icon: Settings,
+        to: '/instellingen',
+        tone: 'success' as const,
+        visual: 'shield' as const,
+      },
+      {
+        label: 'Nieuw project',
+        value: '+',
+        subtitle: 'Project aanmaken',
+        icon: FolderPlus,
+        to: '/projecten/nieuw',
+        tone: 'danger' as const,
+        visual: 'bars' as const,
+      },
+      {
+        label: 'Las toevoegen',
+        value: '+',
+        subtitle: 'Kies een project',
+        icon: Wrench,
+        to: '/projecten',
+        tone: 'warning' as const,
+        visual: 'donut' as const,
+      },
     ],
     [summary],
   );
@@ -155,6 +187,8 @@ export function MobileDashboardPage() {
                   label={card.label}
                   subtitle={card.subtitle}
                   value={card.value}
+                  tone={card.tone}
+                  visual={card.visual}
                   icon={card.icon}
                   onClick={() => navigate(card.to)}
                 />
