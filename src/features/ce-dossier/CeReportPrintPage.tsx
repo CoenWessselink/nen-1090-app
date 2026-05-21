@@ -26,6 +26,7 @@ import {
 } from '@/features/ce-dossier/CeReportAttachmentAppendixPages';
 import type { CeDocument, Project } from '@/types/domain';
 import './ce-report-print.css';
+import './ce-report-print-parity.css';
 
 function val(v: unknown, fallback = '—') {
   if (v === null || v === undefined || v === '') return fallback;
