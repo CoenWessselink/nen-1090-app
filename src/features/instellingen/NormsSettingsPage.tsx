@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/Input';
 import { EmptyState } from '@/components/feedback/EmptyState';
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { LoadingState } from '@/components/feedback/LoadingState';
+import { SettingsOverviewTiles } from '@/features/instellingen/components/SettingsOverviewTiles';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
 
 const tabs = [
@@ -83,8 +84,10 @@ export function NormsSettingsPage() {
         </button>
       }
     >
-      <div className="norms-settings-page">
-        <div className="mobile-kpi-grid">
+      <div className="norms-settings-page settings-page">
+        <SettingsOverviewTiles activeKey="normeringen" inspectionTemplateCount={templates.length} />
+
+        <div className="mobile-kpi-grid settings-norm-tabs">
           {tabs.map((item) => {
             const Icon = item.icon;
             const active = tab === item.key;
@@ -124,23 +127,11 @@ export function NormsSettingsPage() {
             <div className="responsive-table-wrap">
               <table className="enterprise-table">
                 <thead>
-                  <tr>
-                    <th>Code</th>
-                    <th>Naam</th>
-                    <th>Regio</th>
-                    <th>Status</th>
-                  </tr>
+                  <tr><th>Code</th><th>Naam</th><th>Regio</th><th>Status</th></tr>
                 </thead>
                 <tbody>
                   {visibleSystems.map((row) => (
-                    <tr key={row.id}>
-                      <td>
-                        <strong>{row.code}</strong>
-                      </td>
-                      <td>{row.name}</td>
-                      <td>{row.region || '—'}</td>
-                      <td>{activeBadge(row.is_active)}</td>
-                    </tr>
+                    <tr key={row.id}><td><strong>{row.code}</strong></td><td>{row.name}</td><td>{row.region || '—'}</td><td>{activeBadge(row.is_active)}</td></tr>
                   ))}
                 </tbody>
               </table>
@@ -153,23 +144,11 @@ export function NormsSettingsPage() {
             <div className="responsive-table-wrap">
               <table className="enterprise-table">
                 <thead>
-                  <tr>
-                    <th>Code</th>
-                    <th>Titel</th>
-                    <th>Versie</th>
-                    <th>Status</th>
-                  </tr>
+                  <tr><th>Code</th><th>Titel</th><th>Versie</th><th>Status</th></tr>
                 </thead>
                 <tbody>
                   {visibleStandards.map((row) => (
-                    <tr key={row.id}>
-                      <td>
-                        <strong>{row.code}</strong>
-                      </td>
-                      <td>{row.title}</td>
-                      <td>{row.version || '—'}</td>
-                      <td>{activeBadge(row.is_active)}</td>
-                    </tr>
+                    <tr key={row.id}><td><strong>{row.code}</strong></td><td>{row.title}</td><td>{row.version || '—'}</td><td>{activeBadge(row.is_active)}</td></tr>
                   ))}
                 </tbody>
               </table>
@@ -182,29 +161,11 @@ export function NormsSettingsPage() {
             <div className="responsive-table-wrap">
               <table className="enterprise-table">
                 <thead>
-                  <tr>
-                    <th>Code</th>
-                    <th>Naam</th>
-                    <th>Regio</th>
-                    <th>EXC</th>
-                    <th>ISO 3834</th>
-                    <th>ISO 5817</th>
-                    <th>Status</th>
-                  </tr>
+                  <tr><th>Code</th><th>Naam</th><th>Regio</th><th>EXC</th><th>ISO 3834</th><th>ISO 5817</th><th>Status</th></tr>
                 </thead>
                 <tbody>
                   {visibleProfiles.map((row) => (
-                    <tr key={row.id}>
-                      <td>
-                        <strong>{row.code}</strong>
-                      </td>
-                      <td>{row.name}</td>
-                      <td>{row.region || '—'}</td>
-                      <td>{row.exc_class || '—'}</td>
-                      <td>{row.iso3834_level || '—'}</td>
-                      <td>{row.iso5817_level || '—'}</td>
-                      <td>{activeBadge(row.is_active)}</td>
-                    </tr>
+                    <tr key={row.id}><td><strong>{row.code}</strong></td><td>{row.name}</td><td>{row.region || '—'}</td><td>{row.exc_class || '—'}</td><td>{row.iso3834_level || '—'}</td><td>{row.iso5817_level || '—'}</td><td>{activeBadge(row.is_active)}</td></tr>
                   ))}
                 </tbody>
               </table>
@@ -218,26 +179,12 @@ export function NormsSettingsPage() {
               <div className="responsive-table-wrap">
                 <table className="enterprise-table">
                   <thead>
-                    <tr>
-                      <th>Code</th>
-                      <th>Naam</th>
-                      <th>Type</th>
-                      <th>Versie</th>
-                    </tr>
+                    <tr><th>Code</th><th>Naam</th><th>Type</th><th>Versie</th></tr>
                   </thead>
                   <tbody>
                     {visibleTemplates.map((row) => (
-                      <tr
-                        key={row.id}
-                        onClick={() => setSelectedTemplate(row)}
-                        className={selectedTemplate?.id === row.id ? 'is-selected-row' : ''}
-                      >
-                        <td>
-                          <strong>{row.code}</strong>
-                        </td>
-                        <td>{row.name}</td>
-                        <td>{row.template_type || '—'}</td>
-                        <td>v{row.version || 1}</td>
+                      <tr key={row.id} onClick={() => setSelectedTemplate(row)} className={selectedTemplate?.id === row.id ? 'is-selected-row' : ''}>
+                        <td><strong>{row.code}</strong></td><td>{row.name}</td><td>{row.template_type || '—'}</td><td>v{row.version || 1}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -257,9 +204,7 @@ export function NormsSettingsPage() {
                       {(section.items || []).map((item) => (
                         <div key={item.code} className="norm-template-item">
                           <strong>{item.label}</strong>
-                          <span>
-                            {item.norm_code || ''} {item.norm_reference || ''}
-                          </span>
+                          <span>{item.norm_code || ''} {item.norm_reference || ''}</span>
                           {item.required ? <Badge tone="warning">Verplicht</Badge> : null}
                         </div>
                       ))}
