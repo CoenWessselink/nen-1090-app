@@ -27,6 +27,7 @@ import {
 import type { CeDocument, Project } from '@/types/domain';
 import './ce-report-print.css';
 import './ce-report-print-parity.css';
+import './ce-report-print-cover-fix.css';
 
 function val(v: unknown, fallback = '—') {
   if (v === null || v === undefined || v === '') return fallback;
