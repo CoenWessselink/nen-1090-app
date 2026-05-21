@@ -10,6 +10,9 @@ import { SiteNavbar } from '@/components/layout/SiteNavbar';
 import { getFriendlyAuthErrorMessage, normalizeAuthRedirectTarget } from '@/features/auth/auth-utils';
 import './login-premium.css';
 
+const MARKETING_HOME_URL = 'https://weldinspectpro.com/';
+const MARKETING_PRICING_URL = 'https://weldinspectpro.com/#pricing';
+
 export default function LoginPage() {
   const location = useLocation();
   const setSession = useAuthStore((state) => state.setSession);
@@ -95,10 +98,11 @@ export default function LoginPage() {
           </form>
 
           <div className="auth-divider"><span>of</span></div>
-          <a className="auth-pricing-link" href="https://weldinspectpro.com/nl/prijzen.html">
+          <a className="auth-pricing-link" href={MARKETING_PRICING_URL}>
             <span aria-hidden="true">↗</span>
-            <span><strong>Bekijk prijzen</strong><small>Ontdek plannen en mogelijkheden</small></span>
+            <span><strong>Bekijk platform</strong><small>Terug naar WeldInspect Pro</small></span>
           </a>
+          <a className="auth-home-link" href={MARKETING_HOME_URL}>Naar marketing homepage</a>
         </Card>
 
         <div className="auth-security-note">◇ Secure access <span>·</span> Enterprise grade</div>
