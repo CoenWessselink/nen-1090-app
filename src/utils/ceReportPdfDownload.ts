@@ -24,21 +24,23 @@ function absoluteUrl(url: string) {
   return new URL(url, window.location.origin).toString();
 }
 
-function openReportWindow(url: string, filename: string) {
-  const popup = window.open('about:blank', '_blank', 'noopener,noreferrer');
+function reportUrlWithDownloadIntent(url: string) {
+  const target = new URL(absoluteUrl(url));
+  target.searchParams.set('download', '1');
+  return target.toString();
+}
+
+function openReportWindow(url: string) {
+  const targetUrl = reportUrlWithDownloadIntent(url);
+
+  // Open the final CE report route directly. Safari/iOS can leave a tab on about:blank
+  // when an intermediate about:blank popup is opened and navigated later.
+  const popup = window.open(targetUrl, '_blank');
   if (!popup) {
-    window.location.assign(url);
+    window.location.assign(targetUrl);
     return null;
   }
 
-  try {
-    popup.document.title = `CE report PDF - ${safeFilename(filename)}`;
-    popup.document.body.innerHTML = '<p style="font-family: system-ui, sans-serif; padding: 24px; color: #0f172a;">CE-rapport laden…</p>';
-  } catch {
-    // Ignore browsers that block about:blank document writes.
-  }
-
-  popup.location.href = absoluteUrl(url);
   return popup;
 }
 
@@ -50,7 +52,7 @@ async function waitForReportWindowLoad(reportWindow: Window, timeoutMs: number) 
       const doc = reportWindow.document;
       if (doc.readyState === 'complete' || doc.readyState === 'interactive') return doc;
     } catch {
-      // Same-origin document may not be ready immediately after location change.
+      // Keep retrying while the route is loading.
     }
     await wait(150);
   }
@@ -71,7 +73,7 @@ async function waitForReportReady(reportWindow: Window, timeoutMs: number) {
       }
       if (pages.length > 0 && Date.now() - started > 2_500) return doc;
     } catch {
-      // Retry until route hydration has completed.
+      // Retry until the same-origin report route has hydrated.
     }
     await wait(150);
   }
@@ -86,7 +88,7 @@ function setDocumentTitleForPrint(doc: Document, filename: string) {
 export async function downloadCeReportRouteAsPdf({ url, filename, timeoutMs = DEFAULT_TIMEOUT_MS }: DownloadCeReportRouteAsPdfOptions) {
   if (!url) throw new Error('CE-report route ontbreekt.');
 
-  const reportWindow = openReportWindow(url, filename);
+  const reportWindow = openReportWindow(url);
   if (!reportWindow) return;
 
   const doc = await waitForReportWindowLoad(reportWindow, timeoutMs);
