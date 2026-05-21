@@ -14,22 +14,11 @@ type PremiumMetricCardProps = {
   onClick: () => void;
 };
 
-type PremiumActionCardProps = {
-  label: string;
-  subtitle: string;
-  value?: string;
-  icon: ComponentType<LucideProps>;
-  onClick: () => void;
-};
+type PremiumActionCardProps = PremiumMetricCardProps;
 
 export function PremiumMetricCard({ label, subtitle, value, tone, visual, icon: Icon, onClick }: PremiumMetricCardProps) {
   return (
-    <button
-      type="button"
-      className={`premium-dashboard-card premium-dashboard-card-${tone} premium-dashboard-card-${visual}`}
-      onClick={onClick}
-      data-no-translate="true"
-    >
+    <button type="button" className={`premium-dashboard-card premium-dashboard-card-${tone} premium-dashboard-card-${visual}`} onClick={onClick} data-no-translate="true">
       <span className="premium-dashboard-more" aria-hidden="true">•••</span>
       <span className="premium-dashboard-icon" aria-hidden="true"><Icon size={30} /></span>
       <span className="premium-dashboard-copy">
@@ -42,15 +31,18 @@ export function PremiumMetricCard({ label, subtitle, value, tone, visual, icon: 
   );
 }
 
-export function PremiumActionCard({ label, subtitle, value, icon: Icon, onClick }: PremiumActionCardProps) {
+export function PremiumActionCard(props: PremiumActionCardProps) {
+  const { label, subtitle, value, tone, visual, icon: Icon, onClick } = props;
   return (
-    <button type="button" className="premium-dashboard-action-card" onClick={onClick} data-no-translate="true">
-      <span className="premium-dashboard-action-icon" aria-hidden="true"><Icon size={26} /></span>
-      <span className="premium-dashboard-action-copy">
-        <span className="premium-dashboard-action-title">{label}</span>
-        <span className="premium-dashboard-action-subtitle">{subtitle}</span>
-        {value ? <strong className="premium-dashboard-action-value">{value}</strong> : null}
+    <button type="button" className={`premium-dashboard-card premium-dashboard-action-card premium-dashboard-card-${tone} premium-dashboard-card-${visual}`} onClick={onClick} data-no-translate="true">
+      <span className="premium-dashboard-more" aria-hidden="true">•••</span>
+      <span className="premium-dashboard-icon" aria-hidden="true"><Icon size={30} /></span>
+      <span className="premium-dashboard-copy">
+        <span className="premium-dashboard-title">{label}</span>
+        <span className="premium-dashboard-subtitle">{subtitle}</span>
+        <strong className="premium-dashboard-value">{value}</strong>
       </span>
+      <span className="premium-dashboard-visual" aria-hidden="true" />
     </button>
   );
 }
