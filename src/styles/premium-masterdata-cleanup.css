@@ -1,0 +1,16 @@
+/* Masterdata cleanup — final visual-only layer.
+   Hides the redundant "CRUD actief" status pill in masterdata table headers.
+   Table rows, edit/document/delete actions and create buttons remain visible. */
+
+.settings-page [data-masterdata-manager] .badge-success,
+.settings-page [data-masterdata-manager] [class*='badge-success'],
+.settings-page .master-data-manager .badge-success,
+.settings-page .master-data-manager [class*='badge-success'],
+.settings-page .settings-sections .settings-card > .section-title-row .badge-success,
+.settings-page .settings-sections .card > .section-title-row .badge-success,
+.settings-page .settings-sections .section-title-row .badge-success,
+.settings-page .settings-sections .section-title-row [class*='badge-success'],
+.settings-page .settings-sections [class*='crud'] {
+  display: none !important;
+  visibility: hidden !important;
+}
