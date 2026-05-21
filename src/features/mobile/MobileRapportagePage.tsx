@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useReports } from '@/hooks/useReports';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
 import { openDownloadUrl } from '@/utils/download';
+import { downloadCeReportRouteAsPdf } from '@/utils/ceReportPdfDownload';
 import { formatValue, normalizeApiError } from '@/features/mobile/mobile-utils';
 
 type ReportRow = {
@@ -42,10 +43,10 @@ function reportFilename(row: ReportRow) {
   return `Weld-Compliance-Report-${projectNumber}-${projectName}-${new Date().toISOString().slice(0, 10)}.pdf`;
 }
 
-function ceReportUrl(row: ReportRow, autoPrint = false) {
+function ceReportUrl(row: ReportRow) {
   const projectId = rowProjectId(row);
   if (!projectId) return '';
-  return `/projecten/${projectId}/ce-report${autoPrint ? '?print=1' : ''}`;
+  return `/projecten/${projectId}/ce-report`;
 }
 
 export function MobileRapportagePage() {
@@ -54,6 +55,7 @@ export function MobileRapportagePage() {
   const rows = useMemo(() => ((reports.data?.items || []) as ReportRow[]), [reports.data]);
   const [search, setSearch] = useState('');
   const [actionError, setActionError] = useState<string | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   const visibleRows = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -65,7 +67,7 @@ export function MobileRapportagePage() {
 
   function createPdf(row: ReportRow) {
     setActionError(null);
-    const url = ceReportUrl(row, false);
+    const url = ceReportUrl(row);
     if (url) {
       window.open(url, '_blank', 'noopener,noreferrer');
       return;
@@ -78,9 +80,13 @@ export function MobileRapportagePage() {
 
   function downloadReport(row: ReportRow) {
     setActionError(null);
-    const url = ceReportUrl(row, true);
+    const url = ceReportUrl(row);
     if (url) {
-      window.open(url, '_blank', 'noopener,noreferrer');
+      const key = String(row.id || rowProjectId(row));
+      setDownloadingId(key);
+      void downloadCeReportRouteAsPdf({ url, filename: reportFilename(row) })
+        .catch((err) => setActionError(normalizeApiError(err, 'Download mislukt.')))
+        .finally(() => setDownloadingId(null));
       return;
     }
     const fallbackUrl = reportPdfUrl(row);
@@ -130,6 +136,7 @@ export function MobileRapportagePage() {
         <div className="mobile-list-stack">
           {visibleRows.map((row) => {
             const projectId = rowProjectId(row);
+            const rowDownloading = downloadingId === String(row.id || projectId);
             return (
               <div key={String(row.id)} className="mobile-list-card">
                 <div className="mobile-list-card-head">
@@ -147,8 +154,8 @@ export function MobileRapportagePage() {
                   <button type="button" className="mobile-primary-button" onClick={() => createPdf(row)} disabled={!projectId && !reportPdfUrl(row)}>
                     Create PDF
                   </button>
-                  <button type="button" className="mobile-secondary-button" onClick={() => downloadReport(row)} disabled={!projectId && !reportPdfUrl(row)}>
-                    <Download size={14} /> Download
+                  <button type="button" className="mobile-secondary-button" onClick={() => downloadReport(row)} disabled={rowDownloading || (!projectId && !reportPdfUrl(row))}>
+                    <Download size={14} /> {rowDownloading ? 'Downloaden…' : 'Download'}
                   </button>
                   <button type="button" className="mobile-secondary-button" onClick={() => openCeDossier(row)} disabled={!projectId}>
                     CE Dossier
