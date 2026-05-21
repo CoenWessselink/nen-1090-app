@@ -1,0 +1,93 @@
+/* CE report print color parity and readability fix.
+   Chrome print preview can drop background colors unless print-color-adjust is applied on
+   the actual report nodes and generated pseudo-elements. Keep this late in the CSS order. */
+
+.rpt-page-wrap,
+.rpt-page-wrap *,
+.rpt-page-wrap::before,
+.rpt-page-wrap::after,
+.rpt-page-wrap *::before,
+.rpt-page-wrap *::after {
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
+}
+
+@media print {
+  .rpt-page-wrap,
+  .rpt-page,
+  .rpt-cover,
+  .rpt-cover::before,
+  .rpt-cover::after,
+  .rpt-cover .rpt-header,
+  .rpt-cover .rpt-cover-body,
+  .rpt-cover .rpt-cover-status,
+  .rpt-cover .rpt-cover-grid,
+  .rpt-cover .rpt-cover-grid > div,
+  .rpt-cover .rpt-pill,
+  .rpt-cover .rpt-pill-outline,
+  .rpt-cover .rpt-status-green,
+  .rpt-cover .rpt-status-blue,
+  .rpt-cover .rpt-status-orange,
+  .rpt-cover .rpt-product-logo::before,
+  .rpt-cover .rpt-tenant-logo-box,
+  .rpt-table th,
+  .rpt-score-bar,
+  .rpt-score-bar > span,
+  .rpt-pdf-toolbar,
+  .rpt-nonpdf-attachment-block,
+  .rpt-disclaimer {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .rpt-cover::before {
+    background:
+      linear-gradient(135deg, rgba(37, 99, 235, .10) 0 32%, transparent 32% 100%),
+      radial-gradient(circle at 18% 20%, rgba(59, 130, 246, .18), transparent 30%),
+      linear-gradient(135deg, #071a31 0%, #0b2544 58%, #0e315f 100%) !important;
+  }
+
+  .rpt-cover::after {
+    background: #2563eb !important;
+  }
+
+  .rpt-cover h1,
+  .rpt-cover .rpt-cover-norms,
+  .rpt-cover .rpt-header-center,
+  .rpt-cover .rpt-product-logo-title {
+    color: #ffffff !important;
+    text-shadow: 0 4px 18px rgba(0, 0, 0, .28) !important;
+  }
+
+  .rpt-cover .rpt-product-logo-title b {
+    color: #2f7cff !important;
+  }
+
+  .rpt-cover .rpt-status-green,
+  .rpt-cover .rpt-status-blue,
+  .rpt-cover .rpt-status-orange {
+    background: #19a34a !important;
+    color: #ffffff !important;
+  }
+
+  .rpt-cover .rpt-pill-outline {
+    background: #2563eb !important;
+    color: #ffffff !important;
+  }
+
+  .rpt-cover .rpt-tenant-logo-box {
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
+
+  /* Readability fallback if a browser still suppresses backgrounds in print preview. */
+  @supports not (print-color-adjust: exact) {
+    .rpt-cover h1,
+    .rpt-cover .rpt-cover-norms,
+    .rpt-cover .rpt-header-center,
+    .rpt-cover .rpt-product-logo-title {
+      color: #0f172a !important;
+      text-shadow: none !important;
+    }
+  }
+}
