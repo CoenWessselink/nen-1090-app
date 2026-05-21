@@ -1,7 +1,6 @@
 /* CE report print/PDF parity override.
    Loaded AFTER ce-report-print.css from CeReportPrintPage.tsx.
-   Structural fix: avoid artificial A4-height boxes; keep the app DOM, but make
-   print flow natural and make the cover directly printable. */
+   Keep the app DOM as SSOT. Print only corrects A4 flow, cover fit and header/logo placement. */
 
 @media print {
   @page {
@@ -97,12 +96,119 @@
     flex: none !important;
   }
 
+  /* Normal report-page header: WeldInspect left, norm line center, tenant logo right-top. */
+  .rpt-page:not(.rpt-cover) .rpt-header {
+    display: grid !important;
+    grid-template-columns: minmax(44mm, 1fr) minmax(72mm, 1.4fr) minmax(46mm, auto) !important;
+    align-items: start !important;
+    column-gap: 5mm !important;
+    margin: 0 0 8mm !important;
+    padding: 0 0 3.5mm !important;
+    border-bottom: 1.2mm solid var(--rpt-blue) !important;
+    color: #0f172a !important;
+    background: #ffffff !important;
+  }
+
+  .rpt-page:not(.rpt-cover) .rpt-header-left {
+    grid-column: 1 !important;
+    justify-self: start !important;
+    align-self: start !important;
+  }
+
+  .rpt-page:not(.rpt-cover) .rpt-header-center {
+    grid-column: 2 !important;
+    justify-self: center !important;
+    align-self: start !important;
+    color: #0f172a !important;
+    font-size: 7px !important;
+    line-height: 1.25 !important;
+    font-weight: 850 !important;
+    text-align: center !important;
+    padding-top: 1mm !important;
+  }
+
+  .rpt-page:not(.rpt-cover) .rpt-header-right,
+  .rpt-page:not(.rpt-cover) .rpt-tenant-logo-box {
+    grid-column: 3 !important;
+    justify-self: end !important;
+    align-self: start !important;
+    width: 42mm !important;
+    min-width: 42mm !important;
+    max-width: 42mm !important;
+    min-height: 13mm !important;
+    margin: 0 !important;
+    padding: 2mm 3mm !important;
+    background: #ffffff !important;
+    border: 1px solid #0f172a !important;
+    border-radius: 2mm !important;
+    box-shadow: none !important;
+    text-align: center !important;
+  }
+
+  .rpt-page:not(.rpt-cover) .rpt-tenant-logo-box img {
+    display: block !important;
+    max-width: 35mm !important;
+    max-height: 8.5mm !important;
+    object-fit: contain !important;
+    margin: 0 auto !important;
+  }
+
+  .rpt-page:not(.rpt-cover) .rpt-tenant-logo-box strong {
+    color: #0f172a !important;
+    font-size: 10px !important;
+    line-height: 1.1 !important;
+    letter-spacing: .08em !important;
+  }
+
+  .rpt-page:not(.rpt-cover) .rpt-tenant-logo-box small {
+    display: none !important;
+  }
+
+  .rpt-page:not(.rpt-cover) .rpt-product-logo {
+    display: grid !important;
+    grid-template-columns: 8mm auto !important;
+    column-gap: 2mm !important;
+    align-items: center !important;
+    min-width: 0 !important;
+    color: #0f172a !important;
+    background: transparent !important;
+  }
+
+  .rpt-page:not(.rpt-cover) .rpt-product-logo::before {
+    width: 7mm !important;
+    height: 7mm !important;
+    border-radius: 2mm !important;
+    border: 1.2px solid #2563eb !important;
+    background: #ffffff !important;
+    color: #2563eb !important;
+    font-size: 11px !important;
+    box-shadow: none !important;
+  }
+
+  .rpt-page:not(.rpt-cover) .rpt-product-logo-title {
+    color: #0f172a !important;
+    font-size: 11px !important;
+    font-weight: 950 !important;
+    line-height: 1 !important;
+    letter-spacing: -.035em !important;
+    text-shadow: none !important;
+  }
+
+  .rpt-page:not(.rpt-cover) .rpt-product-logo-title b {
+    color: #2563eb !important;
+  }
+
+  .rpt-page:not(.rpt-cover) .rpt-product-logo small {
+    display: none !important;
+  }
+
+  /* Cover: light page with a dark hero zone, not a full dark page. */
   .rpt-cover {
     display: block !important;
     min-height: 0 !important;
     height: auto !important;
     padding: 0 0 6mm !important;
-    background: #0b2544 !important;
+    background: #ffffff !important;
     border: 0 !important;
     box-shadow: none !important;
     overflow: visible !important;
@@ -120,11 +226,11 @@
 
   .rpt-cover .rpt-header {
     display: grid !important;
-    grid-template-columns: minmax(42mm, 1fr) minmax(35mm, .8fr) minmax(48mm, 1fr) !important;
+    grid-template-columns: minmax(42mm, 1fr) minmax(35mm, .8fr) minmax(50mm, 1fr) !important;
     align-items: center !important;
     gap: 3mm !important;
     margin: 0 !important;
-    padding: 6mm 10mm 3mm !important;
+    padding: 6mm 10mm 4mm !important;
     border-bottom: 0 !important;
     color: #ffffff !important;
     background: #0b2544 !important;
@@ -171,6 +277,10 @@
     color: #2f7cff !important;
   }
 
+  .rpt-cover .rpt-product-logo small {
+    display: none !important;
+  }
+
   .rpt-cover .rpt-tenant-logo-box {
     justify-self: end !important;
     min-width: 49mm !important;
@@ -181,12 +291,15 @@
     border: 2px solid rgba(15, 23, 42, .75) !important;
     border-radius: 2.6mm !important;
     box-shadow: none !important;
+    text-align: center !important;
   }
 
   .rpt-cover .rpt-tenant-logo-box img {
+    display: block !important;
     max-width: 42mm !important;
     max-height: 8.5mm !important;
     object-fit: contain !important;
+    margin: 0 auto !important;
   }
 
   .rpt-cover .rpt-tenant-logo-box strong {
@@ -197,24 +310,20 @@
   }
 
   .rpt-cover .rpt-tenant-logo-box small {
-    color: #64748b !important;
-    font-size: 6px !important;
-    padding-top: 1mm !important;
-    margin-top: 1mm !important;
-    border-top: 1px solid #cbd5e1 !important;
-    width: 100% !important;
+    display: none !important;
   }
 
   .rpt-cover .rpt-cover-body {
     display: block !important;
     text-align: center !important;
-    padding: 3mm 10mm 0 !important;
-    background: #0b2544 !important;
+    padding: 4mm 10mm 0 !important;
+    background:
+      linear-gradient(#0b2544 0 34mm, #ffffff 34mm 100%) !important;
   }
 
   .rpt-cover h1 {
     color: #ffffff !important;
-    font-size: 30px !important;
+    font-size: 32px !important;
     line-height: 1 !important;
     letter-spacing: -.06em !important;
     margin: 3mm 0 2mm !important;
@@ -231,7 +340,7 @@
     display: flex !important;
     justify-content: center !important;
     gap: 3mm !important;
-    margin: 0 0 5mm !important;
+    margin: 0 0 8mm !important;
   }
 
   .rpt-cover .rpt-pill {
@@ -353,10 +462,10 @@
   .rpt-cover .rpt-footer {
     margin: 2mm 10mm 0 !important;
     padding: 1.5mm 0 0 !important;
-    border-top: 1px solid rgba(255, 255, 255, .24) !important;
-    color: rgba(255, 255, 255, .82) !important;
+    border-top: 1px solid #d9e4ef !important;
+    color: #55708f !important;
     font-size: 6.5px !important;
-    background: #0b2544 !important;
+    background: #ffffff !important;
   }
 
   .rpt-header,
