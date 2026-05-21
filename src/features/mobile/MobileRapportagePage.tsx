@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useReports } from '@/hooks/useReports';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
 import { openDownloadUrl } from '@/utils/download';
-import { downloadCeReportRouteAsPdf } from '@/utils/ceReportPdfDownload';
+import { exportPdf } from '@/api/exports';
 import { formatValue, normalizeApiError } from '@/features/mobile/mobile-utils';
 
 type ReportRow = {
@@ -49,6 +49,14 @@ function ceReportUrl(row: ReportRow) {
   return `/projecten/${projectId}/ce-report`;
 }
 
+function reportProjectMeta(row: ReportRow) {
+  return {
+    name: row.project_name || row.title || null,
+    code: row.projectnummer || String(row.project_id || row.id || '') || null,
+    client_name: row.client_name || null,
+  };
+}
+
 export function MobileRapportagePage() {
   const navigate = useNavigate();
   const reports = useReports({ page: 1, limit: 50 });
@@ -80,12 +88,12 @@ export function MobileRapportagePage() {
 
   function downloadReport(row: ReportRow) {
     setActionError(null);
-    const url = ceReportUrl(row);
-    if (url) {
-      const key = String(row.id || rowProjectId(row));
+    const projectId = rowProjectId(row);
+    if (projectId) {
+      const key = String(row.id || projectId);
       setDownloadingId(key);
-      void downloadCeReportRouteAsPdf({ url, filename: reportFilename(row) })
-        .catch((err) => setActionError(normalizeApiError(err, 'PDF opslaan mislukt.')))
+      void exportPdf(projectId, reportProjectMeta(row))
+        .catch((err) => setActionError(normalizeApiError(err, 'PDF-download mislukt.')))
         .finally(() => setDownloadingId(null));
       return;
     }
@@ -155,7 +163,7 @@ export function MobileRapportagePage() {
                     Open nieuw rapport
                   </button>
                   <button type="button" className="mobile-secondary-button" onClick={() => downloadReport(row)} disabled={rowDownloading || (!projectId && !reportPdfUrl(row))}>
-                    <Download size={14} /> {rowDownloading ? 'Voorbereiden…' : 'PDF opslaan'}
+                    <Download size={14} /> {rowDownloading ? 'Downloaden…' : 'PDF downloaden'}
                   </button>
                   <button type="button" className="mobile-secondary-button" onClick={() => openCeDossier(row)} disabled={!projectId}>
                     CE Dossier
