@@ -20,64 +20,62 @@ function safeFilename(value: string) {
   return cleaned.toLowerCase().endsWith('.pdf') ? cleaned : `${cleaned || 'CE-report'}.pdf`;
 }
 
-async function waitForIframeLoad(iframe: HTMLIFrameElement, timeoutMs: number) {
-  await new Promise<void>((resolve, reject) => {
-    let settled = false;
-    const timer = window.setTimeout(() => {
-      if (settled) return;
-      settled = true;
-      reject(new Error('CE-report pagina laden duurde te lang.'));
-    }, timeoutMs);
-
-    iframe.onload = () => {
-      if (settled) return;
-      settled = true;
-      window.clearTimeout(timer);
-      resolve();
-    };
-
-    iframe.onerror = () => {
-      if (settled) return;
-      settled = true;
-      window.clearTimeout(timer);
-      reject(new Error('CE-report pagina kon niet worden geladen.'));
-    };
-  });
+function absoluteUrl(url: string) {
+  return new URL(url, window.location.origin).toString();
 }
 
-async function waitForReportReady(doc: Document, timeoutMs: number) {
+function openReportWindow(url: string, filename: string) {
+  const popup = window.open('about:blank', '_blank', 'noopener,noreferrer');
+  if (!popup) {
+    window.location.assign(url);
+    return null;
+  }
+
+  try {
+    popup.document.title = `CE report PDF - ${safeFilename(filename)}`;
+    popup.document.body.innerHTML = '<p style="font-family: system-ui, sans-serif; padding: 24px; color: #0f172a;">CE-rapport laden…</p>';
+  } catch {
+    // Ignore browsers that block about:blank document writes.
+  }
+
+  popup.location.href = absoluteUrl(url);
+  return popup;
+}
+
+async function waitForReportWindowLoad(reportWindow: Window, timeoutMs: number) {
   const started = Date.now();
   while (Date.now() - started < timeoutMs) {
-    const ready = doc.documentElement.getAttribute('data-ce-report-ready') === '1';
-    const pages = doc.querySelectorAll<HTMLElement>('.rpt-page[data-print-section="true"]');
-    if (ready && pages.length > 0) {
-      await wait(350);
-      return;
+    if (reportWindow.closed) throw new Error('CE-report venster is gesloten.');
+    try {
+      const doc = reportWindow.document;
+      if (doc.readyState === 'complete' || doc.readyState === 'interactive') return doc;
+    } catch {
+      // Same-origin document may not be ready immediately after location change.
     }
     await wait(150);
   }
-
-  const pages = doc.querySelectorAll<HTMLElement>('.rpt-page[data-print-section="true"]');
-  if (pages.length > 0) return;
-  throw new Error('CE-report inhoud is niet gevonden.');
+  throw new Error('CE-report pagina laden duurde te lang.');
 }
 
-function createVisiblePrintFrame(url: string, title: string) {
-  const iframe = document.createElement('iframe');
-  iframe.title = title;
-  iframe.setAttribute('aria-hidden', 'true');
-  iframe.style.position = 'fixed';
-  iframe.style.left = '0';
-  iframe.style.top = '0';
-  iframe.style.width = '1px';
-  iframe.style.height = '1px';
-  iframe.style.border = '0';
-  iframe.style.opacity = '0';
-  iframe.style.pointerEvents = 'none';
-  iframe.style.zIndex = '-1';
-  iframe.src = url;
-  document.body.appendChild(iframe);
-  return iframe;
+async function waitForReportReady(reportWindow: Window, timeoutMs: number) {
+  const started = Date.now();
+  while (Date.now() - started < timeoutMs) {
+    if (reportWindow.closed) throw new Error('CE-report venster is gesloten.');
+    try {
+      const doc = reportWindow.document;
+      const ready = doc.documentElement.getAttribute('data-ce-report-ready') === '1';
+      const pages = doc.querySelectorAll<HTMLElement>('.rpt-page[data-print-section="true"]');
+      if (ready && pages.length > 0) {
+        await wait(350);
+        return doc;
+      }
+      if (pages.length > 0 && Date.now() - started > 2_500) return doc;
+    } catch {
+      // Retry until route hydration has completed.
+    }
+    await wait(150);
+  }
+  throw new Error('CE-report inhoud is niet gevonden.');
 }
 
 function setDocumentTitleForPrint(doc: Document, filename: string) {
@@ -88,20 +86,15 @@ function setDocumentTitleForPrint(doc: Document, filename: string) {
 export async function downloadCeReportRouteAsPdf({ url, filename, timeoutMs = DEFAULT_TIMEOUT_MS }: DownloadCeReportRouteAsPdfOptions) {
   if (!url) throw new Error('CE-report route ontbreekt.');
 
-  const iframe = createVisiblePrintFrame(url, `CE report PDF generator - ${safeFilename(filename)}`);
-  try {
-    await waitForIframeLoad(iframe, timeoutMs);
-    const doc = iframe.contentDocument;
-    const win = iframe.contentWindow;
-    if (!doc || !win) throw new Error('CE-report pagina is niet toegankelijk.');
+  const reportWindow = openReportWindow(url, filename);
+  if (!reportWindow) return;
 
-    await doc.fonts?.ready?.catch(() => undefined);
-    await waitForReportReady(doc, timeoutMs);
-    setDocumentTitleForPrint(doc, filename);
-    win.focus();
-    await wait(100);
-    win.print();
-  } finally {
-    window.setTimeout(() => iframe.remove(), 2_000);
-  }
+  const doc = await waitForReportWindowLoad(reportWindow, timeoutMs);
+  await doc.fonts?.ready?.catch(() => undefined);
+  const readyDoc = await waitForReportReady(reportWindow, timeoutMs);
+  setDocumentTitleForPrint(readyDoc, filename);
+
+  reportWindow.focus();
+  await wait(100);
+  reportWindow.print();
 }
