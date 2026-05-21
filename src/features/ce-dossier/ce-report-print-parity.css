@@ -1,0 +1,413 @@
+/* CE report print/PDF parity override.
+   Loaded AFTER ce-report-print.css from CeReportPrintPage.tsx.
+   Purpose: keep the app report layout as SSOT and stop the old print block from
+   shrinking/repositioning the cover or splitting cover content to page 2. */
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+
+  html,
+  body,
+  #root,
+  .app-shell,
+  .page-canvas,
+  main {
+    width: 210mm !important;
+    min-width: 210mm !important;
+    max-width: 210mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    overflow: visible !important;
+    transform: none !important;
+    filter: none !important;
+    contain: none !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body * {
+    visibility: hidden !important;
+  }
+
+  .rpt-page-wrap,
+  .rpt-page-wrap *,
+  .rpt-page-wrap::before,
+  .rpt-page-wrap::after,
+  .rpt-page-wrap *::before,
+  .rpt-page-wrap *::after {
+    visibility: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .rpt-print-btn,
+  .sidebar,
+  .topbar-shell,
+  .mobile-tabbar,
+  .mobile-page-header,
+  nav,
+  aside {
+    display: none !important;
+  }
+
+  .rpt-page-wrap {
+    position: static !important;
+    width: 210mm !important;
+    min-height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+  }
+
+  .rpt-page {
+    box-sizing: border-box !important;
+    display: flex !important;
+    flex-direction: column !important;
+    position: relative !important;
+    width: 210mm !important;
+    max-width: none !important;
+    min-height: 297mm !important;
+    height: 297mm !important;
+    margin: 0 !important;
+    padding: 28px 28px 24px !important;
+    background: #ffffff !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    overflow: hidden !important;
+    page-break-after: always !important;
+    break-after: page !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid-page !important;
+  }
+
+  .rpt-page:last-child {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+
+  .rpt-cover {
+    padding: 0 !important;
+    background-color: #ffffff !important;
+    background-image:
+      linear-gradient(135deg, rgba(37, 99, 235, .10) 0 32%, transparent 32% 100%),
+      radial-gradient(circle at 18% 20%, rgba(59, 130, 246, .18), transparent 30%),
+      linear-gradient(135deg, #071a31 0%, #0b2544 58%, #0e315f 100%) !important;
+    background-repeat: no-repeat !important;
+    background-size: 100% 377px !important;
+    background-position: 0 0 !important;
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .rpt-cover::before {
+    content: '' !important;
+    position: absolute !important;
+    inset: 0 0 auto 0 !important;
+    width: 100% !important;
+    height: 377px !important;
+    display: block !important;
+    z-index: 0 !important;
+    visibility: visible !important;
+    background:
+      linear-gradient(135deg, rgba(37, 99, 235, .10) 0 32%, transparent 32% 100%),
+      radial-gradient(circle at 18% 20%, rgba(59, 130, 246, .18), transparent 30%),
+      linear-gradient(135deg, #071a31 0%, #0b2544 58%, #0e315f 100%) !important;
+    border: 0 !important;
+  }
+
+  .rpt-cover::after {
+    content: '' !important;
+    position: absolute !important;
+    left: 0 !important;
+    right: 0 !important;
+    top: 377px !important;
+    height: 5px !important;
+    display: block !important;
+    z-index: 0 !important;
+    visibility: visible !important;
+    background: var(--rpt-blue) !important;
+    border: 0 !important;
+  }
+
+  .rpt-cover > * {
+    position: relative !important;
+    z-index: 1 !important;
+  }
+
+  .rpt-cover .rpt-header {
+    display: grid !important;
+    grid-template-columns: minmax(230px, 1fr) minmax(210px, .8fr) minmax(250px, 1fr) !important;
+    align-items: center !important;
+    gap: 14px !important;
+    margin: 0 !important;
+    padding: 34px 54px 22px !important;
+    border-bottom: 0 !important;
+    color: #ffffff !important;
+  }
+
+  .rpt-cover .rpt-header-center {
+    color: rgba(255, 255, 255, .88) !important;
+    font-size: 9px !important;
+    line-height: 1.45 !important;
+    font-weight: 850 !important;
+    text-align: center !important;
+  }
+
+  .rpt-cover .rpt-product-logo {
+    color: #ffffff !important;
+    grid-template-columns: 54px 1fr !important;
+    column-gap: 14px !important;
+    min-width: 270px !important;
+    background: transparent !important;
+  }
+
+  .rpt-cover .rpt-product-logo::before {
+    width: 48px !important;
+    height: 48px !important;
+    background: #ffffff !important;
+    border: 3px solid #2f77ff !important;
+    color: #2563eb !important;
+    border-radius: 14px !important;
+    font-size: 26px !important;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, .22) !important;
+  }
+
+  .rpt-cover .rpt-product-logo-title {
+    display: block !important;
+    color: #ffffff !important;
+    font-size: 25px !important;
+    font-weight: 950 !important;
+    line-height: 1 !important;
+    letter-spacing: -.045em !important;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, .22) !important;
+  }
+
+  .rpt-cover .rpt-product-logo-title b {
+    color: #2f7cff !important;
+  }
+
+  .rpt-cover .rpt-tenant-logo-box {
+    justify-self: end !important;
+    min-width: 250px !important;
+    max-width: 292px !important;
+    min-height: 78px !important;
+    padding: 12px 18px !important;
+    background: #ffffff !important;
+    border: 2px solid rgba(15, 23, 42, .75) !important;
+    border-radius: 10px !important;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, .24) !important;
+  }
+
+  .rpt-cover .rpt-tenant-logo-box img {
+    max-width: 170px !important;
+    max-height: 38px !important;
+    object-fit: contain !important;
+  }
+
+  .rpt-cover .rpt-tenant-logo-box strong {
+    color: #0f172a !important;
+    font-size: 16px !important;
+    line-height: 1.28 !important;
+    letter-spacing: .10em !important;
+  }
+
+  .rpt-cover .rpt-tenant-logo-box small {
+    color: #64748b !important;
+    font-size: 9px !important;
+    padding-top: 8px !important;
+    margin-top: 9px !important;
+    border-top: 1px solid #cbd5e1 !important;
+    width: 100% !important;
+  }
+
+  .rpt-cover .rpt-cover-body {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    text-align: center !important;
+    padding: 32px 58px 0 !important;
+  }
+
+  .rpt-cover h1 {
+    color: #ffffff !important;
+    font-size: 60px !important;
+    line-height: 1.02 !important;
+    letter-spacing: -.06em !important;
+    margin: 14px 0 16px !important;
+    text-shadow: 0 4px 18px rgba(0, 0, 0, .28) !important;
+  }
+
+  .rpt-cover .rpt-cover-norms {
+    color: rgba(255, 255, 255, .88) !important;
+    font-size: 15px !important;
+    margin-bottom: 26px !important;
+  }
+
+  .rpt-cover .rpt-cover-status {
+    display: flex !important;
+    justify-content: center !important;
+    gap: 14px !important;
+    margin-bottom: 72px !important;
+  }
+
+  .rpt-cover .rpt-pill {
+    min-width: 150px !important;
+    height: 46px !important;
+    padding: 0 24px !important;
+    border-radius: 999px !important;
+    border: 0 !important;
+    color: #ffffff !important;
+    font-size: 14px !important;
+    box-shadow: 0 12px 26px rgba(0, 0, 0, .20) !important;
+  }
+
+  .rpt-cover .rpt-status-green {
+    background: #19a34a !important;
+    color: #ffffff !important;
+  }
+
+  .rpt-cover .rpt-status-blue {
+    background: #2563eb !important;
+    color: #ffffff !important;
+  }
+
+  .rpt-cover .rpt-status-orange {
+    background: #d97706 !important;
+    color: #ffffff !important;
+  }
+
+  .rpt-cover .rpt-pill-outline {
+    background: #2563eb !important;
+    color: #ffffff !important;
+    border: 0 !important;
+  }
+
+  .rpt-cover .rpt-cover-grid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+    margin: 0 0 18px !important;
+    text-align: left !important;
+  }
+
+  .rpt-cover .rpt-cover-grid > div {
+    position: relative !important;
+    min-height: auto !important;
+    padding: 18px 28px 17px 34px !important;
+    border: 1px solid #d9e4ef !important;
+    border-left: 10px solid var(--rpt-blue) !important;
+    border-radius: 12px !important;
+    background: #ffffff !important;
+    box-shadow: 0 12px 28px rgba(15, 35, 61, .08) !important;
+    display: grid !important;
+    grid-template-columns: 140px 1fr !important;
+    column-gap: 28px !important;
+    align-items: center !important;
+  }
+
+  .rpt-cover .rpt-cover-grid > div:nth-child(3) {
+    border-left-color: #16a34a !important;
+  }
+
+  .rpt-cover .rpt-cover-grid span {
+    color: var(--rpt-blue) !important;
+    font-size: 11px !important;
+    letter-spacing: .08em !important;
+    margin-bottom: 0 !important;
+  }
+
+  .rpt-cover .rpt-cover-grid > div:nth-child(3) span {
+    color: #16a34a !important;
+  }
+
+  .rpt-cover .rpt-cover-grid strong {
+    color: #0f172a !important;
+    font-size: 27px !important;
+    letter-spacing: -.04em !important;
+    line-height: 1.1 !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  .rpt-cover .rpt-cover-grid small {
+    color: #405b7a !important;
+    font-size: 13px !important;
+    line-height: 1.45 !important;
+    margin-top: 8px !important;
+    grid-column: 2 !important;
+  }
+
+  .rpt-cover .rpt-meta-table {
+    overflow: hidden !important;
+    border: 1px solid #d9e4ef !important;
+    border-radius: 11px !important;
+    box-shadow: 0 12px 30px rgba(15, 35, 61, .07) !important;
+    font-size: 13px !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    margin-bottom: 0 !important;
+  }
+
+  .rpt-cover .rpt-meta-table thead th {
+    background: #08213d !important;
+    color: #ffffff !important;
+    border-bottom: 0 !important;
+    font-size: 11px !important;
+    padding: 11px 18px !important;
+  }
+
+  .rpt-cover .rpt-meta-table td {
+    color: #334155 !important;
+    padding: 8px 18px !important;
+    border-bottom: 1px solid #e5edf5 !important;
+    font-size: 12px !important;
+    line-height: 1.18 !important;
+  }
+
+  .rpt-cover .rpt-meta-table td:first-child {
+    color: #0f172a !important;
+    font-weight: 850 !important;
+    width: 47% !important;
+  }
+
+  .rpt-cover .rpt-footer {
+    margin: auto 58px 0 !important;
+    padding: 14px 0 18px !important;
+    border-top: 1px solid #d9e4ef !important;
+    color: #55708f !important;
+    font-size: 10px !important;
+  }
+
+  table,
+  tr,
+  td,
+  th,
+  .rpt-inspection-card,
+  .rpt-photo-evidence-card,
+  .rpt-attachment-card,
+  .rpt-nonpdf-attachment-block,
+  img,
+  iframe,
+  object {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .rpt-attachment-image {
+    max-height: 175mm !important;
+  }
+
+  .rpt-attachment-frame {
+    height: 175mm !important;
+  }
+
+  .rpt-pdf-object,
+  .rpt-pdf-frame {
+    height: 168mm !important;
+    min-height: 168mm !important;
+  }
+}
