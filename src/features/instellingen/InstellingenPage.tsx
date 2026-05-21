@@ -1,6 +1,6 @@
-import { BookMarked, DatabaseZap, RefreshCcw, Settings2 } from "lucide-react";
-import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { RefreshCcw } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Card } from "@/components/ui/Card";
 import { InlineMessage } from "@/components/feedback/InlineMessage";
 import { useAuthStore } from "@/app/store/auth-store";
@@ -9,6 +9,7 @@ import { useCompanySettings, useInspectionTemplates, useMaterials, useSettings, 
 import { MasterDataManager } from "@/features/instellingen/components/MasterDataManager";
 import { CompanySettingsCard } from "@/features/instellingen/components/CompanySettingsCard";
 import { InspectionTemplatesManager } from "@/features/instellingen/components/InspectionTemplatesManager";
+import { SettingsOverviewTiles } from "@/features/instellingen/components/SettingsOverviewTiles";
 import { MobilePageScaffold } from "@/features/mobile/MobilePageScaffold";
 
 type SettingsTab = "organisatie" | "masterdata";
@@ -17,12 +18,9 @@ function displayText(value: unknown): string {
   return String(value || "").trim();
 }
 
-/**
- * Instellingen gebruikt `MobilePageScaffold` + `mobile-kpi-*`; verticale rhythm komt uit de scaffold-wrapper (`.mobile-unified-body`).
- */
 export function InstellingenPage() {
-  const navigate = useNavigate();
-  const [tab, setTab] = useState<SettingsTab>("masterdata");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [tab, setTab] = useState<SettingsTab>(searchParams.get("tab") === "organisatie" ? "organisatie" : "masterdata");
   const [message, setMessage] = useState<string | null>(null);
   const user = useAuthStore((state) => state.user);
   const pushNotification = useUiStore((state) => state.pushNotification);
@@ -35,13 +33,17 @@ export function InstellingenPage() {
   const weldCoordinators = useWeldCoordinators();
   const inspectionTemplates = useInspectionTemplates();
 
+  useEffect(() => {
+    setTab(searchParams.get("tab") === "organisatie" ? "organisatie" : "masterdata");
+  }, [searchParams]);
+
   const companyData = (companySettings.data || {}) as Record<string, unknown>;
   const companyName =
     displayText(companyData.company_name) ||
     displayText(companyData.legal_name) ||
     displayText(companyData.display_name) ||
     displayText(companyData.name);
-  const companyTileName = companySettings.isLoading ? "Bedrijfsnaam laden…" : companyName || "Bedrijfsnaam instellen";
+  const companyTileName = companySettings.isLoading ? "Laden…" : companyName || "Organisatie";
 
   const masterDataCount = useMemo(
     () =>
@@ -52,6 +54,12 @@ export function InstellingenPage() {
       (inspectionTemplates.data?.items || []).length,
     [inspectionTemplates.data?.items, materials.data?.items, weldCoordinators.data?.items, welders.data?.items, wps.data?.items],
   );
+
+  const selectTab = (nextTab: SettingsTab) => {
+    setTab(nextTab);
+    if (nextTab === "organisatie") setSearchParams({ tab: "organisatie" });
+    else setSearchParams({});
+  };
 
   const refreshAll = () => {
     backendSettings.refetch();
@@ -84,35 +92,15 @@ export function InstellingenPage() {
       <div className="settings-page" data-settings-page>
         {message ? <InlineMessage tone="success">{message}</InlineMessage> : null}
 
-        <div className="mobile-kpi-grid">
-          <button
-            type="button"
-            aria-pressed={tab === "masterdata"}
-            className={`mobile-kpi-card mobile-kpi-card-primary ${tab === "masterdata" ? "mobile-kpi-tile-active" : ""}`}
-            onClick={() => setTab("masterdata")}
-          >
-            <div className="mobile-kpi-top">
-              <DatabaseZap size={18} aria-hidden />
-              <span>Masterdata</span>
-            </div>
-            <strong>{masterDataCount}</strong>
-            <small style={{ color: "rgba(255,255,255,0.82)" }}>WPS, materialen, lassers en inspectietemplates</small>
-          </button>
-
-          <button
-            type="button"
-            aria-pressed={tab === "organisatie"}
-            className={`mobile-kpi-card mobile-kpi-card-secondary ${tab === "organisatie" ? "mobile-kpi-tile-active" : ""}`}
-            onClick={() => setTab("organisatie")}
-          >
-            <div className="mobile-kpi-top">
-              <Settings2 size={18} aria-hidden />
-              <span>Organisatie</span>
-            </div>
-            <strong style={{ fontSize: "clamp(1rem, 3vw, 1.35rem)", wordBreak: "break-word" }}>{companyTileName}</strong>
-            <small style={{ color: "rgba(255,255,255,0.82)" }}>Bedrijfsinstellingen en branding</small>
-          </button>
-        </div>
+        <SettingsOverviewTiles
+          activeKey={tab}
+          masterDataCount={masterDataCount}
+          inspectionTemplateCount={(inspectionTemplates.data?.items || []).length}
+          companyName={companyTileName}
+          onSelect={(key) => {
+            if (key === "masterdata" || key === "organisatie") selectTab(key);
+          }}
+        />
 
         {tab === "organisatie" ? (
           <div className="content-grid-2 settings-sections">
@@ -150,34 +138,6 @@ export function InstellingenPage() {
 
         {tab === "masterdata" ? (
           <div className="settings-sections">
-            <div className="mobile-kpi-grid">
-              <button
-                type="button"
-                className="mobile-kpi-card mobile-kpi-card-secondary mobile-kpi-card-action"
-                onClick={() => navigate("/instellingen/templates")}
-              >
-                <div className="mobile-kpi-top">
-                  <DatabaseZap size={18} aria-hidden />
-                  <span>Inspectietemplates</span>
-                </div>
-                <strong>{(inspectionTemplates.data?.items || []).length}</strong>
-                <small style={{ color: "rgba(255,255,255,0.82)" }}>Templatebeheer openen</small>
-              </button>
-
-              <button
-                type="button"
-                className="mobile-kpi-card mobile-kpi-card-secondary mobile-kpi-card-action"
-                onClick={() => navigate("/instellingen/normeringen")}
-              >
-                <div className="mobile-kpi-top">
-                  <BookMarked size={18} aria-hidden />
-                  <span>Normeringen</span>
-                </div>
-                <strong>NEN</strong>
-                <small style={{ color: "rgba(255,255,255,0.82)" }}>Normprofielen en normenbibliotheek</small>
-              </button>
-            </div>
-
             <MasterDataManager title="WPS" type="wps" rows={wps.data?.items || []} isLoading={wps.isLoading} isError={wps.isError} refetch={wps.refetch} />
             <MasterDataManager title="Materialen" type="materials" rows={materials.data?.items || []} isLoading={materials.isLoading} isError={materials.isError} refetch={materials.refetch} />
             <MasterDataManager title="Lassers" type="welders" rows={welders.data?.items || []} isLoading={welders.isLoading} isError={welders.isError} refetch={welders.refetch} />
