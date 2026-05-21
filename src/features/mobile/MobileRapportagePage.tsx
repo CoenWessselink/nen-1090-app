@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useReports } from '@/hooks/useReports';
 import { MobilePageScaffold } from '@/features/mobile/MobilePageScaffold';
 import { openDownloadUrl } from '@/utils/download';
-import { exportPdf } from '@/api/exports';
+import { downloadCeReportRouteAsPdf } from '@/utils/ceReportPdfDownload';
 import { formatValue, normalizeApiError } from '@/features/mobile/mobile-utils';
 
 type ReportRow = {
@@ -49,14 +49,6 @@ function ceReportUrl(row: ReportRow) {
   return `/projecten/${projectId}/ce-report`;
 }
 
-function reportProjectMeta(row: ReportRow) {
-  return {
-    name: row.project_name || row.title || null,
-    code: row.projectnummer || String(row.project_id || row.id || '') || null,
-    client_name: row.client_name || null,
-  };
-}
-
 export function MobileRapportagePage() {
   const navigate = useNavigate();
   const reports = useReports({ page: 1, limit: 50 });
@@ -88,12 +80,12 @@ export function MobileRapportagePage() {
 
   function downloadReport(row: ReportRow) {
     setActionError(null);
-    const projectId = rowProjectId(row);
-    if (projectId) {
-      const key = String(row.id || projectId);
+    const url = ceReportUrl(row);
+    if (url) {
+      const key = String(row.id || rowProjectId(row));
       setDownloadingId(key);
-      void exportPdf(projectId, reportProjectMeta(row))
-        .catch((err) => setActionError(normalizeApiError(err, 'PDF-download mislukt.')))
+      void downloadCeReportRouteAsPdf({ url, filename: reportFilename(row) })
+        .catch((err) => setActionError(normalizeApiError(err, 'PDF opslaan mislukt.')))
         .finally(() => setDownloadingId(null));
       return;
     }
@@ -124,14 +116,14 @@ export function MobileRapportagePage() {
 
       <div className="mobile-list-card mobile-report-highlight" role="button" tabIndex={0} onClick={() => { if (featured) createPdf(featured); }}>
         <div className="mobile-list-card-head">
-          <strong>PDF</strong>
-          <span className="mobile-pill mobile-pill-success">Open now</span>
+          <strong>Nieuw CE-rapport</strong>
+          <span className="mobile-pill mobile-pill-success">Open</span>
         </div>
         <div className="mobile-report-cta">
           <div className="mobile-report-icon"><FileText size={26} /></div>
           <div>
             <strong>{reportTitle(featured)}</strong>
-            <span className="mobile-list-card-meta">Tap this card to open the most recent CE-rapport PDF.</span>
+            <span className="mobile-list-card-meta">Open de nieuwe premium CE-report layout.</span>
           </div>
         </div>
       </div>
@@ -160,10 +152,10 @@ export function MobileRapportagePage() {
                     Project
                   </button>
                   <button type="button" className="mobile-primary-button" onClick={() => createPdf(row)} disabled={!projectId && !reportPdfUrl(row)}>
-                    Open PDF
+                    Open nieuw rapport
                   </button>
                   <button type="button" className="mobile-secondary-button" onClick={() => downloadReport(row)} disabled={rowDownloading || (!projectId && !reportPdfUrl(row))}>
-                    <Download size={14} /> {rowDownloading ? 'Downloaden…' : 'Download'}
+                    <Download size={14} /> {rowDownloading ? 'Voorbereiden…' : 'PDF opslaan'}
                   </button>
                   <button type="button" className="mobile-secondary-button" onClick={() => openCeDossier(row)} disabled={!projectId}>
                     CE Dossier
