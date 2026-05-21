@@ -5,7 +5,7 @@ type DownloadCeReportRouteAsPdfOptions = {
 };
 
 type Html2CanvasFn = (element: HTMLElement, options?: Record<string, unknown>) => Promise<HTMLCanvasElement>;
-type JsPdfConstructor = new (options: { orientation: 'portrait'; unit: 'mm'; format: 'a4'; compress?: boolean }) => {
+type JsPdfInstance = {
   addPage: (format?: string, orientation?: string) => void;
   addImage: (
     imageData: string,
@@ -17,8 +17,9 @@ type JsPdfConstructor = new (options: { orientation: 'portrait'; unit: 'mm'; for
     alias?: string,
     compression?: string,
   ) => void;
-  save: (filename: string) => void;
+  output: (type: 'blob') => Blob;
 };
+type JsPdfConstructor = new (options: { orientation: 'portrait'; unit: 'mm'; format: 'a4'; compress?: boolean }) => JsPdfInstance;
 
 type PdfRuntimeWindow = Window & {
   html2canvas?: Html2CanvasFn;
@@ -134,8 +135,25 @@ function ensureDownloadBanner(doc: Document) {
   return banner;
 }
 
+function replaceWindowWithDownloadPage(reportWindow: Window, blobUrl: string, filename: string) {
+  const doc = getWindowDocument(reportWindow);
+  if (!doc) {
+    reportWindow.location.href = blobUrl;
+    return;
+  }
+
+  doc.open();
+  doc.write(`<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>${filename}</title></head><body style="margin:0;background:#f1f5f9;font-family:system-ui,-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;color:#0f172a;"><main style="min-height:100vh;display:grid;place-items:center;padding:24px;"><section style="max-width:520px;background:#fff;border:1px solid #dbe7fb;border-radius:28px;padding:26px;box-shadow:0 20px 60px rgba(15,23,42,.16);text-align:center;"><h1 style="font-size:24px;margin:0 0 10px;">PDF is klaar</h1><p style="color:#64748b;margin:0 0 20px;line-height:1.45;">Tik op de knop als het downloaden niet automatisch start.</p><a id="download" href="${blobUrl}" download="${filename}" style="display:block;background:#2563eb;color:white;text-decoration:none;border-radius:18px;padding:16px 18px;font-weight:800;">Download PDF</a><a href="${blobUrl}" target="_self" style="display:block;margin-top:14px;color:#2563eb;font-weight:700;">Open PDF</a></section></main></body></html>`);
+  doc.close();
+
+  window.setTimeout(() => {
+    const link = doc.getElementById('download') as HTMLAnchorElement | null;
+    link?.click();
+  }, 250);
+}
+
 async function renderPageToPdf(
-  pdf: InstanceType<JsPdfConstructor>,
+  pdf: JsPdfInstance,
   page: HTMLElement,
   html2canvas: Html2CanvasFn,
   index: number,
@@ -175,6 +193,7 @@ async function renderPageToPdf(
 export async function downloadCeReportRouteAsPdf({ url, filename, timeoutMs = DEFAULT_TIMEOUT_MS }: DownloadCeReportRouteAsPdfOptions) {
   if (!url) throw new Error('CE-report route ontbreekt.');
 
+  const finalFilename = safeFilename(filename);
   const reportWindow = openVisibleReportWindow(url);
   if (!reportWindow) return;
 
@@ -191,13 +210,13 @@ export async function downloadCeReportRouteAsPdf({ url, filename, timeoutMs = DE
     await renderPageToPdf(pdf, pages[index], html2canvas, index, doc);
   }
 
-  banner.textContent = 'PDF downloaden…';
-  pdf.save(safeFilename(filename));
+  banner.textContent = 'PDF klaarzetten…';
+  const blob = pdf.output('blob');
+  const file = new File([blob], finalFilename, { type: 'application/pdf' });
+  const blobUrl = URL.createObjectURL(file);
+  replaceWindowWithDownloadPage(reportWindow, blobUrl, finalFilename);
+
   window.setTimeout(() => {
-    try {
-      banner.remove();
-    } catch {
-      // ignore cleanup errors
-    }
-  }, 2500);
+    URL.revokeObjectURL(blobUrl);
+  }, 10 * 60_000);
 }
