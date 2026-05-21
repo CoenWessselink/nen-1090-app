@@ -1,6 +1,7 @@
 /* CE report print color parity, readability and performance fixes.
-   Component CSS is lazy-loaded later, so these print selectors intentionally use
-   higher specificity to win in Chrome print preview. */
+   Chrome can suppress CSS backgrounds in print preview. The cover therefore uses
+   multiple non-background paint mechanisms: inset shadow, borders and high-specificity
+   selectors. */
 
 .rpt-page-wrap,
 .rpt-page-wrap *,
@@ -47,9 +48,10 @@
     width: 210mm !important;
     min-height: 297mm !important;
     padding: 0 !important;
-    background: #ffffff !important;
+    background-color: #ffffff !important;
     color: #0f172a !important;
     overflow: hidden !important;
+    box-shadow: inset 0 102mm 0 0 #0b2544 !important;
   }
 
   html body .rpt-page.rpt-cover::before {
@@ -61,7 +63,8 @@
     width: 210mm !important;
     height: 102mm !important;
     background: #0b2544 !important;
-    border: 0 !important;
+    border-top: 102mm solid #0b2544 !important;
+    border-right: 0 !important;
     box-sizing: border-box !important;
   }
 
@@ -75,6 +78,7 @@
     z-index: 0 !important;
     display: block !important;
     background: #2563eb !important;
+    border-top: 1.6mm solid #2563eb !important;
   }
 
   html body .rpt-page.rpt-cover > * {
