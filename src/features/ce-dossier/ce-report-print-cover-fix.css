@@ -1,6 +1,6 @@
 /* Final CE report print cover alignment.
-   Loaded last. Purpose: make the browser PDF cover match the app cover instead
-   of fighting earlier print styles. */
+   Loaded last. Purpose: make the first PDF page match the app cover while
+   leaving all following pages untouched. */
 
 @media print {
   .rpt-cover {
@@ -12,14 +12,13 @@
     height: auto !important;
     padding: 0 0 7mm !important;
     overflow: hidden !important;
-    background: linear-gradient(135deg, #071a31 0 0) !important;
-    background-image:
-      linear-gradient(135deg, rgba(37, 99, 235, .10) 0 32%, transparent 32% 100%),
-      radial-gradient(circle at 18% 20%, rgba(59, 130, 246, .18), transparent 30%),
-      linear-gradient(135deg, #071a31 0%, #0b2544 58%, #0e315f 100%) !important;
-    background-size: 100% 124mm !important;
-    background-repeat: no-repeat !important;
     background-color: #ffffff !important;
+    background-image:
+      linear-gradient(135deg, rgba(37, 99, 235, .18) 0 28%, transparent 28% 100%),
+      radial-gradient(circle at 18% 18%, rgba(59, 130, 246, .22), transparent 34%),
+      linear-gradient(135deg, #071a31 0%, #0b2544 58%, #0e315f 100%) !important;
+    background-size: 100% 126mm !important;
+    background-repeat: no-repeat !important;
     page-break-after: always !important;
     break-after: page !important;
     page-break-inside: avoid !important;
@@ -32,16 +31,18 @@
     display: none !important;
   }
 
+  /* COVER TOP BAR: fixed left/right alignment. */
   .rpt-cover .rpt-header {
+    box-sizing: border-box !important;
     display: grid !important;
-    grid-template-columns: 86mm 1fr 58mm !important;
+    grid-template-columns: 92mm 1fr 58mm !important;
     align-items: start !important;
-    column-gap: 6mm !important;
+    column-gap: 8mm !important;
+    min-height: 26mm !important;
     margin: 0 !important;
     padding: 11mm 12mm 0 !important;
-    min-height: 24mm !important;
-    background: transparent !important;
     border: 0 !important;
+    background: transparent !important;
     color: #ffffff !important;
   }
 
@@ -49,8 +50,9 @@
     grid-column: 1 !important;
     justify-self: start !important;
     align-self: start !important;
-    width: 86mm !important;
-    min-width: 86mm !important;
+    width: 92mm !important;
+    min-width: 92mm !important;
+    max-width: 92mm !important;
     overflow: visible !important;
   }
 
@@ -70,7 +72,7 @@
     max-width: 58mm !important;
     min-height: 20mm !important;
     margin: 0 !important;
-    padding: 2.6mm 4.5mm !important;
+    padding: 2.7mm 4.5mm !important;
     background: #ffffff !important;
     border: 1.5px solid rgba(15, 23, 42, .75) !important;
     border-radius: 3mm !important;
@@ -97,101 +99,120 @@
     display: none !important;
   }
 
+  /* Replace the inherited wordmark rendering on the cover only. The inherited
+     text span produced a white bar in browser PDF; this creates a stable print
+     wordmark with the same DOM slot. */
   .rpt-cover .rpt-product-logo {
-    display: grid !important;
-    grid-template-columns: 14mm 68mm !important;
-    column-gap: 4mm !important;
-    align-items: center !important;
-    width: 86mm !important;
-    min-width: 86mm !important;
-    max-width: 86mm !important;
+    position: relative !important;
+    display: block !important;
+    box-sizing: border-box !important;
+    width: 92mm !important;
+    min-width: 92mm !important;
+    max-width: 92mm !important;
+    height: 17mm !important;
     padding: 0 !important;
     margin: 0 !important;
     border: 0 !important;
     outline: 0 !important;
     background: transparent !important;
     box-shadow: none !important;
-    color: #ffffff !important;
+    color: transparent !important;
     overflow: visible !important;
   }
 
   .rpt-cover .rpt-product-logo::before {
-    width: 13mm !important;
-    height: 13mm !important;
+    content: 'W' !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 15mm !important;
+    height: 15mm !important;
+    display: grid !important;
+    place-items: center !important;
     background: #ffffff !important;
     border: 2px solid #2f77ff !important;
-    border-radius: 3.2mm !important;
+    border-radius: 3.7mm !important;
     color: #2563eb !important;
-    font-size: 22px !important;
+    font-size: 25px !important;
+    font-weight: 950 !important;
+    line-height: 1 !important;
     box-shadow: none !important;
   }
 
-  .rpt-cover .rpt-product-logo-title {
+  .rpt-cover .rpt-product-logo::after {
+    content: 'WELDINSPECT PRO' !important;
+    position: absolute !important;
+    left: 20mm !important;
+    top: 3.2mm !important;
     display: block !important;
-    width: auto !important;
-    max-width: none !important;
+    width: 70mm !important;
     white-space: nowrap !important;
-    overflow: visible !important;
     color: #ffffff !important;
-    background: transparent !important;
-    box-shadow: none !important;
-    font-size: 18px !important;
+    font-size: 22px !important;
     font-weight: 950 !important;
     line-height: 1 !important;
-    letter-spacing: -.05em !important;
-    text-shadow: none !important;
+    letter-spacing: -.055em !important;
     text-transform: uppercase !important;
   }
 
-  .rpt-cover .rpt-product-logo-title b {
-    color: #2f7cff !important;
-    background: transparent !important;
-  }
-
+  .rpt-cover .rpt-product-logo-title,
+  .rpt-cover .rpt-product-logo-title b,
   .rpt-cover .rpt-product-logo small {
     display: none !important;
   }
 
+  /* COVER HERO: centered typography, matching the app screenshot proportions. */
   .rpt-cover .rpt-cover-body {
     display: block !important;
-    background: transparent !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
     text-align: center !important;
-    padding: 7mm 12mm 0 !important;
+    padding: 10mm 12mm 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
   }
 
   .rpt-cover h1 {
+    display: block !important;
     color: #ffffff !important;
-    font-size: 36px !important;
+    font-size: 39px !important;
+    font-weight: 950 !important;
     line-height: 1 !important;
-    letter-spacing: -.055em !important;
-    margin: 17mm 0 5mm !important;
+    letter-spacing: -.065em !important;
+    text-align: center !important;
+    margin: 17mm auto 6mm !important;
     text-shadow: none !important;
+    white-space: nowrap !important;
   }
 
   .rpt-cover .rpt-cover-norms {
+    display: block !important;
     color: rgba(255, 255, 255, .9) !important;
-    font-size: 12px !important;
+    font-size: 12.5px !important;
     font-weight: 700 !important;
-    line-height: 1.25 !important;
-    max-width: 126mm !important;
+    line-height: 1.3 !important;
+    text-align: center !important;
+    max-width: 128mm !important;
     margin: 0 auto 6mm !important;
   }
 
   .rpt-cover .rpt-cover-status {
     display: flex !important;
     justify-content: center !important;
-    gap: 2mm !important;
-    margin: 0 0 15mm !important;
+    align-items: center !important;
+    gap: 2.5mm !important;
+    margin: 0 auto 16mm !important;
   }
 
   .rpt-cover .rpt-pill {
-    min-width: 48mm !important;
-    height: 10mm !important;
+    min-width: 49mm !important;
+    height: 10.5mm !important;
     padding: 0 7mm !important;
     border-radius: 999px !important;
     border: 0 !important;
     color: #ffffff !important;
     font-size: 10px !important;
+    font-weight: 950 !important;
     letter-spacing: .12em !important;
     box-shadow: none !important;
   }
@@ -203,20 +224,21 @@
     color: #ffffff !important;
   }
 
+  /* COVER WHITE CONTENT: aligned cards under the hero. */
   .rpt-cover .rpt-cover-grid {
     box-sizing: border-box !important;
     display: grid !important;
     grid-template-columns: 1fr !important;
     gap: 2.4mm !important;
     margin: 0 0 3.4mm !important;
-    padding: 2mm 0 0 !important;
+    padding: 2.5mm 0 0 !important;
     text-align: left !important;
     background: #ffffff !important;
   }
 
   .rpt-cover .rpt-cover-grid > div {
     min-height: 0 !important;
-    padding: 3.8mm 7mm 3.6mm 8mm !important;
+    padding: 3.9mm 7mm 3.7mm 8mm !important;
     border: 1px solid #d9e4ef !important;
     border-left: 2.8mm solid var(--rpt-blue) !important;
     border-radius: 3.2mm !important;
@@ -245,7 +267,7 @@
 
   .rpt-cover .rpt-cover-grid strong {
     color: #0f172a !important;
-    font-size: 17px !important;
+    font-size: 17.5px !important;
     letter-spacing: -.04em !important;
     line-height: 1.05 !important;
     overflow-wrap: anywhere !important;
