@@ -1,24 +1,20 @@
-/* Final CE report print cover alignment.
-   Loaded last. Purpose: make the first PDF page match the app cover while
-   leaving all following pages untouched. */
+/* CE report print cover parity.
+   Loaded last. The cover must use the same light report style as the app/PDF
+   pages and must not use the previous dark hero with pseudo-element wordmarks.
+*/
 
 @media print {
   .rpt-cover {
     box-sizing: border-box !important;
     display: block !important;
     position: relative !important;
-    width: 100% !important;
-    min-height: 0 !important;
-    height: auto !important;
-    padding: 0 0 7mm !important;
+    width: 210mm !important;
+    min-height: 297mm !important;
+    height: 297mm !important;
+    padding: 24mm 12mm 18mm !important;
     overflow: hidden !important;
-    background-color: #ffffff !important;
-    background-image:
-      linear-gradient(135deg, rgba(37, 99, 235, .18) 0 28%, transparent 28% 100%),
-      radial-gradient(circle at 18% 18%, rgba(59, 130, 246, .22), transparent 34%),
-      linear-gradient(135deg, #071a31 0%, #0b2544 58%, #0e315f 100%) !important;
-    background-size: 100% 126mm !important;
-    background-repeat: no-repeat !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
     page-break-after: always !important;
     break-after: page !important;
     page-break-inside: avoid !important;
@@ -26,38 +22,106 @@
   }
 
   .rpt-cover::before,
-  .rpt-cover::after {
+  .rpt-cover::after,
+  .rpt-cover .rpt-product-logo::after {
     content: none !important;
     display: none !important;
   }
 
-  /* COVER TOP BAR: fixed left/right alignment. */
   .rpt-cover .rpt-header {
-    box-sizing: border-box !important;
-    display: grid !important;
-    grid-template-columns: 92mm 1fr 58mm !important;
-    align-items: start !important;
-    column-gap: 8mm !important;
-    min-height: 26mm !important;
+    position: absolute !important;
+    left: 12mm !important;
+    right: 12mm !important;
+    top: 8mm !important;
+    height: 16mm !important;
+    min-height: 16mm !important;
     margin: 0 !important;
-    padding: 11mm 12mm 0 !important;
+    padding: 0 0 4mm !important;
     border: 0 !important;
-    background: transparent !important;
-    color: #ffffff !important;
+    border-bottom: 1.1mm solid #2563eb !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    display: grid !important;
+    grid-template-columns: 55mm 1fr 46mm !important;
+    gap: 5mm !important;
+    align-items: center !important;
   }
 
   .rpt-cover .rpt-header-left {
     grid-column: 1 !important;
     justify-self: start !important;
-    align-self: start !important;
-    width: 92mm !important;
-    min-width: 92mm !important;
-    max-width: 92mm !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: 55mm !important;
+  }
+
+  .rpt-cover .rpt-header-center {
+    grid-column: 2 !important;
+    display: block !important;
+    color: #0f172a !important;
+    font-size: 7.4px !important;
+    font-weight: 800 !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .rpt-cover .rpt-header-center span {
+    display: inline !important;
+    color: inherit !important;
+  }
+
+  .rpt-cover .rpt-product-logo {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 2mm !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: 55mm !important;
+    height: auto !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: 0 !important;
+    outline: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    color: #06234a !important;
     overflow: visible !important;
   }
 
-  .rpt-cover .rpt-header-center,
-  .rpt-cover .rpt-header-center span {
+  .rpt-cover .rpt-product-logo::before {
+    content: 'W' !important;
+    display: inline-flex !important;
+    width: 8mm !important;
+    height: 6mm !important;
+    min-width: 8mm !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border: 1px solid #bfdbfe !important;
+    border-radius: 4px !important;
+    background: #eff6ff !important;
+    color: #2563eb !important;
+    font-size: 8px !important;
+    font-weight: 950 !important;
+    line-height: 1 !important;
+    box-shadow: none !important;
+  }
+
+  .rpt-cover .rpt-product-logo-title,
+  .rpt-cover .rpt-product-logo-title b {
+    display: inline !important;
+    color: #06234a !important;
+    font-size: 8.4px !important;
+    font-weight: 950 !important;
+    letter-spacing: .02em !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+    text-transform: uppercase !important;
+  }
+
+  .rpt-cover .rpt-product-logo small,
+  .rpt-cover .rpt-tenant-logo-box small {
     display: none !important;
   }
 
@@ -65,189 +129,135 @@
   .rpt-cover .rpt-tenant-logo-box {
     grid-column: 3 !important;
     justify-self: end !important;
-    align-self: start !important;
+    align-self: center !important;
     box-sizing: border-box !important;
-    width: 58mm !important;
-    min-width: 58mm !important;
-    max-width: 58mm !important;
-    min-height: 20mm !important;
+    width: 46mm !important;
+    min-width: 46mm !important;
+    max-width: 46mm !important;
+    min-height: 11mm !important;
+    max-height: 13mm !important;
     margin: 0 !important;
-    padding: 2.7mm 4.5mm !important;
+    padding: 2mm 4mm !important;
     background: #ffffff !important;
-    border: 1.5px solid rgba(15, 23, 42, .75) !important;
-    border-radius: 3mm !important;
+    border: 1px solid #0f172a !important;
+    border-radius: 4px !important;
     box-shadow: none !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    overflow: hidden !important;
     text-align: center !important;
   }
 
   .rpt-cover .rpt-tenant-logo-box img {
     display: block !important;
-    max-width: 50mm !important;
-    max-height: 13mm !important;
+    max-width: 38mm !important;
+    max-height: 8mm !important;
     object-fit: contain !important;
     margin: 0 auto !important;
   }
 
   .rpt-cover .rpt-tenant-logo-box strong {
     color: #0f172a !important;
-    font-size: 12px !important;
+    font-size: 8px !important;
+    font-weight: 900 !important;
     line-height: 1.1 !important;
-    letter-spacing: .08em !important;
-  }
-
-  .rpt-cover .rpt-tenant-logo-box small {
-    display: none !important;
-  }
-
-  /* Replace the inherited wordmark rendering on the cover only. The inherited
-     text span produced a white bar in browser PDF; this creates a stable print
-     wordmark with the same DOM slot. */
-  .rpt-cover .rpt-product-logo {
-    position: relative !important;
-    display: block !important;
-    box-sizing: border-box !important;
-    width: 92mm !important;
-    min-width: 92mm !important;
-    max-width: 92mm !important;
-    height: 17mm !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    border: 0 !important;
-    outline: 0 !important;
-    background: transparent !important;
-    box-shadow: none !important;
-    color: transparent !important;
-    overflow: visible !important;
-  }
-
-  .rpt-cover .rpt-product-logo::before {
-    content: 'W' !important;
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
-    width: 15mm !important;
-    height: 15mm !important;
-    display: grid !important;
-    place-items: center !important;
-    background: #ffffff !important;
-    border: 2px solid #2f77ff !important;
-    border-radius: 3.7mm !important;
-    color: #2563eb !important;
-    font-size: 25px !important;
-    font-weight: 950 !important;
-    line-height: 1 !important;
-    box-shadow: none !important;
-  }
-
-  .rpt-cover .rpt-product-logo::after {
-    content: 'WELDINSPECT PRO' !important;
-    position: absolute !important;
-    left: 20mm !important;
-    top: 3.2mm !important;
-    display: block !important;
-    width: 70mm !important;
     white-space: nowrap !important;
-    color: #ffffff !important;
-    font-size: 22px !important;
-    font-weight: 950 !important;
-    line-height: 1 !important;
-    letter-spacing: -.055em !important;
-    text-transform: uppercase !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
   }
 
-  .rpt-cover .rpt-product-logo-title,
-  .rpt-cover .rpt-product-logo-title b,
-  .rpt-cover .rpt-product-logo small {
-    display: none !important;
-  }
-
-  /* COVER HERO: centered typography, matching the app screenshot proportions. */
   .rpt-cover .rpt-cover-body {
-    display: block !important;
     box-sizing: border-box !important;
+    display: block !important;
     width: 100% !important;
-    text-align: center !important;
-    padding: 10mm 12mm 0 !important;
     margin: 0 !important;
-    background: transparent !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    text-align: left !important;
+    color: #0f172a !important;
   }
 
   .rpt-cover h1 {
     display: block !important;
-    color: #ffffff !important;
-    font-size: 39px !important;
+    margin: 0 0 2.5mm !important;
+    color: #06234a !important;
+    font-size: 24px !important;
     font-weight: 950 !important;
-    line-height: 1 !important;
-    letter-spacing: -.065em !important;
-    text-align: center !important;
-    margin: 17mm auto 6mm !important;
+    line-height: 1.08 !important;
+    letter-spacing: -.045em !important;
+    text-align: left !important;
+    white-space: normal !important;
     text-shadow: none !important;
-    white-space: nowrap !important;
   }
 
   .rpt-cover .rpt-cover-norms {
     display: block !important;
-    color: rgba(255, 255, 255, .9) !important;
-    font-size: 12.5px !important;
+    margin: 0 0 5mm !important;
+    color: #475569 !important;
+    font-size: 9.5px !important;
     font-weight: 700 !important;
-    line-height: 1.3 !important;
-    text-align: center !important;
-    max-width: 128mm !important;
-    margin: 0 auto 6mm !important;
+    line-height: 1.35 !important;
+    text-align: left !important;
+    white-space: normal !important;
   }
 
   .rpt-cover .rpt-cover-status {
     display: flex !important;
-    justify-content: center !important;
+    justify-content: flex-start !important;
     align-items: center !important;
     gap: 2.5mm !important;
-    margin: 0 auto 16mm !important;
+    margin: 0 0 7mm !important;
   }
 
   .rpt-cover .rpt-pill {
-    min-width: 49mm !important;
-    height: 10.5mm !important;
-    padding: 0 7mm !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-width: 34mm !important;
+    height: 8mm !important;
+    padding: 0 5mm !important;
     border-radius: 999px !important;
     border: 0 !important;
     color: #ffffff !important;
-    font-size: 10px !important;
+    font-size: 8.2px !important;
     font-weight: 950 !important;
-    letter-spacing: .12em !important;
+    letter-spacing: .10em !important;
     box-shadow: none !important;
+    background: #2563eb !important;
   }
 
-  .rpt-cover .rpt-status-green,
-  .rpt-cover .rpt-status-blue,
-  .rpt-cover .rpt-status-orange,
   .rpt-cover .rpt-pill-outline {
-    color: #ffffff !important;
+    background: #eff6ff !important;
+    color: #2563eb !important;
+    border: 1px solid #bfdbfe !important;
   }
 
-  /* COVER WHITE CONTENT: aligned cards under the hero. */
   .rpt-cover .rpt-cover-grid {
     box-sizing: border-box !important;
     display: grid !important;
     grid-template-columns: 1fr !important;
-    gap: 2.4mm !important;
-    margin: 0 0 3.4mm !important;
-    padding: 2.5mm 0 0 !important;
-    text-align: left !important;
+    gap: 2mm !important;
+    margin: 0 0 4mm !important;
+    padding: 0 !important;
     background: #ffffff !important;
+    color: #0f172a !important;
+    text-align: left !important;
   }
 
   .rpt-cover .rpt-cover-grid > div {
-    min-height: 0 !important;
-    padding: 3.9mm 7mm 3.7mm 8mm !important;
-    border: 1px solid #d9e4ef !important;
-    border-left: 2.8mm solid var(--rpt-blue) !important;
-    border-radius: 3.2mm !important;
-    background: #ffffff !important;
-    box-shadow: none !important;
+    box-sizing: border-box !important;
     display: grid !important;
-    grid-template-columns: 35mm 1fr !important;
+    grid-template-columns: 34mm 1fr !important;
     column-gap: 7mm !important;
     align-items: center !important;
+    min-height: 14mm !important;
+    padding: 3mm 6mm 3mm 7mm !important;
+    border: 1px solid #d7e3f0 !important;
+    border-left: 2.5mm solid #2563eb !important;
+    border-radius: 3mm !important;
+    background: #ffffff !important;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, .05) !important;
   }
 
   .rpt-cover .rpt-cover-grid > div:nth-child(3) {
@@ -255,10 +265,13 @@
   }
 
   .rpt-cover .rpt-cover-grid span {
-    color: var(--rpt-blue) !important;
-    font-size: 7.5px !important;
+    grid-column: 1 !important;
+    color: #2563eb !important;
+    font-size: 7px !important;
+    font-weight: 900 !important;
     letter-spacing: .10em !important;
-    margin-bottom: 0 !important;
+    text-transform: uppercase !important;
+    margin: 0 !important;
   }
 
   .rpt-cover .rpt-cover-grid > div:nth-child(3) span {
@@ -266,64 +279,71 @@
   }
 
   .rpt-cover .rpt-cover-grid strong {
+    grid-column: 2 !important;
+    display: block !important;
     color: #0f172a !important;
-    font-size: 17.5px !important;
-    letter-spacing: -.04em !important;
-    line-height: 1.05 !important;
+    font-size: 15px !important;
+    font-weight: 950 !important;
+    letter-spacing: -.03em !important;
+    line-height: 1.1 !important;
     overflow-wrap: anywhere !important;
   }
 
   .rpt-cover .rpt-cover-grid small {
-    color: #405b7a !important;
-    font-size: 8.5px !important;
-    line-height: 1.18 !important;
-    margin-top: .7mm !important;
     grid-column: 2 !important;
+    display: block !important;
+    color: #64748b !important;
+    font-size: 8px !important;
+    line-height: 1.2 !important;
+    margin-top: 1mm !important;
   }
 
   .rpt-cover .rpt-meta-table {
+    width: 100% !important;
+    margin: 0 !important;
+    border: 1px solid #d7e3f0 !important;
+    border-radius: 3mm !important;
     overflow: hidden !important;
-    border: 1px solid #d9e4ef !important;
-    border-radius: 2.7mm !important;
+    background: #ffffff !important;
     box-shadow: none !important;
-    font-size: 6.8px !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
-    margin-bottom: 0 !important;
-    background: #ffffff !important;
   }
 
-  .rpt-cover .rpt-meta-table thead th {
-    background: #08213d !important;
+  .rpt-cover .rpt-meta-table th {
+    background: #06234a !important;
     color: #ffffff !important;
-    border-bottom: 0 !important;
-    font-size: 7px !important;
-    padding: 1.05mm 3mm !important;
+    border: 0 !important;
+    font-size: 7.4px !important;
+    padding: 1.3mm 3mm !important;
+    text-align: left !important;
   }
 
   .rpt-cover .rpt-meta-table td {
     color: #334155 !important;
-    padding: .68mm 3mm !important;
-    border-bottom: 1px solid #e5edf5 !important;
-    font-size: 6.6px !important;
-    line-height: 1 !important;
+    padding: .9mm 3mm !important;
+    border-top: 1px solid #e5edf5 !important;
+    font-size: 7px !important;
+    line-height: 1.1 !important;
+    background: #ffffff !important;
   }
 
   .rpt-cover .rpt-meta-table td:first-child {
     color: #0f172a !important;
     font-weight: 850 !important;
-    width: 47% !important;
+    width: 46% !important;
   }
 
   .rpt-cover .rpt-footer {
-    display: none !important;
+    display: flex !important;
   }
 
   .rpt-photo-grid {
     gap: 4mm !important;
   }
 
-  .rpt-photo-evidence-card {
+  .rpt-photo-evidence-card,
+  .rpt-attachment-card {
     page-break-inside: avoid !important;
     break-inside: avoid !important;
   }
@@ -336,11 +356,6 @@
   .rpt-attachment-preview-list {
     page-break-inside: auto !important;
     break-inside: auto !important;
-  }
-
-  .rpt-attachment-card {
-    page-break-inside: avoid !important;
-    break-inside: avoid !important;
   }
 
   .rpt-attachment-card .rpt-attachment-image {
