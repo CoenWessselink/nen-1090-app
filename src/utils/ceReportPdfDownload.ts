@@ -4,7 +4,32 @@ type DownloadCeReportRouteAsPdfOptions = {
   timeoutMs?: number;
 };
 
+type Html2CanvasFn = (element: HTMLElement, options?: Record<string, unknown>) => Promise<HTMLCanvasElement>;
+type JsPdfConstructor = new (options: { orientation: 'portrait'; unit: 'mm'; format: 'a4'; compress?: boolean }) => {
+  addPage: (format?: string, orientation?: string) => void;
+  addImage: (
+    imageData: string,
+    format: string,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    alias?: string,
+    compression?: string,
+  ) => void;
+  save: (filename: string) => void;
+};
+
+type PdfRuntimeWindow = Window & {
+  html2canvas?: Html2CanvasFn;
+  jspdf?: { jsPDF?: JsPdfConstructor };
+};
+
+const A4_WIDTH_MM = 210;
+const A4_HEIGHT_MM = 297;
 const DEFAULT_TIMEOUT_MS = 30_000;
+const HTML2CANVAS_SRC = 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
+const JSPDF_SRC = 'https://cdn.jsdelivr.net/npm/jspdf@3.0.3/dist/jspdf.umd.min.js';
 
 function wait(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
@@ -24,79 +49,165 @@ function absoluteUrl(url: string) {
   return new URL(url, window.location.origin).toString();
 }
 
-function reportUrlWithDownloadIntent(url: string) {
+function appendDownloadIntent(url: string) {
   const target = new URL(absoluteUrl(url));
   target.searchParams.set('download', '1');
+  target.searchParams.set('pdf', '1');
   return target.toString();
 }
 
-function openReportWindow(url: string) {
-  const targetUrl = reportUrlWithDownloadIntent(url);
+function loadScript(src: string) {
+  const existing = document.querySelector<HTMLScriptElement>(`script[data-pdf-runtime="${src}"]`);
+  if (existing?.dataset.loaded === '1') return Promise.resolve();
 
-  // Open the final CE report route directly. Safari/iOS can leave a tab on about:blank
-  // when an intermediate about:blank popup is opened and navigated later.
-  const popup = window.open(targetUrl, '_blank');
-  if (!popup) {
-    window.location.assign(targetUrl);
-    return null;
-  }
-
-  return popup;
+  return new Promise<void>((resolve, reject) => {
+    const script = existing || document.createElement('script');
+    script.src = src;
+    script.async = true;
+    script.dataset.pdfRuntime = src;
+    script.onload = () => {
+      script.dataset.loaded = '1';
+      resolve();
+    };
+    script.onerror = () => reject(new Error(`PDF runtime kon niet laden: ${src}`));
+    if (!existing) document.head.appendChild(script);
+  });
 }
 
-async function waitForReportWindowLoad(reportWindow: Window, timeoutMs: number) {
-  const started = Date.now();
-  while (Date.now() - started < timeoutMs) {
-    if (reportWindow.closed) throw new Error('CE-report venster is gesloten.');
-    try {
-      const doc = reportWindow.document;
-      if (doc.readyState === 'complete' || doc.readyState === 'interactive') return doc;
-    } catch {
-      // Keep retrying while the route is loading.
-    }
-    await wait(150);
+async function loadPdfRuntime() {
+  await loadScript(HTML2CANVAS_SRC);
+  await loadScript(JSPDF_SRC);
+  const runtime = window as PdfRuntimeWindow;
+  const html2canvas = runtime.html2canvas;
+  const JsPDF = runtime.jspdf?.jsPDF;
+  if (!html2canvas || !JsPDF) {
+    throw new Error('PDF runtime is niet beschikbaar.');
   }
-  throw new Error('CE-report pagina laden duurde te lang.');
+  return { html2canvas, JsPDF };
 }
 
-async function waitForReportReady(reportWindow: Window, timeoutMs: number) {
+function createHiddenReportFrame(url: string) {
+  const iframe = document.createElement('iframe');
+  iframe.title = 'CE report PDF generator';
+  iframe.setAttribute('aria-hidden', 'true');
+  iframe.style.position = 'fixed';
+  iframe.style.left = '-10000px';
+  iframe.style.top = '0';
+  iframe.style.width = '1280px';
+  iframe.style.height = '1800px';
+  iframe.style.border = '0';
+  iframe.style.opacity = '0';
+  iframe.style.pointerEvents = 'none';
+  iframe.style.zIndex = '-1';
+  iframe.src = appendDownloadIntent(url);
+  document.body.appendChild(iframe);
+  return iframe;
+}
+
+async function waitForIframeLoad(iframe: HTMLIFrameElement, timeoutMs: number) {
+  await new Promise<void>((resolve, reject) => {
+    let settled = false;
+    const timer = window.setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      reject(new Error('CE-report pagina laden duurde te lang.'));
+    }, timeoutMs);
+
+    iframe.onload = () => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timer);
+      resolve();
+    };
+
+    iframe.onerror = () => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timer);
+      reject(new Error('CE-report pagina kon niet worden geladen.'));
+    };
+  });
+}
+
+async function waitForReportReady(doc: Document, timeoutMs: number) {
   const started = Date.now();
   while (Date.now() - started < timeoutMs) {
-    if (reportWindow.closed) throw new Error('CE-report venster is gesloten.');
-    try {
-      const doc = reportWindow.document;
-      const ready = doc.documentElement.getAttribute('data-ce-report-ready') === '1';
-      const pages = doc.querySelectorAll<HTMLElement>('.rpt-page[data-print-section="true"]');
-      if (ready && pages.length > 0) {
-        await wait(350);
-        return doc;
-      }
-      if (pages.length > 0 && Date.now() - started > 2_500) return doc;
-    } catch {
-      // Retry until the same-origin report route has hydrated.
+    const ready = doc.documentElement.getAttribute('data-ce-report-ready') === '1';
+    const pages = doc.querySelectorAll<HTMLElement>('.rpt-page[data-print-section="true"]');
+    if (ready && pages.length > 0) {
+      await wait(450);
+      return Array.from(pages);
     }
+    if (pages.length > 0 && Date.now() - started > 2_500) return Array.from(pages);
     await wait(150);
   }
+
+  const pages = doc.querySelectorAll<HTMLElement>('.rpt-page[data-print-section="true"]');
+  if (pages.length > 0) return Array.from(pages);
   throw new Error('CE-report inhoud is niet gevonden.');
 }
 
-function setDocumentTitleForPrint(doc: Document, filename: string) {
-  const name = safeFilename(filename).replace(/\.pdf$/i, '');
-  if (doc.title !== name) doc.title = name;
+async function renderPageToPdf(
+  pdf: InstanceType<JsPdfConstructor>,
+  page: HTMLElement,
+  html2canvas: Html2CanvasFn,
+  index: number,
+  doc: Document,
+) {
+  page.scrollIntoView({ block: 'start' });
+  await wait(80);
+
+  const canvas = await html2canvas(page, {
+    backgroundColor: '#ffffff',
+    scale: Math.min(2, Math.max(1.25, window.devicePixelRatio || 1.5)),
+    useCORS: true,
+    allowTaint: true,
+    logging: false,
+    imageTimeout: 15_000,
+    windowWidth: Math.max(1280, page.scrollWidth, doc.documentElement.scrollWidth),
+    windowHeight: Math.max(1800, page.scrollHeight, doc.documentElement.scrollHeight),
+  });
+
+  const imgData = canvas.toDataURL('image/jpeg', 0.95);
+  if (index > 0) pdf.addPage('a4', 'portrait');
+
+  const imageRatio = canvas.height / canvas.width;
+  const pageRatio = A4_HEIGHT_MM / A4_WIDTH_MM;
+  if (imageRatio > pageRatio) {
+    const width = A4_HEIGHT_MM / imageRatio;
+    const x = (A4_WIDTH_MM - width) / 2;
+    pdf.addImage(imgData, 'JPEG', x, 0, width, A4_HEIGHT_MM, undefined, 'FAST');
+    return;
+  }
+
+  const height = A4_WIDTH_MM * imageRatio;
+  const y = (A4_HEIGHT_MM - height) / 2;
+  pdf.addImage(imgData, 'JPEG', 0, y, A4_WIDTH_MM, height, undefined, 'FAST');
 }
 
 export async function downloadCeReportRouteAsPdf({ url, filename, timeoutMs = DEFAULT_TIMEOUT_MS }: DownloadCeReportRouteAsPdfOptions) {
   if (!url) throw new Error('CE-report route ontbreekt.');
 
-  const reportWindow = openReportWindow(url);
-  if (!reportWindow) return;
+  const [{ html2canvas, JsPDF }, iframe] = await Promise.all([
+    loadPdfRuntime(),
+    Promise.resolve(createHiddenReportFrame(url)),
+  ]);
 
-  const doc = await waitForReportWindowLoad(reportWindow, timeoutMs);
-  await doc.fonts?.ready?.catch(() => undefined);
-  const readyDoc = await waitForReportReady(reportWindow, timeoutMs);
-  setDocumentTitleForPrint(readyDoc, filename);
+  try {
+    await waitForIframeLoad(iframe, timeoutMs);
+    const doc = iframe.contentDocument;
+    if (!doc) throw new Error('CE-report pagina is niet toegankelijk.');
 
-  reportWindow.focus();
-  await wait(100);
-  reportWindow.print();
+    await doc.fonts?.ready?.catch(() => undefined);
+    const pages = await waitForReportReady(doc, timeoutMs);
+    const pdf = new JsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
+
+    for (let index = 0; index < pages.length; index += 1) {
+      await renderPageToPdf(pdf, pages[index], html2canvas, index, doc);
+    }
+
+    pdf.save(safeFilename(filename));
+  } finally {
+    iframe.remove();
+  }
 }
