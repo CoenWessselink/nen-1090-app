@@ -1,10 +1,10 @@
 /* Final CE report print cover alignment.
    Loaded last. Hard guarantee for print:
-   - cover is exactly one printable A4 page
-   - WeldInspect Pro logo top-left
+   - cover is one printable page
+   - WeldInspect Pro logo top-left without clipping
    - tenant/company logo top-right
    - title, norms and status pills stay inside the dark hero
-   - project cards and metadata fit below on the same page */
+   - page 2 starts with the table of contents */
 
 @media print {
   .rpt-cover {
@@ -13,10 +13,10 @@
     position: relative !important;
     width: 100% !important;
     min-height: 0 !important;
-    height: 277mm !important;
-    padding: 0 0 14mm !important;
+    height: auto !important;
+    padding: 0 0 6mm !important;
     overflow: hidden !important;
-    background: linear-gradient(#0b2544 0 119mm, #ffffff 119mm 100%) !important;
+    background: linear-gradient(#0b2544 0 118mm, #ffffff 118mm 100%) !important;
     page-break-after: always !important;
     break-after: page !important;
     page-break-inside: avoid !important;
@@ -31,12 +31,12 @@
 
   .rpt-cover .rpt-header {
     display: grid !important;
-    grid-template-columns: minmax(68mm, 1fr) minmax(20mm, .35fr) minmax(56mm, auto) !important;
+    grid-template-columns: minmax(88mm, 1fr) minmax(6mm, .1fr) 56mm !important;
     align-items: start !important;
-    column-gap: 6mm !important;
+    column-gap: 4mm !important;
     margin: 0 !important;
     padding: 10mm 12mm 0 !important;
-    min-height: 26mm !important;
+    min-height: 24mm !important;
     background: transparent !important;
     border-bottom: 0 !important;
     color: #ffffff !important;
@@ -46,22 +46,12 @@
     grid-column: 1 !important;
     justify-self: start !important;
     align-self: start !important;
-    width: auto !important;
+    width: 88mm !important;
+    min-width: 88mm !important;
+    overflow: visible !important;
   }
 
-  .rpt-cover .rpt-header-center {
-    grid-column: 2 !important;
-    justify-self: center !important;
-    align-self: start !important;
-    max-width: 28mm !important;
-    overflow: hidden !important;
-    color: rgba(255, 255, 255, .9) !important;
-    font-size: 0 !important;
-    line-height: 0 !important;
-    text-align: center !important;
-    padding: 0 !important;
-  }
-
+  .rpt-cover .rpt-header-center,
   .rpt-cover .rpt-header-center span {
     display: none !important;
   }
@@ -106,13 +96,15 @@
 
   .rpt-cover .rpt-product-logo {
     display: grid !important;
-    grid-template-columns: 14mm auto !important;
+    grid-template-columns: 14mm minmax(0, 70mm) !important;
     column-gap: 4mm !important;
     align-items: center !important;
-    min-width: 0 !important;
-    max-width: 82mm !important;
+    width: 88mm !important;
+    min-width: 88mm !important;
+    max-width: 88mm !important;
     color: #ffffff !important;
     background: transparent !important;
+    overflow: visible !important;
   }
 
   .rpt-cover .rpt-product-logo::before {
@@ -128,14 +120,15 @@
 
   .rpt-cover .rpt-product-logo-title {
     display: block !important;
-    max-width: 64mm !important;
+    width: 70mm !important;
+    max-width: 70mm !important;
     white-space: nowrap !important;
-    overflow: hidden !important;
+    overflow: visible !important;
     color: #ffffff !important;
-    font-size: 21px !important;
+    font-size: 19px !important;
     font-weight: 950 !important;
     line-height: 1 !important;
-    letter-spacing: -.045em !important;
+    letter-spacing: -.048em !important;
     text-shadow: none !important;
   }
 
@@ -156,16 +149,16 @@
 
   .rpt-cover h1 {
     color: #ffffff !important;
-    font-size: 34px !important;
+    font-size: 32px !important;
     line-height: 1 !important;
     letter-spacing: -.055em !important;
-    margin: 15mm 0 4mm !important;
+    margin: 14mm 0 4mm !important;
     text-shadow: none !important;
   }
 
   .rpt-cover .rpt-cover-norms {
     color: rgba(255, 255, 255, .9) !important;
-    font-size: 11.5px !important;
+    font-size: 11px !important;
     font-weight: 700 !important;
     line-height: 1.25 !important;
     max-width: 122mm !important;
@@ -176,17 +169,17 @@
     display: flex !important;
     justify-content: center !important;
     gap: 2mm !important;
-    margin: 0 0 13mm !important;
+    margin: 0 0 12mm !important;
   }
 
   .rpt-cover .rpt-pill {
-    min-width: 47mm !important;
-    height: 10mm !important;
+    min-width: 45mm !important;
+    height: 9.5mm !important;
     padding: 0 7mm !important;
     border-radius: 999px !important;
     border: 0 !important;
     color: #ffffff !important;
-    font-size: 10px !important;
+    font-size: 9.5px !important;
     letter-spacing: .12em !important;
     box-shadow: none !important;
   }
@@ -195,8 +188,8 @@
     box-sizing: border-box !important;
     display: grid !important;
     grid-template-columns: 1fr !important;
-    gap: 2.3mm !important;
-    margin: 0 0 3.5mm !important;
+    gap: 2mm !important;
+    margin: 0 0 3mm !important;
     padding-top: 2mm !important;
     text-align: left !important;
     background: #ffffff !important;
@@ -204,7 +197,7 @@
 
   .rpt-cover .rpt-cover-grid > div {
     min-height: 0 !important;
-    padding: 3.8mm 7mm 3.5mm 8mm !important;
+    padding: 3.2mm 7mm 3mm 8mm !important;
     border: 1px solid #d9e4ef !important;
     border-left: 2.7mm solid var(--rpt-blue) !important;
     border-radius: 3.2mm !important;
@@ -222,7 +215,7 @@
 
   .rpt-cover .rpt-cover-grid span {
     color: var(--rpt-blue) !important;
-    font-size: 7.5px !important;
+    font-size: 7px !important;
     letter-spacing: .10em !important;
     margin-bottom: 0 !important;
   }
@@ -233,7 +226,7 @@
 
   .rpt-cover .rpt-cover-grid strong {
     color: #0f172a !important;
-    font-size: 18px !important;
+    font-size: 16px !important;
     letter-spacing: -.04em !important;
     line-height: 1.05 !important;
     overflow-wrap: anywhere !important;
@@ -241,7 +234,7 @@
 
   .rpt-cover .rpt-cover-grid small {
     color: #405b7a !important;
-    font-size: 8.5px !important;
+    font-size: 8px !important;
     line-height: 1.18 !important;
     margin-top: .7mm !important;
     grid-column: 2 !important;
@@ -252,7 +245,7 @@
     border: 1px solid #d9e4ef !important;
     border-radius: 2.7mm !important;
     box-shadow: none !important;
-    font-size: 7px !important;
+    font-size: 6.6px !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
     margin-bottom: 0 !important;
@@ -263,16 +256,16 @@
     background: #08213d !important;
     color: #ffffff !important;
     border-bottom: 0 !important;
-    font-size: 7px !important;
-    padding: 1.2mm 3mm !important;
+    font-size: 6.8px !important;
+    padding: 1mm 3mm !important;
   }
 
   .rpt-cover .rpt-meta-table td {
     color: #334155 !important;
-    padding: .72mm 3mm !important;
+    padding: .62mm 3mm !important;
     border-bottom: 1px solid #e5edf5 !important;
-    font-size: 6.8px !important;
-    line-height: 1.02 !important;
+    font-size: 6.5px !important;
+    line-height: 1 !important;
   }
 
   .rpt-cover .rpt-meta-table td:first-child {
@@ -282,24 +275,7 @@
   }
 
   .rpt-cover .rpt-footer {
-    position: absolute !important;
-    left: 12mm !important;
-    right: 12mm !important;
-    bottom: 5mm !important;
-    margin: 0 !important;
-    padding: 1.2mm 0 0 !important;
-    border-top: 1px solid #d9e4ef !important;
-    color: #55708f !important;
-    font-size: 6px !important;
-    line-height: 1.1 !important;
-    background: #ffffff !important;
-  }
-
-  .rpt-cover .rpt-footer span:first-child {
-    max-width: 78mm !important;
-    overflow: hidden !important;
-    white-space: nowrap !important;
-    text-overflow: ellipsis !important;
+    display: none !important;
   }
 
   .rpt-photo-grid {
