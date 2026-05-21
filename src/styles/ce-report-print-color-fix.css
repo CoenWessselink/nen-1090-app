@@ -1,6 +1,7 @@
 /* CE report print color parity, readability and screen performance fixes.
-   Chrome's print dialog can suppress CSS backgrounds when "Background graphics" is off.
-   Therefore print output must not depend on white text over a dark background. */
+   Chrome's print dialog suppresses CSS backgrounds when "Background graphics" is off.
+   The cover therefore uses a printable SVG content layer in print mode so the
+   dark cover remains visible in the preview/PDF without relying on background-image. */
 
 .rpt-page-wrap,
 .rpt-page-wrap *,
@@ -64,8 +65,16 @@
   }
 
   .rpt-cover::before {
+    content: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 2100 1000' preserveAspectRatio='none'%3E%3Cdefs%3E%3CradialGradient id='g1' cx='18%25' cy='20%25' r='55%25'%3E%3Cstop offset='0%25' stop-color='%232b6fe8' stop-opacity='.32'/%3E%3Cstop offset='100%25' stop-color='%23071a31' stop-opacity='0'/%3E%3C/radialGradient%3E%3ClinearGradient id='g2' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%23071a31'/%3E%3Cstop offset='58%25' stop-color='%230b2544'/%3E%3Cstop offset='100%25' stop-color='%230e315f'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='2100' height='1000' fill='url(%23g2)'/%3E%3Cpath d='M0 1000 L900 0 L2100 0 L2100 1000 Z' fill='%2313335d' opacity='.52'/%3E%3Crect width='2100' height='1000' fill='url(%23g1)'/%3E%3C/svg%3E") !important;
+    position: absolute !important;
+    inset: 0 0 auto 0 !important;
+    z-index: 0 !important;
+    display: block !important;
+    width: 210mm !important;
+    height: 100mm !important;
+    overflow: hidden !important;
     background: none !important;
-    border-bottom: 3px solid #2563eb !important;
+    border-bottom: 0 !important;
   }
 
   .rpt-cover::after {
@@ -73,42 +82,42 @@
   }
 
   .rpt-cover .rpt-header {
-    border-bottom: 3px solid #2563eb !important;
+    border-bottom: 0 !important;
   }
 
   .rpt-cover h1,
   .rpt-cover .rpt-cover-norms,
   .rpt-cover .rpt-header-center,
   .rpt-cover .rpt-product-logo-title {
-    color: #0f172a !important;
-    text-shadow: none !important;
+    color: #ffffff !important;
+    text-shadow: 0 3px 14px rgba(0, 0, 0, .28) !important;
   }
 
   .rpt-cover .rpt-product-logo-title b {
-    color: #2563eb !important;
+    color: #2f7cff !important;
   }
 
   .rpt-cover .rpt-product-logo::before {
     background: #ffffff !important;
     color: #2563eb !important;
-    border-color: #2563eb !important;
+    border-color: #2f77ff !important;
     box-shadow: none !important;
   }
 
   .rpt-cover .rpt-status-green,
   .rpt-cover .rpt-status-blue,
   .rpt-cover .rpt-status-orange {
-    background: #dcfce7 !important;
-    border: 1.5px solid #16a34a !important;
-    color: #166534 !important;
-    box-shadow: none !important;
+    background: #19a34a !important;
+    border: 0 !important;
+    color: #ffffff !important;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, .18) !important;
   }
 
   .rpt-cover .rpt-pill-outline {
-    background: #dbeafe !important;
-    border: 1.5px solid #2563eb !important;
-    color: #1d4ed8 !important;
-    box-shadow: none !important;
+    background: #2563eb !important;
+    border: 0 !important;
+    color: #ffffff !important;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, .18) !important;
   }
 
   .rpt-cover .rpt-tenant-logo-box {
