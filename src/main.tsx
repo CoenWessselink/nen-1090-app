@@ -15,11 +15,13 @@ import '@/styles/premium-tile-reference.css';
 import '@/styles/premium-app-consistency.css';
 import '@/styles/premium-masterdata-cleanup.css';
 import '@/styles/ce-report-print-color-fix.css';
+import { installCeReportPrintAutostart } from '@/lib/ce-report-print-autostart';
 import { installFrontendEnglish } from '@/lib/frontend-english';
 import { initSentry } from '@/lib/sentry';
 
 void initSentry();
 installFrontendEnglish();
+installCeReportPrintAutostart();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
