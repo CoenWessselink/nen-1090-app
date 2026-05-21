@@ -1,365 +1,245 @@
-/* CE report print cover parity.
-   Loaded last. The cover must use the same light report style as the app/PDF
-   pages and must not use the previous dark hero with pseudo-element wordmarks.
-*/
-
 @media print {
   .rpt-cover {
-    box-sizing: border-box !important;
-    display: block !important;
-    position: relative !important;
     width: 210mm !important;
     min-height: 297mm !important;
     height: 297mm !important;
-    padding: 24mm 12mm 18mm !important;
+    padding: 0 0 18mm !important;
     overflow: hidden !important;
     background: #ffffff !important;
     color: #0f172a !important;
     page-break-after: always !important;
     break-after: page !important;
-    page-break-inside: avoid !important;
-    break-inside: avoid !important;
   }
 
-  .rpt-cover::before,
-  .rpt-cover::after,
-  .rpt-cover .rpt-product-logo::after {
-    content: none !important;
-    display: none !important;
+  .rpt-cover::before {
+    content: '' !important;
+    position: absolute !important;
+    left: 0 !important;
+    right: 0 !important;
+    top: 0 !important;
+    height: 128mm !important;
+    background: linear-gradient(135deg, rgba(37, 99, 235, .28) 0 28%, transparent 28% 100%), linear-gradient(135deg, #071a31 0%, #0b2544 58%, #0e315f 100%) !important;
+    display: block !important;
+    z-index: 0 !important;
+  }
+
+  .rpt-cover::after {
+    content: '' !important;
+    position: absolute !important;
+    left: 0 !important;
+    right: 0 !important;
+    top: 126mm !important;
+    height: 1.2mm !important;
+    background: #2563eb !important;
+    display: block !important;
+    z-index: 0 !important;
   }
 
   .rpt-cover .rpt-header {
-    position: absolute !important;
-    left: 12mm !important;
-    right: 12mm !important;
-    top: 8mm !important;
-    height: 16mm !important;
-    min-height: 16mm !important;
+    position: relative !important;
+    z-index: 2 !important;
+    inset: auto !important;
+    height: auto !important;
+    min-height: 0 !important;
     margin: 0 !important;
-    padding: 0 0 4mm !important;
+    padding: 24mm 18mm 0 !important;
     border: 0 !important;
-    border-bottom: 1.1mm solid #2563eb !important;
-    background: #ffffff !important;
-    color: #0f172a !important;
+    background: transparent !important;
+    color: #ffffff !important;
     display: grid !important;
-    grid-template-columns: 55mm 1fr 46mm !important;
-    gap: 5mm !important;
+    grid-template-columns: 1fr !important;
     align-items: center !important;
   }
 
-  .rpt-cover .rpt-header-left {
+  .rpt-cover .rpt-header-left,
+  .rpt-cover .rpt-header-center,
+  .rpt-cover .rpt-header-right {
     grid-column: 1 !important;
     justify-self: start !important;
-    width: auto !important;
-    min-width: 0 !important;
-    max-width: 55mm !important;
-  }
-
-  .rpt-cover .rpt-header-center {
-    grid-column: 2 !important;
-    display: block !important;
-    color: #0f172a !important;
-    font-size: 7.4px !important;
-    font-weight: 800 !important;
-    text-align: center !important;
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-  }
-
-  .rpt-cover .rpt-header-center span {
-    display: inline !important;
-    color: inherit !important;
   }
 
   .rpt-cover .rpt-product-logo {
     display: inline-flex !important;
     align-items: center !important;
-    gap: 2mm !important;
+    gap: 11mm !important;
     width: auto !important;
-    min-width: 0 !important;
-    max-width: 55mm !important;
     height: auto !important;
     padding: 0 !important;
     margin: 0 !important;
     border: 0 !important;
-    outline: 0 !important;
     background: transparent !important;
     box-shadow: none !important;
-    color: #06234a !important;
-    overflow: visible !important;
+    color: #ffffff !important;
   }
 
   .rpt-cover .rpt-product-logo::before {
     content: 'W' !important;
     display: inline-flex !important;
-    width: 8mm !important;
-    height: 6mm !important;
-    min-width: 8mm !important;
+    width: 22mm !important;
+    height: 22mm !important;
     align-items: center !important;
     justify-content: center !important;
-    border: 1px solid #bfdbfe !important;
-    border-radius: 4px !important;
-    background: #eff6ff !important;
+    border: 1.8mm solid #2f77ff !important;
+    border-radius: 5mm !important;
+    background: #ffffff !important;
     color: #2563eb !important;
-    font-size: 8px !important;
+    font-size: 30px !important;
     font-weight: 950 !important;
-    line-height: 1 !important;
-    box-shadow: none !important;
+  }
+
+  .rpt-cover .rpt-product-logo::after,
+  .rpt-cover .rpt-product-logo small,
+  .rpt-cover .rpt-tenant-logo-box small {
+    display: none !important;
+    content: none !important;
   }
 
   .rpt-cover .rpt-product-logo-title,
   .rpt-cover .rpt-product-logo-title b {
     display: inline !important;
-    color: #06234a !important;
-    font-size: 8.4px !important;
+    color: #ffffff !important;
+    font-size: 25px !important;
     font-weight: 950 !important;
-    letter-spacing: .02em !important;
+    letter-spacing: -.055em !important;
     line-height: 1 !important;
-    white-space: nowrap !important;
     text-transform: uppercase !important;
-  }
-
-  .rpt-cover .rpt-product-logo small,
-  .rpt-cover .rpt-tenant-logo-box small {
-    display: none !important;
-  }
-
-  .rpt-cover .rpt-header-right,
-  .rpt-cover .rpt-tenant-logo-box {
-    grid-column: 3 !important;
-    justify-self: end !important;
-    align-self: center !important;
-    box-sizing: border-box !important;
-    width: 46mm !important;
-    min-width: 46mm !important;
-    max-width: 46mm !important;
-    min-height: 11mm !important;
-    max-height: 13mm !important;
-    margin: 0 !important;
-    padding: 2mm 4mm !important;
-    background: #ffffff !important;
-    border: 1px solid #0f172a !important;
-    border-radius: 4px !important;
-    box-shadow: none !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    overflow: hidden !important;
-    text-align: center !important;
-  }
-
-  .rpt-cover .rpt-tenant-logo-box img {
-    display: block !important;
-    max-width: 38mm !important;
-    max-height: 8mm !important;
-    object-fit: contain !important;
-    margin: 0 auto !important;
-  }
-
-  .rpt-cover .rpt-tenant-logo-box strong {
-    color: #0f172a !important;
-    font-size: 8px !important;
-    font-weight: 900 !important;
-    line-height: 1.1 !important;
     white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
   }
 
-  .rpt-cover .rpt-cover-body {
-    box-sizing: border-box !important;
-    display: block !important;
-    width: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    background: #ffffff !important;
-    text-align: left !important;
-    color: #0f172a !important;
-  }
+  .rpt-cover .rpt-product-logo-title b { color: #2f77ff !important; }
 
-  .rpt-cover h1 {
+  .rpt-cover .rpt-header-center {
     display: block !important;
-    margin: 0 0 2.5mm !important;
-    color: #06234a !important;
-    font-size: 24px !important;
-    font-weight: 950 !important;
-    line-height: 1.08 !important;
-    letter-spacing: -.045em !important;
-    text-align: left !important;
-    white-space: normal !important;
-    text-shadow: none !important;
-  }
-
-  .rpt-cover .rpt-cover-norms {
-    display: block !important;
-    margin: 0 0 5mm !important;
-    color: #475569 !important;
-    font-size: 9.5px !important;
-    font-weight: 700 !important;
+    margin-top: 8mm !important;
+    color: rgba(255,255,255,.92) !important;
+    font-size: 12px !important;
+    font-weight: 850 !important;
     line-height: 1.35 !important;
     text-align: left !important;
     white-space: normal !important;
   }
 
+  .rpt-cover .rpt-header-right,
+  .rpt-cover .rpt-tenant-logo-box {
+    justify-self: center !important;
+    width: 148mm !important;
+    min-height: 34mm !important;
+    margin: 12mm auto 0 !important;
+    padding: 5mm 12mm !important;
+    background: #ffffff !important;
+    border: 1.2mm solid rgba(15, 23, 42, .65) !important;
+    border-radius: 5mm !important;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, .22) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    overflow: hidden !important;
+  }
+
+  .rpt-cover .rpt-tenant-logo-box img {
+    max-width: 98mm !important;
+    max-height: 24mm !important;
+    object-fit: contain !important;
+  }
+
+  .rpt-cover .rpt-cover-body {
+    position: relative !important;
+    z-index: 2 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 22mm 18mm 0 !important;
+    background: transparent !important;
+    text-align: center !important;
+    color: #ffffff !important;
+  }
+
+  .rpt-cover h1 {
+    margin: 0 0 10mm !important;
+    color: #ffffff !important;
+    font-size: 30px !important;
+    font-weight: 950 !important;
+    line-height: 1.04 !important;
+    letter-spacing: -.065em !important;
+    text-align: center !important;
+  }
+
+  .rpt-cover .rpt-cover-norms {
+    margin: 0 auto 14mm !important;
+    max-width: 145mm !important;
+    color: rgba(255,255,255,.92) !important;
+    font-size: 17px !important;
+    font-weight: 450 !important;
+    line-height: 1.28 !important;
+    text-align: center !important;
+  }
+
   .rpt-cover .rpt-cover-status {
     display: flex !important;
-    justify-content: flex-start !important;
-    align-items: center !important;
-    gap: 2.5mm !important;
-    margin: 0 0 7mm !important;
+    justify-content: center !important;
+    gap: 2mm !important;
+    margin: 0 auto 22mm !important;
   }
 
   .rpt-cover .rpt-pill {
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    min-width: 34mm !important;
-    height: 8mm !important;
-    padding: 0 5mm !important;
-    border-radius: 999px !important;
+    min-width: 70mm !important;
+    height: 20mm !important;
+    padding: 0 12mm !important;
     border: 0 !important;
+    border-radius: 999px !important;
+    background: #2563eb !important;
     color: #ffffff !important;
-    font-size: 8.2px !important;
+    font-size: 16px !important;
     font-weight: 950 !important;
     letter-spacing: .10em !important;
-    box-shadow: none !important;
-    background: #2563eb !important;
   }
 
-  .rpt-cover .rpt-pill-outline {
-    background: #eff6ff !important;
-    color: #2563eb !important;
-    border: 1px solid #bfdbfe !important;
-  }
+  .rpt-cover .rpt-pill-outline { background: #2563eb !important; color: #ffffff !important; }
 
   .rpt-cover .rpt-cover-grid {
-    box-sizing: border-box !important;
+    position: relative !important;
+    z-index: 2 !important;
     display: grid !important;
     grid-template-columns: 1fr !important;
-    gap: 2mm !important;
-    margin: 0 0 4mm !important;
+    gap: 2.4mm !important;
+    margin: 0 !important;
     padding: 0 !important;
-    background: #ffffff !important;
     color: #0f172a !important;
     text-align: left !important;
   }
 
   .rpt-cover .rpt-cover-grid > div {
-    box-sizing: border-box !important;
     display: grid !important;
     grid-template-columns: 34mm 1fr !important;
     column-gap: 7mm !important;
     align-items: center !important;
-    min-height: 14mm !important;
-    padding: 3mm 6mm 3mm 7mm !important;
+    min-height: 16mm !important;
+    padding: 4mm 7mm 4mm 8mm !important;
     border: 1px solid #d7e3f0 !important;
-    border-left: 2.5mm solid #2563eb !important;
-    border-radius: 3mm !important;
+    border-left: 3mm solid #2563eb !important;
+    border-radius: 3.4mm !important;
     background: #ffffff !important;
-    box-shadow: 0 8px 20px rgba(15, 23, 42, .05) !important;
   }
 
-  .rpt-cover .rpt-cover-grid > div:nth-child(3) {
-    border-left-color: #16a34a !important;
-  }
-
-  .rpt-cover .rpt-cover-grid span {
-    grid-column: 1 !important;
-    color: #2563eb !important;
-    font-size: 7px !important;
-    font-weight: 900 !important;
-    letter-spacing: .10em !important;
-    text-transform: uppercase !important;
-    margin: 0 !important;
-  }
-
-  .rpt-cover .rpt-cover-grid > div:nth-child(3) span {
-    color: #16a34a !important;
-  }
-
-  .rpt-cover .rpt-cover-grid strong {
-    grid-column: 2 !important;
-    display: block !important;
-    color: #0f172a !important;
-    font-size: 15px !important;
-    font-weight: 950 !important;
-    letter-spacing: -.03em !important;
-    line-height: 1.1 !important;
-    overflow-wrap: anywhere !important;
-  }
-
-  .rpt-cover .rpt-cover-grid small {
-    grid-column: 2 !important;
-    display: block !important;
-    color: #64748b !important;
-    font-size: 8px !important;
-    line-height: 1.2 !important;
-    margin-top: 1mm !important;
-  }
+  .rpt-cover .rpt-cover-grid > div:nth-child(3) { border-left-color: #16a34a !important; }
+  .rpt-cover .rpt-cover-grid span { grid-column: 1 !important; color: #2563eb !important; font-size: 7.5px !important; font-weight: 900 !important; letter-spacing: .10em !important; text-transform: uppercase !important; margin: 0 !important; }
+  .rpt-cover .rpt-cover-grid > div:nth-child(3) span { color: #16a34a !important; }
+  .rpt-cover .rpt-cover-grid strong { grid-column: 2 !important; color: #0f172a !important; font-size: 16.5px !important; font-weight: 950 !important; }
+  .rpt-cover .rpt-cover-grid small { grid-column: 2 !important; color: #64748b !important; font-size: 8.5px !important; margin-top: .8mm !important; }
 
   .rpt-cover .rpt-meta-table {
     width: 100% !important;
-    margin: 0 !important;
+    margin: 4mm 0 0 !important;
     border: 1px solid #d7e3f0 !important;
     border-radius: 3mm !important;
     overflow: hidden !important;
     background: #ffffff !important;
-    box-shadow: none !important;
-    page-break-inside: avoid !important;
-    break-inside: avoid !important;
   }
 
-  .rpt-cover .rpt-meta-table th {
-    background: #06234a !important;
-    color: #ffffff !important;
-    border: 0 !important;
-    font-size: 7.4px !important;
-    padding: 1.3mm 3mm !important;
-    text-align: left !important;
-  }
-
-  .rpt-cover .rpt-meta-table td {
-    color: #334155 !important;
-    padding: .9mm 3mm !important;
-    border-top: 1px solid #e5edf5 !important;
-    font-size: 7px !important;
-    line-height: 1.1 !important;
-    background: #ffffff !important;
-  }
-
-  .rpt-cover .rpt-meta-table td:first-child {
-    color: #0f172a !important;
-    font-weight: 850 !important;
-    width: 46% !important;
-  }
-
-  .rpt-cover .rpt-footer {
-    display: flex !important;
-  }
-
-  .rpt-photo-grid {
-    gap: 4mm !important;
-  }
-
-  .rpt-photo-evidence-card,
-  .rpt-attachment-card {
-    page-break-inside: avoid !important;
-    break-inside: avoid !important;
-  }
-
-  .rpt-photo-evidence-card img {
-    max-height: 78mm !important;
-    object-fit: contain !important;
-  }
-
-  .rpt-attachment-preview-list {
-    page-break-inside: auto !important;
-    break-inside: auto !important;
-  }
-
-  .rpt-attachment-card .rpt-attachment-image {
-    max-height: 105mm !important;
-    object-fit: contain !important;
-  }
+  .rpt-cover .rpt-meta-table th { background: #06234a !important; color: #ffffff !important; font-size: 7.4px !important; padding: 1.3mm 3mm !important; }
+  .rpt-cover .rpt-meta-table td { color: #334155 !important; padding: .9mm 3mm !important; border-top: 1px solid #e5edf5 !important; font-size: 7px !important; background: #ffffff !important; }
+  .rpt-cover .rpt-meta-table td:first-child { color: #0f172a !important; font-weight: 850 !important; width: 46% !important; }
+  .rpt-cover .rpt-footer { display: none !important; }
 }
