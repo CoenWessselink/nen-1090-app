@@ -1,132 +1,149 @@
-/* Premium Tile Reference — applies dashboard visual language to smaller tiles and action cards. */
+/* Premium Tile Reference — applies dashboard visual language to smaller tiles and action cards.
+   Base styles are outside media queries so Project 360/action tiles stay styled and visible on every viewport. */
 
-@media (max-width: 1024px) {
+.mobile-action-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 14px !important;
+  margin-top: 18px !important;
+}
+
+.mobile-action-card {
+  position: relative !important;
+  display: grid !important;
+  place-items: center !important;
+  align-content: center !important;
+  min-height: 138px !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(255, 255, 255, .30) !important;
+  border-radius: 26px !important;
+  padding: 24px 16px 20px !important;
+  color: #fff !important;
+  text-align: center !important;
+  box-shadow: 0 16px 34px rgba(17, 38, 72, .16), inset 0 1px 0 rgba(255, 255, 255, .26) !important;
+  isolation: isolate !important;
+  cursor: pointer !important;
+}
+
+.mobile-action-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background:
+    radial-gradient(circle at 22% 18%, rgba(255, 255, 255, .20), transparent 30%),
+    linear-gradient(135deg, rgba(255, 255, 255, .10), transparent 62%);
+  pointer-events: none;
+}
+
+.mobile-action-card::after {
+  content: '';
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  width: 118px;
+  height: 86px;
+  opacity: .12;
+  z-index: -1;
+  pointer-events: none;
+  background-image: radial-gradient(rgba(255, 255, 255, .62) 1px, transparent 1.5px);
+  background-size: 9px 9px;
+}
+
+.mobile-action-card svg {
+  display: block !important;
+  width: 34px !important;
+  height: 34px !important;
+  margin: 0 auto 22px !important;
+  color: #fff !important;
+  stroke-width: 2.25 !important;
+  filter: drop-shadow(0 8px 18px rgba(0, 0, 0, .12)) !important;
+}
+
+.mobile-action-card span {
+  display: block !important;
+  color: #fff !important;
+  font-size: clamp(20px, 3vw, 27px) !important;
+  line-height: 1.08 !important;
+  font-weight: 850 !important;
+  letter-spacing: -0.025em !important;
+  text-shadow: 0 10px 24px rgba(0, 0, 0, .14) !important;
+}
+
+.mobile-action-card-primary {
+  background: linear-gradient(135deg, #2e7dff 0%, #1667df 55%, #0b4fb6 100%) !important;
+}
+
+.mobile-action-card-success {
+  background: linear-gradient(135deg, #52bd69 0%, #35a956 55%, #248a43 100%) !important;
+}
+
+.mobile-action-card-danger {
+  background: linear-gradient(135deg, #ef725f 0%, #dc5b4f 56%, #c94c45 100%) !important;
+}
+
+.mobile-action-card-warning {
+  background: linear-gradient(135deg, #f0bd62 0%, #e5a33f 55%, #d48925 100%) !important;
+}
+
+.mobile-action-card-neutral {
+  background: linear-gradient(135deg, #8b97a8 0%, #728091 55%, #5f6b79 100%) !important;
+}
+
+.mobile-inline-actions.mobile-project-quick-actions {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 12px !important;
+  margin-top: 16px !important;
+}
+
+.mobile-secondary-button,
+.mobile-primary-button,
+.mobile-danger-button {
+  min-height: 62px !important;
+  border-radius: 22px !important;
+  font-size: 16px !important;
+  font-weight: 820 !important;
+  letter-spacing: -0.015em !important;
+  box-shadow: 0 12px 28px rgba(20, 54, 103, .10) !important;
+}
+
+.mobile-secondary-button {
+  border: 1px solid rgba(199, 217, 246, .9) !important;
+  color: #10203e !important;
+  background: rgba(255, 255, 255, .96) !important;
+}
+
+.mobile-primary-button {
+  border: 1px solid rgba(255, 255, 255, .28) !important;
+  color: #fff !important;
+  background: linear-gradient(135deg, #2e7dff, #1667df) !important;
+}
+
+.mobile-danger-button {
+  border: 1px solid rgba(255, 255, 255, .28) !important;
+  color: #fff !important;
+  background: linear-gradient(135deg, #ef725f, #dc4f43) !important;
+}
+
+.premium-dashboard-actions {
+  gap: 12px !important;
+}
+
+.premium-dashboard-action-card {
+  min-height: 98px !important;
+  border-radius: 26px !important;
+}
+
+@media (min-width: 1025px) {
   .mobile-action-grid {
-    display: grid !important;
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    gap: 14px !important;
-    margin-top: 18px !important;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)) !important;
+    gap: 16px !important;
   }
 
   .mobile-action-card {
-    position: relative !important;
-    min-height: 138px !important;
-    overflow: hidden !important;
-    border: 1px solid rgba(255,255,255,.30) !important;
-    border-radius: 26px !important;
-    padding: 24px 16px 20px !important;
-    color: #fff !important;
-    text-align: center !important;
-    box-shadow: 0 16px 34px rgba(17, 38, 72, .16), inset 0 1px 0 rgba(255,255,255,.26) !important;
-    isolation: isolate !important;
-  }
-
-  .mobile-action-card::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    z-index: -2;
-    background: radial-gradient(circle at 22% 18%, rgba(255,255,255,.20), transparent 30%), linear-gradient(135deg, rgba(255,255,255,.10), transparent 62%);
-    pointer-events: none;
-  }
-
-  .mobile-action-card::after {
-    content: '';
-    position: absolute;
-    right: 12px;
-    bottom: 12px;
-    width: 118px;
-    height: 86px;
-    opacity: .12;
-    z-index: -1;
-    pointer-events: none;
-    background-image: radial-gradient(rgba(255,255,255,.62) 1px, transparent 1.5px);
-    background-size: 9px 9px;
-  }
-
-  .mobile-action-card svg {
-    display: block !important;
-    width: 34px !important;
-    height: 34px !important;
-    margin: 0 auto 22px !important;
-    color: #fff !important;
-    stroke-width: 2.25 !important;
-    filter: drop-shadow(0 8px 18px rgba(0,0,0,.12)) !important;
-  }
-
-  .mobile-action-card span {
-    display: block !important;
-    color: #fff !important;
-    font-size: clamp(20px, 4.4vw, 27px) !important;
-    line-height: 1.08 !important;
-    font-weight: 850 !important;
-    letter-spacing: -0.025em !important;
-    text-shadow: 0 10px 24px rgba(0,0,0,.14) !important;
-  }
-
-  .mobile-action-card-primary {
-    background: linear-gradient(135deg, #2e7dff 0%, #1667df 55%, #0b4fb6 100%) !important;
-  }
-
-  .mobile-action-card-success {
-    background: linear-gradient(135deg, #52bd69 0%, #35a956 55%, #248a43 100%) !important;
-  }
-
-  .mobile-action-card-danger {
-    background: linear-gradient(135deg, #ef725f 0%, #dc5b4f 56%, #c94c45 100%) !important;
-  }
-
-  .mobile-action-card-warning {
-    background: linear-gradient(135deg, #f0bd62 0%, #e5a33f 55%, #d48925 100%) !important;
-  }
-
-  .mobile-action-card-neutral {
-    background: linear-gradient(135deg, #8b97a8 0%, #728091 55%, #5f6b79 100%) !important;
-  }
-
-  .mobile-inline-actions.mobile-project-quick-actions {
-    display: grid !important;
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    gap: 12px !important;
-    margin-top: 16px !important;
-  }
-
-  .mobile-secondary-button,
-  .mobile-primary-button,
-  .mobile-danger-button {
-    min-height: 62px !important;
-    border-radius: 22px !important;
-    font-size: 16px !important;
-    font-weight: 820 !important;
-    letter-spacing: -0.015em !important;
-    box-shadow: 0 12px 28px rgba(20,54,103,.10) !important;
-  }
-
-  .mobile-secondary-button {
-    border: 1px solid rgba(199,217,246,.9) !important;
-    color: #10203e !important;
-    background: rgba(255,255,255,.96) !important;
-  }
-
-  .mobile-primary-button {
-    border: 1px solid rgba(255,255,255,.28) !important;
-    color: #fff !important;
-    background: linear-gradient(135deg, #2e7dff, #1667df) !important;
-  }
-
-  .mobile-danger-button {
-    border: 1px solid rgba(255,255,255,.28) !important;
-    color: #fff !important;
-    background: linear-gradient(135deg, #ef725f, #dc4f43) !important;
-  }
-
-  .premium-dashboard-actions {
-    gap: 12px !important;
-  }
-
-  .premium-dashboard-action-card {
-    min-height: 98px !important;
-    border-radius: 26px !important;
+    min-height: 150px !important;
+    border-radius: 28px !important;
   }
 }
 
