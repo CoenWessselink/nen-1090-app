@@ -1,4 +1,329 @@
-/* Premium Dashboard Reference Layout — SSOT based on approved attachment. */
+/* Premium Dashboard Reference Layout — SSOT based on approved attachment.
+   Visual-only CSS. Base styles intentionally live outside media queries so
+   desktop/tablet never fall back to unstyled dashboard buttons. */
+
+.premium-dashboard-stack {
+  display: grid;
+  gap: 16px;
+  width: 100%;
+  padding-bottom: 36px;
+}
+
+.premium-dashboard-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 68px minmax(0, 1fr) minmax(130px, 190px);
+  grid-template-rows: auto auto minmax(0, 1fr);
+  column-gap: 22px;
+  align-items: start;
+  min-height: 150px;
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, .32);
+  border-radius: 28px;
+  padding: 24px 26px 20px;
+  color: #fff;
+  text-align: left;
+  box-shadow: 0 18px 42px rgba(16, 45, 90, .18), inset 0 1px 0 rgba(255, 255, 255, .28);
+  isolation: isolate;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.premium-dashboard-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background:
+    radial-gradient(circle at 22% 18%, rgba(255, 255, 255, .22), transparent 27%),
+    linear-gradient(135deg, rgba(255, 255, 255, .09), transparent 58%);
+  pointer-events: none;
+}
+
+.premium-dashboard-card::after {
+  content: '';
+  position: absolute;
+  right: 18px;
+  bottom: 16px;
+  width: 168px;
+  height: 112px;
+  opacity: .12;
+  z-index: -1;
+  pointer-events: none;
+  background-image: radial-gradient(rgba(255, 255, 255, .58) 1px, transparent 1.5px);
+  background-size: 10px 10px;
+}
+
+.premium-dashboard-card:hover,
+.premium-dashboard-action-card:hover {
+  transform: translateY(-1px);
+}
+
+.premium-dashboard-card:focus-visible,
+.premium-dashboard-action-card:focus-visible {
+  outline: 3px solid rgba(20, 104, 232, .28);
+  outline-offset: 3px;
+}
+
+.premium-dashboard-card-danger {
+  background: linear-gradient(135deg, #ff6651 0%, #ed3327 56%, #d72d21 100%);
+}
+
+.premium-dashboard-card-warning {
+  background: linear-gradient(135deg, #ffb23c 0%, #fb9315 52%, #ed7904 100%);
+}
+
+.premium-dashboard-card-primary {
+  background: linear-gradient(135deg, #2e7dff 0%, #075fdf 52%, #0345ad 100%);
+}
+
+.premium-dashboard-card-success {
+  background: linear-gradient(135deg, #35c989 0%, #149760 52%, #087244 100%);
+}
+
+.premium-dashboard-icon {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 22px;
+  color: #fff;
+  background: rgba(255, 255, 255, .16);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .45), 0 13px 28px rgba(0, 0, 0, .12);
+  z-index: 1;
+}
+
+.premium-dashboard-icon svg {
+  width: 32px;
+  height: 32px;
+  stroke-width: 2.25;
+}
+
+.premium-dashboard-copy {
+  display: contents;
+}
+
+.premium-dashboard-title {
+  grid-column: 2 / 4;
+  grid-row: 1;
+  align-self: end;
+  min-width: 0;
+  padding-right: 58px;
+  font-size: clamp(22px, 3.4vw, 30px);
+  line-height: 1.05;
+  font-weight: 850;
+  letter-spacing: -0.025em;
+  color: #fff;
+}
+
+.premium-dashboard-subtitle {
+  grid-column: 2 / 4;
+  grid-row: 2;
+  min-width: 0;
+  margin-top: 7px;
+  padding-right: 58px;
+  font-size: clamp(15px, 2.1vw, 18px);
+  line-height: 1.2;
+  font-weight: 520;
+  color: rgba(255, 255, 255, .80);
+}
+
+.premium-dashboard-value {
+  grid-column: 2;
+  grid-row: 3;
+  align-self: end;
+  margin-top: 12px;
+  color: #fff;
+  font-size: clamp(58px, 9vw, 78px);
+  line-height: .82;
+  font-weight: 900;
+  letter-spacing: -0.07em;
+  text-shadow: 0 12px 30px rgba(0, 0, 0, .13);
+  z-index: 1;
+}
+
+.premium-dashboard-more {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  display: grid;
+  place-items: center;
+  min-width: 40px;
+  height: 31px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, .13);
+  color: rgba(255, 255, 255, .9);
+  font-size: 16px;
+  letter-spacing: 2px;
+  line-height: 1;
+  z-index: 2;
+}
+
+.premium-dashboard-visual {
+  position: absolute;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.premium-dashboard-card-bars .premium-dashboard-visual {
+  right: 42px;
+  bottom: 24px;
+  width: 190px;
+  height: 86px;
+  opacity: .34;
+  background:
+    linear-gradient(28deg, transparent 0 54%, rgba(255, 255, 255, .42) 55% 57%, transparent 58%),
+    radial-gradient(circle at 91% 8%, rgba(255, 255, 255, .76) 0 6px, transparent 7px),
+    linear-gradient(to top, rgba(255, 255, 255, .50) 0 44%, transparent 44%) 0 100% / 19px 56px no-repeat,
+    linear-gradient(to top, rgba(255, 255, 255, .50) 0 56%, transparent 56%) 36px 100% / 19px 68px no-repeat,
+    linear-gradient(to top, rgba(255, 255, 255, .50) 0 70%, transparent 70%) 72px 100% / 19px 82px no-repeat,
+    linear-gradient(to top, rgba(255, 255, 255, .50) 0 86%, transparent 86%) 108px 100% / 19px 98px no-repeat,
+    linear-gradient(to top, rgba(255, 255, 255, .50) 0 100%, transparent 100%) 144px 100% / 19px 104px no-repeat;
+}
+
+.premium-dashboard-card-donut .premium-dashboard-visual {
+  right: 54px;
+  bottom: 25px;
+  width: 118px;
+  height: 118px;
+  border-radius: 50%;
+  border: 25px solid rgba(255, 255, 255, .27);
+  border-top-color: rgba(255, 255, 255, .78);
+  border-right-color: rgba(255, 255, 255, .58);
+  transform: rotate(28deg);
+  opacity: .72;
+}
+
+.premium-dashboard-card-shield .premium-dashboard-visual {
+  right: 58px;
+  bottom: 22px;
+  width: 110px;
+  height: 110px;
+  opacity: .18;
+  border: 10px solid rgba(255, 255, 255, .54);
+  border-radius: 32px 32px 46px 46px;
+  transform: rotate(45deg) skew(-6deg, -6deg);
+}
+
+.premium-dashboard-card-line .premium-dashboard-visual {
+  right: 32px;
+  bottom: 24px;
+  width: 230px;
+  height: 100px;
+  opacity: .36;
+  background:
+    linear-gradient(145deg, transparent 0 25%, rgba(255, 255, 255, .50) 25% 28%, transparent 28% 48%, rgba(255, 255, 255, .50) 48% 51%, transparent 51% 72%, rgba(255, 255, 255, .50) 72% 75%, transparent 75%),
+    radial-gradient(circle at 12% 74%, rgba(255, 255, 255, .70) 0 6px, transparent 7px),
+    radial-gradient(circle at 42% 44%, rgba(255, 255, 255, .70) 0 6px, transparent 7px),
+    radial-gradient(circle at 66% 65%, rgba(255, 255, 255, .70) 0 6px, transparent 7px),
+    radial-gradient(circle at 90% 24%, rgba(255, 255, 255, .70) 0 6px, transparent 7px);
+}
+
+.premium-dashboard-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 2px;
+}
+
+.premium-dashboard-action-card {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+  min-height: 108px;
+  width: 100%;
+  border: 1px solid rgba(199, 217, 246, .86);
+  border-radius: 28px;
+  padding: 20px 22px;
+  background: rgba(255, 255, 255, .96);
+  box-shadow: 0 14px 34px rgba(20, 54, 103, .10);
+  color: #0f172a;
+  text-align: left;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.premium-dashboard-action-icon {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 19px;
+  color: #145df4;
+  background: #fff;
+  box-shadow: 0 10px 26px rgba(15, 23, 42, .08);
+}
+
+.premium-dashboard-action-copy {
+  min-width: 0;
+}
+
+.premium-dashboard-action-title {
+  display: block;
+  color: #0f172a;
+  font-size: 22px;
+  line-height: 1.05;
+  font-weight: 850;
+  letter-spacing: -0.025em;
+}
+
+.premium-dashboard-action-subtitle {
+  display: block;
+  margin-top: 6px;
+  color: #1f2937;
+  font-size: 16px;
+  line-height: 1.2;
+  font-weight: 500;
+}
+
+.premium-dashboard-action-value {
+  display: block;
+  margin-top: 6px;
+  color: #0f172a;
+  font-size: 48px;
+  line-height: .9;
+  font-weight: 900;
+  letter-spacing: -0.06em;
+}
+
+@media (min-width: 1025px) {
+  .premium-dashboard-stack {
+    max-width: 1180px;
+    margin: 0 auto;
+    gap: 18px;
+  }
+
+  .premium-dashboard-card {
+    min-height: 166px;
+    grid-template-columns: 76px minmax(0, 1fr) minmax(190px, 260px);
+    padding: 28px 32px 24px;
+    border-radius: 32px;
+  }
+
+  .premium-dashboard-icon {
+    width: 70px;
+    height: 70px;
+    border-radius: 24px;
+  }
+
+  .premium-dashboard-actions {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .premium-dashboard-action-card {
+    grid-template-columns: 1fr;
+    justify-items: start;
+    align-content: start;
+    min-height: 150px;
+    padding: 24px;
+  }
+}
 
 @media (max-width: 1024px) {
   .mobile-page-header {
@@ -16,250 +341,9 @@
     padding-right: 22px !important;
   }
 
-  .premium-dashboard-stack {
-    display: grid;
-    gap: 16px;
-    padding-bottom: 36px;
-  }
-
-  .premium-dashboard-card {
-    position: relative;
-    display: grid;
-    grid-template-columns: 68px minmax(0, 1fr) 190px;
-    grid-template-rows: auto auto 1fr;
-    column-gap: 22px;
-    min-height: 150px;
-    width: 100%;
-    overflow: hidden;
-    border: 1px solid rgba(255,255,255,.32);
-    border-radius: 28px;
-    padding: 24px 26px 20px;
-    color: #fff;
-    text-align: left;
-    box-shadow: 0 18px 42px rgba(16, 45, 90, .18), inset 0 1px 0 rgba(255,255,255,.28);
-    isolation: isolate;
-  }
-
-  .premium-dashboard-card::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    z-index: -2;
-    background: radial-gradient(circle at 22% 18%, rgba(255,255,255,.22), transparent 27%), linear-gradient(135deg, rgba(255,255,255,.09), transparent 58%);
-  }
-
-  .premium-dashboard-card::after {
-    content: '';
-    position: absolute;
-    right: 18px;
-    bottom: 16px;
-    width: 168px;
-    height: 112px;
-    opacity: .12;
-    z-index: -1;
-    pointer-events: none;
-    background-image: radial-gradient(rgba(255,255,255,.58) 1px, transparent 1.5px);
-    background-size: 10px 10px;
-  }
-
-  .premium-dashboard-card-danger { background: linear-gradient(135deg, #ff6651 0%, #ed3327 56%, #d72d21 100%); }
-  .premium-dashboard-card-warning { background: linear-gradient(135deg, #ffb23c 0%, #fb9315 52%, #ed7904 100%); }
-  .premium-dashboard-card-primary { background: linear-gradient(135deg, #2e7dff 0%, #075fdf 52%, #0345ad 100%); }
-  .premium-dashboard-card-success { background: linear-gradient(135deg, #35c989 0%, #149760 52%, #087244 100%); }
-
-  .premium-dashboard-icon {
-    grid-column: 1;
-    grid-row: 1 / span 2;
-    display: grid;
-    place-items: center;
-    width: 64px;
-    height: 64px;
-    border-radius: 22px;
-    color: #fff;
-    background: rgba(255,255,255,.16);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.45), 0 13px 28px rgba(0,0,0,.12);
-  }
-
-  .premium-dashboard-icon svg {
-    width: 32px;
-    height: 32px;
-    stroke-width: 2.25;
-  }
-
-  .premium-dashboard-copy {
-    display: contents;
-  }
-
-  .premium-dashboard-title {
-    grid-column: 2 / 4;
-    grid-row: 1;
-    align-self: end;
-    padding-right: 58px;
-    font-size: clamp(22px, 4.6vw, 28px);
-    line-height: 1.05;
-    font-weight: 850;
-    letter-spacing: -0.025em;
-    color: #fff;
-  }
-
-  .premium-dashboard-subtitle {
-    grid-column: 2 / 4;
-    grid-row: 2;
-    margin-top: 7px;
-    padding-right: 58px;
-    font-size: clamp(15px, 3.25vw, 18px);
-    line-height: 1.2;
-    font-weight: 520;
-    color: rgba(255,255,255,.80);
-  }
-
-  .premium-dashboard-value {
-    grid-column: 2;
-    grid-row: 3;
-    align-self: end;
-    margin-top: 12px;
-    color: #fff;
-    font-size: clamp(58px, 13.8vw, 76px);
-    line-height: .82;
-    font-weight: 900;
-    letter-spacing: -0.07em;
-    text-shadow: 0 12px 30px rgba(0,0,0,.13);
-  }
-
-  .premium-dashboard-more {
-    position: absolute;
-    top: 24px;
-    right: 24px;
-    display: grid;
-    place-items: center;
-    min-width: 40px;
-    height: 31px;
-    border-radius: 16px;
-    background: rgba(255,255,255,.13);
-    color: rgba(255,255,255,.9);
-    font-size: 16px;
-    letter-spacing: 2px;
-    line-height: 1;
-  }
-
-  .premium-dashboard-visual {
-    position: absolute;
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  .premium-dashboard-card-bars .premium-dashboard-visual {
-    right: 42px;
-    bottom: 24px;
-    width: 190px;
-    height: 86px;
-    opacity: .34;
-    background:
-      linear-gradient(28deg, transparent 0 54%, rgba(255,255,255,.42) 55% 57%, transparent 58%),
-      radial-gradient(circle at 91% 8%, rgba(255,255,255,.76) 0 6px, transparent 7px),
-      linear-gradient(to top, rgba(255,255,255,.50) 0 44%, transparent 44%) 0 100% / 19px 56px no-repeat,
-      linear-gradient(to top, rgba(255,255,255,.50) 0 56%, transparent 56%) 36px 100% / 19px 68px no-repeat,
-      linear-gradient(to top, rgba(255,255,255,.50) 0 70%, transparent 70%) 72px 100% / 19px 82px no-repeat,
-      linear-gradient(to top, rgba(255,255,255,.50) 0 86%, transparent 86%) 108px 100% / 19px 98px no-repeat,
-      linear-gradient(to top, rgba(255,255,255,.50) 0 100%, transparent 100%) 144px 100% / 19px 104px no-repeat;
-  }
-
-  .premium-dashboard-card-donut .premium-dashboard-visual {
-    right: 54px;
-    bottom: 25px;
-    width: 118px;
-    height: 118px;
-    border-radius: 50%;
-    border: 25px solid rgba(255,255,255,.27);
-    border-top-color: rgba(255,255,255,.78);
-    border-right-color: rgba(255,255,255,.58);
-    transform: rotate(28deg);
-    opacity: .72;
-  }
-
-  .premium-dashboard-card-shield .premium-dashboard-visual {
-    right: 58px;
-    bottom: 22px;
-    width: 110px;
-    height: 110px;
-    opacity: .18;
-    border: 10px solid rgba(255,255,255,.54);
-    border-radius: 32px 32px 46px 46px;
-    transform: rotate(45deg) skew(-6deg, -6deg);
-  }
-
-  .premium-dashboard-card-line .premium-dashboard-visual {
-    right: 32px;
-    bottom: 24px;
-    width: 230px;
-    height: 100px;
-    opacity: .36;
-    background:
-      linear-gradient(145deg, transparent 0 25%, rgba(255,255,255,.50) 25% 28%, transparent 28% 48%, rgba(255,255,255,.50) 48% 51%, transparent 51% 72%, rgba(255,255,255,.50) 72% 75%, transparent 75%),
-      radial-gradient(circle at 12% 74%, rgba(255,255,255,.70) 0 6px, transparent 7px),
-      radial-gradient(circle at 42% 44%, rgba(255,255,255,.70) 0 6px, transparent 7px),
-      radial-gradient(circle at 66% 65%, rgba(255,255,255,.70) 0 6px, transparent 7px),
-      radial-gradient(circle at 90% 24%, rgba(255,255,255,.70) 0 6px, transparent 7px);
-  }
-
   .premium-dashboard-actions {
-    display: grid;
+    grid-template-columns: 1fr;
     gap: 14px;
-    margin-top: 2px;
-  }
-
-  .premium-dashboard-action-card {
-    display: grid;
-    grid-template-columns: 58px minmax(0, 1fr);
-    gap: 16px;
-    align-items: center;
-    min-height: 108px;
-    width: 100%;
-    border: 1px solid rgba(199,217,246,.86);
-    border-radius: 28px;
-    padding: 20px 22px;
-    background: rgba(255,255,255,.96);
-    box-shadow: 0 14px 34px rgba(20,54,103,.10);
-    color: #0f172a;
-    text-align: left;
-  }
-
-  .premium-dashboard-action-icon {
-    display: grid;
-    place-items: center;
-    width: 54px;
-    height: 54px;
-    border-radius: 19px;
-    background: #fff;
-    box-shadow: 0 10px 26px rgba(15,23,42,.08);
-  }
-
-  .premium-dashboard-action-title {
-    display: block;
-    color: #0f172a;
-    font-size: 22px;
-    line-height: 1.05;
-    font-weight: 850;
-    letter-spacing: -0.025em;
-  }
-
-  .premium-dashboard-action-subtitle {
-    display: block;
-    margin-top: 6px;
-    color: #1f2937;
-    font-size: 16px;
-    line-height: 1.2;
-    font-weight: 500;
-  }
-
-  .premium-dashboard-action-value {
-    display: block;
-    margin-top: 6px;
-    color: #0f172a;
-    font-size: 48px;
-    line-height: .9;
-    font-weight: 900;
-    letter-spacing: -0.06em;
   }
 }
 
@@ -334,10 +418,27 @@
     transform-origin: right bottom;
   }
 
-  .premium-dashboard-card-bars .premium-dashboard-visual { right: 18px; bottom: 15px; }
-  .premium-dashboard-card-donut .premium-dashboard-visual { right: 22px; bottom: 15px; transform: rotate(28deg) scale(.74); }
-  .premium-dashboard-card-shield .premium-dashboard-visual { right: 24px; bottom: 14px; transform: rotate(45deg) skew(-6deg, -6deg) scale(.74); }
-  .premium-dashboard-card-line .premium-dashboard-visual { right: 16px; bottom: 14px; }
+  .premium-dashboard-card-bars .premium-dashboard-visual {
+    right: 18px;
+    bottom: 15px;
+  }
+
+  .premium-dashboard-card-donut .premium-dashboard-visual {
+    right: 22px;
+    bottom: 15px;
+    transform: rotate(28deg) scale(.74);
+  }
+
+  .premium-dashboard-card-shield .premium-dashboard-visual {
+    right: 24px;
+    bottom: 14px;
+    transform: rotate(45deg) skew(-6deg, -6deg) scale(.74);
+  }
+
+  .premium-dashboard-card-line .premium-dashboard-visual {
+    right: 16px;
+    bottom: 14px;
+  }
 
   .premium-dashboard-action-card {
     grid-template-columns: 48px minmax(0, 1fr);
