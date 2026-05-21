@@ -1,7 +1,7 @@
 /* CE report print color parity, readability and performance fixes.
-   Chrome can suppress CSS backgrounds in print preview. The cover therefore uses
-   multiple non-background paint mechanisms: inset shadow, borders and high-specificity
-   selectors. */
+   The report preview in the app is the visual SSOT. Chrome print preview can
+   suppress pseudo-element backgrounds unless they are explicitly made visible,
+   so the cover uses pseudo-elements, direct shadows and print-color-adjust. */
 
 .rpt-page-wrap,
 .rpt-page-wrap *,
@@ -43,6 +43,13 @@
     print-color-adjust: exact !important;
   }
 
+  html body .rpt-page-wrap::before,
+  html body .rpt-page-wrap::after,
+  html body .rpt-page-wrap *::before,
+  html body .rpt-page-wrap *::after {
+    visibility: visible !important;
+  }
+
   html body .rpt-page.rpt-cover {
     position: relative !important;
     width: 210mm !important;
@@ -60,9 +67,13 @@
     inset: 0 0 auto 0 !important;
     z-index: 0 !important;
     display: block !important;
+    visibility: visible !important;
     width: 210mm !important;
     height: 102mm !important;
-    background: #0b2544 !important;
+    background:
+      linear-gradient(135deg, rgba(37, 99, 235, .10) 0 32%, transparent 32% 100%),
+      radial-gradient(circle at 18% 20%, rgba(59, 130, 246, .18), transparent 30%),
+      linear-gradient(135deg, #071a31 0%, #0b2544 58%, #0e315f 100%) !important;
     border-top: 102mm solid #0b2544 !important;
     border-right: 0 !important;
     box-sizing: border-box !important;
@@ -77,6 +88,7 @@
     height: 1.6mm !important;
     z-index: 0 !important;
     display: block !important;
+    visibility: visible !important;
     background: #2563eb !important;
     border-top: 1.6mm solid #2563eb !important;
   }
@@ -218,9 +230,9 @@
   }
 
   html body .rpt-page.rpt-cover .rpt-meta-table thead th {
-    background: #eef6ff !important;
-    color: #0f172a !important;
-    border-bottom: 1px solid #dbe5ef !important;
+    background: #08213d !important;
+    color: #ffffff !important;
+    border-bottom: 0 !important;
     font-size: 7pt !important;
     padding: 2.5mm 4mm !important;
   }
