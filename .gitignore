@@ -27,3 +27,27 @@ temp/
 .wrangler/
 NEN1090_FINAL_COMPLETENESS_CHECKLIST_FILLED.txt
 PHASE1_AUTH_MERGE_NOTES.txt
+
+# Local/generated build handoff notes: keep in docs/archive/root-notes when needed.
+BUILD_*.txt
+BUILD*.txt
+PHASE*.txt
+FASE*.txt
+PUSH_COMMAND*.txt
+API_PUSH_COMMANDS.txt
+APP_PUSH_COMMANDS.txt
+TEST_COMMAND*.txt
+*_NOTES.txt
+*_AUDIT.txt
+*_STATUS.txt
+*_TESTPLAN.txt
+*_PROOF*.txt
+*_HANDOFF*.txt
+README_FIX*.txt
+README_PHASE*.txt
+VERBETERPUNTEN*.txt
+HERSTELSET*.txt
+CONTROLERAPPORT*.txt
+LEESMIJ*.txt
+APPLY_STEPS.txt
+README_V2.txt
