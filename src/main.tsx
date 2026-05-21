@@ -15,12 +15,14 @@ import '@/styles/premium-tile-reference.css';
 import '@/styles/premium-app-consistency.css';
 import '@/styles/premium-masterdata-cleanup.css';
 import '@/styles/ce-report-print-color-fix.css';
+import { installCeReportPdfTitle } from '@/lib/ce-report-pdf-title';
 import { installCeReportPrintAutostart } from '@/lib/ce-report-print-autostart';
 import { installFrontendEnglish } from '@/lib/frontend-english';
 import { initSentry } from '@/lib/sentry';
 
 void initSentry();
 installFrontendEnglish();
+installCeReportPdfTitle();
 installCeReportPrintAutostart();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
