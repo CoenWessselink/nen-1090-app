@@ -31,27 +31,6 @@ type UiState = {
   requestCreateProject: () => void;
 };
 
-const seed = () => new Date().toISOString();
-
-const initialNotifications: NotificationItem[] = [
-  {
-    id: 'seed-1',
-    title: 'Backend koppeling actief',
-    description: 'Frontend gebruikt de bestaande API-configuratie en health-checks.',
-    tone: 'success',
-    createdAt: seed(),
-    read: false,
-  },
-  {
-    id: 'seed-2',
-    title: 'Mobiele shell beschikbaar',
-    description: 'Sidebar, topbar en bottom navigation zijn afgestemd op tablet en mobiel.',
-    tone: 'info',
-    createdAt: seed(),
-    read: false,
-  },
-];
-
 function createNotification(item: Omit<NotificationItem, 'id' | 'createdAt' | 'read'>): NotificationItem {
   return {
     ...item,
@@ -66,7 +45,7 @@ export const useUiStore = create<UiState>((set) => ({
   globalSearch: '',
   commandPaletteOpen: false,
   notificationCenterOpen: false,
-  notifications: initialNotifications,
+  notifications: [],
   toasts: [],
   createProjectRequestNonce: 0,
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
