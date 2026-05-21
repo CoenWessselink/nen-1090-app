@@ -205,11 +205,86 @@
   font-weight: 500;
 }
 
+.auth-layout.auth-layout-premium .auth-layout:not(.auth-layout-premium) {
+  min-height: 0 !important;
+  width: 100% !important;
+  display: grid !important;
+  place-items: center !important;
+  overflow: visible !important;
+  background: transparent !important;
+  color: #1e293b !important;
+}
+
+.auth-layout.auth-layout-premium .auth-layout:not(.auth-layout-premium) .auth-card {
+  width: min(460px, 100%) !important;
+  padding: 44px 44px 36px !important;
+  border-radius: 20px !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #1e293b !important;
+  background: #fff !important;
+  box-shadow: 0 4px 6px -1px rgba(0,0,0,.1), 0 10px 36px -4px rgba(0,0,0,.08) !important;
+  backdrop-filter: none !important;
+}
+
+.auth-layout.auth-layout-premium .auth-layout:not(.auth-layout-premium) .eyebrow {
+  display: inline-flex !important;
+  margin-bottom: 24px !important;
+  padding: 6px 14px !important;
+  border-radius: 100px !important;
+  color: #2563eb !important;
+  background: #eff6ff !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: .5px !important;
+}
+
+.auth-layout.auth-layout-premium .auth-layout:not(.auth-layout-premium) h1 {
+  color: #0f172a !important;
+}
+
+.auth-layout.auth-layout-premium .auth-layout:not(.auth-layout-premium) p,
+.auth-layout.auth-layout-premium .auth-layout:not(.auth-layout-premium) .auth-password-requirements,
+.auth-layout.auth-layout-premium .auth-layout:not(.auth-layout-premium) .auth-password-requirements div {
+  color: #64748b !important;
+}
+
+.auth-layout.auth-layout-premium .auth-layout:not(.auth-layout-premium) .auth-password-requirements strong {
+  color: #0f172a !important;
+}
+
+.auth-layout.auth-layout-premium .auth-layout:not(.auth-layout-premium) label span,
+.auth-layout.auth-layout-premium .auth-layout:not(.auth-layout-premium) .form-grid label span {
+  color: #334155 !important;
+}
+
+.auth-layout.auth-layout-premium .auth-layout:not(.auth-layout-premium) input {
+  color: #1e293b !important;
+  background: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+.auth-layout.auth-layout-premium .auth-layout:not(.auth-layout-premium) a {
+  color: #2563eb !important;
+}
+
+.auth-layout.auth-layout-premium .auth-layout:not(.auth-layout-premium) button[type='submit'] {
+  width: 100% !important;
+  min-height: 50px !important;
+  border: 0 !important;
+  border-radius: 10px !important;
+  color: #fff !important;
+  background: #2563eb !important;
+  box-shadow: 0 1px 2px rgba(37, 99, 235, .2), 0 4px 12px rgba(37, 99, 235, .15) !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+}
+
 @media (max-width: 640px) {
   .auth-premium-main {
     padding: 24px 16px;
   }
-  .auth-layout.auth-layout-premium .auth-card-premium {
+  .auth-layout.auth-layout-premium .auth-card-premium,
+  .auth-layout.auth-layout-premium .auth-layout:not(.auth-layout-premium) .auth-card {
     padding: 32px 24px 28px !important;
   }
   .auth-layout.auth-layout-premium h1 {
