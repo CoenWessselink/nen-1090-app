@@ -48,7 +48,7 @@ export const appRouteMeta = [
   { path: '/projecten', label: 'Projecten', icon: FolderKanban, description: 'Projecten', showInSidebar: true, keywords: ['projecten', 'projects', 'project'] },
   { path: '/rapportage', label: 'Rapportages', icon: FileCheck2, description: 'Rapportages', showInSidebar: true, keywords: ['rapportage', 'reports', 'ce'] },
   { path: '/settings-v2', label: 'Instellingen', icon: Settings, description: 'Instellingen', showInSidebar: true, keywords: ['instellingen', 'settings', 'v2'] },
-  { path: '/billing', label: 'Facturatie', icon: CreditCard, description: 'Facturatie', roles: ROLES, showInSidebar: true, keywords: ['billing', 'facturatie', 'mollie'] },
+  { path: '/billing', label: 'Facturatie', icon: CreditCard, description: 'Facturatie', showInSidebar: true, keywords: ['billing', 'facturatie', 'mollie'] },
   { path: '/superadmin', label: 'Superadmin', icon: Building2, description: 'Platformbeheer', roles: ROLES, showInSidebar: true, keywords: ['superadmin', 'platformbeheer', 'tenant'] },
 ];
 
