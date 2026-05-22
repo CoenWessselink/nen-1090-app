@@ -29,3 +29,36 @@
     contain-intrinsic-size: 420px;
   }
 }
+
+@media print {
+  /* Generic app-shell print cleanup sets every descendant to white. The cover
+     is dark in the app SSOT, so its non-card descendants must remain clear. */
+  .rpt-page.rpt-cover .rpt-header,
+  .rpt-page.rpt-cover .rpt-header-left,
+  .rpt-page.rpt-cover .rpt-header-center,
+  .rpt-page.rpt-cover .rpt-header-center span,
+  .rpt-page.rpt-cover .rpt-product-logo,
+  .rpt-page.rpt-cover .rpt-product-logo-title,
+  .rpt-page.rpt-cover .rpt-product-logo-title b,
+  .rpt-page.rpt-cover .rpt-cover-body,
+  .rpt-page.rpt-cover .rpt-cover-body h1,
+  .rpt-page.rpt-cover .rpt-cover-norms,
+  .rpt-page.rpt-cover .rpt-cover-status {
+    background-color: transparent !important;
+    background-image: none !important;
+  }
+
+  .rpt-page.rpt-cover .rpt-header-center,
+  .rpt-page.rpt-cover .rpt-header-center span,
+  .rpt-page.rpt-cover .rpt-product-logo-title,
+  .rpt-page.rpt-cover .rpt-cover-body h1,
+  .rpt-page.rpt-cover .rpt-cover-norms {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+  }
+
+  .rpt-page.rpt-cover .rpt-product-logo-title b {
+    color: #2f7cff !important;
+    -webkit-text-fill-color: #2f7cff !important;
+  }
+}
