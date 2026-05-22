@@ -11,11 +11,17 @@ function isCeReportRoute() {
   return window.location.pathname.replace(/\/+$/, '').endsWith('/ce-report');
 }
 
+function stripControlCharacters(value: string) {
+  return Array.from(value).filter((character) => {
+    const codePoint = character.codePointAt(0);
+    return codePoint !== undefined && codePoint >= 32 && codePoint !== 127;
+  }).join('');
+}
+
 function cleanFilenamePart(value: string) {
-  return value
-    .normalize('NFKD')
+  return stripControlCharacters(value.normalize('NFKD'))
     .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[<>:"/\\|?*\x00-\x1F]/g, ' ')
+    .replace(/[<>:"/\\|?*]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
     .replace(/[. ]+$/g, '')
