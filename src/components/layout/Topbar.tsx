@@ -1,11 +1,22 @@
 import { Bell, LogOut, Menu, Plus, Search } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getCompanySettings } from '@/api/settings';
 import { useUiStore } from '@/app/store/ui-store';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useSession } from '@/app/session/SessionContext';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { SearchResultsPopover } from '@/components/search/SearchResultsPopover';
+
+function companyDisplayName(settings: Record<string, unknown> | null, fallback: string) {
+  if (!settings) return fallback;
+  for (const key of ['display_name', 'company_name', 'legal_name', 'name', 'tenant_name', 'manufacturer_name']) {
+    const value = settings[key];
+    if (value !== null && value !== undefined && String(value).trim()) return String(value).trim();
+  }
+  return fallback;
+}
 
 export function Topbar() {
   const navigate = useNavigate();
@@ -21,7 +32,30 @@ export function Topbar() {
   } = useUiStore();
 
   const session = useSession();
+  const tenantFallback = session.user?.tenant || 'unknown tenant';
+  const [tenantCompanyName, setTenantCompanyName] = useState(tenantFallback);
   const unreadCount = notifications.filter((item) => !item.read).length;
+
+  const refreshCompanyName = useCallback(async () => {
+    try {
+      const settings = await getCompanySettings();
+      setTenantCompanyName(companyDisplayName(settings, tenantFallback));
+    } catch {
+      setTenantCompanyName(tenantFallback);
+    }
+  }, [tenantFallback]);
+
+  useEffect(() => {
+    setTenantCompanyName(tenantFallback);
+    void refreshCompanyName();
+
+    const onWindowFocus = () => {
+      void refreshCompanyName();
+    };
+
+    window.addEventListener('focus', onWindowFocus);
+    return () => window.removeEventListener('focus', onWindowFocus);
+  }, [refreshCompanyName, tenantFallback]);
 
   return (
     <header className="topbar-shell">
@@ -64,7 +98,7 @@ export function Topbar() {
 
           <div className="profile-pill">
             <strong>{session.user?.email || 'Not logged in'}</strong>
-            <span>{`${session.user?.tenant || 'unknown tenant'} · ${session.user?.role || 'no role'}`}</span>
+            <span>{`${tenantCompanyName} · ${session.user?.role || 'no role'}`}</span>
           </div>
 
           <button
