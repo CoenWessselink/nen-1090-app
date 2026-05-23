@@ -12,7 +12,7 @@
 }
 
 @media screen {
-  @supports (padding-top: env(safe-area-inset-top)) {
+  @supports (padding-top: env(safe-area-inset-top)) and (padding-left: max(0px, 1px)) {
     .topbar-shell {
       flex: 0 0 auto !important;
       background: rgba(255, 255, 255, 0.92) !important;
