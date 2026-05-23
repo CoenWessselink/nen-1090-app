@@ -2,86 +2,62 @@
 
 ## Documentstatus
 - Masterpromptversie: 2026-05-23
-- Laatst afgeronde fase: Chat A1 — Volledige audit en uitvoerscope
+- Laatst uitgevoerde fase: Chat A2 — PWA metadata, iconen en previewcontrole
 - Repository: `CoenWessselink/nen-1090-app`
 - Branch: `feat/apple-ios-ipados-pwa-readiness`
 - Baseline `main` SHA: `97ac4466fc7aa5ad88a01d8d4b1d193df147480b`
 - Datum: 2026-05-23 (Europe/Amsterdam)
+- Veiligheidsstatus: geen productiedatawrites; preview uitsluitend read-only zolang staging niet bewezen is.
 
-## Testbeleid A0/A1
-A0 en A1 zijn volgens de SSOT veilige documentatie-/auditfasen. Daarom zijn geen featurewijzigingen, geen deployments, geen runtime logins, geen uploads en geen productiedatamutaties uitgevoerd. A1 is uitgevoerd via de gekoppelde GitHub-repositorytoegang; een lokale read-only clonepoging is mislukt doordat de container geen DNS/netwerktoegang tot GitHub heeft. Dit verhindert de GitHub-API-codeaudit niet, maar betekent dat builds/tests bewust pas worden uitgevoerd wanneer code in A2 of later wordt gewijzigd.
+## Uitvoerbeperking
+De repository is via de gekoppelde GitHub-toegang gelezen en bijgewerkt. Een lokale read-only clonepoging vanuit de uitvoercontainer faalt doordat `github.com` daar niet via DNS bereikbaar is. GitHub toont op de actuele A2-head geen statuschecks of workflowruns. Daardoor worden `npm run typecheck`, `npm run lint:ci` en `npm run build:pages` niet ten onrechte als uitgevoerd of groen aangemerkt; hun bewijs moet worden aangevuld vanuit Cloudflare Pages buildlogs of een eigenaar-run.
 
-## A0 — Uitgevoerde bewijscontroles
-| ID | Controle | Omgeving / bron | Resultaat | Bewijs / conclusie |
+## A0/A1 bewijsstatus
+| Fase | Resultaat | Samenvatting |
+|---|---|---|
+| A0 | PASS | Veilige branch/documentatieset/baseline op featurebranch; geen productie-effect. |
+| A1 | PASS | Audit afgerond; geen bestaande PWA-stack; dubbele proxy/authroute en stagingvereisten als blockers vastgelegd. |
+
+## A2 — Implementatiebewijs
+| ID | Controle | Bron/omgeving | Resultaat | Bewijs / conclusie |
 |---|---|---|---|---|
-| A0-E01 | Repositorytoegang en permissie | GitHub repository `CoenWessselink/nen-1090-app` | PASS | Repository aanwezig; gekoppelde toegang heeft pushrechten. |
-| A0-E02 | Gewenste branch vooraf afwezig | GitHub branch search vóór creatie | PASS | `feat/apple-ios-ipados-pwa-readiness` bestond niet vóór A0. |
-| A0-E03 | Actuele `main` basis verifiëren | GitHub compare | PASS | `97ac4466fc7aa5ad88a01d8d4b1d193df147480b` was identiek aan `main`. |
-| A0-E04 | Veilige branch aanmaken | GitHub branch write | PASS | Branch gemaakt vanaf geverifieerde `main` SHA. |
-| A0-E05 | Scripts inventariseren | `package.json` | PASS | `build`, `build:pages`, `typecheck`, `lint:ci`, Playwright tests en `release:verify` aanwezig. |
-| A0-E06 | Eerste PWA metadata baseline | `index.html`, `vite.config.ts`, standaardmanifestpaden | PASS met open auditpunt | Alleen standaardviewport/titel zichtbaar; geen PWA-plugin/standaardmanifest vastgesteld. |
-| A0-E07 | Shell/modalbaseline | `AppShell.tsx`, `Modal.tsx`, `runtime-mobile-hotfix.css` | PASS met toekomstig verbeterpunt | Portalmodal en één-scrollarchitectuur vastgesteld; safe-area-inset niet vastgesteld. |
-| A0-E08 | Kritieke routes | `routes.tsx` | PASS | CE-report, Billing, Superadmin, Control Center en Tenant 360 routes vastgesteld. |
-| A0-E09 | API-/previewveiligheid | `env.ts`, `client.ts`, Pages proxy, `wrangler.toml` | PASS met blocking veiligheidsregel | Productie-Azure origin in configuratiebaseline; preview geen writes vóór A5. |
-| A0-E10 | Productiewrites voorkomen | Volledige A0-uitvoering | PASS | Alleen documentatie op featurebranch geschreven. |
+| A2-E01 | A1-gate en scope vooraf gecontroleerd | `MASTER-CHECKLIST.md`, `HANDOFF-LATEST.md`, `DECISIONS.md`, `TEST-EVIDENCE.md` | PASS | A1 stond op gereed; A2 mocht uitsluitend metadata/icons/preview uitvoeren. |
+| A2-E02 | Bestaande PWA-stack niet gedupliceerd | A1 audit + A2 diff | PASS | Eén `public/manifest.webmanifest` toegevoegd; geen serviceworker, Workbox of offlinecache toegevoegd. |
+| A2-E03 | Apple/PWA metadata | `index.html` op featurebranch | PASS | `viewport-fit=cover`, branded titel, theme-color, standalone/title/statusbarmetadata, manifestlink en Apple touch-iconlink toegevoegd. |
+| A2-E04 | Webmanifestinhoud | `public/manifest.webmanifest` | PASS | `name`, `short_name`, `start_url`, `scope`, `display: standalone`, kleurvelden en drie PNG icon entries aanwezig. |
+| A2-E05 | Branded iconassets aanwezig | Featurebranch diff + statische assetvalidatie | PASS | SVG en PNG-assets aangemaakt voor 180×180, 192×192, 512×512 en maskable 512×512. |
+| A2-E06 | PNG assetformaten/dimensies | Gegenereerde assetbytes gevalideerd met image parser | PASS | Alle vier PNG-assets zijn geldige PNG RGB-bestanden met exact de bedoelde afmetingen. |
+| A2-E07 | Veilige installatieassetcache | `_headers` | PASS | Manifest `no-cache`; iconen beperkt cachebaar met `max-age=86400, must-revalidate`; geen gevoelige tenantdata/offlinecache. |
+| A2-E08 | Productieveiligheid | Gehele A2-uitvoering | PASS | Geen API-calls voor writes, uploads, Billing- of Superadminmutaties uitgevoerd; proxies ongemoeid gelaten. |
+| A2-E09 | Repository/API-targetbaseline | `wrangler.toml` | PASS met blocker | Repositorybaseline wijst naar productie-Azure; preview mag uitsluitend read-only gebruikt worden totdat staging aantoonbaar is. |
+| A2-E10 | Typecheck/lint/buildbewijs | Beschikbare GitHubstatus + uitvoercontainer | BLOCKED | Geen CI-run/status zichtbaar; lokale clone/build kan niet worden uitgevoerd door DNS-beperking naar GitHub. |
+| A2-E11 | Cloudflare Pages Preview URL/Access/API-target | Beschikbare toegang | BLOCKED | Cloudflare-dashboard/Pages deploymentstatus is niet beschikbaar via de gekoppelde toegang; eigenaar moet URL, Access-status en effective API-target bevestigen. |
+| A2-E12 | Echte iPhone Add-to-Home-Screen | Eigenaar/device vereist | OPEN | Moet na previewdeploy handmatig worden getest: icoon, titel en standalone-start. |
 
-## A1 — Uitgevoerde auditcontroles
-| ID | Controle | Bestanden / bron | Resultaat | Bevinding / impact |
-|---|---|---|---|---|
-| A1-E01 | A0-gate en handoff inlezen | `MASTER-CHECKLIST.md`, `HANDOFF-LATEST.md`, `DECISIONS.md`, `TEST-EVIDENCE.md` | PASS | A0 was groen; A1 mocht uitsluitend auditdocumentatie uitvoeren. |
-| A1-E02 | Branchcodeauditmethode | GitHub file access; lokale `git clone` read-only geprobeerd | PASS met beperking | GitHub API-audit beschikbaar; lokale clone faalde door netwerk/DNS in container, dus geen lokale build in documentatie-only A1. |
-| A1-E03 | Apple metadata/icon/manifest/service-worker zoekcontrole | `index.html`, `vite.config.ts`, `package.json`; repozoektermen `apple-touch-icon`, `manifest`, `serviceWorker`, `registerSW`, `workbox`, `vite-plugin-pwa` | PASS — ontbrekende implementatiescope bevestigd | Geen bestaande PWA-/Apple metadata-, manifest- of service-workerregistratie gevonden in gecontroleerde code; A2 moet één nieuwe veilige metadata/assetslaag bouwen. |
-| A1-E04 | Shellcomponenten | `AppShell.tsx`, `Topbar.tsx`, `Sidebar.tsx`, `MobileTabbar.tsx`, `MobilePageScaffold.tsx` | PASS | Centrale shell- en mobiele header/tabbarintegratiepunten voor A3/A4 geïdentificeerd. |
-| A1-E05 | CSS/modalarchitectuur | `global.css`, `runtime-mobile-hotfix.css`, `src/components/overlays/Modal.tsx`, re-export `src/components/modal/Modal.tsx` | PASS met regressierisico | Één portalmodal; CSS containment wordt voor overlays gecorrigeerd; geen safe-area-insets gevonden. A3 moet centrale safe-area-uitbreiding doen zonder printregressie. |
-| A1-E06 | Projectdocumentupload | `MobileDocumentsPage.tsx`, `documents.ts`, `upload.ts` | PASS met stagingvereiste | Flow en validatie aangetroffen; `upload.ts` kan directe uploadorigin gebruiken via environmentconfig. A5 moet target bewijzen, A6 moet op staging testen. |
-| A1-E07 | Masterdata- en logoupload | `CompanySettingsCard.tsx`, `settings.ts`, `MasterDataManager.tsx`, `entityDocuments.ts`, `masterdata-attachments.ts`, `welders.ts`, `weldCoordinatorAttachments.ts` | PASS met gesplitste flow | Logo, WPS, lasser- en coördinatordocumenten gebruiken afzonderlijke endpoints/modules; A6 vereist aparte testcase per route. |
-| A1-E08 | CE-report route en databron | `routes.tsx`, `CeReportPrintPage.tsx`, `ceAggregateApi.ts` | PASS met blocking architectuurrisico | Route gebruikt CE aggregate endpoint, maar berekent frontend score/status/checklistpresentatie; vóór merge expliciet afhandelen conform backend-SSOT. |
-| A1-E09 | Inspectiestatus SSOT | `WeldInspectionDetailPage.tsx` | PASS met blocking architectuurrisico | Pagina berekent frontend `overall` en verzendt status bij save; bestaande afwijking vastgelegd, niet gewijzigd in A1. |
-| A1-E10 | Billing webfunctionaliteit | `BillingPage.tsx` | PASS met toekomstige iOS-gate | Actieve Mollie-checkout aanwezig; beschermd in Traject A, moet in iOS-build later worden gegated. |
-| A1-E11 | Superadmin/cookie-authroute | `SuperadminControlCenter.tsx`, `auth-store.ts`, `superadminControlCenter.ts` | FAIL-RISK vastgelegd | `/superadmin` stelt handmatig Bearerheader samen met storetoken, terwijl store cookie-marker gebruikt; concreet `Invalid token`-risico voor A7. Control Center gebruikt centrale client maar bevat fallbackaggregatie. |
-| A1-E12 | Pages release- en proxyconfiguratie | `scripts/prepare-release.mjs`, `public/_redirects`, `_headers`, `.env.example`, `wrangler.toml`, `functions/api/[[path]].js`, `functions/api/v1/[[path]].js` | FAIL-RISK vastgelegd | Twee Pages proxyhandlers met afwijkende authflow bestaan; `/api/v1` is standaard frontendtarget. Routeprioriteit/harmonisatie vereist vóór auth/write-tests. |
-| A1-E13 | Cloudflare Preview feitelijke dashboardstatus | Officiële Cloudflare Pages documentatie + beschikbare repositorytoegang | BLOCKED voor dashboardbewijs | Officiële docs bevestigen branchpreview-URLs en dat previews standaard publiek zijn tenzij Access wordt ingeschakeld; concrete projectpreview/Access-status is zonder dashboardtoegang niet verifieerbaar. |
-| A1-E14 | Azure stagingvereisten | Officiële Azure App Service Deployment Slots documentatie | PASS voor scope, BLOCKED voor daadwerkelijke configuratie | Officiële docs bevestigen aparte live hostnames en slot-specific settings; daadwerkelijke staging DB/storage/mail/billingstatus moet in A5 met toegang worden bewezen. |
-| A1-E15 | Productieveiligheid tijdens A1 | Gehele A1-uitvoering | PASS | Uitsluitend read-only inspectie en documentatiecommits; geen productiewrites/deployments. |
-
-## A1 — Officiële platformregels gecontroleerd
-| Platform | Officiële bron gecontroleerd op 2026-05-23 | Relevante auditconclusie |
+## A2 gewijzigde bestanden en commits
+| Bestand | Doel | Commit(s) |
 |---|---|---|
-| Cloudflare Pages Preview Deployments | Cloudflare Docs: `https://developers.cloudflare.com/pages/configuration/preview-deployments/` | Preview deployments wijzigen productie/custom domains niet; preview-URL's zijn standaard publiek; Access policy kan previews afschermen. A2 moet URL en Access-status vastleggen. |
-| Azure App Service Deployment Slots | Microsoft Learn: `https://learn.microsoft.com/en-us/azure/app-service/deploy-staging-slots` | Slot heeft eigen hostname; slots zijn beschikbaar op ondersteunde plans; appsettings/connection strings/storage moeten als slot-specific worden behandeld waar isolatie nodig is. A5 moet de aparte keten bewijzen. |
+| `public/manifest.webmanifest` | Branded standalone manifest | `78ce4124239e40b25ed75915a083787c6cd8bd1d` |
+| `public/icons/app-icon.svg` | Vectorbrowsericon | `4461f06b221bc7c700b707f0c0a02df03bae22e9` |
+| `public/icons/apple-touch-icon-180x180.png`, `icon-192x192.png`, `icon-512x512.png`, `icon-maskable-512x512.png` | Apple/manifest branded PNG-assets | `e3c42899260937ed55709ea4ccee9ae7465f1d30` |
+| `index.html` | Apple/PWA metadata en links | `e912dbabc356ec84ca6d29fdd4b64feeef593a83` |
+| `_headers` | Cache- en manifest content-typepolicy | `34f1834eb644e728523bca4c90f873a34f118ab2` |
+| `docs/apple-distribution/DECISIONS.md` | A2 beslissingen/blockers | `127d659c7344feb66b31241010ac8ce8ea8608c8` |
 
-## Geïdentificeerde bestandsscope voor implementatiefasen
-| Fase | Gecontroleerde of waarschijnlijk aan te passen bestanden/configuratie | Doel |
+## Nog door eigenaar of Cloudflare bewijs te leveren voor A2-gate
+| Controle | Actie | Gevraagde terugmelding zonder secrets |
 |---|---|---|
-| A2 | `index.html`, nieuwe publieke manifest/iconassets; mogelijk `_headers`/release-outputcontrole; Cloudflare Preview status | Apple PWA installability zonder brede offlinecache. |
-| A3 | `runtime-mobile-hotfix.css`; zo nodig `global.css`, `AppShell.tsx`, layoutcomponenten, `MobilePageScaffold.tsx`, `Modal.tsx` | Safe areas en overlays centraal hardenen. |
-| A4 | Shell-/form-/modalcomponenten plus betrokken mobiele/billing/superadmin interfaces | Touch/keyboard/landscape bruikbaarheid. |
-| A5 | Cloudflare/Azure environment; `wrangler.toml`, proxyfiles en config alleen indien noodzakelijk | Geïsoleerde schrijftestketen plus authroutebewijs. |
-| A6 | Projectdocument-, masterdataattachment- en bedrijfslogouploadbestanden | Uploads op Apple-apparaten uitsluitend staging. |
-| A7 | CE-report/PDF, Billing, Superadmin, Control Center, auth/client/proxybestanden indien nodig | Kritieke regressies en SSOT-/authrisico's oplossen of expliciet gatebesluit. |
-| A8 | Alle gewijzigde files plus tests/PR-documentatie | Finale matrix en Pull Request zonder merge. |
+| Cloudflare Preview Deployment | Cloudflare Pages → bestaande appproject → Deployments → branch `feat/apple-ios-ipados-pwa-readiness` openen. | Preview-URL en buildstatus/logresultaat. |
+| Cloudflare Access | Beveilig previewdeployments met Access wanneer bedrijfsdata zichtbaar kan zijn. | `Access actief: JA/NEE`. |
+| API-target | Controleer Preview environment variable/Pages Function upstream. | Alleen hostname/type: `productie` of `staging`; geen tokens/secrets. |
+| Buildcontroles | Deel Cloudflare buildlog waarin relevante npm-build groen is, of voer lokaal uit: `npm run typecheck`; `npm run lint:ci`; `npm run build:pages`. | PASS/FAIL per commando met fouttekst bij FAIL. |
+| iPhone beginschermtest | Safari preview openen → Deel → Zet op beginscherm → openen. | Icoon/titel/startscherm correct: JA/NEE + screenshot bij afwijking. |
 
-## Documentatiecommits tot en met A1
-| Bestand | Reden | Bekende commit-SHA |
-|---|---|---|
-| `docs/apple-distribution/MASTER-CHECKLIST.md` | A0-baseline en gate | `771f374066987e60b697cd2a3936218814e164bd`, `6495eecd134dbb385fef1997da4483b87e1ace9c` |
-| `docs/apple-distribution/DECISIONS.md` | A0-besluiten en A1-uitvoerscope/risico's | `470438e55424b71c0280c4f9d5b89e2b5e635f75`, `fdbeed46822ad251d907113008cd8fffc44506ba` |
-| `docs/apple-distribution/TEST-EVIDENCE.md` | Auditbewijs A0/A1 | Deze commit vult A1-bewijs aan. |
-| `docs/apple-distribution/HANDOFF-LATEST.md` | Handoff per afgeronde fase | Wordt na A1-checklist bijgewerkt. |
-
-## Niet uitgevoerd in A1 — bewust
-| Activiteit | Reden | Eerst toegestane fase |
-|---|---|---|
-| PWA/icon/metadata code wijzigen | A1 is audit-only | A2 |
-| Cloudflare Preview deployment wijzigen/configureren | A1 legt scope vast; A2 realiseert/controleert preview | A2 |
-| Proxy/authcode repareren | A1 wijzigt geen feature/configcode; prioriteit vastgelegd | A5/A7 binnen toegestane gate |
-| Runtime writes/uploads/Billing/Superadminmutaties | Geen stagingisolatie bewezen | A6/A7 na groene A5 |
-| Merge naar `main` | Alleen na review en expliciet akkoord | A9 |
-| Capacitor/Xcode/App Storewerk | Traject A nog niet afgerond | B0/B1 en later |
-
-## Gatebesluit A1
-- Auditstatus: **GEREED EN BEWEZEN** voor uitvoerscope.
-- Functionele codewijzigingen: **GEEN**.
-- Productiewrites: **GEEN**.
-- Doorgaan naar A2: **JA**, met read-only previewbeperking zolang A5 niet groen is.
-- Blocking voor schrijftests: dubbele proxy/authroute, Cloudflare/Azure stagingisolatie en uploadtargetbewijs moeten vóór A6/A7 worden opgelost/bewezen.
+## Gatebesluit A2
+- Implementatiecode/assets: **GEREED OP FEATUREBRANCH**.
+- Statische manifest-/PNG-validatie: **PASS**.
+- Productieveiligheid: **PASS; GEEN WRITES**.
+- Build/typecheck/lint: **BLOCKED / NIET AANTOONBAAR UITGEVOERD**.
+- Preview URL/Access/effectieve API-target: **BLOCKED OP CLOUDFLARE DASHBOARDBEWIJS**.
+- iPhone beginschermacceptatie: **OPEN — EIGENAARTEST**.
+- Doorgaan naar A3: **NOG NIET**, totdat build- en previewveiligheidsbewijs is teruggeleverd of de eigenaar expliciet besluit A3 alleen als niet-schrijvende UI-fase door te zetten.
