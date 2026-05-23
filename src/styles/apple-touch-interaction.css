@@ -1,0 +1,148 @@
+/*
+ * WeldInspect Pro Apple touch/keyboard interaction hardening.
+ * Loaded after the visual and safe-area layers. Screen-only and restricted to
+ * touch-sized/mobile viewports so desktop density and CE-report print output
+ * remain unchanged.
+ */
+
+@media screen and (max-width: 1024px), screen and (pointer: coarse) {
+  :where(button, .btn, .button, .primary-button, .secondary-button, .buttonlike-file, .icon-button, .notification-close-button, .sidebar-link, .mobile-tab, .tab-button, [role='button']) {
+    min-height: 44px !important;
+    touch-action: manipulation !important;
+  }
+
+  :where(.icon-button, .notification-close-button) {
+    min-width: 44px !important;
+    width: 44px !important;
+    height: 44px !important;
+  }
+
+  :where(input, textarea, select, .input, .select, .form-input, .form-select, .mobile-input, .select-trigger) {
+    min-height: 44px !important;
+    font-size: 16px !important;
+    line-height: 1.35 !important;
+    touch-action: manipulation !important;
+    scroll-margin-top: 72px !important;
+    scroll-margin-bottom: calc(100px + var(--apple-safe-bottom, 0px)) !important;
+  }
+
+  textarea {
+    min-height: 96px !important;
+  }
+
+  :where(.tabs, .tab-list, .filter-tabs, .segmented-control) {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    gap: 6px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    overscroll-behavior-x: contain !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+  }
+
+  :where(.tabs, .tab-list, .filter-tabs, .segmented-control)::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  :where(.tabs, .tab-list, .filter-tabs, .segmented-control) > * {
+    flex: 0 0 auto !important;
+    min-height: 44px !important;
+  }
+
+  .table-shell {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    overscroll-behavior-x: contain !important;
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-x pan-y !important;
+  }
+
+  .table-shell :where(.data-table, .table, table) {
+    min-width: max(100%, 640px) !important;
+  }
+
+  :where(.dropdown-menu, .select-content, .popover-content, [role='listbox'], [role='menu']) {
+    max-width: calc(100vw - 24px - var(--apple-safe-left, 0px) - var(--apple-safe-right, 0px)) !important;
+    max-height: min(50dvh, 420px) !important;
+    overflow: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  .overlay-body {
+    scroll-padding-top: 72px !important;
+    scroll-padding-bottom: calc(92px + var(--apple-safe-bottom, 0px)) !important;
+    overscroll-behavior: contain !important;
+  }
+
+  .modal-panel .form-actions {
+    position: sticky !important;
+    bottom: 0 !important;
+    z-index: 2 !important;
+    margin-right: -16px !important;
+    margin-bottom: -16px !important;
+    margin-left: -16px !important;
+    padding: 12px 16px calc(12px + var(--apple-safe-bottom, 0px)) !important;
+    border-top: 1px solid #dbe7f6 !important;
+    background: rgba(255, 255, 255, 0.96) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+  }
+
+  .apple-modal-overlay {
+    inset: var(--apple-modal-viewport-top, 0px) 0 auto 0 !important;
+    height: var(--apple-modal-viewport-height, 100dvh) !important;
+    min-height: 0 !important;
+  }
+
+  .apple-modal-overlay .modal-panel {
+    max-height: calc(var(--apple-modal-viewport-height, 100dvh) - 20px - var(--apple-safe-top, 0px) - var(--apple-safe-bottom, 0px)) !important;
+  }
+
+  .notification-item,
+  .notification-close-button {
+    touch-action: manipulation !important;
+  }
+
+  .notification-item {
+    min-height: 56px !important;
+  }
+}
+
+@media screen and (max-width: 767px) {
+  .mobile-tabbar {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+
+  .mobile-tab {
+    min-height: 52px !important;
+    padding: 8px 4px !important;
+  }
+}
+
+@media screen and (orientation: landscape) and (max-height: 500px) and (max-width: 1024px) {
+  .overlay-backdrop,
+  .apple-modal-overlay {
+    align-items: flex-start !important;
+  }
+
+  .overlay-header {
+    padding-top: 10px !important;
+    padding-bottom: 10px !important;
+  }
+
+  .overlay-body {
+    scroll-padding-bottom: calc(72px + var(--apple-safe-bottom, 0px)) !important;
+  }
+
+  .mobile-tabbar {
+    padding-top: 4px !important;
+    padding-bottom: 4px !important;
+  }
+
+  .mobile-tab {
+    min-height: 44px !important;
+  }
+}
