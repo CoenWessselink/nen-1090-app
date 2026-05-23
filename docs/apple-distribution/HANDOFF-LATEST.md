@@ -2,128 +2,99 @@
 
 ## Handoffgegevens
 - Datum/tijd: 2026-05-23 CEST (Europe/Amsterdam)
-- Afgeronde chatfase: Chat A1 — Volledige Apple/PWA-, frontend-, Cloudflare Preview- en Azure Staging-audit — **GEREED EN BEWEZEN**
+- Uitgevoerde chatfase: Chat A2 — PWA metadata, iconen en Cloudflare Preview
 - Actief traject: Traject A — Apple-safe Webapp/PWA
 - Repository: `CoenWessselink/nen-1090-app`
 - Actieve branch: `feat/apple-ios-ipados-pwa-readiness`
-- Basiscommit vanaf actuele `main`: `97ac4466fc7aa5ad88a01d8d4b1d193df147480b`
-- A1-documentatiecommits vóór deze handoffafsluiting:
-  - `fdbeed46822ad251d907113008cd8fffc44506ba` — werkt `DECISIONS.md` bij met A1-scope en blockers.
-  - `b379dc3f09679b5b754a0cf8754c7898042e6caf` — werkt `TEST-EVIDENCE.md` bij met A1-auditbewijs.
-  - `817a6656ee2891afc440ed0c9638cfa08246490f` — markeert A1 groen en legt A2-scope vast in `MASTER-CHECKLIST.md`.
-- PR/deployment/TestFlight-link: Geen; A1 voert geen deployment of PR uit.
-- Contextgrensstatus: Veilige overdracht vóór 70%; uitsluitend de afgebakende A1-audit uitgevoerd.
+- Basiscommit vanaf `main`: `97ac4466fc7aa5ad88a01d8d4b1d193df147480b`
+- Laatste bevestigde codecommits:
+  - `78ce4124239e40b25ed75915a083787c6cd8bd1d` — webmanifest.
+  - `4461f06b221bc7c700b707f0c0a02df03bae22e9` — branded SVG-icon.
+  - `e3c42899260937ed55709ea4ccee9ae7465f1d30` — PNG iconassetset.
+  - `e912dbabc356ec84ca6d29fdd4b64feeef593a83` — Apple/PWA metadata in `index.html`.
+  - `34f1834eb644e728523bca4c90f873a34f118ab2` — veilige cacheheaders.
+- A2 documentatiecommits vóór deze handoff: `127d659c7344feb66b31241010ac8ce8ea8608c8`, `eb202ec05030a9da9d5b21aab6d29c979cc29aab`, `6b404ac7b35e2eb5d1bbfdbcaed52a5996655617`.
+- PR-link: Geen; niet gemerged.
+- Preview-link: Nog niet feitelijk bevestigd via beschikbare toegang.
+- Status: **A2 CODE GEREED / ACCEPTATIE GEBLOKKEERD OP EIGENAAR-/CLOUDFLAREBEWIJS**.
+- Contextgrensstatus: Veilige overdracht vóór 70%; A3 is niet gestart.
 
 ## Wat in deze chat werkelijk is uitgevoerd
-- `MASTER-CHECKLIST.md`, `HANDOFF-LATEST.md`, `DECISIONS.md` en `TEST-EVIDENCE.md` uit A0 zijn volledig ingelezen en A0 was groen.
-- De branchcode is read-only geaudit via de gekoppelde GitHub-repositorytoegang. Een lokale clonepoging is niet gebruikt als auditbasis omdat de uitvoercontainer geen DNS/netwerktoegang naar GitHub heeft.
-- De volledige implementatiescope is vastgesteld voor PWA metadata/iconen, shell/safe areas, touch/modals, uploads, CE-report/PDF, Billing, Superadmin/Control Center, proxy/auth en deployment/staging.
-- Geen functionele frontendcode, Cloudflare deployment, Azure-configuratie of productiedata is gewijzigd.
-- De auditbesluiten, testbevindingen, blockers en volgende faseopdracht zijn in de vaste distributiedocumentatie bijgewerkt.
+- Masterprompt, A1-checklist, A1-handoff, Decisions en Test Evidence volledig ingelezen; A1 was aantoonbaar groen.
+- Alleen op branch `feat/apple-ios-ipados-pwa-readiness` gewerkt; `main` is niet gewijzigd of gemerged.
+- `index.html` uitgebreid met Apple/PWA beginschermmetadata: branded documenttitel, `viewport-fit=cover`, theme color, standalone/title/statusbarvelden, manifestlink, SVG-iconlink en Apple touch-iconlink.
+- Eén `public/manifest.webmanifest` toegevoegd met standalonepresentatie en `any`-/`maskable`-iconen.
+- Echte branded iconassetset toegevoegd: SVG en PNG's voor Apple touch icon, 192×192, 512×512 en maskable 512×512.
+- `_headers` aangescherpt voor manifest/content-type en veilige iconhervalidatie; geen serviceworker of offline datacache toegevoegd.
+- A1-blocker ongewijzigd gerespecteerd: dubbele API proxy/authroute en onbewezen staging blokkeren alle previewwrites en auth-/uploadmutatietests.
+- Checklist, Decisions en Test Evidence bijgewerkt met implementatie, bewijs en open acceptatieacties.
 
-## Belangrijkste A1-bevindingen
-
-### PWA/Apple metadata
-- Geen bestaande Apple touch-icon-, webmanifest-, theme-color- of service-worker/PWA-registratie gevonden in de gecontroleerde code.
-- `index.html` heeft alleen standaardviewport en generieke titel `NEN1090 App`.
-- A2 mag daarom één nieuwe branded Apple/PWA metadata- en assetlaag implementeren, zonder service-worker of brede offlinecache toe te voegen.
-
-### App-shell, safe area en modals
-- Centrale shell: `src/app/layout/AppShell.tsx` met `Topbar`, `Sidebar`, `.page-canvas`, `MobileTabbar`, meldingen en toasts.
-- Mobiele paginalaag: `src/features/mobile/MobilePageScaffold.tsx`.
-- Modal: `src/components/overlays/Modal.tsx` gebruikt al portal naar `document.body`; `src/components/modal/Modal.tsx` is uitsluitend een re-export.
-- `runtime-mobile-hotfix.css` bevat single-scroll en overlayregels met `100dvh`, maar geen vastgestelde `safe-area-inset-*` toepassing.
-- `global.css` heeft containment-/transformatieoptimalisaties; bestaande overlaycorrecties moeten in A3 behouden blijven.
-
-### Uploads
-- Projectdocumentupload: `MobileDocumentsPage.tsx` → `documents.ts` → `upload.ts`.
-- `upload.ts` kan een directe uploadorigin gebruiken wanneer `VITE_DIRECT_UPLOAD_API_ORIGIN` of `VITE_AZURE_API_ORIGIN` is gezet; A5 moet het feitelijke target controleren.
-- WPS-, lasser- en lascoördinatorattachments lopen via `MasterDataManager.tsx`, `entityDocuments.ts` en aparte attachmentmodules.
-- Bedrijfslogo loopt via `CompanySettingsCard.tsx` en `/settings/company/logo`.
-- A6 moet alle routes afzonderlijk testen op geïsoleerde staging, inclusief HEIC/HEIF-besluit.
-
-### CE-report/PDF en backend-SSOT
-- De visuele route blijft `/projecten/:projectId/ce-report`.
-- `CeReportPrintPage.tsx` gebruikt het CE aggregate endpoint, maar berekent zelf score/status/checklistpresentatie in de frontend.
-- `WeldInspectionDetailPage.tsx` berekent zelf `overall` en verzendt dat bij opslaan.
-- Dit zijn bestaande SSOT-risico's; A1 heeft ze niet uitgebreid of gemaskeerd. Ze zijn blocking controlepunten vóór A8/merge.
-
-### Billing en Superadmin/auth
-- `BillingPage.tsx` bevat actieve Mollie-checkout voor de bestaande webapp; in Traject A beschermd laten, later in iOS build gated uitsluiten.
-- `SuperadminControlCenter.tsx` bouwt eigen Bearerrequests op basis van de auth-storetoken.
-- `auth-store.ts` gebruikt bij cookie-auth de marker `__cookie_session__`, waardoor `/superadmin` concreet risico op `Invalid token` heeft.
-- `/superadmin/control-center` gebruikt grotendeels de centrale API-client maar bevat fallbackaggregatie; beide routes moeten afzonderlijk in A7 worden gevalideerd.
-
-### Cloudflare/Azure en dubbele proxyroute
-- `.env.example` gebruikt standaard same-origin `/api/v1`.
-- `wrangler.toml` bevat productie-Azure als bestaande upstreambaseline.
-- `functions/api/[[path]].js` bevat een HttpOnly-cookiebridge/refreshflow.
-- `functions/api/v1/[[path]].js` is een tweede thin proxy zonder dezelfde cookie-tokeninjectie.
-- Omdat frontendrequests standaard naar `/api/v1` gaan, is het bewijzen of harmoniseren van de effectieve proxy/authroute blocking vóór auth-/write-tests.
-- Cloudflare Preview URL/Access-status en Azure staging DB/storage/mail/billingisolatie konden met de beschikbare repositorytoegang nog niet feitelijk worden vastgesteld.
-
-## Gewijzigde bestanden in A1
+## Gewijzigde bestanden
 | Bestand | Reden |
 |---|---|
-| `docs/apple-distribution/DECISIONS.md` | Auditbesluiten, scope, blockers en concrete implementatiebestanden voor A2–A8 vastleggen. |
-| `docs/apple-distribution/TEST-EVIDENCE.md` | Read-only auditbewijs, officiële platformregelcontrole en bestaande risico's registreren. |
-| `docs/apple-distribution/MASTER-CHECKLIST.md` | A1-gate groen zetten, A2-scope vastleggen en A5/A7 blockers registreren. |
-| `docs/apple-distribution/HANDOFF-LATEST.md` | Deze veilige overdracht en exacte A2-opdracht leveren. |
+| `index.html` | Apple/PWA installatie- en branded metadata. |
+| `public/manifest.webmanifest` | Standalone webmanifest met branded iconset. |
+| `public/icons/app-icon.svg` | Vectoricon voor browser/app-presentatie. |
+| `public/icons/apple-touch-icon-180x180.png` | iPhone/iPad beginschermicoon. |
+| `public/icons/icon-192x192.png` | Manifest standaardicoon. |
+| `public/icons/icon-512x512.png` | Manifest hoge-resolutieicoon. |
+| `public/icons/icon-maskable-512x512.png` | Manifest maskable icoon. |
+| `_headers` | Cache-/content-typepolicy voor installatieassets. |
+| `docs/apple-distribution/DECISIONS.md` | A2-ontwerp- en veiligheidbesluiten. |
+| `docs/apple-distribution/TEST-EVIDENCE.md` | A2-testbewijs en open externe verificaties. |
+| `docs/apple-distribution/MASTER-CHECKLIST.md` | A2-status en gateblokkers. |
+| `docs/apple-distribution/HANDOFF-LATEST.md` | Deze overdracht. |
 
 ## Uitgevoerde tests en resultaat
-| Controle | Omgeving / bron | Resultaat | Bewijs / vervolg |
+| Test | Omgeving/device | Resultaat | Bewijs/vervolg |
 |---|---|---|---|
-| A0-documenten en gate lezen | Branchdocumentatie | PASS | A1 mocht starten. |
-| PWA/Apple metadata-/serviceworkeraudit | Repositorycode | PASS met implementatiescope | A2 moet metadata/manifest/iconassets bouwen; geen PWA-stack aangetroffen. |
-| Shell/CSS/modal audit | Repositorycode | PASS met scope | A3-integratiepunten geïdentificeerd. |
-| Uploadflows audit | Repositorycode | PASS met stagingvereiste | Gesplitste routes vereisen A6-matrix; geen writes uitgevoerd. |
-| CE/inspectie SSOT-audit | Repositorycode | FAIL-RISK vastgelegd | Frontendafleidingen bestaan; vóór merge expliciet afhandelen. |
-| Billing/Superadmin/auth audit | Repositorycode | FAIL-RISK vastgelegd | Webcheckout aanwezig; Superadmin bearer-marker risico aangetroffen. |
-| Pages proxy/deploymentaudit | Repositorycode | FAIL-RISK vastgelegd | Twee afwijkende API proxyhandlers; A5/A7 moeten dit oplossen of bewijzen. |
-| Cloudflare/Azure vereisten | Officiële platformdocumentatie / repo-access | Scope bevestigd; dashboardconfig BLOCKED | A2/A5 moet concrete omgevingstoegang of eigenaaractie gebruiken. |
-| Productieveiligheid | Volledige A1-uitvoering | PASS | Geen productiewrites, featurecode of deployments. |
+| A1-gatecontrole | Branchdocumentatie | PASS | A2 mocht starten. |
+| Branchdiffcontrole | GitHub branch versus `main` | PASS | A2-bestanden alleen op featurebranch; branch ligt vóór `main`. |
+| Webmanifest inhoud | Statische controle | PASS | `standalone`, kleurvelden en icon entries aanwezig. |
+| PNG-validatie | Gegenereerde assetbytes met image parser | PASS | Geldige PNG RGB-bestanden met exacte afmetingen 180×180, 192×192, 512×512, 512×512. |
+| Geen dubbele/offline PWA-stack | A1-audit + A2 diff | PASS | Geen service worker of offlinecache toegevoegd. |
+| Productieveiligheid | Gehele A2-uitvoering | PASS | Geen writes, uploads, factuur- of Superadminmutaties getest. |
+| `npm run typecheck` / `lint:ci` / `build:pages` | Agentomgeving/GitHubstatus | BLOCKED | GitHub toont geen workflow/statuscheck; lokale clone faalt door DNS naar GitHub. Eigenaar/Pages buildlog vereist. |
+| Preview URL / Access / API-target | Cloudflare-dashboardtoegang | BLOCKED | Dashboardstatus niet via beschikbare toegang uitleesbaar; eigenaar moet terugmelden. |
+| iPhone beginscherminstallatie | Echte iPhone | OPEN | Eigenaar moet testen na werkende preview. |
 
 ## Productieveiligheid
 - Writes tegen productie uitgevoerd: **NEE**.
-- Uploads, saveacties, factuurmutaties of Superadminmutaties uitgevoerd: **NEE**.
-- Functionele code aangepast: **NEE**; uitsluitend auditdocumentatie op de featurebranch.
-- Preview API-target: Niet feitelijk gedeployed/gecontroleerd in A1; repositorybaseline kan productie-Azure gebruiken.
+- Preview writes/uploads/authmutatietests uitgevoerd: **NEE**.
+- Preview API-target: **NIET BEWEZEN**; repositorybaseline in `wrangler.toml` wijst naar productie-Azure.
 - Stagingisolatie status: **NIET BEWEZEN / BLOCKING VOOR WRITES**.
+- Dubbele proxy/authroute gewijzigd: **NEE**; blocker blijft staan voor A5/A7.
+- Service worker/offline cache toegevoegd: **NEE**.
 - Secrets toegevoegd aan repo: **NEE**.
-- Merge naar `main`: **NEE**.
-
-## Besluiten van eigenaar die reeds vaststaan
-- Werk uitsluitend volgens de geüploade Apple PWA + App Store masterprompt en faseprompts.
-- Traject A blijft op `feat/apple-ios-ipados-pwa-readiness`; niet rechtstreeks op `main`.
-- Geen merge naar `main`, TestFlight submission of App Store submission zonder expliciete toestemming.
-- Geen writes/uploads/Billing-/Superadminmutaties tegen productiedata.
-- Backend blijft SSOT; CE-report route blijft visuele SSOT.
 
 ## Acties die eigenaar nu moet uitvoeren
-- Geen eigenaaractie nodig om Chat A2 te starten.
-- In A2 kan handmatige Cloudflare Access- of iPhone-beginschermcontrole gevraagd worden nadat een Preview Deployment beschikbaar is.
-- Doe vóór A5 geen schrijvende tests in een previewomgeving.
+1. Open Cloudflare Pages in het bestaande app-project en ga naar de deployment van branch `feat/apple-ios-ipados-pwa-readiness`.
+2. Meld de Preview URL en of de build groen of rood is; deel bij rood alleen de fouttekst.
+3. Controleer of Cloudflare Access voor die preview actief is. Wanneer bedrijfsdata zichtbaar kan zijn en Access nog uit staat: bescherm de preview vóór inhoudelijke appcontrole.
+4. Meld uitsluitend of de preview-API naar `productie` of `staging` wijst; deel geen secrets. Zolang dit niet bewezen `staging` is: alleen kijken, niets opslaan/uploaden.
+5. Lever buildbewijs via het Pages-buildlog of voer lokaal in `C:\NEN1090\nen-1090-app` op deze branch uit: `npm run typecheck`, `npm run lint:ci`, `npm run build:pages`.
+6. Op iPhone Safari: open de veilige preview, kies **Deel → Zet op beginscherm**, controleer appnaam **WeldInspect Pro**, het branded icoon en openen in standalone-weergave; meld resultaat/screenshot.
 
 ## Open risico's/blockers
 | ID | Risico / blocker | Vervolg |
 |---|---|---|
-| A2-01 | Preview URL/Access/API-target niet vastgelegd | A2: preview inzetten/controleren; read-only blijven indien productieorigin mogelijk is. |
-| A5-01 | Staging API/database/storage/testmail/billing niet bewezen | A5: isolatie inrichten/controleren vóór writes/uploads. |
-| A5-02 | Dubbele API proxyhandler met afwijkende cookie-authflow | A5/A7: routeprioriteit aantonen en veilig harmoniseren/fixen vóór auth-/writetests. |
-| A7-01 | Frontendstatus-/completenessberekeningen en Superadmin bearer-marker risico | A7: gerichte regressie-/architectuurfix of expliciet gatebesluit vóór PR. |
+| A2-01 | Preview URL en Pages buildstatus ontbreken | Eigenaar retourneert URL en buildstatus/log. |
+| A2-02 | Access-status en effectieve API-target ontbreken | Eigenaar bevestigt Access en productie/staging-target; preview blijft read-only. |
+| A2-03 | Typecheck/lint/build niet aantoonbaar groen | Pages log of lokale eigenaar-run retourneren. |
+| A2-04 | iPhone Add-to-Home-Screen niet bevestigd | Eigenaar voert echte-device test uit. |
+| A5-01 | Geïsoleerde stagingketen niet bewezen | Geen writes/uploads vóór A5 groen. |
+| A5-02 | Dubbele API proxy/authroute blijft bestaan | In A5/A7 veilig bewijzen of harmoniseren vóór auth-/write-tests. |
+| A7-01 | CE/inspectie/Superadmin bestaande risico's | In A7 gericht afhandelen vóór PR/merge. |
 
 ## Volgende chat moet eerst lezen
 1. Het masterpromptbestand `WeldInspect-Pro-Apple-PWA-App-Store-Masterprompt-Meer-Chat-Bouwfasen-Checklist-2026-05-23.txt`.
 2. `docs/apple-distribution/MASTER-CHECKLIST.md` op branch `feat/apple-ios-ipados-pwa-readiness`.
-3. Dit bestand, `docs/apple-distribution/HANDOFF-LATEST.md`, op dezelfde branch.
+3. Dit bestand, `docs/apple-distribution/HANDOFF-LATEST.md`.
 4. `docs/apple-distribution/DECISIONS.md` en `docs/apple-distribution/TEST-EVIDENCE.md`.
-5. Voor A2: `package.json`, `index.html`, `vite.config.ts`, `scripts/prepare-release.mjs`, `_headers`, `public/_redirects`, `.env.example`, `wrangler.toml`, `functions/api/[[path]].js`, `functions/api/v1/[[path]].js`.
+5. Eigenaarbewijs: Preview URL, Access-status, API-targetklasse, buildresultaten en iPhone-testuitkomst.
 
-## Exacte startopdracht volgende chat — Chat A2
-“Lees masterprompt, nieuwste checklist en nieuwste handoff volledig in. Controleer dat A1 gereed is. Voer uitsluitend Chat A2 uit op branch `feat/apple-ios-ipados-pwa-readiness`.
+## Exacte herstartopdracht voor afronding A2
+“Lees masterprompt, `docs/apple-distribution/MASTER-CHECKLIST.md` en `docs/apple-distribution/HANDOFF-LATEST.md` volledig in. Ik heb de gevraagde Cloudflare Pages-/Access-/API-target-/build- en iPhone-beginschermbewijzen voor Chat A2 uitgevoerd en toegevoegd. Controleer uitsluitend of de A2-blokkades zijn opgelost op branch `feat/apple-ios-ipados-pwa-readiness`; wijzig geen productiedata en voer geen writes uit zolang staging niet aantoonbaar is. Werk A2-testbewijs/checklist/handoff bij, commit/push en lever alleen wanneer A2 volledig groen is de startopdracht voor Chat A3. Stop veilig vóór 70% context.”
 
-Implementeer production-ready Apple beginscherm/PWA metadata en echte branded iconassets binnen de bestaande architectuur, zonder dubbele PWA-stack of onveilige offlinecache. Houd de in A1 vastgelegde dubbele proxy/authroute als blocker voor writes: wijzig of test geen productiedata.
-
-Voer bestaande typecheck/lint/buildtests uit. Push de branch en realiseer/controleer de Cloudflare Pages Preview Deployment in het bestaande Pages-project voor zover toegang beschikbaar is. Leg preview-URL, Access-status en API-target vast. Gebruik preview uitsluitend read-only zolang deze niet aantoonbaar naar staging wijst.
-
-Werk checklist/handoff/testbewijs bij, commit/push en lever de startopdracht voor A3. Vermeld kort welke Cloudflare Access- of iPhone beginschermtest ik handmatig moet doen. Stop veilig vóór 70% context.”
+## Startopdracht A3 — uitsluitend gebruiken nadat A2 groen is verklaard
+“Lees masterprompt, checklist en handoff volledig in. Controleer dat A2 aantoonbaar groen is. Voer uitsluitend Chat A3 uit op branch `feat/apple-ios-ipados-pwa-readiness`. Bouw een centrale veilige iPhone/iPad safe-area oplossing in de bestaande UI voor notch, Dynamic Island en Home Indicator. Pas alleen noodzakelijke app-shell-, topbar-, sidebar-, tabbar-, overlay-, modal- en toaststyles/componenten aan. Desktop en CE-report print/PDF mogen niet regressief wijzigen. Test minimaal 375x667, 393x852, 852x393, 768x1024, 1024x768 en desktop. Commit/push alleen als de fase groen is. Werk checklist en handoff bij en lever echte-device checks plus startprompt A4. Stop veilig vóór 70% context.”
