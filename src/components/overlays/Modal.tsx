@@ -1,4 +1,4 @@
-import { PropsWithChildren, useEffect, useRef, useState } from 'react';
+import { CSSProperties, PropsWithChildren, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
@@ -23,6 +23,11 @@ type DragState = {
   originY: number;
 };
 
+type ModalViewport = {
+  height: number;
+  top: number;
+};
+
 export function Modal({ open, onClose, title, size = 'medium', children }: PropsWithChildren<{ open: boolean; onClose: () => void; title: string; size?: ModalSize }>) {
   const panelRef = useRef<HTMLDivElement | null>(null);
   const headerRef = useRef<HTMLDivElement | null>(null);
@@ -30,6 +35,7 @@ export function Modal({ open, onClose, title, size = 'medium', children }: Props
   const frameRef = useRef<number | null>(null);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [portalHost, setPortalHost] = useState<HTMLElement | null>(null);
+  const [viewport, setViewport] = useState<ModalViewport | null>(null);
 
   useEffect(() => {
     setPortalHost(document.body);
@@ -38,6 +44,7 @@ export function Modal({ open, onClose, title, size = 'medium', children }: Props
   useEffect(() => {
     if (!open) {
       setOffset({ x: 0, y: 0 });
+      setViewport(null);
       dragStateRef.current = null;
       if (frameRef.current) {
         window.cancelAnimationFrame(frameRef.current);
@@ -55,6 +62,34 @@ export function Modal({ open, onClose, title, size = 'medium', children }: Props
       document.body.style.overflow = previousOverflow;
     };
   }, [open]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    const visualViewport = window.visualViewport;
+    const updateViewport = () => {
+      setViewport({
+        height: Math.round(visualViewport?.height ?? window.innerHeight),
+        top: Math.round(visualViewport?.offsetTop ?? 0),
+      });
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+
+    updateViewport();
+    visualViewport?.addEventListener('resize', updateViewport);
+    visualViewport?.addEventListener('scroll', updateViewport);
+    window.addEventListener('resize', updateViewport);
+    window.addEventListener('keydown', closeOnEscape);
+
+    return () => {
+      visualViewport?.removeEventListener('resize', updateViewport);
+      visualViewport?.removeEventListener('scroll', updateViewport);
+      window.removeEventListener('resize', updateViewport);
+      window.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [onClose, open]);
 
   useEffect(() => {
     if (!open || size === 'fullscreen') return undefined;
@@ -123,8 +158,15 @@ export function Modal({ open, onClose, title, size = 'medium', children }: Props
 
   if (!open || !portalHost) return null;
 
+  const overlayStyle = viewport
+    ? ({
+        '--apple-modal-viewport-height': `${viewport.height}px`,
+        '--apple-modal-viewport-top': `${viewport.top}px`,
+      } as CSSProperties)
+    : undefined;
+
   const modal = (
-    <div className="overlay-backdrop" role="dialog" aria-modal="true" onClick={onClose}>
+    <div className="overlay-backdrop apple-modal-overlay" style={overlayStyle} role="dialog" aria-modal="true" aria-label={title} onClick={onClose}>
       <div
         ref={panelRef}
         className={`modal-panel modal-${size}`}
@@ -136,6 +178,7 @@ export function Modal({ open, onClose, title, size = 'medium', children }: Props
           className={`overlay-header ${size === 'fullscreen' ? '' : 'overlay-header-draggable'}`.trim()}
           onPointerDown={(event) => {
             if (size === 'fullscreen') return;
+            if (event.pointerType !== 'mouse' || window.matchMedia('(max-width: 1024px), (pointer: coarse)').matches) return;
             if ((event.target as HTMLElement).closest('button, input, select, textarea, a, [role="button"]')) return;
             dragStateRef.current = {
               active: true,
@@ -152,7 +195,7 @@ export function Modal({ open, onClose, title, size = 'medium', children }: Props
         >
           <div>
             <h3>{title}</h3>
-            {size !== 'fullscreen' ? <div className="list-subtle">Versleep dit venster via de kopregel.</div> : null}
+            {size !== 'fullscreen' ? <div className="list-subtle desktop-only">Versleep dit venster via de kopregel.</div> : null}
           </div>
           <button type="button" className="icon-button" onClick={onClose} aria-label="Sluiten">
             <X size={16} />
