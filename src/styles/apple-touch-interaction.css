@@ -6,9 +6,14 @@
  */
 
 @media screen and (max-width: 1024px), screen and (pointer: coarse) {
-  :where(button, .btn, .button, .primary-button, .secondary-button, .buttonlike-file, .icon-button, .notification-close-button, .sidebar-link, .mobile-tab, .tab-button, [role='button']) {
+  :where(button, .btn, .button, .primary-button, .secondary-button, .buttonlike-file, .icon-button, .notification-close-button, .sidebar-link, .mobile-tab, .tab-button, .row-actions a, .stack-actions a, [role='button']) {
     min-height: 44px !important;
     touch-action: manipulation !important;
+  }
+
+  :where(.row-actions a, .stack-actions a) {
+    display: inline-flex !important;
+    align-items: center !important;
   }
 
   :where(.icon-button, .notification-close-button) {
