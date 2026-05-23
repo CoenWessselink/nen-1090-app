@@ -15,6 +15,7 @@ import '@/styles/premium-tile-reference.css';
 import '@/styles/premium-app-consistency.css';
 import '@/styles/premium-masterdata-cleanup.css';
 import '@/styles/ce-report-print-color-fix.css';
+import '@/styles/apple-safe-area.css';
 import { installCeReportPdfTitle } from '@/lib/ce-report-pdf-title';
 import { installCeReportPrintAutostart } from '@/lib/ce-report-print-autostart';
 import { installFrontendEnglish } from '@/lib/frontend-english';
