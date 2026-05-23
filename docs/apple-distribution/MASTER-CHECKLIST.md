@@ -4,16 +4,16 @@
 - Masterpromptversie: 2026-05-23
 - Laatste update: 2026-05-23 17:14 CEST (Europe/Amsterdam)
 - Actief traject: Traject A — Apple-safe Webapp/PWA
-- Actieve chatfase: Chat A0 — Branch, checklist en baseline
+- Actieve chatfase: Chat A0 — Branch, checklist en baseline — **afgerond**
 - Actieve repository: `CoenWessselink/nen-1090-app`
 - Actieve branch: `feat/apple-ios-ipados-pwa-readiness`
 - Basiscommit (`main`): `97ac4466fc7aa5ad88a01d8d4b1d193df147480b`
-- Basiscommitverificatie: `compare_commits(base=97ac4466fc7aa5ad88a01d8d4b1d193df147480b, head=main)` gaf `identical`, `ahead_by=0`, `behind_by=0` bij start A0.
-- Laatste commit: wordt bijgewerkt met branchdocumentatiecommits van A0.
+- Basiscommitverificatie: vergelijking met `main` gaf `identical`, `ahead_by=0`, `behind_by=0` bij start A0.
+- A0-documentatiecommits: `771f374066987e60b697cd2a3936218814e164bd`, `470438e55424b71c0280c4f9d5b89e2b5e635f75`, `96d5339964f5cde9833406306dec183670a02b75`, `235df8a58e4c5e51fcfef93d1780d6eb34b3a5c1` en deze A0-gateafsluiting.
 - PR-link: Niet aangemaakt — A0 mag geen PR/merge uitvoeren.
 - Preview/TestFlight-link: Niet van toepassing in A0.
-- Hoofdstatus: `IN UITVOERING` — A0 documentatiebaseline wordt vastgelegd.
-- Volgende directe actie: Rond A0 documentatiecommit af; daarna uitsluitend Chat A1 uitvoeren voor volledige audit en uitvoerscope.
+- Hoofdstatus: `A0 GEREED EN BEWEZEN / KLAAR VOOR CHAT A1`.
+- Volgende directe actie: Voer uitsluitend Chat A1 uit voor volledige Apple/PWA-, Cloudflare Preview- en Azure Staging-audit.
 
 ## Statuslegenda
 - [ ] Niet gestart
@@ -26,29 +26,29 @@
 - [x] Geen wijzigingen rechtstreeks op `main` uitgevoerd; A0-branch is gemaakt vanaf geverifieerde actuele `main`.
 - [x] Geen writes/uploads/facturen/superadminmutaties tegen productiedata getest in A0.
 - [x] Geen secrets in repo of documentatie opgenomen.
-- [x] Backend blijft SSOT; A0 bevat alleen documentatie.
+- [x] Backend blijft SSOT; A0 bevat uitsluitend documentatie.
 - [x] CE-report visuele SSOT `/projecten/:projectId/ce-report` ongewijzigd behouden.
-- [ ] Rollback per toekomstige merge/release vastgelegd — pas vereist wanneer code/PR ontstaat.
+- [-] Rollback per merge/release — niet van toepassing in A0 omdat geen functionele code, PR of deployment is uitgevoerd.
 
 ## A0-baseline: feitelijke read-only inspectie van actuele `main`
 
 ### Repository en scripts
 - Frontendstack: React 18 + TypeScript + Vite 6 volgens `package.json`.
 - Relevante scripts aanwezig: `build`, `build:pages`, `typecheck`, `lint`, `lint:ci`, `test`, `test:smoke`, `test:e2e`, `test:workflows`, `release:verify`.
-- A0 voert geen dependency-installatie of build uit omdat uitsluitend documenten worden toegevoegd; A2/A8 gebruiken de bestaande release-/testcommando’s.
+- A0 voert bewust geen dependency-installatie of build uit: de fase wijzigt uitsluitend documentatie; uitvoerende buildtests volgen bij implementatiefases.
 
 ### PWA/Apple metadata-status
-- `index.html` bevat `charset`, een standaardviewport (`width=device-width, initial-scale=1.0`) en titel `NEN1090 App`.
+- `index.html` bevat `charset`, standaardviewport (`width=device-width, initial-scale=1.0`) en titel `NEN1090 App`.
 - In `index.html` zijn bij A0 geen `apple-mobile-web-app-*`, `theme-color`, Apple touch icon of manifestlink vastgesteld.
 - `vite.config.ts` configureert React/Vite, alias, server/preview en `dist` build; geen PWA-pluginconfiguratie is daarin vastgesteld.
 - `public/manifest.webmanifest` en `public/manifest.json` zijn bij directe controle niet aangetroffen.
-- Nadere repositorybrede service-worker/icon/assetverificatie hoort expliciet bij A1; A0 concludeert nog niet dat iedere mogelijke asset ontbreekt.
+- Repositorybrede service-worker/icon/assetverificatie blijft expliciet onderdeel van A1; A0 doet geen onbewezen conclusie over alle overige assets.
 
 ### Layout-, mobile- en modalarchitectuur
 - `src/app/layout/AppShell.tsx` composeert `Sidebar`, `Topbar`, `MobileTabbar`, `NotificationCenter`, `ToastViewport` en de `page-canvas`/router outlet.
 - `src/components/overlays/Modal.tsx` gebruikt reeds `createPortal(..., document.body)`, body-scroll-lock bij open modal en pointer-dragging voor niet-fullscreen modals.
-- `src/main.tsx` importeert meerdere globale stijlbestanden, waaronder `src/styles/runtime-mobile-hotfix.css` en CE-report-printstyles.
-- `src/styles/runtime-mobile-hotfix.css` legt één verticale scrollcontainer in `.page-canvas` vast, gebruikt `100dvh` voor shell/overlays en behandelt mobile modals; bij A0 zijn daarin geen `env(safe-area-inset-*)`-toepassingen aangetroffen.
+- `src/main.tsx` importeert globale stijlbestanden, waaronder `src/styles/runtime-mobile-hotfix.css` en CE-report-printstyles.
+- `src/styles/runtime-mobile-hotfix.css` legt één verticale scrollcontainer in `.page-canvas` vast, gebruikt `100dvh` voor shell/overlays en behandelt mobiele modals; in dit gecontroleerde stylesheet is geen `env(safe-area-inset-*)`-toepassing vastgesteld.
 
 ### Kritieke routes die beschermd blijven
 Bron: `src/app/router/routes.tsx` op de A0-basiscommit.
@@ -64,24 +64,24 @@ Bron: `src/app/router/routes.tsx` op de A0-basiscommit.
 - `src/lib/env.ts` gebruikt standaard same-origin `apiBaseUrl = '/api/v1'`, tenzij `VITE_API_BASE_URL` expliciet is gezet.
 - `src/api/client.ts` gebruikt `credentials: 'include'`, refreshretry op 401 en protected download via blob/object URL.
 - `functions/api/[[path]].js` is de Cloudflare Pages API-proxy met HttpOnly cookies en een `AZURE_API_ORIGIN`/`BACKEND_API_BASE` upstream.
-- `wrangler.toml` bevat als huidige baseline voor beide upstreamvariabelen de productie-Azure API-origin. Conclusie: iedere branch-preview blijft **read-only** zolang A5 geen geïsoleerde preview → staging-route aantoonbaar groen heeft gemaakt.
+- `wrangler.toml` bevat als huidige baseline voor beide upstreamvariabelen de productie-Azure API-origin. Iedere branch-preview blijft daarom **read-only** zolang A5 geen geïsoleerde preview → staging-route aantoonbaar groen heeft gemaakt.
 
 ## Traject A — Apple-safe Webapp/PWA
 
 ### A0 Branch/checklist/baseline
-- Status: [~] In uitvoering — documentatie wordt op actieve branch geschreven.
+- Status: [x] Gereed en bewezen.
 - Chat: A0, 2026-05-23.
-- Agenttaken: branch maken vanaf actuele `main`; vier distributiedocumenten initialiseren; read-only baseline inspecteren; geen featurebouw.
-- Eigenaarstaken: geen handmatige Cloudflare/Azure/Apple acties vereist in A0; branch mag volgens aangeleverde opdracht gepusht worden.
+- Agenttaken: branch gemaakt vanaf actuele `main`; vier distributiedocumenten geïnitialiseerd; read-only baseline geïnspecteerd; geen featurebouw uitgevoerd.
+- Eigenaarstaken: Geen eigenaaractie nodig om A1 te starten.
 - Gewijzigde bestanden: `docs/apple-distribution/MASTER-CHECKLIST.md`, `HANDOFF-LATEST.md`, `DECISIONS.md`, `TEST-EVIDENCE.md`.
-- Commit: documentatiecommits worden in handoff na schrijven vastgelegd.
-- Testbewijs: `main`-vergelijking identiek op basis-SHA; branch bestond vooraf niet; feitelijke bestandinspecties hierboven.
-- Gate: doorgaan naar A1 pas wanneer vier documenten op de branch staan en handoff is bijgewerkt.
+- Commits: `771f374066987e60b697cd2a3936218814e164bd`, `470438e55424b71c0280c4f9d5b89e2b5e635f75`, `96d5339964f5cde9833406306dec183670a02b75`, `235df8a58e4c5e51fcfef93d1780d6eb34b3a5c1`, plus deze checklistgate-afsluiting.
+- Testbewijs: `main`-vergelijking identiek op basis-SHA; branch bestond vooraf niet; feitelijke bestandinspecties vastgelegd in `TEST-EVIDENCE.md`.
+- Gate: **DOORGAAN NAAR A1**; geen productie-effect, geen functionele codewijziging en volledige A0-handoff beschikbaar.
 
 ### A1 Audit
 - Status: [ ] Niet gestart.
 - Chat: A1.
-- Gewijzigde bestanden: verwacht primair documentatie; pas na feitelijke audit bepalen.
+- Gewijzigde bestanden: Wordt bepaald na audit.
 - Commit: Nog niet beschikbaar.
 - Bevindingen: Nog uit te voeren.
 - Gate: Volledige Apple/PWA/frontend/Cloudflare-preview/Azure-stagingaudit; geen risicovolle featurebouw of productiewrites.
@@ -90,7 +90,7 @@ Bron: `src/app/router/routes.tsx` op de A0-basiscommit.
 - Status: [ ] Niet gestart.
 - Preview URL: Nog niet beschikbaar.
 - Access status: Nog niet gecontroleerd.
-- API target: Baseline proxy wijst mogelijk naar productie; preview alleen read-only totdat staging aantoonbaar is.
+- API target: Baseline proxy kan productie aanspreken; preview alleen read-only totdat staging aantoonbaar is.
 - Commit: Nog niet beschikbaar.
 - iPhone add-to-home-screen bewijs: Nog niet beschikbaar.
 - Gate: branded iconassets en installability bewezen zonder onveilige offlinecache.
@@ -100,7 +100,7 @@ Bron: `src/app/router/routes.tsx` op de A0-basiscommit.
 - Commit: Nog niet beschikbaar.
 - Geteste viewports: Vereist: 375x667, 393x852, 852x393, 768x1024, 1024x768 en desktop.
 - Devicebewijs: Nog niet beschikbaar.
-- Gate: geen notch/Home Indicator-overlap, horizontale overflow of CE/desktopprintregressie.
+- Gate: geen systeemgebiedoverlap, horizontale overflow of CE/desktopprintregressie.
 
 ### A4 Touch/keyboard/forms/modals
 - Status: [ ] Niet gestart.
