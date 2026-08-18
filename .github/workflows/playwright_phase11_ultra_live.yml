@@ -28,11 +28,23 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
+      - name: Validate live-test credentials
+        env:
+          TEST_TENANT: ${{ secrets.PLAYWRIGHT_TEST_TENANT }}
+          TEST_EMAIL: ${{ secrets.PLAYWRIGHT_TEST_EMAIL }}
+          TEST_PASSWORD: ${{ secrets.PLAYWRIGHT_TEST_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -z "${TEST_TENANT}" ] || [ -z "${TEST_EMAIL}" ] || [ -z "${TEST_PASSWORD}" ]; then
+            echo "::error::PLAYWRIGHT_TEST_TENANT, PLAYWRIGHT_TEST_EMAIL and PLAYWRIGHT_TEST_PASSWORD must be configured as repository secrets"
+            exit 1
+          fi
+
       - name: Run ultra live suite
         env:
-          TEST_TENANT: demo
-          TEST_EMAIL: admin@demo.com
-          TEST_PASSWORD: Admin123!
+          TEST_TENANT: ${{ secrets.PLAYWRIGHT_TEST_TENANT }}
+          TEST_EMAIL: ${{ secrets.PLAYWRIGHT_TEST_EMAIL }}
+          TEST_PASSWORD: ${{ secrets.PLAYWRIGHT_TEST_PASSWORD }}
         run: npx playwright test tests/e2e/phase-11-ultra --project=desktop-chromium
 
       - name: Upload Playwright artifacts
