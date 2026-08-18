@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
     "lint": "eslint src",
     "lint:ci": "eslint src --max-warnings 0",
-    "test": "npm run test:smoke && npm run test:e2e",
+    "test": "npm run test:access && npm run test:smoke && npm run test:e2e",
+    "test:access": "node scripts/check-platform-access.mjs",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed --project=desktop-chromium",
     "test:e2e:auth:live": "PLAYWRIGHT_LIVE_AUTH=1 playwright test tests/e2e/auth-live.spec.ts --project=desktop-chromium",
@@ -19,7 +20,7 @@
     "test:workflows": "playwright test tests/e2e/projects-crud.spec.ts tests/e2e/project-flow.spec.ts tests/e2e/welds-ce-flow.spec.ts --project=desktop-chromium",
     "test:report": "playwright show-report",
     "test:playwright:install": "playwright install chromium",
-    "release:verify": "npm run typecheck && npm run lint:ci && npm run build:pages && npx playwright test --list"
+    "release:verify": "npm run test:access && npm run typecheck && npm run lint:ci && npm run build:pages && npx playwright test --list"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
