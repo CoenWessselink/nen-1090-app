@@ -42,14 +42,25 @@ function CeDossierRedirect() {
   return <Navigate to={`/projecten/${projectId}/ce-v2`} replace />;
 }
 
-const ROLES = ['SUPERADMIN', 'SUPER_ADMIN', 'ADMIN', 'PLATFORM_ADMIN', 'PLATFORMADMIN', 'platform_admin', 'superadmin'];
+// Platform administration is intentionally limited to platform roles. Tenant
+// ADMIN/TENANT_ADMIN users manage only their own tenant and must never reach
+// platform-wide routes or navigation.
+export const PLATFORM_ADMIN_ROLES = [
+  'SUPERADMIN',
+  'SUPER_ADMIN',
+  'PLATFORM_ADMIN',
+  'PLATFORMADMIN',
+  'platform_admin',
+  'superadmin',
+] as const;
+
 export const appRouteMeta = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, description: 'Dashboard', showInSidebar: true, keywords: ['dashboard', 'home'] },
   { path: '/projecten', label: 'Projecten', icon: FolderKanban, description: 'Projecten', showInSidebar: true, keywords: ['projecten', 'projects', 'project'] },
   { path: '/rapportage', label: 'Rapportages', icon: FileCheck2, description: 'Rapportages', showInSidebar: true, keywords: ['rapportage', 'reports', 'ce'] },
   { path: '/settings-v2', label: 'Instellingen', icon: Settings, description: 'Instellingen', showInSidebar: true, keywords: ['instellingen', 'settings', 'v2'] },
   { path: '/billing', label: 'Facturatie', icon: CreditCard, description: 'Facturatie', showInSidebar: true, keywords: ['billing', 'facturatie', 'mollie'] },
-  { path: '/superadmin', label: 'Superadmin', icon: Building2, description: 'Platformbeheer', roles: ROLES, showInSidebar: true, keywords: ['superadmin', 'platformbeheer', 'tenant'] },
+  { path: '/superadmin', label: 'Superadmin', icon: Building2, description: 'Platformbeheer', roles: [...PLATFORM_ADMIN_ROLES], showInSidebar: true, keywords: ['superadmin', 'platformbeheer', 'tenant'] },
 ];
 
 export const routerConfig = [
@@ -107,7 +118,7 @@ export const routerConfig = [
       {
         path: 'superadmin',
         element: (
-          <RoleGuard allow={ROLES}>
+          <RoleGuard allow={[...PLATFORM_ADMIN_ROLES]}>
             <SuperadminControlCenter />
           </RoleGuard>
         ),
@@ -116,7 +127,7 @@ export const routerConfig = [
       {
         path: 'superadmin/control-center',
         element: (
-          <RoleGuard allow={ROLES}>
+          <RoleGuard allow={[...PLATFORM_ADMIN_ROLES]}>
             <SuperadminControlCenterPage />
           </RoleGuard>
         ),
@@ -124,7 +135,7 @@ export const routerConfig = [
       {
         path: 'superadmin/commercial-governance',
         element: (
-          <RoleGuard allow={ROLES}>
+          <RoleGuard allow={[...PLATFORM_ADMIN_ROLES]}>
             <SuperadminCommercialGovernancePage />
           </RoleGuard>
         ),
@@ -132,7 +143,7 @@ export const routerConfig = [
       {
         path: 'superadmin/invoices',
         element: (
-          <RoleGuard allow={ROLES}>
+          <RoleGuard allow={[...PLATFORM_ADMIN_ROLES]}>
             <InvoiceManagerPage />
           </RoleGuard>
         ),
@@ -140,7 +151,7 @@ export const routerConfig = [
       {
         path: 'superadmin/invoices/:invoiceId/pdf',
         element: (
-          <RoleGuard allow={ROLES}>
+          <RoleGuard allow={[...PLATFORM_ADMIN_ROLES]}>
             <InvoicePdfPage />
           </RoleGuard>
         ),
@@ -148,7 +159,7 @@ export const routerConfig = [
       {
         path: 'superadmin/tenant/:tenantId/profile',
         element: (
-          <RoleGuard allow={ROLES}>
+          <RoleGuard allow={[...PLATFORM_ADMIN_ROLES]}>
             <TenantProfilePage />
           </RoleGuard>
         ),
