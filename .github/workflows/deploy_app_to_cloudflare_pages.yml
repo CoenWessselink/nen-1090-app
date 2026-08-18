@@ -8,6 +8,8 @@ on:
       - "src/**"
       - "public/**"
       - "functions/**"
+      - "scripts/**"
+      - "tests/**"
       - "package.json"
       - "package-lock.json"
       - "tsconfig*.json"
@@ -15,7 +17,6 @@ on:
       - "index.html"
       - "index.source.html"
       - "_headers"
-      - "scripts/submodules-init.mjs"
       - ".github/workflows/deploy_app_to_cloudflare_pages.yml"
 
 concurrency:
@@ -26,13 +27,10 @@ permissions:
   contents: read
   deployments: write
 
-# Secrets (repo Settings > Secrets > Actions):
-#   CF_API_TOKEN — API Token met o.a. Account:Read + Cloudflare Pages:Edit
-#   CF_ACCOUNT_ID — Cloudflare dashboard (account-id)
-
 jobs:
-  deploy:
+  validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Checkout
@@ -44,40 +42,82 @@ jobs:
           node-version: 20
           cache: npm
 
-      - name: Install deps
+      - name: Install dependencies
         run: npm ci
 
-      - name: Build release for Pages
+      - name: Verify platform access contract
+        run: npm run test:access
+
+      - name: Lint
+        run: npm run lint:ci
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Build immutable Pages release
         env:
-          VITE_MARKETING_BASE_URL: https://nen1090-marketing.pages.dev
+          VITE_MARKETING_BASE_URL: https://weldinspectpro.com
           VITE_COMMIT_SHA: ${{ github.sha }}
           VITE_DEPLOYMENT_ENV: production
         run: npm run build:pages
 
-      - name: Verify built Pages artifact
+      - name: Verify Pages artifact
         run: |
           test -f release/index.html
+          test -f release/_redirects
           test -d release/assets
 
-      # Faalt snel met duidelijke fout als repo secrets ontbreken of token geen Pages-rechten heeft.
-      - name: Preflight Cloudflare (auth + Pages API)
+      - name: Upload validated release
+        uses: actions/upload-artifact@v4
+        with:
+          name: validated-pages-release-${{ github.sha }}
+          path: release
+          if-no-files-found: error
+          retention-days: 7
+
+  deploy:
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Download validated release
+        uses: actions/download-artifact@v4
+        with:
+          name: validated-pages-release-${{ github.sha }}
+          path: release
+
+      - name: Preflight Cloudflare credentials
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
         run: |
-          set -e
+          set -euo pipefail
           if [ -z "${CLOUDFLARE_API_TOKEN}" ] || [ -z "${CLOUDFLARE_ACCOUNT_ID}" ]; then
-            echo "::error::CF_API_TOKEN of CF_ACCOUNT_ID ontbreekt in GitHub repo Settings > Secrets and variables > Actions"
+            echo "::error::CF_API_TOKEN or CF_ACCOUNT_ID is missing in GitHub Actions secrets"
             exit 1
           fi
           npx --yes wrangler@3.90.0 whoami
           npx --yes wrangler@3.90.0 pages project list | head -50
 
-      # 🔥 NIEUWE STABIELE DEPLOY
-      - name: Deploy to Cloudflare Pages
+      - name: Deploy validated release to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CF_API_TOKEN }}
           accountId: ${{ secrets.CF_ACCOUNT_ID }}
           command: pages deploy release --project-name=nen-1090-app
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify production app after deployment
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 12); do
+            if curl --fail --silent --show-error --max-time 20 https://app.weldinspectpro.com/ > /dev/null; then
+              echo "Production app is reachable."
+              exit 0
+            fi
+            echo "Production verification attempt ${attempt}/12 failed; retrying in 10 seconds."
+            sleep 10
+          done
+          echo "::error::Production app did not become reachable after deployment"
+          exit 1
