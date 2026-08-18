@@ -25,14 +25,25 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Validate live test secrets
+        env:
+          TEST_TENANT: ${{ secrets.E2E_TENANT }}
+          TEST_EMAIL: ${{ secrets.E2E_EMAIL }}
+          TEST_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$TEST_TENANT" || { echo "::error::E2E_TENANT is not configured"; exit 1; }
+          test -n "$TEST_EMAIL" || { echo "::error::E2E_EMAIL is not configured"; exit 1; }
+          test -n "$TEST_PASSWORD" || { echo "::error::E2E_PASSWORD is not configured"; exit 1; }
+
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
       - name: Run ultra live suite
         env:
-          TEST_TENANT: demo
-          TEST_EMAIL: admin@demo.com
-          TEST_PASSWORD: Admin123!
+          TEST_TENANT: ${{ secrets.E2E_TENANT }}
+          TEST_EMAIL: ${{ secrets.E2E_EMAIL }}
+          TEST_PASSWORD: ${{ secrets.E2E_PASSWORD }}
         run: npx playwright test tests/e2e/phase-11-ultra --project=desktop-chromium
 
       - name: Upload Playwright artifacts

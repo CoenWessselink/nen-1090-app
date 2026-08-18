@@ -17,7 +17,8 @@ export type AccessPermission =
   | 'billing.read'
   | 'billing.manage'
   | 'tenants.read'
-  | 'tenants.impersonate';
+  | 'tenants.impersonate'
+  | 'platform.manage';
 
 type SessionContextValue = {
   token: string | null;
@@ -39,7 +40,7 @@ const AUTH_VALIDATE_TTL_MS = 5 * 60 * 1000;
 
 const superadminPermissions: AccessPermission[] = [
   'dashboard.read', 'projects.read', 'projects.write', 'welds.read', 'welds.write', 'documents.read', 'documents.write',
-  'settings.read', 'settings.write', 'billing.read', 'billing.manage', 'tenants.read', 'tenants.impersonate',
+  'settings.read', 'settings.write', 'billing.read', 'billing.manage', 'tenants.read', 'tenants.impersonate', 'platform.manage',
 ];
 
 const tenantOwnerPermissions: AccessPermission[] = [

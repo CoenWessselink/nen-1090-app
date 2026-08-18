@@ -1,25 +1,14 @@
 name: Deploy App to Cloudflare Pages
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "src/**"
-      - "public/**"
-      - "functions/**"
-      - "package.json"
-      - "package-lock.json"
-      - "tsconfig*.json"
-      - "vite.config.*"
-      - "index.html"
-      - "index.source.html"
-      - "_headers"
-      - "scripts/submodules-init.mjs"
-      - ".github/workflows/deploy_app_to_cloudflare_pages.yml"
+  workflow_run:
+    workflows: ["App CI + Pages Validation"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
 
 concurrency:
-  group: cloudflare-pages-${{ github.ref }}
+  group: cloudflare-pages-${{ github.event.workflow_run.head_sha || github.sha }}
   cancel-in-progress: true
 
 permissions:
@@ -32,11 +21,18 @@ permissions:
 
 jobs:
   deploy:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    env:
+      DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
 
     steps:
-      - name: Checkout
+      - name: Checkout validated commit
         uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -47,37 +43,39 @@ jobs:
       - name: Install deps
         run: npm ci
 
-      - name: Build release for Pages
+      - name: Re-run platform access guard
+        run: npm run test:platform-access
+
+      - name: Build validated release for Pages
         env:
           VITE_MARKETING_BASE_URL: https://nen1090-marketing.pages.dev
-          VITE_COMMIT_SHA: ${{ github.sha }}
+          VITE_COMMIT_SHA: ${{ env.DEPLOY_SHA }}
           VITE_DEPLOYMENT_ENV: production
         run: npm run build:pages
 
       - name: Verify built Pages artifact
         run: |
           test -f release/index.html
+          test -f release/_redirects
           test -d release/assets
 
-      # Faalt snel met duidelijke fout als repo secrets ontbreken of token geen Pages-rechten heeft.
-      - name: Preflight Cloudflare (auth + Pages API)
+      - name: Preflight Cloudflare credentials and Pages API
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
         run: |
-          set -e
+          set -euo pipefail
           if [ -z "${CLOUDFLARE_API_TOKEN}" ] || [ -z "${CLOUDFLARE_ACCOUNT_ID}" ]; then
-            echo "::error::CF_API_TOKEN of CF_ACCOUNT_ID ontbreekt in GitHub repo Settings > Secrets and variables > Actions"
+            echo "::error::CF_API_TOKEN or CF_ACCOUNT_ID is missing in GitHub Actions secrets"
             exit 1
           fi
           npx --yes wrangler@3.90.0 whoami
           npx --yes wrangler@3.90.0 pages project list | head -50
 
-      # 🔥 NIEUWE STABIELE DEPLOY
-      - name: Deploy to Cloudflare Pages
+      - name: Deploy validated commit to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CF_API_TOKEN }}
           accountId: ${{ secrets.CF_ACCOUNT_ID }}
-          command: pages deploy release --project-name=nen-1090-app
+          command: pages deploy release --project-name=nen-1090-app --branch=main --commit-hash=${{ env.DEPLOY_SHA }}
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}

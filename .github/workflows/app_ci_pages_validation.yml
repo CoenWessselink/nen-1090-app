@@ -1,17 +1,41 @@
 name: App CI + Pages Validation
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'functions/**'
+      - 'scripts/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig*.json'
+      - 'vite.config.*'
+      - 'index.html'
+      - 'index.source.html'
+      - '_headers'
+      - '_redirects'
+      - 'eslint.config.js'
+      - '.github/workflows/app_ci_pages_validation.yml'
+      - '.github/workflows/deploy_app_to_cloudflare_pages.yml'
   pull_request:
     branches: [main]
     paths:
       - 'src/**'
       - 'public/**'
+      - 'functions/**'
+      - 'scripts/**'
       - 'package.json'
       - 'package-lock.json'
       - 'tsconfig*.json'
       - 'vite.config.*'
-      - 'docs/**'
+      - 'index.html'
+      - 'index.source.html'
+      - '_headers'
+      - '_redirects'
       - 'eslint.config.js'
+      - '.github/workflows/app_ci_pages_validation.yml'
       - '.github/workflows/deploy_app_to_cloudflare_pages.yml'
   workflow_dispatch:
 
@@ -22,7 +46,7 @@ concurrency:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
       - name: Checkout repository
@@ -36,6 +60,9 @@ jobs:
 
       - name: Install deps
         run: npm ci
+
+      - name: Platform access regression guard
+        run: npm run test:platform-access
 
       - name: Lint (zero warnings)
         run: npm run lint:ci
@@ -60,6 +87,6 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: app-pages-release-preview
+          name: app-pages-release-preview-${{ github.sha }}
           path: release
           if-no-files-found: error
